@@ -18,7 +18,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
 
-   $Id: flash_eraseall.c,v 1.24 2005/11/07 11:15:10 gleixner Exp $
+   $Id: flash_eraseall.c,v 1.22 2005/02/17 14:55:06 hvr Exp $
 */
 #include <sys/types.h>
 #include <stdio.h>
@@ -43,7 +43,7 @@
 #include <mtd/jffs2-user.h>
 
 #define PROGRAM "flash_eraseall"
-#define VERSION "$Revision: 1.24 $"
+#define VERSION "$Revision: 1.22 $"
 
 static const char *exe_name;
 static const char *mtd_device;
@@ -53,16 +53,15 @@ static int jffs2;		// format for jffs2 usage
 static void process_options (int argc, char *argv[]);
 static void display_help (void);
 static void display_version (void);
-static struct jffs2_raw_ebh ebh;
+static struct jffs2_unknown_node cleanmarker;
 int target_endian = __BYTE_ORDER;
 
 int main (int argc, char *argv[])
 {
 	mtd_info_t meminfo;
-	int fd, ebhpos = 0, ebhlen = 0;
+	int fd, clmpos = 0, clmlen = 8;
 	erase_info_t erase;
 	int isNAND, bbtest = 1;
-	uint32_t pages_per_eraseblock, available_oob_space;
 
 	process_options(argc, argv);
 
@@ -82,19 +81,11 @@ int main (int argc, char *argv[])
 	isNAND = meminfo.type == MTD_NANDFLASH ? 1 : 0;
 
 	if (jffs2) {
-		ebh.magic = cpu_to_je16 (JFFS2_MAGIC_BITMASK);
-		ebh.nodetype = cpu_to_je16 (JFFS2_NODETYPE_ERASEBLOCK_HEADER);
-		ebh.totlen = cpu_to_je32(sizeof(struct jffs2_raw_ebh));
-		ebh.hdr_crc = cpu_to_je32 (crc32 (0, &ebh,  sizeof (struct jffs2_unknown_node) - 4));
-		ebh.reserved = 0;
-		ebh.compat_fset = JFFS2_EBH_COMPAT_FSET;
-		ebh.incompat_fset = JFFS2_EBH_INCOMPAT_FSET;
-		ebh.rocompat_fset = JFFS2_EBH_ROCOMPAT_FSET;
-		ebh.erase_count = cpu_to_je32(0);
-		ebh.node_crc = cpu_to_je32(crc32(0, (unsigned char *)&ebh + sizeof(struct jffs2_unknown_node) + 4,
-					 sizeof(struct jffs2_raw_ebh) - sizeof(struct jffs2_unknown_node) - 4));
-
-		if (isNAND) {
+		cleanmarker.magic = cpu_to_je16 (JFFS2_MAGIC_BITMASK);
+		cleanmarker.nodetype = cpu_to_je16 (JFFS2_NODETYPE_CLEANMARKER);
+		if (!isNAND)
+			cleanmarker.totlen = cpu_to_je32 (sizeof (struct jffs2_unknown_node));
+		else {
 			struct nand_oobinfo oobinfo;
 
 			if (ioctl(fd, MEMGETOOBSEL, &oobinfo) != 0) {
@@ -109,32 +100,30 @@ int main (int argc, char *argv[])
 					fprintf (stderr, " Eeep. Autoplacement selected and no empty space in oob\n");
 					exit(1);
 				}
-				ebhpos = oobinfo.oobfree[0][0];
-				ebhlen = oobinfo.oobfree[0][1];
+				clmpos = oobinfo.oobfree[0][0];
+				clmlen = oobinfo.oobfree[0][1];
+				if (clmlen > 8)
+					clmlen = 8;
 			} else {
 				/* Legacy mode */
 				switch (meminfo.oobsize) {
 				case 8:
-					ebhpos = 6;
-					ebhlen = 2;
+					clmpos = 6;
+					clmlen = 2;
 					break;
 				case 16:
-					ebhpos = 8;
-					ebhlen = 8;
+					clmpos = 8;
+					clmlen = 8;
 					break;
 				case 64:
-					ebhpos = 16;
-					ebhlen = 8;
+					clmpos = 16;
+					clmlen = 8;
 					break;
 				}
 			}
-			pages_per_eraseblock = meminfo.erasesize/meminfo.oobblock;
-			available_oob_space = ebhlen * pages_per_eraseblock;
-			if (available_oob_space < sizeof(struct jffs2_raw_ebh)) {
-				fprintf(stderr, "The OOB area(%d) is not big enough to hold eraseblock_header(%d)", available_oob_space, sizeof(struct jffs2_raw_ebh));
-				exit(1);
-			}
+			cleanmarker.totlen = cpu_to_je32(8);
 		}
+		cleanmarker.hdr_crc =  cpu_to_je32 (crc32 (0, &cleanmarker,  sizeof (struct jffs2_unknown_node) - 4));
 	}
 
 	for (erase.start = 0; erase.start < meminfo.size; erase.start += meminfo.erasesize) {
@@ -180,20 +169,11 @@ int main (int argc, char *argv[])
 		/* write cleanmarker */
 		if (isNAND) {
 			struct mtd_oob_buf oob;
-			uint32_t i = 0, written = 0;
-
-			while (written < sizeof(struct jffs2_raw_ebh)) {
-				oob.ptr = (unsigned char *) &ebh + written;
-				oob.start = erase.start + meminfo.oobblock*i + ebhpos;
-				oob.length = (sizeof(struct jffs2_raw_ebh) - written) < ebhlen ? (sizeof(struct jffs2_raw_ebh) - written) : ebhlen;
-				if (ioctl (fd, MEMWRITEOOB, &oob) != 0) {
-					fprintf(stderr, "\n%s: %s: MTD writeoob failure: %s\n", exe_name, mtd_device, strerror(errno));
-					break;
-				}
-				i++;
-				written += oob.length;
-			}
-			if (written < sizeof(struct jffs2_raw_ebh)) {
+			oob.ptr = (unsigned char *) &cleanmarker;
+			oob.start = erase.start + clmpos;
+			oob.length = clmlen;
+			if (ioctl (fd, MEMWRITEOOB, &oob) != 0) {
+				fprintf(stderr, "\n%s: %s: MTD writeoob failure: %s\n", exe_name, mtd_device, strerror(errno));
 				continue;
 			}
 		} else {
@@ -201,7 +181,7 @@ int main (int argc, char *argv[])
 				fprintf(stderr, "\n%s: %s: MTD lseek failure: %s\n", exe_name, mtd_device, strerror(errno));
 				continue;
 			}
-			if (write (fd , &ebh, sizeof (ebh)) != sizeof (ebh)) {
+			if (write (fd , &cleanmarker, sizeof (cleanmarker)) != sizeof (cleanmarker)) {
 				fprintf(stderr, "\n%s: %s: MTD write failure: %s\n", exe_name, mtd_device, strerror(errno));
 				continue;
 			}

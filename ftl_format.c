@@ -48,7 +48,7 @@
 #include <sys/stat.h>
 
 #include <mtd/mtd-user.h>
-#include <linux/mtd/ftl.h>
+#include <mtd/ftl-user.h>
 
 #include <byteswap.h>
 #include <endian.h>

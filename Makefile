@@ -8,7 +8,7 @@ MANDIR=/usr/man
 INCLUDEDIR=/usr/include
 #CROSS=arm-linux-
 CC := $(CROSS)gcc
-CFLAGS := -I../include -O2 -Wall
+CFLAGS := -I./include -O2 -Wall
 
 TARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	mkfs.jffs ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \

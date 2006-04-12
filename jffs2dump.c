@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2003 Thomas Gleixner (tglx@linutronix.de)
  *
- * $Id: jffs2dump.c,v 1.12 2005/11/07 11:15:12 gleixner Exp $
+ * $Id: jffs2dump.c,v 1.10 2005/09/26 11:49:39 havasi Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -37,7 +37,7 @@
 #include "summary.h"
 
 #define PROGRAM "jffs2dump"
-#define VERSION "$Revision: 1.12 $"
+#define VERSION "$Revision: 1.10 $"
 
 #define PAD(x) (((x)+3)&~3)
 
@@ -379,22 +379,6 @@ void do_dumpcontent (void)
 			break;
 		}
 
-		case JFFS2_NODETYPE_ERASEBLOCK_HEADER:
-			printf ("%8s EBH        node at 0x%08x, totlen 0x%08x, compat_fset 0x%02x, incompat_fset 0x%02x, rocompat_fset 0x%02x, erase_count 0x%08x\n",
-				obsolete ? "Obsolete" : "", p - data, je32_to_cpu (node->eh.totlen), node->eh.compat_fset,
-				node->eh.incompat_fset, node->eh.rocompat_fset, je32_to_cpu (node->eh.erase_count));
-
-			crc = crc32(0, p + sizeof(struct jffs2_unknown_node) + 4, je32_to_cpu(node->eh.totlen) - sizeof(struct jffs2_unknown_node) - 4);
-			if (crc != je32_to_cpu(node->eh.node_crc)) {
-				printf ("Wrong node_crc at  0x%08x, 0x%08x instead of 0x%08x\n", p - data, je32_to_cpu (node->eh.node_crc), crc);
-				p += PAD(je32_to_cpu (node->eh.totlen));
-				dirty += PAD(je32_to_cpu (node->eh.totlen));;
-				continue;
-			}
-
-			p += PAD(je32_to_cpu (node->eh.totlen));
-			break;
-
 		case JFFS2_NODETYPE_CLEANMARKER:
 			if (verbose) {
 				printf ("%8s Cleanmarker     at 0x%08x, totlen 0x%08x\n",
@@ -630,23 +614,6 @@ void do_endianconvert (void)
 
 			break;
 		}
-
-		case JFFS2_NODETYPE_ERASEBLOCK_HEADER:
-			newnode.eh.magic = cnv_e16 (node->eh.magic);
-			newnode.eh.nodetype = cnv_e16 (node->eh.nodetype);
-			newnode.eh.totlen = cnv_e32 (node->eh.totlen);
-			newnode.eh.hdr_crc = cpu_to_e32 (crc32 (0, &newnode, sizeof (struct jffs2_unknown_node) - 4));
-			newnode.eh.reserved = node->eh.reserved;
-			newnode.eh.compat_fset = node->eh.compat_fset;
-			newnode.eh.incompat_fset = node->eh.incompat_fset;
-			newnode.eh.rocompat_fset = node->eh.rocompat_fset;
-			newnode.eh.erase_count = cnv_e32 (node->eh.erase_count);
-			newnode.eh.node_crc = cpu_to_e32 (crc32 (0, (unsigned char *)&newnode + sizeof(struct jffs2_unknown_node) + 4,
-								je32_to_cpu(node->eh.totlen) - sizeof(struct jffs2_unknown_node) + 4));
-			write(fd, &newnode, sizeof(struct jffs2_raw_ebh));
-			write(fd, p + sizeof(struct jffs2_raw_ebh), PAD(je32_to_cpu(node->eh.totlen) - sizeof(struct jffs2_raw_ebh)));
-			p += PAD(je32_to_cpu (node->eh.totlen));
-			break;
 
 		case 0xffff:
 			write (fd, p, 4);
