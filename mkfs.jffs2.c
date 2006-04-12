@@ -862,12 +862,15 @@ static void write_regular_file(struct filesystem_entry *e)
 			full_write(out_fd, wbuf, space);
 			padword();
 
+            if (tbuf!= cbuf) {
+				free(cbuf);
+				cbuf = NULL;
+			}
+
 			tbuf += dsize;
 			len -= dsize;
 			offset += dsize;
 
-            if (tbuf!= cbuf)
-				free(cbuf);
 		}
 	}
 	if (!je32_to_cpu(ri.version)) {
@@ -1203,7 +1206,7 @@ static char *helptext =
 	"  -V, --version           Display version information\n"
 	"  -i, --incremental=FILE  Parse FILE and generate appendage output for it\n\n";
 
-static char *revtext = "$Revision: 1.49 $";
+static char *revtext = "$Revision: 1.50 $";
 
 int load_next_block() {
 
