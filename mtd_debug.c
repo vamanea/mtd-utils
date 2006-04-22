@@ -272,15 +272,6 @@ int showinfo (int fd)
 	  case MTD_NANDFLASH:
 		printf ("MTD_NANDFLASH");
 		break;
-	  case MTD_PEROM:
-		printf ("MTD_PEROM");
-		break;
-	  case MTD_OTHER:
-		printf ("MTD_OTHER");
-		break;
-	  case MTD_UNKNOWN:
-		printf ("MTD_UNKNOWN");
-		break;
 	  default:
 		printf ("(unknown type - new MTD API maybe?)");
 	 }
@@ -307,11 +298,6 @@ int showinfo (int fd)
 		  {
 			 { "MTD_CLEAR_BITS", MTD_CLEAR_BITS },
 			 { "MTD_SET_BITS", MTD_SET_BITS },
-			 { "MTD_ERASEABLE", MTD_ERASEABLE },
-			 { "MTD_WRITEB_WRITEABLE", MTD_WRITEB_WRITEABLE },
-			 { "MTD_VOLATILE", MTD_VOLATILE },
-			 { "MTD_XIP", MTD_XIP },
-			 { "MTD_OOB", MTD_OOB },
 			 { "MTD_ECC", MTD_ECC },
 			 { NULL, -1 }
 		  };
