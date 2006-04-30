@@ -56,8 +56,6 @@ sumtool: sumtool.o crc32.o
 
 install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 -oroot -groot ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
-	mkdir -p ${DESTDIR}/${INCLUDEDIR}/mtd
-	install -m0644 -oroot -groot ../include/mtd/*.h ${DESTDIR}/${INCLUDEDIR}/mtd/
