@@ -7,6 +7,7 @@
  *           2002 Axis Communications AB
  *           2001, 2002 Erik Andersen <andersen@codepoet.org>
  *           2004 University of Szeged, Hungary
+ *           2006 KaiGai Kohei <kaigai@ak.jp.nec.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,6 +64,8 @@
 #include <ctype.h>
 #include <time.h>
 #include <getopt.h>
+#include <sys/xattr.h>
+#include <sys/acl.h>
 #include <byteswap.h>
 #define crc32 __complete_crap
 #include <zlib.h>
@@ -1022,6 +1025,233 @@ static void write_special_file(struct filesystem_entry *e)
 	padword();
 }
 
+typedef struct xattr_entry {
+	struct xattr_entry *next;
+	uint32_t xid;
+	int xprefix;
+	char *xname;
+	char *xvalue;
+	int name_len;
+	int value_len;
+} xattr_entry_t;
+
+#define XATTR_BUFFER_SIZE		(64 * 1024)	/* 64KB */
+static uint32_t enable_xattr = 0;
+static uint32_t highest_xid = 0;
+
+static struct {
+	int xprefix;
+	char *string;
+	int length;
+} xprefix_tbl[] = {
+	{ JFFS2_XPREFIX_USER, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN },
+	{ JFFS2_XPREFIX_SECURITY, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN },
+	{ JFFS2_XPREFIX_ACL_ACCESS, POSIX_ACL_XATTR_ACCESS, POSIX_ACL_XATTR_ACCESS_LEN },
+	{ JFFS2_XPREFIX_ACL_DEFAULT, POSIX_ACL_XATTR_DEFAULT, POSIX_ACL_XATTR_DEFAULT_LEN },
+	{ JFFS2_XPREFIX_TRUSTED, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN },
+	{ 0, NULL, 0 }
+};
+
+static void formalize_posix_acl(char *xvalue, int *value_len)
+{
+	posix_acl_xattr_header *pacl_header;
+	posix_acl_xattr_entry *pent, *plim;
+	jffs2_acl_header *jacl_header;
+	jffs2_acl_entry *jent;
+	jffs2_acl_entry_short *jent_s;
+	char buffer[XATTR_BUFFER_SIZE];
+	int offset = 0;
+
+	pacl_header = (posix_acl_xattr_header *)xvalue;;
+	pent = pacl_header->a_entries;
+	plim = (posix_acl_xattr_entry *)(xvalue + *value_len);
+
+	jacl_header = (jffs2_acl_header *)buffer;
+	offset += sizeof(jffs2_acl_header);
+	jacl_header->a_version = cpu_to_je32(JFFS2_ACL_VERSION);
+
+	while (pent < plim) {
+		switch(le16_to_cpu(pent->e_tag)) {
+		case ACL_USER_OBJ:
+		case ACL_GROUP_OBJ:
+		case ACL_MASK:
+		case ACL_OTHER:
+			jent_s = (jffs2_acl_entry_short *)(buffer + offset);
+			offset += sizeof(jffs2_acl_entry_short);
+			jent_s->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
+			jent_s->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
+			break;
+		case ACL_USER:
+		case ACL_GROUP:
+			jent = (jffs2_acl_entry *)(buffer + offset);
+			offset += sizeof(jffs2_acl_entry);
+			jent->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
+			jent->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
+			jent->e_id = cpu_to_je32(le32_to_cpu(pent->e_id));
+			break;
+		default:
+			printf("%04x : Unknown XATTR entry tag.\n", le16_to_cpu(pent->e_tag));
+			exit(1);
+		}
+		pent++;
+	}
+	if (offset > *value_len) {
+		printf("Length of JFFS2 ACL expression(%u) is longer than general one(%u).\n",
+		       offset, *value_len);
+		exit(1);
+	}
+	memcpy(xvalue, buffer, offset);
+	*value_len = offset;
+}
+
+static xattr_entry_t *create_xattr_entry(int xprefix, char *xname, char *xvalue, int value_len)
+{
+	xattr_entry_t *xe;
+	struct jffs2_raw_xattr rx;
+	int name_len;
+
+	/* create xattr entry */
+	name_len = strlen(xname);
+	xe = xcalloc(1, sizeof(xattr_entry_t) + name_len + 1 + value_len);
+	xe->next = NULL;
+	xe->xid = ++highest_xid;
+	xe->xprefix = xprefix;
+	xe->xname = ((char *)xe) + sizeof(xattr_entry_t);
+	xe->xvalue = xe->xname + name_len + 1;
+	xe->name_len = name_len;
+	xe->value_len = value_len;
+	strcpy(xe->xname, xname);
+	memcpy(xe->xvalue, xvalue, value_len);
+
+	/* write xattr node */
+	memset(&rx, 0, sizeof(rx));
+	rx.magic = cpu_to_je16(JFFS2_MAGIC_BITMASK);
+	rx.nodetype = cpu_to_je16(JFFS2_NODETYPE_XATTR);
+	rx.totlen = cpu_to_je32(PAD(sizeof(rx) + xe->name_len + 1 + xe->value_len));
+	rx.hdr_crc = cpu_to_je32(crc32(0, &rx, sizeof(struct jffs2_unknown_node) - 4));
+
+	rx.xid = cpu_to_je32(xe->xid);
+	rx.version = cpu_to_je32(1);	/* initial version */
+	rx.xprefix = xprefix;
+	rx.name_len = xe->name_len;
+	rx.value_len = cpu_to_je16(xe->value_len);
+	rx.data_crc = cpu_to_je32(crc32(0, xe->xname, xe->name_len + 1 + xe->value_len));
+	rx.node_crc = cpu_to_je32(crc32(0, &rx, sizeof(rx) - 4));
+
+	pad_block_if_less_than(sizeof(rx) + xe->name_len + 1 + xe->value_len);
+	full_write(out_fd, &rx, sizeof(rx));
+	full_write(out_fd, xe->xname, xe->name_len + 1 + xe->value_len);
+	padword();
+
+	return xe;
+}
+
+#define XATTRENTRY_HASHSIZE	57
+static xattr_entry_t *find_xattr_entry(int xprefix, char *xname, char *xvalue, int value_len)
+{
+	static xattr_entry_t **xentry_hash = NULL;
+	xattr_entry_t *xe;
+	int index, name_len;
+
+	/* create hash table */
+	if (!xentry_hash)
+		xentry_hash = xcalloc(1, sizeof(xe) * XATTRENTRY_HASHSIZE);
+
+	if (xprefix == JFFS2_XPREFIX_ACL_ACCESS
+	    || xprefix == JFFS2_XPREFIX_ACL_DEFAULT)
+		formalize_posix_acl(xvalue, &value_len);
+
+	name_len = strlen(xname);
+	index = (crc32(0, xname, name_len) ^ crc32(0, xvalue, value_len)) % XATTRENTRY_HASHSIZE;
+	for (xe = xentry_hash[index]; xe; xe = xe->next) {
+		if (xe->xprefix == xprefix
+		    && xe->value_len == value_len
+		    && !strcmp(xe->xname, xname)
+		    && !memcmp(xe->xvalue, xvalue, value_len))
+			break;
+	}
+	if (!xe) {
+		xe = create_xattr_entry(xprefix, xname, xvalue, value_len);
+		xe->next = xentry_hash[index];
+		xentry_hash[index] = xe;
+	}
+	return xe;
+}
+
+static void write_xattr_entry(struct filesystem_entry *e)
+{
+	struct jffs2_raw_xref ref;
+	struct xattr_entry *xe;
+	char xlist[XATTR_BUFFER_SIZE], xvalue[XATTR_BUFFER_SIZE];
+	char *xname, *prefix_str;
+	int i, xprefix, prefix_len;
+	int list_sz, offset, name_len, value_len;
+
+	if (!enable_xattr)
+		return;
+
+	list_sz = llistxattr(e->hostname, xlist, XATTR_BUFFER_SIZE);
+	if (list_sz < 0) {
+		if (verbose)
+			printf("llistxattr('%s') = %d : %s\n",
+			       e->hostname, errno, strerror(errno));
+		return;
+	}
+
+	for (offset = 0; offset < list_sz; offset += name_len) {
+		xname = xlist + offset;
+		name_len = strlen(xname) + 1;
+
+		for (i = 0; (xprefix = xprefix_tbl[i].xprefix); i++) {
+			prefix_str = xprefix_tbl[i].string;
+			prefix_len = xprefix_tbl[i].length;
+			if (prefix_str[prefix_len - 1] == '.') {
+				if (!strncmp(xname, prefix_str, prefix_len - 1))
+					break;
+			} else {
+				if (!strcmp(xname, prefix_str))
+					break;
+			}
+		}
+		if (!xprefix) {
+			if (verbose)
+				printf("%s: xattr '%s' is not supported.\n",
+				       e->hostname, xname);
+			continue;
+		}
+		if ((enable_xattr & (1 << xprefix)) == 0)
+			continue;
+
+		value_len = lgetxattr(e->hostname, xname, xvalue, XATTR_BUFFER_SIZE);
+		if (value_len < 0) {
+			if (verbose)
+				printf("lgetxattr('%s', '%s') = %d : %s\n",
+				       e->hostname, xname, errno, strerror(errno));
+			continue;
+		}
+		xe = find_xattr_entry(xprefix, xname + prefix_len, xvalue, value_len);
+		if (!xe) {
+			if (verbose)
+				printf("%s : xattr '%s' was ignored.\n",
+				       e->hostname, xname);
+			continue;
+		}
+
+		memset(&ref, 0, sizeof(ref));
+		ref.magic = cpu_to_je16(JFFS2_MAGIC_BITMASK);
+		ref.nodetype = cpu_to_je16(JFFS2_NODETYPE_XREF);
+		ref.totlen = cpu_to_je32(sizeof(ref));
+		ref.hdr_crc = cpu_to_je32(crc32(0, &ref, sizeof(struct jffs2_unknown_node) - 4));
+		ref.ino = cpu_to_je32(e->sb.st_ino);
+		ref.xid = cpu_to_je32(xe->xid);
+		ref.node_crc = cpu_to_je32(crc32(0, &ref, sizeof(ref) - 4));
+
+		pad_block_if_less_than(sizeof(ref));
+		full_write(out_fd, &ref, sizeof(ref));
+		padword();
+	}
+}
+
 static void recursive_populate_directory(struct filesystem_entry *dir)
 {
 	struct filesystem_entry *e;
@@ -1029,6 +1259,8 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 	if (verbose) {
 		printf("%s\n", dir->fullname);
 	}
+	write_xattr_entry(dir);		/* for '/' */
+
 	e = dir->files;
 	while (e) {
 
@@ -1041,6 +1273,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							e->name);
 				}
 				write_pipe(e);
+				write_xattr_entry(e);
 				break;
 			case S_IFSOCK:
 				if (verbose) {
@@ -1049,6 +1282,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_pipe(e);
+				write_xattr_entry(e);
 				break;
 			case S_IFIFO:
 				if (verbose) {
@@ -1057,6 +1291,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_pipe(e);
+				write_xattr_entry(e);
 				break;
 			case S_IFCHR:
 				if (verbose) {
@@ -1066,6 +1301,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							(int) e->sb.st_gid, e->name);
 				}
 				write_special_file(e);
+				write_xattr_entry(e);
 				break;
 			case S_IFBLK:
 				if (verbose) {
@@ -1075,6 +1311,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							(int) e->sb.st_gid, e->name);
 				}
 				write_special_file(e);
+				write_xattr_entry(e);
 				break;
 			case S_IFLNK:
 				if (verbose) {
@@ -1084,6 +1321,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							e->link);
 				}
 				write_symlink(e);
+				write_xattr_entry(e);
 				break;
 			case S_IFREG:
 				if (verbose) {
@@ -1092,6 +1330,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_regular_file(e);
+				write_xattr_entry(e);
 				break;
 			default:
 				error_msg("Unknown mode %o for %s", e->sb.st_mode,
@@ -1169,6 +1408,9 @@ static struct option long_options[] = {
 	{"test-compression", 0, NULL, 't'},
 	{"compressor-priority", 1, NULL, 'y'},
 	{"incremental", 1, NULL, 'i'},
+	{"with-xattr", 0, NULL, 1000 },
+	{"with-selinux", 0, NULL, 1001 },
+	{"with-posix-acl", 0, NULL, 1002 },
 	{NULL, 0, NULL, 0}
 };
 
@@ -1201,6 +1443,9 @@ static char *helptext =
 	"  -q, --squash            Squash permissions and owners making all files be owned by root\n"
 	"  -U, --squash-uids       Squash owners making all files be owned by root\n"
 	"  -P, --squash-perms      Squash permissions on all files\n"
+	"      --with-xattr        stuff all xattr entries into image\n"
+	"      --with-selinux      stuff only SELinux Labels into jffs2 image\n"
+	"      --with-posix-acl    stuff only POSIX ACL entries into jffs2 image\n"
 	"  -h, --help              Display this help text\n"
 	"  -v, --verbose           Verbose operation\n"
 	"  -V, --version           Display version information\n"
@@ -1518,6 +1763,20 @@ int main(int argc, char **argv)
 				if (in_fd == -1) {
 					perror_msg_and_die("cannot open (incremental) file");
 				}
+				break;
+			case 1000:	/* --with-xattr  */
+				enable_xattr |= (1 << JFFS2_XPREFIX_USER)
+						| (1 << JFFS2_XPREFIX_SECURITY)
+						| (1 << JFFS2_XPREFIX_ACL_ACCESS)
+						| (1 << JFFS2_XPREFIX_ACL_DEFAULT)
+						| (1 << JFFS2_XPREFIX_TRUSTED);
+				break;
+			case 1001:	/*  --with-selinux  */
+				enable_xattr |= (1 << JFFS2_XPREFIX_SECURITY);
+				break;
+			case 1002:	/*  --with-posix-acl  */
+				enable_xattr |= (1 << JFFS2_XPREFIX_ACL_ACCESS)
+						| (1 << JFFS2_XPREFIX_ACL_DEFAULT);
 				break;
 		}
 	}

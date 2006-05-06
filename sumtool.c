@@ -4,6 +4,7 @@
  *  Copyright (C) 2004 Zoltan Sogor <weth@inf.u-szeged.hu>,
  *                     Ferenc Havasi <havasi@inf.u-szeged.hu>
  *                     University of Szeged, Hungary
+ *                2006 KaiGai Kohei <kaigai@ak.jp.nec.com>
  *
  * $Id: sumtool.c,v 1.9 2006/01/23 08:22:45 havasi Exp $
  *
@@ -442,6 +443,29 @@ void dump_sum_records()
 				break;
 			}
 
+			case JFFS2_NODETYPE_XATTR: {
+				struct jffs2_sum_xattr_flash *sxattr_ptr = wpage;
+
+				sxattr_ptr->nodetype = sum_collected->sum_list_head->x.nodetype;
+				sxattr_ptr->xid = sum_collected->sum_list_head->x.xid;
+				sxattr_ptr->version = sum_collected->sum_list_head->x.version;
+				sxattr_ptr->offset = sum_collected->sum_list_head->x.offset;
+				sxattr_ptr->totlen = sum_collected->sum_list_head->x.totlen;
+
+				wpage += JFFS2_SUMMARY_XATTR_SIZE;
+				break;
+			}
+
+			case JFFS2_NODETYPE_XREF: {
+				struct jffs2_sum_xref_flash *sxref_ptr = wpage;
+
+				sxref_ptr->nodetype = sum_collected->sum_list_head->r.nodetype;
+				sxref_ptr->offset = sum_collected->sum_list_head->r.offset;
+
+				wpage += JFFS2_SUMMARY_XREF_SIZE;
+				break;
+			}
+
 			default : {
 				printf("Unknown node type!\n");
 			}
@@ -577,6 +601,16 @@ int add_sum_mem(union jffs2_sum_mem *item)
 			sum_collected->sum_num++;
 			break;
 
+		case JFFS2_NODETYPE_XATTR:
+			sum_collected->sum_size += JFFS2_SUMMARY_XATTR_SIZE;
+			sum_collected->sum_num++;
+			break;
+
+		case JFFS2_NODETYPE_XREF:
+			sum_collected->sum_size += JFFS2_SUMMARY_XREF_SIZE;
+			sum_collected->sum_num++;
+			break;
+
 		default:
 			error_msg_and_die("__jffs2_add_sum_mem(): UNKNOWN node type %d\n", je16_to_cpu(item->u.nodetype));
 	}
@@ -622,6 +656,37 @@ void add_sum_dirent_mem(union jffs2_node_union *node)
 	add_sum_mem((union jffs2_sum_mem *) temp);
 }
 
+void add_sum_xattr_mem(union jffs2_node_union *node)
+{
+	struct jffs2_sum_xattr_mem *temp = (struct jffs2_sum_xattr_mem *)
+			malloc(sizeof(struct jffs2_sum_xattr_mem));
+	if (!temp)
+		error_msg_and_die("Can't allocate memory for summary information!\n");
+
+	temp->nodetype = node->x.nodetype;
+	temp->xid = node->x.xid;
+	temp->version = node->x.version;
+	temp->offset = cpu_to_je32(data_ofs);
+	temp->totlen = node->x.totlen;
+	temp->next = NULL;
+
+	add_sum_mem((union jffs2_sum_mem *) temp);
+}
+
+void add_sum_xref_mem(union jffs2_node_union *node)
+{
+	struct jffs2_sum_xref_mem *temp = (struct jffs2_sum_xref_mem *)
+			malloc(sizeof(struct jffs2_sum_xref_mem));
+	if (!temp)
+		error_msg_and_die("Can't allocate memory for summary information!\n");
+
+	temp->nodetype = node->r.nodetype;
+	temp->offset = cpu_to_je32(data_ofs);
+	temp->next = NULL;
+
+	add_sum_mem((union jffs2_sum_mem *) temp);
+}
+
 void write_dirent_to_buff(union jffs2_node_union *node)
 {
 	pad_block_if_less_than(je32_to_cpu (node->d.totlen),JFFS2_SUMMARY_DIRENT_SIZE(node->d.nsize));
@@ -639,11 +704,27 @@ void write_inode_to_buff(union jffs2_node_union *node)
 	padword();
 }
 
+void write_xattr_to_buff(union jffs2_node_union *node)
+{
+	pad_block_if_less_than(je32_to_cpu(node->x.totlen), JFFS2_SUMMARY_XATTR_SIZE);
+	add_sum_xattr_mem(node);	/* Add xdatum summary mem to summary list */
+	full_write(data_buffer + data_ofs, &(node->x), je32_to_cpu(node->x.totlen));
+	padword();
+}
+
+void write_xref_to_buff(union jffs2_node_union *node)
+{
+	pad_block_if_less_than(je32_to_cpu(node->r.totlen), JFFS2_SUMMARY_XREF_SIZE);
+	add_sum_xref_mem(node);		/* Add xref summary mem to summary list */
+	full_write(data_buffer + data_ofs, &(node->r), je32_to_cpu(node->r.totlen));
+	padword();
+}
+
 void create_summed_image(int inp_size)
 {
 	uint8_t *p = file_buffer;
 	union jffs2_node_union *node;
-	uint32_t crc;
+	uint32_t crc, length;
 	uint16_t type;
 	int bitchbitmask = 0;
 	int obsolete;
@@ -741,6 +822,56 @@ void create_summed_image(int inp_size)
 				write_dirent_to_buff(node);
 
 				p += PAD(je32_to_cpu (node->d.totlen));
+				break;
+
+			case JFFS2_NODETYPE_XATTR:
+				if (je32_to_cpu(node->x.node_crc) == 0xffffffff)
+					obsolete = 1;
+				if (verbose)
+					printf("%8s Xdatum     node at 0x%08x, totlen 0x%08x, "
+					       "#xid  %5u, version %5u\n",
+					       obsolete ? "Obsolete" : "",
+					       p - file_buffer, je32_to_cpu (node->x.totlen),
+					       je32_to_cpu(node->x.xid), je32_to_cpu(node->x.version));
+				crc = crc32(0, node, sizeof (struct jffs2_raw_xattr) - 4);
+				if (crc != je32_to_cpu(node->x.node_crc)) {
+					printf("Wrong node_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
+					       p - file_buffer, je32_to_cpu(node->x.node_crc), crc);
+					p += PAD(je32_to_cpu (node->x.totlen));
+					continue;
+				}
+				length = node->x.name_len + 1 + je16_to_cpu(node->x.value_len);
+				crc = crc32(0, node->x.data, length);
+				if (crc != je32_to_cpu(node->x.data_crc)) {
+					printf("Wrong data_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
+					       p - file_buffer, je32_to_cpu(node->x.data_crc), crc);
+					p += PAD(je32_to_cpu (node->x.totlen));
+					continue;
+				}
+
+				write_xattr_to_buff(node);
+				p += PAD(je32_to_cpu (node->x.totlen));
+				break;
+
+			case JFFS2_NODETYPE_XREF:
+				if (je32_to_cpu(node->r.node_crc) == 0xffffffff)
+					obsolete = 1;
+				if (verbose)
+					printf("%8s Xref       node at 0x%08x, totlen 0x%08x, "
+					       "#ino  %5u, xid     %5u\n",
+					       obsolete ? "Obsolete" : "",
+					       p - file_buffer, je32_to_cpu(node->r.totlen),
+					       je32_to_cpu(node->r.ino), je32_to_cpu(node->r.xid));
+				crc = crc32(0, node, sizeof (struct jffs2_raw_xref) - 4);
+				if (crc != je32_to_cpu(node->r.node_crc)) {
+					printf("Wrong node_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
+					       p - file_buffer, je32_to_cpu(node->r.node_crc), crc);
+					p += PAD(je32_to_cpu (node->r.totlen));
+					continue;
+				}
+
+				write_xref_to_buff(node);
+				p += PAD(je32_to_cpu (node->r.totlen));
 				break;
 
 			case JFFS2_NODETYPE_CLEANMARKER:

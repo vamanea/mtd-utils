@@ -49,6 +49,15 @@ mkfs.jffs2 \- Create a JFFS2 file system image from directory
 .B -P,--squash-perms
 ]
 [
+.B --with-xattr
+]
+[
+.B --with-selinux
+]
+[
+.B --with-posix-acl
+]
+[
 .B -m,--compression-mode=MODE
 ]
 [
@@ -177,6 +186,15 @@ Squash owners making all files be owned by root.
 .TP
 .B -P, --squash-perms
 Squash permissions, removing write permission for \'group\' and \'other\'.
+.TP
+.B --with-xattr
+Enables xattr, stuff all xattr entries into jffs2 image file.
+.TP
+.B --with-selinux
+Enables xattr, stuff only SELinux Labels into jffs2 image file.
+.TP
+.B --with-posix-acl
+Enable xattr, stuff only POSIX ACL entries into jffs2 image file.
 .TP
 .B -m, --compression-mode=MODE
 Set the default compression mode. The default mode is 

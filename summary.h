@@ -45,6 +45,8 @@
 #define JFFS2_SUMMARY_NOSUM_SIZE 0xffffffff
 #define JFFS2_SUMMARY_INODE_SIZE (sizeof(struct jffs2_sum_inode_flash))
 #define JFFS2_SUMMARY_DIRENT_SIZE(x) (sizeof(struct jffs2_sum_dirent_flash) + (x))
+#define JFFS2_SUMMARY_XATTR_SIZE (sizeof(struct jffs2_sum_xattr_flash))
+#define JFFS2_SUMMARY_XREF_SIZE (sizeof(struct jffs2_sum_xref_flash))
 
 /* Summary structures used on flash */
 
@@ -75,11 +77,28 @@ struct jffs2_sum_dirent_flash
 	uint8_t name[0];	/* dirent name */
 } __attribute__((packed));
 
+struct jffs2_sum_xattr_flash
+{
+	jint16_t nodetype;	/* == JFFS2_NODETYPE_XATR */
+	jint32_t xid;		/* xattr identifier */
+	jint32_t version;	/* version number */
+	jint32_t offset;	/* offset on jeb */
+	jint32_t totlen;	/* node length */
+} __attribute__((packed));
+
+struct jffs2_sum_xref_flash
+{
+	jint16_t nodetype;	/* == JFFS2_NODETYPE_XREF */
+	jint32_t offset;	/* offset on jeb */
+} __attribute__((packed));
+
 union jffs2_sum_flash
 {
 	struct jffs2_sum_unknown_flash u;
 	struct jffs2_sum_inode_flash i;
 	struct jffs2_sum_dirent_flash d;
+	struct jffs2_sum_xattr_flash x;
+	struct jffs2_sum_xref_flash r;
 };
 
 /* Summary structures used in the memory */
@@ -114,11 +133,30 @@ struct jffs2_sum_dirent_mem
 	uint8_t name[0];	/* dirent name */
 } __attribute__((packed));
 
+struct jffs2_sum_xattr_mem
+{
+	union jffs2_sum_mem *next;
+	jint16_t nodetype;
+	jint32_t xid;
+	jint32_t version;
+	jint32_t offset;
+	jint32_t totlen;
+} __attribute__((packed));
+
+struct jffs2_sum_xref_mem
+{
+	union jffs2_sum_mem *next;
+	jint16_t nodetype;
+	jint32_t offset;
+} __attribute__((packed));
+
 union jffs2_sum_mem
 {
 	struct jffs2_sum_unknown_mem u;
 	struct jffs2_sum_inode_mem i;
 	struct jffs2_sum_dirent_mem d;
+	struct jffs2_sum_xattr_mem x;
+	struct jffs2_sum_xref_mem r;
 };
 
 struct jffs2_summary

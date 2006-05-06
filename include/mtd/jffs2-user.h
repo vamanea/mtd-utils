@@ -32,4 +32,51 @@ extern int target_endian;
 #define je32_to_cpu(x) (t32((x).v32))
 #define jemode_to_cpu(x) (t32((x).m))
 
+#define le16_to_cpu(x)	(__BYTE_ORDER==__LITTLE_ENDIAN ? (x) : bswap_16(x))
+#define le32_to_cpu(x)	(__BYTE_ORDER==__LITTLE_ENDIAN ? (x) : bswap_32(x))
+#define cpu_to_le16(x)	(__BYTE_ORDER==__LITTLE_ENDIAN ? (x) : bswap_16(x))
+#define cpu_to_le32(x)	(__BYTE_ORDER==__LITTLE_ENDIAN ? (x) : bswap_32(x))
+
+/* XATTR/POSIX-ACL related definition */
+/* Namespaces copied from xattr.h and posix_acl_xattr.h */
+#define XATTR_USER_PREFIX		"user."
+#define XATTR_USER_PREFIX_LEN		(sizeof (XATTR_USER_PREFIX) - 1)
+#define XATTR_SECURITY_PREFIX		"security."
+#define XATTR_SECURITY_PREFIX_LEN	(sizeof (XATTR_SECURITY_PREFIX) - 1)
+#define POSIX_ACL_XATTR_ACCESS		"system.posix_acl_access"
+#define POSIX_ACL_XATTR_ACCESS_LEN	(sizeof (POSIX_ACL_XATTR_ACCESS) - 1)
+#define POSIX_ACL_XATTR_DEFAULT		"system.posix_acl_default"
+#define POSIX_ACL_XATTR_DEFAULT_LEN	(sizeof (POSIX_ACL_XATTR_DEFAULT) - 1)
+#define XATTR_TRUSTED_PREFIX		"trusted."
+#define XATTR_TRUSTED_PREFIX_LEN	(sizeof (XATTR_TRUSTED_PREFIX) - 1)
+
+typedef struct {
+	jint16_t	e_tag;
+	jint16_t	e_perm;
+	jint32_t	e_id;
+} jffs2_acl_entry;
+
+typedef struct {
+	jint16_t	e_tag;
+	jint16_t	e_perm;
+} jffs2_acl_entry_short;
+
+typedef struct {
+	jint32_t	a_version;
+} jffs2_acl_header;
+
+/* copied from include/linux/posix_acl_xattr.h */
+#define POSIX_ACL_XATTR_VERSION 0x0002
+
+typedef struct {
+	uint16_t		e_tag;
+	uint16_t		e_perm;
+	uint32_t		e_id;
+} posix_acl_xattr_entry;
+
+typedef struct {
+	uint32_t		a_version;
+	posix_acl_xattr_entry	a_entries[0];
+} posix_acl_xattr_header;
+
 #endif /* __JFFS2_USER_H__ */
