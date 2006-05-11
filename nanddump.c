@@ -33,6 +33,10 @@
 #define PROGRAM "nanddump"
 #define VERSION "$Revision: 1.29 $"
 
+struct nand_oobinfo none_oobinfo = {
+	.useecc = MTD_NANDECC_OFF,
+};
+
 void display_help (void)
 {
 	printf("Usage: nanddump [OPTIONS] MTD-device\n"
@@ -43,6 +47,7 @@ void display_help (void)
 	       "-f file    --file=file          dump to file\n"
 	       "-i         --ignoreerrors       ignore errors\n"
 	       "-l length  --length=length      length\n"
+	       "-n         --noecc              read without error correction\n"
 	       "-o         --omitoob            omit oob data\n"
 	       "-b         --omitbad            omit bad blocks from the dump\n"
 	       "-p         --prettyprint        print nice (hexdump)\n"
@@ -67,6 +72,7 @@ void display_version (void)
 
 int 	ignoreerrors;		// ignore errors
 int 	pretty_print;		// print nice in ascii
+int	noecc;			// don't error correct
 int 	omitoob;		// omit oob data
 unsigned long	start_addr;	// start address
 unsigned long	length;		// dump length
@@ -80,7 +86,7 @@ void process_options (int argc, char *argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "bs:f:il:op";
+		static const char *short_options = "bs:f:il:opn";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -90,6 +96,7 @@ void process_options (int argc, char *argv[])
 			{"omitbad", no_argument, 0, 'b'},
 			{"startaddress", required_argument, 0, 's'},
 			{"length", required_argument, 0, 'l'},
+			{"noecc", no_argument, 0, 'n'},
 			{0, 0, 0, 0},
 		};
 
@@ -114,7 +121,7 @@ void process_options (int argc, char *argv[])
 			omitbad = 1;
 			break;
 		case 's':
-			start_addr = atol(optarg);
+			start_addr = strtol(optarg, NULL, 0);
 			break;
 		case 'f':
 			if (!(dumpfile = strdup(optarg))) {
@@ -126,13 +133,16 @@ void process_options (int argc, char *argv[])
 			ignoreerrors = 1;
 			break;
 		case 'l':
-			length = atol(optarg);
+			length = strtol(optarg, NULL, 0);
 			break;
 		case 'o':
 			omitoob = 1;
 			break;
 		case 'p':
 			pretty_print = 1;
+			break;
+		case 'n':
+			noecc = 1;
 			break;
 		case '?':
 			error = 1;
@@ -163,6 +173,8 @@ int main(int argc, char **argv)
 	struct mtd_oob_buf oob = {0, 16, oobbuf};
 	mtd_info_t meminfo;
 	char pretty_buf[80];
+	int oobinfochanged = 0 ;
+	struct nand_oobinfo old_oobinfo ;
 
  	process_options(argc, argv);
 
@@ -189,6 +201,21 @@ int main(int argc, char **argv)
 	}
 	/* Read the real oob length */
 	oob.length = meminfo.oobsize;
+
+	if (noecc)  {
+		if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+			perror ("MEMGETOOBSEL");
+			close (fd);
+			exit (1);
+		}
+		if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
+			perror ("MEMSETOOBSEL");
+			close (fd);
+			exit (1);
+		}
+		oobinfochanged = 1 ;
+	}
+
 
 	/* Open output file for writing. If file name is "-", write to standard output. */
 	if (!dumpfile) {
@@ -297,6 +324,15 @@ int main(int argc, char **argv)
 			write(ofd, oobbuf, meminfo.oobsize);
 	}
 
+	/* reset oobinfo */
+	if (oobinfochanged) {
+		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
+			perror ("MEMSETOOBSEL");
+			close(fd);
+			close(ofd);
+			return 1;
+		}
+	}
 	/* Close the output file and MTD device */
 	close(fd);
 	close(ofd);
@@ -305,6 +341,11 @@ int main(int argc, char **argv)
 	return 0;
 
  closeall:
+	if (oobinfochanged) {
+		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0)  {
+			perror ("MEMSETOOBSEL");
+		}
+	}
 	close(fd);
 	close(ofd);
 	exit(1);
