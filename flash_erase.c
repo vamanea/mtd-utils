@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <time.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <mtd/mtd-user.h>
@@ -141,10 +142,10 @@ int main(int argc,char *argv[])
 	int unlock;
 	int res = 0;
 
-	if (1 >= argc)
-	{
-		fprintf(stderr,"You must specify a device\n");
-		return 16;
+	if (1 >= argc ||  !strcmp(argv[1], "-h") || !strcmp (argv[1], "--help") ) {
+		printf("Usage: flash_erase MTD-device [start] [cnt (# erase blocks)] [lock]\n"
+		       "       flash_erase -h | --help\n") ;
+		return 16 ;
 	}
 
 	if (argc > 2)
