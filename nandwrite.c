@@ -183,7 +183,7 @@ void process_options (int argc, char *argv[])
 			pad = 1;
 			break;
 		case 's':
-			mtdoffset = atoi (optarg);
+			mtdoffset = strtol (optarg, NULL, 0);
 			break;
 		case 'b':
 			blockalign = atoi (optarg);
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
 	close(fd);
 
 	if (imglen > 0) {
-		perror ("Data did not fit into device, due to bad blocks\n");
+		perror ("Data was only partially written due to error\n");
 		exit (1);
 	}
 
