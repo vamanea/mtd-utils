@@ -50,33 +50,33 @@ extern int target_endian;
 #define XATTR_TRUSTED_PREFIX		"trusted."
 #define XATTR_TRUSTED_PREFIX_LEN	(sizeof (XATTR_TRUSTED_PREFIX) - 1)
 
-typedef struct {
+struct jffs2_acl_entry {
 	jint16_t	e_tag;
 	jint16_t	e_perm;
 	jint32_t	e_id;
-} jffs2_acl_entry;
+};
 
-typedef struct {
+struct jffs2_acl_entry_short {
 	jint16_t	e_tag;
 	jint16_t	e_perm;
-} jffs2_acl_entry_short;
+};
 
-typedef struct {
+struct jffs2_acl_header {
 	jint32_t	a_version;
-} jffs2_acl_header;
+};
 
 /* copied from include/linux/posix_acl_xattr.h */
 #define POSIX_ACL_XATTR_VERSION 0x0002
 
-typedef struct {
+struct posix_acl_xattr_entry {
 	uint16_t		e_tag;
 	uint16_t		e_perm;
 	uint32_t		e_id;
-} posix_acl_xattr_entry;
+};
 
-typedef struct {
-	uint32_t		a_version;
-	posix_acl_xattr_entry	a_entries[0];
-} posix_acl_xattr_header;
+struct posix_acl_xattr_header {
+	uint32_t			a_version;
+	struct posix_acl_xattr_entry	a_entries[0];
+};
 
 #endif /* __JFFS2_USER_H__ */

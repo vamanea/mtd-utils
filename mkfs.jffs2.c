@@ -1052,22 +1052,22 @@ static struct {
 	{ 0, NULL, 0 }
 };
 
-static void formalize_posix_acl(char *xvalue, int *value_len)
+static void formalize_posix_acl(void *xvalue, int *value_len)
 {
-	posix_acl_xattr_header *pacl_header;
-	posix_acl_xattr_entry *pent, *plim;
-	jffs2_acl_header *jacl_header;
-	jffs2_acl_entry *jent;
-	jffs2_acl_entry_short *jent_s;
+	struct posix_acl_xattr_header *pacl_header;
+	struct posix_acl_xattr_entry *pent, *plim;
+	struct jffs2_acl_header *jacl_header;
+	struct jffs2_acl_entry *jent;
+	struct jffs2_acl_entry_short *jent_s;
 	char buffer[XATTR_BUFFER_SIZE];
 	int offset = 0;
 
-	pacl_header = (posix_acl_xattr_header *)xvalue;;
+	pacl_header = xvalue;;
 	pent = pacl_header->a_entries;
-	plim = (posix_acl_xattr_entry *)(xvalue + *value_len);
+	plim = xvalue + *value_len;
 
-	jacl_header = (jffs2_acl_header *)buffer;
-	offset += sizeof(jffs2_acl_header);
+	jacl_header = (struct jffs2_acl_header *)buffer;
+	offset += sizeof(struct jffs2_acl_header);
 	jacl_header->a_version = cpu_to_je32(JFFS2_ACL_VERSION);
 
 	while (pent < plim) {
@@ -1076,15 +1076,15 @@ static void formalize_posix_acl(char *xvalue, int *value_len)
 		case ACL_GROUP_OBJ:
 		case ACL_MASK:
 		case ACL_OTHER:
-			jent_s = (jffs2_acl_entry_short *)(buffer + offset);
-			offset += sizeof(jffs2_acl_entry_short);
+			jent_s = (struct jffs2_acl_entry_short *)(buffer + offset);
+			offset += sizeof(struct jffs2_acl_entry_short);
 			jent_s->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
 			jent_s->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
 			break;
 		case ACL_USER:
 		case ACL_GROUP:
-			jent = (jffs2_acl_entry *)(buffer + offset);
-			offset += sizeof(jffs2_acl_entry);
+			jent = (struct jffs2_acl_entry *)(buffer + offset);
+			offset += sizeof(struct jffs2_acl_entry);
 			jent->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
 			jent->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
 			jent->e_id = cpu_to_je32(le32_to_cpu(pent->e_id));
