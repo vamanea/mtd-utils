@@ -25,7 +25,7 @@
 
 #include <mtd/mtd-user.h>
 #include <linux/types.h>
-#include <asm/byteorder.h>
+#include <mtd_swab.h>
 
 /* next is an array of mapping for each corresponding sector */
 #define RFD_MAGIC		0x9193
@@ -137,7 +137,7 @@ int build_block_map(struct rfd *rfd, int fd, int block)
 		return -1;
 	}
 
-	if (__le16_to_cpu(rfd->header[0]) != RFD_MAGIC) {
+	if (le16_to_cpu(rfd->header[0]) != RFD_MAGIC) {
 		if (rfd->verbose)
 			printf("Block #%02d: Magic missing\n", block);
 
@@ -146,7 +146,7 @@ int build_block_map(struct rfd *rfd, int fd, int block)
 
 	sectors =  0;
 	for (i=0; i<rfd->data_sectors; i++) {
-		__u16 entry = __le16_to_cpu(rfd->header[i + HEADER_MAP_OFFSET]);
+		__u16 entry = le16_to_cpu(rfd->header[i + HEADER_MAP_OFFSET]);
 
 		if (entry == SECTOR_FREE || entry == SECTOR_DELETED)
 			continue;

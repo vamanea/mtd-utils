@@ -38,6 +38,7 @@
 #include <asm/types.h>
 #include <mtd/mtd-user.h>
 #include <mtd/nftl-user.h>
+#include <mtd_swab.h>
 
 static struct NFTLMediaHeader MedHead[2];
 static mtd_info_t meminfo;
@@ -50,26 +51,10 @@ static int NumMedHeads;
 
 static unsigned char BadUnitTable[MAX_ERASE_ZONES];
 
-/* some byte swabbing stuff from include/linux/byteorder/ */
-#define swab16(x) \
-	((__u16)( \
-		(((__u16)(x) & (__u16)0x00ffU) << 8) | \
-		(((__u16)(x) & (__u16)0xff00U) >> 8) ))
-#define swab32(x) \
-	((__u32)( \
-		(((__u32)(x) & (__u32)0x000000ffUL) << 24) | \
-		(((__u32)(x) & (__u32)0x0000ff00UL) <<  8) | \
-		(((__u32)(x) & (__u32)0x00ff0000UL) >>  8) | \
-		(((__u32)(x) & (__u32)0xff000000UL) >> 24) ))
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-#define cpu_to_le16(x) (x)
-#define cpu_to_le32(x) (x)
 #define SWAP16(x) do { ; } while(0)
 #define SWAP32(x) do { ; } while(0)
 #else
-#define cpu_to_le16(x) swab16(x)
-#define cpu_to_le32(x) swab32(x)
 #define SWAP16(x) do { x = swab16(x); } while(0)
 #define SWAP32(x) do { x = swab32(x); } while(0)
 #endif
