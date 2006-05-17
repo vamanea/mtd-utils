@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <linux/types.h>
+#include <stdint.h>
 #include <mtd_swab.h>
 #include <ctype.h>
 
