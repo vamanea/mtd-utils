@@ -32,34 +32,34 @@ static int MAX_CHUNK_SIZE = 32768;
 /* How many padding bytes should be inserted between two chunks of data
    on the flash?  */
 #define JFFS_GET_PAD_BYTES(size) ((JFFS_ALIGN_SIZE                     \
-				  - ((__u32)(size) % JFFS_ALIGN_SIZE)) \
+				  - ((uint32_t)(size) % JFFS_ALIGN_SIZE)) \
 				  % JFFS_ALIGN_SIZE)
 
 
 struct jffs_raw_inode
 {
-  __u32 magic;    /* A constant magic number.  */
-  __u32 ino;      /* Inode number.  */
-  __u32 pino;     /* Parent's inode number.  */
-  __u32 version;  /* Version number.  */
-  __u32 mode;     /* file_type, mode  */
-  __u16 uid;
-  __u16 gid;
-  __u32 atime;
-  __u32 mtime;
-  __u32 ctime;
-  __u32 offset;     /* Where to begin to write.  */
-  __u32 dsize;      /* Size of the file data.  */
-  __u32 rsize;      /* How much are going to be replaced?  */
-  __u8 nsize;       /* Name length.  */
-  __u8 nlink;       /* Number of links.  */
-  __u8 spare : 6;   /* For future use.  */
-  __u8 rename : 1;  /* Is this a special rename?  */
-  __u8 deleted : 1; /* Has this file been deleted?  */
-  __u8 accurate;    /* The inode is obsolete if accurate == 0.  */
-  __u32 dchksum;    /* Checksum for the data.  */
-  __u16 nchksum;    /* Checksum for the name.  */
-  __u16 chksum;     /* Checksum for the raw_inode.  */
+  uint32_t magic;    /* A constant magic number.  */
+  uint32_t ino;      /* Inode number.  */
+  uint32_t pino;     /* Parent's inode number.  */
+  uint32_t version;  /* Version number.  */
+  uint32_t mode;     /* file_type, mode  */
+  uint16_t uid;
+  uint16_t gid;
+  uint32_t atime;
+  uint32_t mtime;
+  uint32_t ctime;
+  uint32_t offset;     /* Where to begin to write.  */
+  uint32_t dsize;      /* Size of the file data.  */
+  uint32_t rsize;      /* How much are going to be replaced?  */
+  uint8_t nsize;       /* Name length.  */
+  uint8_t nlink;       /* Number of links.  */
+  uint8_t spare : 6;   /* For future use.  */
+  uint8_t rename : 1;  /* Is this a special rename?  */
+  uint8_t deleted : 1; /* Has this file been deleted?  */
+  uint8_t accurate;    /* The inode is obsolete if accurate == 0.  */
+  uint32_t dchksum;    /* Checksum for the data.  */
+  uint16_t nchksum;    /* Checksum for the name.  */
+  uint16_t chksum;     /* Checksum for the raw_inode.  */
 };
 
 
@@ -80,7 +80,7 @@ int verbose = 0;
 #define ENDIAN_LITTLE 2
 int endian = ENDIAN_HOST;
 
-static __u32 jffs_checksum(void *data, int size);
+static uint32_t jffs_checksum(void *data, int size);
 void jffs_print_trace(const char *path, int depth);
 int make_root_dir(FILE *fs, int first_ino, const char *root_dir_path,
 		  int depth);
@@ -89,11 +89,11 @@ void read_data(struct jffs_file *f, const char *path, int offset);
 int mkfs(FILE *fs, const char *path, int ino, int parent, int depth);
 
 
-static __u32
+static uint32_t
 jffs_checksum(void *data, int size)
 {
-  __u32 sum = 0;
-  __u8 *ptr = (__u8 *)data;
+  uint32_t sum = 0;
+  uint8_t *ptr = (uint8_t *)data;
 
   while (size-- > 0)
   {
@@ -178,7 +178,7 @@ jffs_print_raw_inode(struct jffs_raw_inode *raw_inode)
 	fprintf(stderr, "}\n");
 }
 
-static void write_val32(__u32 *adr, __u32 val)
+static void write_val32(uint32_t *adr, uint32_t val)
 {
   switch(endian) {
   case ENDIAN_HOST:
@@ -193,7 +193,7 @@ static void write_val32(__u32 *adr, __u32 val)
   }
 }
 
-static void write_val16(__u16 *adr, __u16 val)
+static void write_val16(uint16_t *adr, uint16_t val)
 {
   switch(endian) {
   case ENDIAN_HOST:
@@ -208,9 +208,9 @@ static void write_val16(__u16 *adr, __u16 val)
   }
 }
 
-static __u32 read_val32(__u32 *adr)
+static uint32_t read_val32(uint32_t *adr)
 {
-  __u32 val = 0;
+  uint32_t val = 0;
 
   switch(endian) {
   case ENDIAN_HOST:
@@ -316,7 +316,7 @@ write_file(struct jffs_file *f, FILE *fs, struct stat st)
   {
     if (S_ISBLK(st.st_mode) || S_ISCHR(st.st_mode))
     {
-      __u16 tmp;
+      uint16_t tmp;
 
       switch(endian) {
         case ENDIAN_HOST:

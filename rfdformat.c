@@ -90,7 +90,7 @@ void process_options(int argc, char *argv[], const char **mtd_filename)
 
 int main(int argc, char *argv[])
 {
-	static const __u8 magic[] = { 0x93, 0x91 };
+	static const uint8_t magic[] = { 0x93, 0x91 };
 	int fd, block_count, i;
 	struct mtd_info_user mtd_info;
 	char buf[512];

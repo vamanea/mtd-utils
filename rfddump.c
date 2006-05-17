@@ -45,7 +45,7 @@ struct rfd {
 	int header_sectors;
 	int data_sectors;
 	int header_size;
-	__u16 *header;
+	uint16_t *header;
 	int sector_count;
 	int *sector_map;
 	const char *mtd_filename;
@@ -146,7 +146,7 @@ int build_block_map(struct rfd *rfd, int fd, int block)
 
 	sectors =  0;
 	for (i=0; i<rfd->data_sectors; i++) {
-		__u16 entry = le16_to_cpu(rfd->header[i + HEADER_MAP_OFFSET]);
+		uint16_t entry = le16_to_cpu(rfd->header[i + HEADER_MAP_OFFSET]);
 
 		if (entry == SECTOR_FREE || entry == SECTOR_DELETED)
 			continue;
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	struct rfd rfd;
 	int i, blocks_found;
 	int out_fd = 0;
-	__u8 sector[512];
+	uint8_t sector[512];
 	int blank, rc, cylinders;
 
 	process_options(argc, argv, &rfd);
@@ -240,13 +240,13 @@ int main(int argc, char *argv[])
 
 	rfd.header_sectors =
                 ((HEADER_MAP_OFFSET + sectors_per_block) *
-                  sizeof(__u16) + SECTOR_SIZE - 1) / SECTOR_SIZE;
+                  sizeof(uint16_t) + SECTOR_SIZE - 1) / SECTOR_SIZE;
 	rfd.data_sectors = sectors_per_block - rfd.header_sectors;
 	cylinders = ((rfd.block_count - 1) * rfd.data_sectors - 1)
 		/ SECTORS_PER_TRACK;
 	rfd.sector_count = cylinders * SECTORS_PER_TRACK;
 	rfd.header_size =
-		(HEADER_MAP_OFFSET + rfd.data_sectors) * sizeof(__u16);
+		(HEADER_MAP_OFFSET + rfd.data_sectors) * sizeof(uint16_t);
 
 	rfd.header = malloc(rfd.header_size);
 	if (!rfd.header) {
