@@ -240,9 +240,9 @@ int main(int argc, char **argv)
         meminfo.erasesize *= blockalign;
 
 	/* Make sure device page sizes are valid */
-	if (!(meminfo.oobsize == 16 && meminfo.oobblock == 512) &&
-	    !(meminfo.oobsize == 8 && meminfo.oobblock == 256) &&
-	    !(meminfo.oobsize == 64 && meminfo.oobblock == 2048)) {
+	if (!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
+	    !(meminfo.oobsize == 8 && meminfo.writesize == 256) &&
+	    !(meminfo.oobsize == 64 && meminfo.writesize == 2048)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
 		exit(1);
@@ -319,7 +319,7 @@ int main(int argc, char **argv)
    	imglen = lseek(ifd, 0, SEEK_END);
 	lseek (ifd, 0, SEEK_SET);
 
-	pagelen = meminfo.oobblock + ((writeoob == 1) ? meminfo.oobsize : 0);
+	pagelen = meminfo.writesize + ((writeoob == 1) ? meminfo.oobsize : 0);
 
 	// Check, if file is pagealigned
 	if ((!pad) && ((imglen % pagelen) != 0)) {
@@ -328,9 +328,9 @@ int main(int argc, char **argv)
 	}
 
 	// Check, if length fits into device
-	if ( ((imglen / pagelen) * meminfo.oobblock) > (meminfo.size - mtdoffset)) {
+	if ( ((imglen / pagelen) * meminfo.writesize) > (meminfo.size - mtdoffset)) {
 		fprintf (stderr, "Image %d bytes, NAND page %d bytes, OOB area %u bytes, device size %u bytes\n",
-				imglen, pagelen, meminfo.oobblock, meminfo.size);
+				imglen, pagelen, meminfo.writesize, meminfo.size);
 		perror ("Input file does not fit into device");
 		goto closeall;
 	}
@@ -370,11 +370,11 @@ int main(int argc, char **argv)
 
 		}
 
-		readlen = meminfo.oobblock;
+		readlen = meminfo.writesize;
 		if (pad && (imglen < readlen))
 		{
 			readlen = imglen;
-			memset(writebuf + readlen, 0xff, meminfo.oobblock - readlen);
+			memset(writebuf + readlen, 0xff, meminfo.writesize - readlen);
 		}
 
 		/* Read Page Data from input file */
@@ -428,12 +428,12 @@ int main(int argc, char **argv)
 		}
 
 		/* Write out the Page data */
-		if (pwrite(fd, writebuf, meminfo.oobblock, mtdoffset) != meminfo.oobblock) {
+		if (pwrite(fd, writebuf, meminfo.writesize, mtdoffset) != meminfo.writesize) {
 			perror ("pwrite");
 			goto closeall;
 		}
 		imglen -= readlen;
-		mtdoffset += meminfo.oobblock;
+		mtdoffset += meminfo.writesize;
 	}
 
  closeall:

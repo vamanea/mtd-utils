@@ -59,7 +59,7 @@ int main(int argc,char *argv[])
 	printf("Writing OTP user data on %s at offset 0x%lx\n", argv[2], offset);
 
 	if (mtdInfo.type == MTD_NANDFLASH)
-		len = mtdInfo.oobblock;
+		len = mtdInfo.writesize;
 	else
 		len = 256;
 
@@ -73,8 +73,8 @@ int main(int argc,char *argv[])
 		while (size > 0) {
 			if (mtdInfo.type == MTD_NANDFLASH) {
 				/* Fill remain buffers with 0xff */
-				memset(buf + size, 0xff, mtdInfo.oobblock - size);
-				size = mtdInfo.oobblock;
+				memset(buf + size, 0xff, mtdInfo.writesize - size);
+				size = mtdInfo.writesize;
 			}
 			ret = write(fd, p, size);
 			if (ret < 0) {
