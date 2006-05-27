@@ -296,9 +296,8 @@ int showinfo (int fd)
 			 int value;
 		  } flags[] =
 		  {
-			 { "MTD_CLEAR_BITS", MTD_CLEAR_BITS },
-			 { "MTD_SET_BITS", MTD_SET_BITS },
-			 { "MTD_ECC", MTD_ECC },
+			 { "MTD_WRITEABLE", MTD_WRITEABLE },
+			 { "MTD_BIT_WRITEABLE", MTD_BIT_WRITEABLE },
 			 { NULL, -1 }
 		  };
 		for (i = 0; flags[i].name != NULL; i++)
