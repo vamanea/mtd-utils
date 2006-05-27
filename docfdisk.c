@@ -194,7 +194,7 @@ int main(int argc, char **argv)
 		meminfo.size, meminfo.erasesize);
 
 	buf = malloc(meminfo.erasesize);
-	oobbuf = malloc((meminfo.erasesize / meminfo.oobblock) * meminfo.oobsize);
+	oobbuf = malloc((meminfo.erasesize / meminfo.writesize) * meminfo.oobsize);
 	if (!buf || !oobbuf) {
 		printf("Can't malloc block buffer\n");
 		return 1;
@@ -227,12 +227,12 @@ int main(int argc, char **argv)
 
 	oob.ptr = oobbuf;
 	oob.start = mhoffs;
-	for (i = 0; i < meminfo.erasesize; i += meminfo.oobblock) {
+	for (i = 0; i < meminfo.erasesize; i += meminfo.writesize) {
 		if (ioctl(fd, MEMREADOOB, &oob)) {
 			perror("ioctl(MEMREADOOB)");
 			return 1;
 		}
-		oob.start += meminfo.oobblock;
+		oob.start += meminfo.writesize;
 		oob.ptr += meminfo.oobsize;
 	}
 
@@ -292,27 +292,27 @@ int main(int argc, char **argv)
 
 	oob.ptr = oobbuf;
 	oob.start = mhoffs;
-	for (i = 0; i < meminfo.erasesize; i += meminfo.oobblock) {
+	for (i = 0; i < meminfo.erasesize; i += meminfo.writesize) {
 		memset(oob.ptr, 0xff, 6); // clear ECC.
 		if (ioctl(fd, MEMWRITEOOB, &oob)) {
 			perror("ioctl(MEMWRITEOOB)");
 			printf("Your MediaHeader may be hosed.  UHOH!\n");
 			return 1;
 		}
-		if ((ret = pwrite(fd, buf, meminfo.oobblock, oob.start)) < 0) {
+		if ((ret = pwrite(fd, buf, meminfo.writesize, oob.start)) < 0) {
 			perror("Write page");
 			printf("Your MediaHeader may be hosed.  UHOH!\n");
 			return 1;
 		}
-		if (ret != meminfo.oobblock) {
+		if (ret != meminfo.writesize) {
 			printf("Short write!\n");
 			printf("Your MediaHeader may be hosed.  UHOH!\n");
 			return 1;
 		}
 
-		oob.start += meminfo.oobblock;
+		oob.start += meminfo.writesize;
 		oob.ptr += meminfo.oobsize;
-		buf += meminfo.oobblock;
+		buf += meminfo.writesize;
 	}
 
 	printf("Success.  REBOOT or unload the diskonchip module to update partitions!\n");

@@ -319,8 +319,8 @@ int showinfo (int fd)
    printf ("\nmtd.erasesize = ");
    printsize (mtd.erasesize);
 
-   printf ("\nmtd.oobblock = ");
-   printsize (mtd.oobblock);
+   printf ("\nmtd.writesize = ");
+   printsize (mtd.writesize);
 
    printf ("\nmtd.oobsize = ");
    printsize (mtd.oobsize);

@@ -192,9 +192,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Make sure device page sizes are valid */
-	if (!(meminfo.oobsize == 64 && meminfo.oobblock == 2048) &&
-	    !(meminfo.oobsize == 16 && meminfo.oobblock == 512) &&
-	    !(meminfo.oobsize == 8 && meminfo.oobblock == 256)) {
+	if (!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
+	    !(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
+	    !(meminfo.oobsize == 8 && meminfo.writesize == 256)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
 		exit(1);
@@ -232,10 +232,10 @@ int main(int argc, char **argv)
 	if (!length || end_addr > meminfo.size)
  		end_addr = meminfo.size;
 
-	bs = meminfo.oobblock;
+	bs = meminfo.writesize;
 
 	/* Print informative message */
-	fprintf(stderr, "Block size %u, page size %u, OOB size %u\n", meminfo.erasesize, meminfo.oobblock, meminfo.oobsize);
+	fprintf(stderr, "Block size %u, page size %u, OOB size %u\n", meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
 	fprintf(stderr, "Dumping data starting at 0x%08x and ending at 0x%08x...\n",
 	        (unsigned int) start_addr, (unsigned int) end_addr);
 
