@@ -1,0 +1,26 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# Normal rules
+#
+.*
+*.o
+*.a
+*.s
+*.ko
+*.so
+*.mod.c
+*~
+
+#
+# Top-level generic files
+#
+
+#
+# Generated include files
+#
+
+# stgit generated dirs
+patches-*
