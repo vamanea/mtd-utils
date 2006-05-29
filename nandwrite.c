@@ -2,7 +2,7 @@
  *  nandwrite.c
  *
  *  Copyright (C) 2000 Steven J. Hill (sjhill@realitydiluted.com)
- *   		  2003 Thomas Gleixner (tglx@linutronix.de)
+ *		  2003 Thomas Gleixner (tglx@linutronix.de)
  *
  * $Id: nandwrite.c,v 1.32 2005/11/07 11:15:13 gleixner Exp $
  *
@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,18 +77,18 @@ void display_help (void)
 	printf("Usage: nandwrite [OPTION] MTD_DEVICE INPUTFILE\n"
 	       "Writes to the specified MTD device.\n"
 	       "\n"
-	       "  -a, --autoplace  	Use auto oob layout\n"
-	       "  -j, --jffs2  	 	force jffs2 oob layout (legacy support)\n"
-	       "  -y, --yaffs  	 	force yaffs oob layout (legacy support)\n"
+	       "  -a, --autoplace	Use auto oob layout\n"
+	       "  -j, --jffs2		force jffs2 oob layout (legacy support)\n"
+	       "  -y, --yaffs		force yaffs oob layout (legacy support)\n"
 	       "  -f, --forcelegacy     force legacy support on autoplacement enabled mtd device\n"
 	       "  -n, --noecc		write without ecc\n"
-	       "  -o, --oob    	 	image contains oob data\n"
+	       "  -o, --oob		image contains oob data\n"
 	       "  -s addr, --start=addr set start address (default is 0)\n"
 	       "  -p, --pad             pad to page size\n"
 	       "  -b, --blockalign=1|2|4 set multiple of eraseblocks to align to\n"
-	       "  -q, --quiet    	don't display progress messages\n"
-	       "      --help     	display this help and exit\n"
-	       "      --version  	output version information and exit\n");
+	       "  -q, --quiet		don't display progress messages\n"
+	       "      --help		display this help and exit\n"
+	       "      --version		output version information and exit\n");
 	exit(0);
 }
 
@@ -106,9 +107,9 @@ void display_version (void)
 	exit(0);
 }
 
-char 	*mtd_device, *img;
-int 	mtdoffset = 0;
-int 	quiet = 0;
+char	*mtd_device, *img;
+int	mtdoffset = 0;
+int	quiet = 0;
 int	writeoob = 0;
 int	autoplace = 0;
 int	forcejffs2 = 0;
@@ -129,7 +130,7 @@ void process_options (int argc, char *argv[])
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
 			{"autoplace", no_argument, 0, 'a'},
-		   	{"blockalign", required_argument, 0, 'b'},
+			{"blockalign", required_argument, 0, 'b'},
 			{"forcelegacy", no_argument, 0, 'f'},
 			{"jffs2", no_argument, 0, 'j'},
 			{"noecc", no_argument, 0, 'n'},
@@ -236,8 +237,9 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-        /* Set erasesize to specified number of blocks - to match jffs2 (virtual) block size */
-        meminfo.erasesize *= blockalign;
+	/* Set erasesize to specified number of blocks - to match jffs2
+	 * (virtual) block size */
+	meminfo.erasesize *= blockalign;
 
 	/* Make sure device page sizes are valid */
 	if (!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
@@ -248,32 +250,51 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	/* Read the current oob info */
-	if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-		perror ("MEMGETOOBSEL");
-		close (fd);
-		exit (1);
-	}
-
-	// write without ecc ?
-	if (noecc) {
-		if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-			perror ("MEMSETOOBSEL");
+	if (autoplace) {
+		/* Read the current oob info */
+		if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+			perror ("MEMGETOOBSEL");
 			close (fd);
 			exit (1);
 		}
-		oobinfochanged = 1;
+
+		// autoplace ECC ?
+		if (autoplace && (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE)) {
+
+			if (ioctl (fd, MEMSETOOBSEL, &autoplace_oobinfo) != 0) {
+				perror ("MEMSETOOBSEL");
+				close (fd);
+				exit (1);
+			}
+			oobinfochanged = 1;
+		}
 	}
 
-	// autoplace ECC ?
-	if (autoplace && (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE)) {
+	if (noecc)  {
+		switch (ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW)) {
 
-		if (ioctl (fd, MEMSETOOBSEL, &autoplace_oobinfo) != 0) {
-			perror ("MEMSETOOBSEL");
+		case -ENOTTY:
+			if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+				perror ("MEMGETOOBSEL");
+				close (fd);
+				exit (1);
+			}
+			if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
+				perror ("MEMSETOOBSEL");
+				close (fd);
+				exit (1);
+			}
+			oobinfochanged = 1;
+			break;
+
+		case 0:
+			oobinfochanged = 2;
+			break;
+		default:
+			perror ("MTDFILEMODE");
 			close (fd);
 			exit (1);
 		}
-		oobinfochanged = 1;
 	}
 
 	/*
@@ -292,7 +313,7 @@ int main(int argc, char **argv)
 			goto restoreoob;
 		}
 		if (meminfo.oobsize == 8) {
-    			if (forceyaffs) {
+			if (forceyaffs) {
 				fprintf (stderr, "YAFSS cannot operate on 256 Byte page size");
 				goto restoreoob;
 			}
@@ -316,7 +337,7 @@ int main(int argc, char **argv)
 	}
 
 	// get image length
-   	imglen = lseek(ifd, 0, SEEK_END);
+	imglen = lseek(ifd, 0, SEEK_END);
 	lseek (ifd, 0, SEEK_SET);
 
 	pagelen = meminfo.writesize + ((writeoob == 1) ? meminfo.oobsize : 0);
@@ -346,26 +367,28 @@ int main(int argc, char **argv)
 		while (blockstart != (mtdoffset & (~meminfo.erasesize + 1))) {
 			blockstart = mtdoffset & (~meminfo.erasesize + 1);
 			offs = blockstart;
-		        baderaseblock = 0;
+			baderaseblock = 0;
 			if (!quiet)
 				fprintf (stdout, "Writing data to block %x\n", blockstart);
 
-		        /* Check all the blocks in an erase block for bad blocks */
+			/* Check all the blocks in an erase block for bad blocks */
 			do {
-			   	if ((ret = ioctl(fd, MEMGETBADBLOCK, &offs)) < 0) {
+				if ((ret = ioctl(fd, MEMGETBADBLOCK, &offs)) < 0) {
 					perror("ioctl(MEMGETBADBLOCK)");
 					goto closeall;
 				}
 				if (ret == 1) {
 					baderaseblock = 1;
-				   	if (!quiet)
-						fprintf (stderr, "Bad block at %x, %u block(s) from %x will be skipped\n", (int) offs, blockalign, blockstart);
-					}
+					if (!quiet)
+						fprintf (stderr, "Bad block at %x, %u block(s) "
+							 "from %x will be skipped\n",
+							 (int) offs, blockalign, blockstart);
+				}
 
 				if (baderaseblock) {
 					mtdoffset = blockstart + meminfo.erasesize;
 				}
-			        offs +=  meminfo.erasesize / blockalign ;
+				offs +=  meminfo.erasesize / blockalign ;
 			} while ( offs < blockstart + meminfo.erasesize );
 
 		}
@@ -440,7 +463,7 @@ int main(int argc, char **argv)
 	close(ifd);
 
  restoreoob:
-	if (oobinfochanged) {
+	if (oobinfochanged == 1) {
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
 			perror ("MEMSETOOBSEL");
 			close (fd);

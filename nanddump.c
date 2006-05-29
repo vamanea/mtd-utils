@@ -17,6 +17,7 @@
 
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,8 +43,8 @@ void display_help (void)
 	printf("Usage: nanddump [OPTIONS] MTD-device\n"
 	       "Dumps the contents of a nand mtd partition.\n"
 	       "\n"
-	       "           --help     	        display this help and exit\n"
-	       "           --version  	        output version information and exit\n"
+	       "           --help	        display this help and exit\n"
+	       "           --version	        output version information and exit\n"
 	       "-f file    --file=file          dump to file\n"
 	       "-i         --ignoreerrors       ignore errors\n"
 	       "-l length  --length=length      length\n"
@@ -70,10 +71,10 @@ void display_version (void)
 
 // Option variables
 
-int 	ignoreerrors;		// ignore errors
-int 	pretty_print;		// print nice in ascii
+int	ignoreerrors;		// ignore errors
+int	pretty_print;		// print nice in ascii
 int	noecc;			// don't error correct
-int 	omitoob;		// omit oob data
+int	omitoob;		// omit oob data
 unsigned long	start_addr;	// start address
 unsigned long	length;		// dump length
 char    *mtddev;		// mtd device name
@@ -174,9 +175,11 @@ int main(int argc, char **argv)
 	mtd_info_t meminfo;
 	char pretty_buf[80];
 	int oobinfochanged = 0 ;
-	struct nand_oobinfo old_oobinfo ;
+	struct nand_oobinfo old_oobinfo;
+	struct mtd_ecc_stats stat1, stat2;
+	int eccstats = 0;
 
- 	process_options(argc, argv);
+	process_options(argc, argv);
 
 	/* Open MTD device */
 	if ((fd = open(mtddev, O_RDONLY)) == -1) {
@@ -203,24 +206,48 @@ int main(int argc, char **argv)
 	oob.length = meminfo.oobsize;
 
 	if (noecc)  {
-		if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-			perror ("MEMGETOOBSEL");
+		switch (ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW)) {
+
+		case -ENOTTY:
+			if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+				perror ("MEMGETOOBSEL");
+				close (fd);
+				exit (1);
+			}
+			if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
+				perror ("MEMSETOOBSEL");
+				close (fd);
+				exit (1);
+			}
+			oobinfochanged = 1;
+			break;
+
+		case 0:
+			oobinfochanged = 2;
+			break;
+		default:
+			perror ("MTDFILEMODE");
 			close (fd);
 			exit (1);
 		}
-		if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-			perror ("MEMSETOOBSEL");
-			close (fd);
-			exit (1);
-		}
-		oobinfochanged = 1 ;
+	} else {
+
+		/* check if we can read ecc stats */
+		if (!ioctl(fd, ECCGETSTATS, &stat1)) {
+			eccstats = 1;
+			fprintf(stderr, "ECC failed: %d\n", stat1.failed);
+			fprintf(stderr, "ECC corrected: %d\n", stat1.corrected);    
+			fprintf(stderr, "Number of bad blocks: %d\n", stat1.badblocks);    
+			fprintf(stderr, "Number of bbt blocks: %d\n", stat1.bbtblocks);    
+		} else
+			perror("No ECC status information available");
 	}
 
-
-	/* Open output file for writing. If file name is "-", write to standard output. */
+	/* Open output file for writing. If file name is "-", write to standard
+	 * output. */
 	if (!dumpfile) {
 		ofd = STDOUT_FILENO;
-	} else if ((ofd = open(dumpfile, O_WRONLY | O_TRUNC | O_CREAT, 0644)) == -1) {
+	} else if ((ofd = open(dumpfile, O_WRONLY | O_TRUNC | O_CREAT, 0644))== -1) {
 		perror ("open outfile");
 		close(fd);
 		exit(1);
@@ -230,14 +257,16 @@ int main(int argc, char **argv)
 	if (length)
 		end_addr = start_addr + length;
 	if (!length || end_addr > meminfo.size)
- 		end_addr = meminfo.size;
+		end_addr = meminfo.size;
 
 	bs = meminfo.writesize;
 
 	/* Print informative message */
-	fprintf(stderr, "Block size %u, page size %u, OOB size %u\n", meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
-	fprintf(stderr, "Dumping data starting at 0x%08x and ending at 0x%08x...\n",
-	        (unsigned int) start_addr, (unsigned int) end_addr);
+	fprintf(stderr, "Block size %u, page size %u, OOB size %u\n",
+		meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
+	fprintf(stderr,
+		"Dumping data starting at 0x%08x and ending at 0x%08x...\n",
+		(unsigned int) start_addr, (unsigned int) end_addr);
 
 	/* Dump the flash contents */
 	for (ofs = start_addr; ofs < end_addr ; ofs+=bs) {
@@ -263,6 +292,23 @@ int main(int argc, char **argv)
 			}
 		}
 
+		/* ECC stats available ? */
+		if (eccstats) {
+			if (ioctl(fd, ECCGETSTATS, &stat2)) {
+				perror("ioctl(ECCGETSTATS)");
+				goto closeall;
+			}
+			if (stat1.failed != stat2.failed)
+				fprintf(stderr, "ECC: %d uncorrectable bitflip(s)"
+					" at offset 0x%08lx\n",
+					stat2.failed - stat1.failed, ofs);
+			if (stat1.corrected != stat2.corrected)
+				fprintf(stderr, "ECC: %d corrected bitflip(s) at"
+					" offset 0x%08lx\n",
+					stat2.corrected - stat1.corrected, ofs);
+			stat1 = stat2;
+		}
+
 		/* Write out page data */
 		if (pretty_print) {
 			for (i = 0; i < bs; i += 16) {
@@ -282,6 +328,8 @@ int main(int argc, char **argv)
 			}
 		} else
 			write(ofd, readbuf, bs);
+
+
 
 		if (omitoob)
 			continue;
@@ -325,7 +373,7 @@ int main(int argc, char **argv)
 	}
 
 	/* reset oobinfo */
-	if (oobinfochanged) {
+	if (oobinfochanged == 1) {
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
 			perror ("MEMSETOOBSEL");
 			close(fd);
@@ -341,7 +389,8 @@ int main(int argc, char **argv)
 	return 0;
 
  closeall:
-	if (oobinfochanged) {
+	/* The new mode change is per file descriptor ! */
+	if (oobinfochanged == 1) {
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0)  {
 			perror ("MEMSETOOBSEL");
 		}
@@ -349,5 +398,4 @@ int main(int argc, char **argv)
 	close(fd);
 	close(ofd);
 	exit(1);
-
 }
