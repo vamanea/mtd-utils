@@ -260,17 +260,14 @@ int showinfo (int fd)
 	  case MTD_ABSENT:
 		printf ("MTD_ABSENT");
 		break;
-	  case MTD_RAM:
-		printf ("MTD_RAM");
-		break;
-	  case MTD_ROM:
-		printf ("MTD_ROM");
-		break;
 	  case MTD_NORFLASH:
 		printf ("MTD_NORFLASH");
 		break;
 	  case MTD_NANDFLASH:
 		printf ("MTD_NANDFLASH");
+		break;
+	  case MTD_GENERIC_TYPE:
+		printf ("MTD_GENERIC_TYPE");
 		break;
 	  default:
 		printf ("(unknown type - new MTD API maybe?)");
