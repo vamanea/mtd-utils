@@ -1,0 +1,159 @@
+/*
+ * This file contains an ECC algorithm from Toshiba that detects and
+ * corrects 1 bit errors in a 256 byte block of data.
+ *
+ * drivers/mtd/nand/nand_ecc.c
+ *
+ * Copyright (C) 2000-2004 Steven J. Hill (sjhill@realitydiluted.com)
+ *			   Toshiba America Electronics Components, Inc.
+ *
+ * This file is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 or (at your option) any
+ * later version.
+ *
+ * This file is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this file; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+ *
+ * As a special exception, if other files instantiate templates or use
+ * macros or inline functions from these files, or you compile these
+ * files and link them with other works to produce a work based on these
+ * files, these files do not by themselves cause the resulting work to be
+ * covered by the GNU General Public License. However the source code for
+ * these files must still be made available in accordance with section (3)
+ * of the GNU General Public License.
+ *
+ * This exception does not invalidate any other reasons why a work based on
+ * this file might be covered by the GNU General Public License.
+ */
+
+#include "nandecc.h"
+
+/*
+ * Pre-calculated 256-way 1 byte column parity
+ */
+static const uint8_t nand_ecc_precalc_table[] = {
+	0x00, 0x55, 0x56, 0x03, 0x59, 0x0c, 0x0f, 0x5a,
+	0x5a, 0x0f, 0x0c, 0x59, 0x03, 0x56, 0x55, 0x00,
+	0x65, 0x30, 0x33, 0x66, 0x3c, 0x69, 0x6a, 0x3f,
+	0x3f, 0x6a, 0x69, 0x3c, 0x66, 0x33, 0x30, 0x65,
+	0x66, 0x33, 0x30, 0x65, 0x3f, 0x6a, 0x69, 0x3c,
+	0x3c, 0x69, 0x6a, 0x3f, 0x65, 0x30, 0x33, 0x66,
+	0x03, 0x56, 0x55, 0x00, 0x5a, 0x0f, 0x0c, 0x59,
+	0x59, 0x0c, 0x0f, 0x5a, 0x00, 0x55, 0x56, 0x03,
+	0x69, 0x3c, 0x3f, 0x6a, 0x30, 0x65, 0x66, 0x33,
+	0x33, 0x66, 0x65, 0x30, 0x6a, 0x3f, 0x3c, 0x69,
+	0x0c, 0x59, 0x5a, 0x0f, 0x55, 0x00, 0x03, 0x56,
+	0x56, 0x03, 0x00, 0x55, 0x0f, 0x5a, 0x59, 0x0c,
+	0x0f, 0x5a, 0x59, 0x0c, 0x56, 0x03, 0x00, 0x55,
+	0x55, 0x00, 0x03, 0x56, 0x0c, 0x59, 0x5a, 0x0f,
+	0x6a, 0x3f, 0x3c, 0x69, 0x33, 0x66, 0x65, 0x30,
+	0x30, 0x65, 0x66, 0x33, 0x69, 0x3c, 0x3f, 0x6a,
+	0x6a, 0x3f, 0x3c, 0x69, 0x33, 0x66, 0x65, 0x30,
+	0x30, 0x65, 0x66, 0x33, 0x69, 0x3c, 0x3f, 0x6a,
+	0x0f, 0x5a, 0x59, 0x0c, 0x56, 0x03, 0x00, 0x55,
+	0x55, 0x00, 0x03, 0x56, 0x0c, 0x59, 0x5a, 0x0f,
+	0x0c, 0x59, 0x5a, 0x0f, 0x55, 0x00, 0x03, 0x56,
+	0x56, 0x03, 0x00, 0x55, 0x0f, 0x5a, 0x59, 0x0c,
+	0x69, 0x3c, 0x3f, 0x6a, 0x30, 0x65, 0x66, 0x33,
+	0x33, 0x66, 0x65, 0x30, 0x6a, 0x3f, 0x3c, 0x69,
+	0x03, 0x56, 0x55, 0x00, 0x5a, 0x0f, 0x0c, 0x59,
+	0x59, 0x0c, 0x0f, 0x5a, 0x00, 0x55, 0x56, 0x03,
+	0x66, 0x33, 0x30, 0x65, 0x3f, 0x6a, 0x69, 0x3c,
+	0x3c, 0x69, 0x6a, 0x3f, 0x65, 0x30, 0x33, 0x66,
+	0x65, 0x30, 0x33, 0x66, 0x3c, 0x69, 0x6a, 0x3f,
+	0x3f, 0x6a, 0x69, 0x3c, 0x66, 0x33, 0x30, 0x65,
+	0x00, 0x55, 0x56, 0x03, 0x59, 0x0c, 0x0f, 0x5a,
+	0x5a, 0x0f, 0x0c, 0x59, 0x03, 0x56, 0x55, 0x00
+};
+
+/**
+ * nand_trans_result - [GENERIC] create non-inverted ECC
+ * @reg2:	line parity reg 2
+ * @reg3:	line parity reg 3
+ * @ecc_code:	ecc
+ *
+ * Creates non-inverted ECC code from line parity
+ */
+static void nand_trans_result(uint8_t reg2, uint8_t reg3,
+	uint8_t *ecc_code)
+{
+	uint8_t a, b, i, tmp1, tmp2;
+
+	/* Initialize variables */
+	a = b = 0x80;
+	tmp1 = tmp2 = 0;
+
+	/* Calculate first ECC byte */
+	for (i = 0; i < 4; i++) {
+		if (reg3 & a)		/* LP15,13,11,9 --> ecc_code[0] */
+			tmp1 |= b;
+		b >>= 1;
+		if (reg2 & a)		/* LP14,12,10,8 --> ecc_code[0] */
+			tmp1 |= b;
+		b >>= 1;
+		a >>= 1;
+	}
+
+	/* Calculate second ECC byte */
+	b = 0x80;
+	for (i = 0; i < 4; i++) {
+		if (reg3 & a)		/* LP7,5,3,1 --> ecc_code[1] */
+			tmp2 |= b;
+		b >>= 1;
+		if (reg2 & a)		/* LP6,4,2,0 --> ecc_code[1] */
+			tmp2 |= b;
+		b >>= 1;
+		a >>= 1;
+	}
+
+	/* Store two of the ECC bytes */
+	ecc_code[1] = tmp1;
+	ecc_code[0] = tmp2;
+}
+
+/**
+ * nand_calculate_ecc - [NAND Interface] Calculate 3 byte ECC code for
+ * 256 byte block
+ *
+ * @dat:	raw data
+ * @ecc_code:	buffer for ECC
+ */
+int nand_calculate_ecc(const uint8_t *dat, uint8_t *ecc_code)
+{
+	uint8_t idx, reg1, reg2, reg3;
+	int j;
+
+	/* Initialize variables */
+	reg1 = reg2 = reg3 = 0;
+	ecc_code[0] = ecc_code[1] = ecc_code[2] = 0;
+
+	/* Build up column parity */
+	for(j = 0; j < 256; j++) {
+
+		/* Get CP0 - CP5 from table */
+		idx = nand_ecc_precalc_table[dat[j]];
+		reg1 ^= (idx & 0x3f);
+
+		/* All bit XOR = 1 ? */
+		if (idx & 0x40) {
+			reg3 ^= (uint8_t) j;
+			reg2 ^= ~((uint8_t) j);
+		}
+	}
+
+	/* Create non-inverted ECC code from line parity */
+	nand_trans_result(reg2, reg3, ecc_code);
+
+	/* Calculate final ECC code */
+	ecc_code[0] = ~ecc_code[0];
+	ecc_code[1] = ~ecc_code[1];
+	ecc_code[2] = ((~reg1) << 2) | 0x03;
+	return 0;
+}

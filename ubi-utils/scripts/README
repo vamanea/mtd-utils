@@ -1,0 +1,11 @@
+README
+======
+
+This procedure creates a test pfi which should be flashed to our
+system with pfiflash. The testcase should read the data back and 
+compare with the original.
+
+We should try not forget to run these tests before we release 
+a new version of UBI.
+
+Frank
