@@ -286,7 +286,7 @@ int main (int argc, char** argv)
 		goto err;
 	}
 
-	if (strcmp(args.file_out_data, "") != 0) {
+	if (args.file_out_data) {
 		fp_out_data = fopen(args.file_out_data, "wb");
 		if (fp_out_data == NULL) {
 			err_sys("Cannot open file %s for output\n",
@@ -295,7 +295,7 @@ int main (int argc, char** argv)
 		}
 	}
 
-	if (strcmp(args.file_out_oob, "") != 0) {
+	if (args.file_out_oob) {
 		fp_out_oob = fopen(args.file_out_oob, "wb");
 		if (fp_out_oob == NULL) {
 			err_sys("Cannot open file %s for output\n",
@@ -349,8 +349,10 @@ err:
 
 	if (rc != 0) {
 		err_msg("Error during conversion. rc: %d\n", rc);
-		remove(args.file_out_data);
-		remove(args.file_out_oob);
+		if (args.file_out_data)
+			remove(args.file_out_data);
+		if (args.file_out_oob)
+			remove(args.file_out_oob);
 	}
 	return rc;
 }

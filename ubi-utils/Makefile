@@ -7,9 +7,9 @@ HOST_VERSION_NAME := $(shell uname -r)
 BUILD_CPU := $(shell uname -m)
 BUILD_OS := $(shell uname -o)
 
-KERNELHDR := ../include		# mtd-utils private headers
-DESTDIR := /usr/local		# default installation
-SBINDIR := bin			# default directory for binaries
+KERNELHDR := ../include
+DESTDIR := /usr/local
+SBINDIR := bin
 
 CC := $(CROSS)gcc
 CFLAGS := -I./inc -I./src -I$(KERNELHDR) -O2 -g -Wall -Werror \
