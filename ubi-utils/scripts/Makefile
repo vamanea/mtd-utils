@@ -21,20 +21,38 @@ dd		= dd
 sed		= sed
 bin2nand	= bin2nand
 ubigen		= ubigen
-mkpfi		= mkpfi
-pfi2bin		= pfi2bin
+mkpfi		= mkpfi -v
+pfi2bin		= pfi2bin -v
 
 vmlinux_bin	?= test_vmlinux.bin
 rootfs_bin	?= test_rootfs.bin
 spl_bin		?= test_u-boot.bin
+pdd_txt		?= pdd.txt
+
+flashtype	?= nand
+pagesize	?= 2048
 
 compl		?= $(card)_complete
 compl_pfi	?= $(compl).pfi
+compl_img	?= $(compl).img
 
-all: $(compl_pfi)
+compl_nand2048_mif=$(compl).$(flashtype)$(pagesize).mif
+compl_nand2048_img=$(compl).$(flashtype)$(pagesize).img
+
+all: $(compl_pfi) $(compl_nand2048_mif)
 
 $(compl_pfi): $(vmlinux_bin) $(rootfs_bin) $(spl_bin)
 	$(mkpfi) -c $(mkpfi_cfg)
+
+# Binary data and out of band data (OOB)
+#
+$(compl_nand2048_mif): $(compl_img)
+	$(bin2nand) -p $(pagesize) -o $(compl_nand2048_mif) $<
+
+# Binary data only
+#
+$(compl_img): $(compl_pfi)
+	$(pfi2bin) -j $(pdd_txt) -o $@ $<
 
 #
 # Default data
@@ -54,4 +72,4 @@ clean:
 	$(RM) *.pfi *~
 
 distclean: clean
-	$(RM) *.bin
+	$(RM) *.bin *.mif *.oob *.img
