@@ -30,7 +30,7 @@
 #ifndef __UBI_HEADER_H__
 #define __UBI_HEADER_H__
 
-#include <asm/byteorder.h>
+#include <mtd_swab.h>
 
 /* The version of this UBI implementation */
 #define UBI_VERSION 1
@@ -104,14 +104,14 @@ typedef struct {
  * In this implementation UBI uses the big-endian format for on-flash integers.
  * The below are the corresponding endianess conversion macros.
  */
-#define cpu_to_ubi16(x) ((ubi16_t){__cpu_to_be16(x)})
-#define ubi16_to_cpu(x) ((uint16_t)__be16_to_cpu((x).int16))
+#define cpu_to_ubi16(x) ((ubi16_t){cpu_to_be16(x)})
+#define ubi16_to_cpu(x) ((uint16_t)be16_to_cpu((x).int16))
 
-#define cpu_to_ubi32(x) ((ubi32_t){__cpu_to_be32(x)})
-#define ubi32_to_cpu(x) ((uint32_t)__be32_to_cpu((x).int32))
+#define cpu_to_ubi32(x) ((ubi32_t){cpu_to_be32(x)})
+#define ubi32_to_cpu(x) ((uint32_t)be32_to_cpu((x).int32))
 
-#define cpu_to_ubi64(x) ((ubi64_t){__cpu_to_be64(x)})
-#define ubi64_to_cpu(x) ((uint64_t)__be64_to_cpu((x).int64))
+#define cpu_to_ubi64(x) ((ubi64_t){cpu_to_be64(x)})
+#define ubi64_to_cpu(x) ((uint64_t)be64_to_cpu((x).int64))
 
 /*
  * Sizes of UBI headers.
