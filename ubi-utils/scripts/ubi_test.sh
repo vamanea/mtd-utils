@@ -10,7 +10,7 @@ export PATH=$PATH:~/bin:/usr/local/bin:/home/dedekind/work/prj/ubi/tools/flashut
 
 UBIMKVOL=ubimkvol
 UBIRMVOL=ubirmvol
-UBIWRITEVOL=ubiwritevol
+UBIWRITEVOL=ubiupdateevol
 
 # 128 KiB 131072
 # 256 KiB 262144

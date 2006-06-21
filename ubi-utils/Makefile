@@ -1,79 +1,89 @@
 #
-# This makefile simplifies the build process for a toolchain user.
-# A toolchain developer should prefer a manual build process which
-# fits to his original needs.
+# Makefile for ubi-utils
 #
 
-X86_PREFIX?=/usr/local
-x86_path=./build_x86
-x86_status=$(x86_path)/config.status
+HOST_OS_NAME := $(shell uname -s)
+HOST_VERSION_NAME := $(shell uname -r)
+BUILD_CPU := $(shell uname -m)
+BUILD_OS := $(shell uname -o)
 
-PPC_PREFIX?=/opt/ppcnf/crossroot
-ppc_path=./build_ppc
-ppc_status=$(ppc_path)/config.status
+KERNELHDR := ../include		# mtd-utils private headers
+DESTDIR := /usr/local		# default installation
+SBINDIR := bin			# default directory for binaries
 
-all: x86 ppc
+CC := $(CROSS)gcc
+CFLAGS := -I./inc -I./src -I$(KERNELHDR) -O2 -g -Wall -Werror \
+	-Wwrite-strings -W -std=gnu99 \
+        -DHOST_OS_NAME=\"$(HOST_OS_NAME)\" \
+        -DHOST_VERSION_NAME=\"$(HOST_VERSION_NAME)\" \
+	-DBUILD_CPU=\"$(BUILD_CPU)\" -DBUILD_OS=\"$(BUILD_OS)\"
 
-install: install_x86 install_ppc
-uninstall: uninstall_x86 uninstall_ppc
+PERLPROGS = mkpfi ubicrc32.pl
+TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
+	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin
 
-install_x86: x86
-	make -C $(x86_path) install
+vpath   %.c ./src
 
-install_ppc: ppc 
-	make -C $(ppc_path) install
+%: %.o
+	$(CC) $(LDFLAGS) -g -o $@ $^
 
+%.o: %.c
+	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
 
-uninstall_x86: x86
-	make -C $(x86_path) uninstall
+all: $(TARGETS)
 
-uninstall_ppc: ppc 
-	make -C $(ppc_path) uninstall
-
-
-
-x86: $(x86_status)
-	make -C $(x86_path)
-
-ppc:  $(ppc_status)
-	make -C $(ppc_path)
-
-$(x86_status): $(x86_path) Makefile.in
-	cd $(x86_path) && ./config.status || ../configure \
-				--prefix=$(X86_PREFIX)
-
-$(ppc_status): $(ppc_path) Makefile.in
-	cd $(ppc_path) && ./config.status || ../configure \
-				--build=i686-pc-linux-gnu \
-				--host=ppc-linux \
-				--prefix=$(PPC_PREFIX) \
-				--exec-prefix=$(PPC_PREFIX)
-
-Makefile.in: Makefile.am
-	./bootstrap
-
-$(x86_path):
-	mkdir -p $(x86_path)
-
-$(ppc_path):
-	mkdir -p $(ppc_path)
+IGNORE=${wildcard .*.c.dep}
+-include ${IGNORE}
 
 clean:
-	rm -rf depcomp install-sh missing .deps \
-		config.log config.status \
-		inc/Makefile.in lib/Makefile.in
-	find . -type f -name "*~" -print | xargs $(RM)
-	rm -f Makefile.in
-	rm -f aclocal.m4
-	rm -rf autom4te.cache
-	rm -f config.guess
-	rm -f config.sub
-	rm -f configure
-	rm -f depcomp
-	rm -f install-sh
-	rm -f ltmain.sh
-	rm -f missing
-	rm -f lib/Makefile.in
-	rm -f inc/Makefile.in
-	rm -rf $(x86_path)
-	rm -rf $(ppc_path)
+	rm -rf *.o $(TARGETS) .*.c.dep
+
+ubiupdatevol: ubiupdatevol.o error.o libubi.o libubi_sysfs.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubimkvol: ubimkvol.o error.o libubi.o libubi_sysfs.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubirmvol: ubirmvol.o error.o libubi.o libubi_sysfs.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
+		libubi.o libubi_sysfs.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
+		bootenv.o hashmap.o pfi.o libubi.o libubi_sysfs.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
+		libubi.o libubi_sysfs.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+nand2bin: nand2bin.o nandecc.o nandcorr.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+bin2nand: bin2nand.o error.o nandecc.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubigen: ubigen.o libubigen.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+unubi: unubi.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
+		hashmap.o reader.o pfi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+install: ${TARGETS}
+	mkdir -p ${DESTDIR}/${SBINDIR}
+	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)
+
+uninstall:
+	for file in ${TARGETS} ${PERLPROGS}; do \
+		$(RM) ${DESTDIR}/${SBINDIR}/$$file; \
+	done
