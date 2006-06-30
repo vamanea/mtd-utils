@@ -1,5 +1,3 @@
-#ifndef __UBI_INT_H__
-#define __UBI_INT_H__
 /*
  * Copyright (c) International Business Machines Corp., 2006
  *
@@ -24,6 +22,8 @@
  * Author: Artem B. Bityutskiy
  */
 
+#ifndef __UBI_INT_H__
+#define __UBI_INT_H__
 /*
  * Enable/disable UBI library debugging messages.
  */
@@ -58,7 +58,7 @@
  * @def UBI_NLEN_MAX
  *	@brief Name of syfs file containing the maximum UBI volume name length.
  *
- * @def UBI_VERSION
+ * @def UBI_VER
  *      @brief Name of sysfs file containing UBI version.
  *
  * @def UBI_WEAR
@@ -98,7 +98,7 @@
  **/
 #define UBI_ROOT	"ubi"
 #define UBI_NLEN_MAX	"volume_name_max"
-#define UBI_VERSION	"version"
+#define UBI_VER		"version"
 #define UBI_WEAR	"wear"
 #define UBI_VOL_COUNT	"volumes_count"
 #define UBI_TOT_EBS	"total_eraseblocks"

@@ -34,6 +34,7 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <mtd/ubi-user.h>
+#include <mtd/ubi-header.h>
 
 #include "libubi.h"
 #include "libubi_int.h"
@@ -47,7 +48,6 @@
  * @sysfs_root	    sysfs root directory
  * @ubi_root	    UBI root directory in sysfs
  *
- * @nlen_max	    full path to the "maximum volume name length" sysfs file
  * @version	    full path to the "UBI version" sysfs file
  *
  * @cdev_path	    path pattern to UBI character devices
@@ -85,7 +85,6 @@ struct ubi_lib
 	char *sysfs_root;
 	char *ubi_root;
 
-	char *nlen_max;
 	char *version;
 	char *cdev_path;
 	int  cdev_path_len;
@@ -147,10 +146,6 @@ get_ubi_info(ubi_lib_t desc, struct ubi_info *ubi)
 	if (err)
 		return -1;
 
-	err = sysfs_read_int(desc->nlen_max, (int*) &ubi->nlen_max);
-	if (err)
-		return -1;
-
 	/* Calculate number of UBI devices */
 	do {
 		char dir[20];
@@ -186,7 +181,6 @@ ubi_dump_handler(ubi_lib_t desc)
 	ubi_lib_t d = desc;
 	printf(	"UBI Library Descriptor:\n"
 		"ubi_root:	 %s\n"
-		"nlen_max:	 %s\n"
 		"version:	 %s\n"
 		"cdev_path:	 %s\n"
 		"udev_path:	 %s\n"
@@ -204,12 +198,12 @@ ubi_dump_handler(ubi_lib_t desc)
 		"vol_type_path:	 %s\n"
 		"vol_name_path:	 %s\n"
 		"cdev_path_len:	 %d\n\n",
-	       d->ubi_root, d->nlen_max, d->version, d->cdev_path,
-	       d->udev_path, d->wear_path, d->vol_count_path,
-	       d->tot_ebs_path, d->avail_ebs_path, d->eb_size_path,
-	       d->nums_path, d->vol_cdev_path, d->vdev_path,
-	       d->vol_nums_path, d->vol_bytes_path, d->vol_ebs_path,
-	       d->vol_type_path, d->vol_name_path, d->cdev_path_len);
+	       d->ubi_root, d->version, d->cdev_path, d->udev_path,
+	       d->wear_path, d->vol_count_path, d->tot_ebs_path,
+	       d->avail_ebs_path, d->eb_size_path, d->nums_path,
+	       d->vol_cdev_path, d->vdev_path, d->vol_nums_path,
+	       d->vol_bytes_path, d->vol_ebs_path, d->vol_type_path,
+	       d->vol_name_path, d->cdev_path_len);
 }
 
 int
@@ -281,11 +275,7 @@ ubi_open(ubi_lib_t *desc)
 	if (!res->ubi_root)
 		goto error;
 
-	res->nlen_max = mkpath(res->ubi_root, UBI_NLEN_MAX);
-	if (!res->nlen_max)
-		goto error;
-
-	res->version =	mkpath(res->ubi_root, UBI_VERSION);
+	res->version =	mkpath(res->ubi_root, UBI_VER);
 	if (!res->version)
 		goto error;
 
@@ -394,7 +384,6 @@ ubi_close(ubi_lib_t *desc)
 	free(tmp->udev_path);
 	free(tmp->cdev_path);
 	free(tmp->version);
-	free(tmp->nlen_max);
 	free(tmp->ubi_root);
 	free(tmp->sysfs_root);
 	free(tmp);
@@ -486,7 +475,7 @@ ubi_get_vol_info(ubi_lib_t desc, unsigned int devn, unsigned int vol_id,
 	int err;
 	int len;
 	char buf1[10];
-	char buf2[desc->ubi.nlen_max];
+	char buf2[UBI_MAX_VOLUME_NAME];
 
 	err = sysfs_read_dev_subst(desc->vol_nums_path, &req->major,
 				   &req->minor, 2, devn, vol_id);
@@ -523,7 +512,7 @@ ubi_get_vol_info(ubi_lib_t desc, unsigned int devn, unsigned int vol_id,
 	}
 
 	len = sysfs_read_data_subst(desc->vol_name_path, &buf2[0],
-				    desc->ubi.nlen_max, 2,  devn, vol_id);
+				    UBI_MAX_VOLUME_NAME, 2,  devn, vol_id);
 	if (len == -1)
 		return -1;
 

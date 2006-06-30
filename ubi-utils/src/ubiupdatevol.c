@@ -14,13 +14,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+/*
+ * An utility to update UBI volumes.
  *
  * Author: Frank Haverkamp
  *
- * An utility to update UBI volumes.
+ * 1.0 Reworked the userinterface to use argp.
  */
-
-#include <config.h>
 
 #include <argp.h>
 #include <errno.h>
@@ -36,15 +38,18 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <config.h>
 #include <libubi.h>
+
+#define VERSION "1.0"
 
 #define MAXPATH		1024
 #define BUFSIZE		128 * 1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
 
 struct args {
-	int device;
-	int volume;
+	int devn;
+	int vol_id;
 	int truncate;
 	int broken_update;
 	int bufsize;
@@ -55,8 +60,8 @@ struct args {
 };
 
 static struct args myargs = {
-	.device = -1,
-	.volume = -1,
+	.devn = -1,
+	.vol_id = -1,
 	.truncate = 0,
 	.broken_update = 0,
 	.bufsize = BUFSIZE,
@@ -64,25 +69,24 @@ static struct args myargs = {
 	.options = NULL,
 };
 
-static int verbose = 0;
-
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 
+static int verbose = 0;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\t"
+static char doc[] = "\nVersion: " VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nWrite to UBI Volume.\n";
 
 static struct argp_option options[] = {
-	{ .name = "device",
+	{ .name = "devn",
 	  .key = 'd',
-	  .arg = "<device number>",
+	  .arg = "<devn>",
 	  .flags = 0,
 	  .doc = "UBI device",
 	  .group = OPTION_ARG_OPTIONAL },
 
-	{ .name = "volume",
+	{ .name = "vol_id",
 	  .key = 'n',
 	  .arg = "<volume id>",
 	  .flags = 0,
@@ -139,8 +143,12 @@ parse_opt(int key, char *arg, struct argp_state *state)
 		verbose = strtoul(arg, (char **)NULL, 0);
 		break;
 
-	case 'd': /* --device=<device number> */
-		args->device = strtol(arg, (char **)NULL, 0);
+	case 'n': /* --vol_id=<volume id> */
+		args->vol_id = strtol(arg, (char **)NULL, 0);
+		break;
+
+	case 'd': /* --devn=<device number> */
+		args->devn = strtol(arg, (char **)NULL, 0);
 		break;
 
 	case 'b': /* --bufsize=<bufsize> */
@@ -157,10 +165,6 @@ parse_opt(int key, char *arg, struct argp_state *state)
 		args->broken_update = 1;
 		break;
 
-	case 'n': /* --volume=<volume id> */
-		args->volume = strtol(arg, (char **)NULL, 0);
-		break;
-
 	case ARGP_KEY_NO_ARGS:
 		/* argp_usage(state); */
 		break;
@@ -175,8 +179,8 @@ parse_opt(int key, char *arg, struct argp_state *state)
                    arguments->strings.
 
                    _In addition_, by setting `state->next' to the end
-                   of the arguments, we can force argp to stop parsing here and
-                   return. */
+                   of the arguments, we can force argp to stop parsing
+                   here and return. */
 
 		args->options = &state->argv[state->next];
 		state->next = state->argc;
@@ -205,7 +209,7 @@ ubi_truncate_volume(struct args *args, int64_t bytes)
 	char path[MAXPATH];
 	int old_errno;
 
-	snprintf(path, MAXPATH-1, "/dev/ubi%d_%d", args->device, args->volume);
+	snprintf(path, MAXPATH-1, "/dev/ubi%d_%d", args->devn, args->vol_id);
 	path[MAXPATH-1] = '\0';
 
 	ofd = open(path, O_RDWR);
@@ -279,7 +283,7 @@ ubi_update_volume(struct args *args)
 	if (!ifp)
 		exit(EXIT_FAILURE);
 
-	snprintf(path, MAXPATH-1, "/dev/ubi%d_%d", args->device, args->volume);
+	snprintf(path, MAXPATH-1, "/dev/ubi%d_%d", args->devn, args->vol_id);
 	path[MAXPATH-1] = '\0';
 
 	ofd = open(path, O_RDWR);

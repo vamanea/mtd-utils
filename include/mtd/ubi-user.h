@@ -32,6 +32,9 @@
  */
 #define UBI_VOL_NUM_AUTO (-1)
 
+/* Maximum volume name length */
+#define UBI_MAX_VOLUME_NAME 127
+
 /*
  * IOCTL commands of UBI character devices
  */
@@ -56,7 +59,7 @@
 /* An eraseblock erasure command, used for debugging, disabled by dafault */
 #define UBI_IOCEBER _IOW(UBI_VOL_IOC_MAGIC, 0, int32_t)
 
-/**
+/*
  * UBI volume type constants.
  *
  * @UBI_DYNAMIC_VOLUME: dynamic volume
@@ -113,7 +116,7 @@ struct ubi_mkvol_req {
  *
  * @vol_id: ID of the volume to re-size
  * @bytes: new size of the volume in bytes
- * 
+ *
  * Re-sizing is possible for both dynamic and static volumes. But while dynamic
  * volumes may be re-sized arbitrarily, static volumes cannot be made to be
  * smaller then the number of bytes they bear. To arbitrarily shrink a static

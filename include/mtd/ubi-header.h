@@ -41,7 +41,7 @@
 /* The initial CRC32 value used when calculating CRC checksums */
 #define UBI_CRC32_INIT 0xFFFFFFFFU
 
-/**
+/*
  * Magic numbers of the UBI headers.
  *
  * @UBI_EC_HDR_MAGIC: erase counter header magic number (ASCII "UBI#")
@@ -52,7 +52,7 @@ enum {
 	UBI_VID_HDR_MAGIC = 0x55424921
 };
 
-/**
+/*
  * Molume type constants used in volume identifier headers.
  *
  * @UBI_VID_DYNAMIC: dynamic volume
@@ -63,23 +63,19 @@ enum {
 	UBI_VID_STATIC  = 2
 };
 
-/**
+/*
  * Compatibility constants used by internal volumes.
  *
  * @UBI_COMPAT_DELETE: delete this internal volume before anything is written
  * to the flash
  * @UBI_COMPAT_RO: attach this device in read-only mode
- * @UBI_COMPAT_IGNORE: ignore this internal volume, but the UBI wear-leveling
- * unit may still move these logical eraseblocks to ensure wear-leveling
  * @UBI_COMPAT_PRESERVE: preserve this internal volume - do not touch its
- * physical eraseblocks, don't even allow the wear-leveling unit to move
- * them
+ * physical eraseblocks, don't allow the wear-leveling unit to move them
  * @UBI_COMPAT_REJECT: reject this UBI image
  */
 enum {
 	UBI_COMPAT_DELETE   = 1,
 	UBI_COMPAT_RO       = 2,
-	UBI_COMPAT_IGNORE   = 3,
 	UBI_COMPAT_PRESERVE = 4,
 	UBI_COMPAT_REJECT   = 5
 };
@@ -281,7 +277,7 @@ struct ubi_vid_hdr {
  */
 struct ubi_vid_hdr_upd_vol {
 	ubi32_t vol_id;
-	uint8_t padding[UBI_VID_HDR_IVOL_DATA_SIZE - 4];
+	uint8_t padding[UBI_VID_HDR_IVOL_DATA_SIZE-4];
 } __attribute__ ((packed));
 
 /*
@@ -295,13 +291,13 @@ struct ubi_vid_hdr_upd_vol {
  */
 #define UBI_INTERNAL_VOL_START (0x7FFFFFFF - 4096)
 
-/**
+/*
  * enum ubi_internal_volume_numbers - volume IDs of internal UBI volumes.
  *
  * %UBI_LAYOUT_VOL_ID: volume ID of the layout volume
  * %UBI_UPDATE_VOL_ID: volume ID of the update volume
  */
-enum ubi_internal_volume_ids {
+enum {
 	UBI_LAYOUT_VOL_ID = UBI_INTERNAL_VOL_START,
 	UBI_UPDATE_VOL_ID = UBI_INTERNAL_VOL_START + 1
 };
@@ -351,6 +347,7 @@ enum ubi_internal_volume_ids {
  * @alignment: volume alignment
  * @data_pad: how many bytes are not used at the end of the eraseblocks to
  * satisfy the requested alignment
+ * @vol_type: volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
  * @padding1: reserved, zeroes
  * @name_len: the volume name length
  * @name: the volume name
@@ -382,7 +379,7 @@ struct ubi_vol_tbl_record {
 	uint8_t vol_type;
 	uint8_t padding1;
 	ubi16_t name_len;
-	uint8_t name[UBI_VOL_NAME_MAX + 1];
+	uint8_t name[UBI_VOL_NAME_MAX+1];
 	uint8_t padding2[24];
 	ubi32_t crc;
 } __attribute__ ((packed));
