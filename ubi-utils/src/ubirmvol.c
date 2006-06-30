@@ -36,7 +36,7 @@
 #include <config.h>
 #include <libubi.h>
 
-#define VERSION "1.1"
+#define PROGRAM_VERSION "1.1"
 
 /*
  * The below variables are set by command line options.
@@ -60,9 +60,11 @@ static struct args myargs = {
 
 static int param_sanity_check(struct args *args, ubi_lib_t lib);
 static error_t parse_opt(int key, char *optarg, struct argp_state *state);
+
+const char *argp_program_version = PROGRAM_VERSION;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 
-static char doc[] = "\nVersion: " VERSION "\n\t"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nMake UBI Volume.\n";
 

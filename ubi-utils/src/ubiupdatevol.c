@@ -41,7 +41,7 @@
 #include <config.h>
 #include <libubi.h>
 
-#define VERSION "1.0"
+#define PROGRAM_VERSION "1.0"
 
 #define MAXPATH		1024
 #define BUFSIZE		128 * 1024
@@ -72,9 +72,10 @@ static struct args myargs = {
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 
 static int verbose = 0;
+const char *argp_program_version = PROGRAM_VERSION;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 
-static char doc[] = "\nVersion: " VERSION "\n\t"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nWrite to UBI Volume.\n";
 
