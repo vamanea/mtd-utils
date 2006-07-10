@@ -40,6 +40,7 @@ typedef struct pfi_ubi	*pfi_ubi_t;
 
 struct pdd_data {
 	uint32_t flash_size;
+	uint32_t flash_page_size;
 	uint32_t eb_size;
 	uint32_t vid_hdr_offset;
 	flash_type_t flash_type;

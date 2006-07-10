@@ -34,8 +34,9 @@
 #include "reader.h"
 
 /* @FIXME hard coded offsets right now - get them from Artem? */
-#define NAND_DEFAULT_VID_HDR_OFF 1984
-#define NOR_DEFAULT_VID_HDR_OFF 64
+#define NAND2048_DEFAULT_VID_HDR_OFF 1984
+#define NAND512_DEFAULT_VID_HDR_OFF  448
+#define NOR_DEFAULT_VID_HDR_OFF      64
 
 #define EBUF_PFI(fmt...)						\
 	do { int i = snprintf(err_buf, err_buf_size, "%s\n", label);	\
@@ -74,8 +75,27 @@ read_pdd_data(FILE* fp_pdd, pdd_data_t* pdd_data,
 	}
 
 	if (strcmp(value, "NAND") == 0) {
+
+		rc = bootenv_get_num(pdd, "flash_page_size",
+			     &(res->flash_page_size));
+		if (rc != 0) {
+			EBUF("Cannot read 'flash_page_size' from pdd.");
+			goto err;
+		}
 		res->flash_type = NAND_FLASH;
-		res->vid_hdr_offset = NAND_DEFAULT_VID_HDR_OFF;
+
+		switch (res->flash_page_size) {
+		case 512:
+			res->vid_hdr_offset = NAND512_DEFAULT_VID_HDR_OFF;
+			break;
+		case 2048:
+			res->vid_hdr_offset = NAND2048_DEFAULT_VID_HDR_OFF;
+			break;
+		default:
+			EBUF("Unsupported  'flash_page_size' %d.",
+			     res->flash_page_size);
+			goto err;
+		}
 	}
 	else if (strcmp(value, "NOR") == 0){
 		res->flash_type = NOR_FLASH;
@@ -113,11 +133,6 @@ read_pdd_data(FILE* fp_pdd, pdd_data_t* pdd_data,
 	return rc;
 }
 
-/**
- * FIXME enhance flasing raw PFI content e.g. IPLs for NAND and NOR.
- * Here is one of the only places where the flash type and its special
- * handling is exposed to the users.
- */
 int
 read_pfi_raw(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_raw_t* pfi_raw,
 	     const char* label, char* err_buf, size_t err_buf_size)
@@ -175,10 +190,6 @@ read_pfi_raw(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_raw_t* pfi_raw,
 	return rc;
 }
 
-/**
- * FIXME Enhance reading raw PFI sections, e.g. IPL. See comment at
- * write_pfi_ubi.
- */
 int
 read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 	     const char *label, char* err_buf, size_t err_buf_size)

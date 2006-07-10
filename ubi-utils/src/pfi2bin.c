@@ -42,6 +42,8 @@
 #include "peb.h"
 #include "crc32.h"
 
+#define PROGRAM_VERSION "1.2"
+
 #define MAX_FNAME 255
 #define DEFAULT_ERASE_COUNT  0 /* Hmmm.... Perhaps */
 #define ERR_BUF_SIZE 1024
@@ -71,9 +73,9 @@ static const char copyright [] __attribute__((unused)) =
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 
-const char *argp_program_version = PACKAGE_VERSION;
+const char *argp_program_version = PROGRAM_VERSION;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"pfi2bin - a tool to convert PFI files into binary images.\n";
@@ -355,6 +357,8 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 	size_t leb_size, leb_total, j = 0;
 	uint8_t *ptr = NULL;
 	FILE* fp_leb = NULL;
+	int vt_slots;
+	size_t vol_tab_size_limit;
 
 	rc = peb_new(0, 0, &cmp_peb);
 	if (rc != 0)
@@ -379,11 +383,21 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 		goto err;
 	ubigen_destroy(&u);
 
+	/*
+	 * The number of supported volumes is restricted by the eraseblock size
+	 * and by the UBI_MAX_VOLUMES constant.
+	 */
+	vt_slots = leb_size / UBI_VTBL_RECORD_SIZE;
+	if (vt_slots > UBI_MAX_VOLUMES)
+		vt_slots = UBI_MAX_VOLUMES;
+	vol_tab_size_limit = vt_slots * UBI_VTBL_RECORD_SIZE;
+
 	ptr = (uint8_t*) malloc(leb_size * sizeof(uint8_t));
 	if (ptr == NULL)
 		goto err;
+
 	memset(ptr, 0xff, leb_size);
-	memcpy(ptr, vol_tab, vol_tab_size);
+	memcpy(ptr, vol_tab, vol_tab_size_limit);
 	fp_leb = my_fmemopen(ptr, leb_size, "r");
 
 	rc = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
