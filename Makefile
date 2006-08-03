@@ -10,7 +10,14 @@ INCLUDEDIR=/usr/include
 CC := $(CROSS)gcc
 CFLAGS := -I./include -O2 -Wall
 
-TARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
+ifeq ($(origin CROSS),undefined)
+  BUILDDIR := .
+else
+# Remove the trailing slash to make the directory name
+  BUILDDIR := $(CROSS:-=)
+endif
+
+RAWTARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	mkfs.jffs ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \
 	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite \
 	jffs2dump \
@@ -18,40 +25,48 @@ TARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	rfddump rfdformat \
 	sumtool #jffs2reader
 
+TARGETS = $(foreach target,$(RAWTARGETS),$(BUILDDIR)/$(target))
+
 SYMLINKS =
 
 %: %.o
-	$(CC) $(LDFLAGS) -g -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
 
-%.o: %.c
-	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,.$<.dep
+$(BUILDDIR)/%.o: %.c
+	mkdir -p $(BUILDDIR)
+	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,$(BUILDDIR)/.$(<F).dep
 
 .SUFFIXES:
 
 all: $(TARGETS)
 
-IGNORE=${wildcard .*.c.dep}
+IGNORE=${wildcard $(BUILDDIR)/.*.c.dep}
 -include ${IGNORE}
 
 clean:
-	rm -f *.o $(TARGETS) .*.c.dep $(SYMLINKS)
+	rm -f $(BUILDDIR)/*.o $(TARGETS) $(BUILDDIR)/.*.c.dep $(SYMLINKS)
+	if [ "$(BUILDDIR)x" != ".x" ]; then rm -rf $(BUILDDIR); fi
 
 $(SYMLINKS):
 	ln -sf ../fs/jffs2/$@ $@
 
-mkfs.jffs2: crc32.o compr_rtime.o mkfs.jffs2.o compr_zlib.o compr.o
+$(BUILDDIR)/mkfs.jffs2: $(BUILDDIR)/crc32.o \
+			$(BUILDDIR)/compr_rtime.o \
+			$(BUILDDIR)/mkfs.jffs2.o \
+			$(BUILDDIR)/compr_zlib.o \
+			$(BUILDDIR)/compr.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lz
 
-flash_eraseall: crc32.o flash_eraseall.o
+$(BUILDDIR)/flash_eraseall: $(BUILDDIR)/crc32.o $(BUILDDIR)/flash_eraseall.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-jffs2reader: jffs2reader.o
+$(BUILDDIR)/jffs2reader: $(BUILDDIR)/jffs2reader.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lz
 
-jffs2dump: jffs2dump.o crc32.o
+$(BUILDDIR)/jffs2dump: $(BUILDDIR)/jffs2dump.o $(BUILDDIR)/crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-sumtool: sumtool.o crc32.o
+$(BUILDDIR)/sumtool: $(BUILDDIR)/sumtool.o $(BUILDDIR)/crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 install: ${TARGETS}
