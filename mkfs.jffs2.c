@@ -1038,6 +1038,7 @@ typedef struct xattr_entry {
 #define XATTR_BUFFER_SIZE		(64 * 1024)	/* 64KB */
 static uint32_t enable_xattr = 0;
 static uint32_t highest_xid = 0;
+static uint32_t highest_xseqno = 0;
 
 static struct {
 	int xprefix;
@@ -1244,6 +1245,7 @@ static void write_xattr_entry(struct filesystem_entry *e)
 		ref.hdr_crc = cpu_to_je32(crc32(0, &ref, sizeof(struct jffs2_unknown_node) - 4));
 		ref.ino = cpu_to_je32(e->sb.st_ino);
 		ref.xid = cpu_to_je32(xe->xid);
+		ref.xseqno = cpu_to_je32(highest_xseqno += 2);
 		ref.node_crc = cpu_to_je32(crc32(0, &ref, sizeof(ref) - 4));
 
 		pad_block_if_less_than(sizeof(ref));
