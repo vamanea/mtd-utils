@@ -775,7 +775,7 @@ static void write_dirent(struct filesystem_entry *e)
 	padword();
 }
 
-static void write_regular_file(struct filesystem_entry *e)
+static unsigned int write_regular_file(struct filesystem_entry *e)
 {
 	int fd, len;
 	uint32_t ver;
@@ -783,12 +783,12 @@ static void write_regular_file(struct filesystem_entry *e)
 	unsigned char *buf, *cbuf, *wbuf;
 	struct jffs2_raw_inode ri;
 	struct stat *statbuf;
-
+	unsigned int totcomp = 0;
 
 	statbuf = &(e->sb);
 	if (statbuf->st_size >= JFFS2_MAX_FILE_SIZE) {
 		error_msg("Skipping file \"%s\" too large.", e->path);
-		return;
+		return -1;
 	}
 	fd = open(e->hostname, O_RDONLY);
 	if (fd == -1) {
@@ -841,8 +841,10 @@ static void write_regular_file(struct filesystem_entry *e)
 				space = dsize;
 
 			compression = jffs2_compress(tbuf, &cbuf, &dsize, &space);
-                        ri.compr = compression & 0xff;
-                        ri.usercompr = (compression >> 8) & 0xff;
+
+			ri.compr = compression & 0xff;
+			ri.usercompr = (compression >> 8) & 0xff;
+
 			if (ri.compr) {
 				wbuf = cbuf;
 			} else {
@@ -862,10 +864,12 @@ static void write_regular_file(struct filesystem_entry *e)
 			ri.data_crc = cpu_to_je32(crc32(0, wbuf, space));
 
 			full_write(out_fd, &ri, sizeof(ri));
+			totcomp += sizeof(ri);
 			full_write(out_fd, wbuf, space);
+			totcomp += space;
 			padword();
 
-            if (tbuf!= cbuf) {
+			if (tbuf != cbuf) {
 				free(cbuf);
 				cbuf = NULL;
 			}
@@ -893,6 +897,7 @@ static void write_regular_file(struct filesystem_entry *e)
 	}
 	free(buf);
 	close(fd);
+	return totcomp;
 }
 
 static void write_symlink(struct filesystem_entry *e)
@@ -1257,6 +1262,7 @@ static void write_xattr_entry(struct filesystem_entry *e)
 static void recursive_populate_directory(struct filesystem_entry *dir)
 {
 	struct filesystem_entry *e;
+	unsigned int wrote;
 
 	if (verbose) {
 		printf("%s\n", dir->fullname);
@@ -1269,7 +1275,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 		switch (e->sb.st_mode & S_IFMT) {
 			case S_IFDIR:
 				if (verbose) {
-					printf("\td %04o %9lu %5d:%-3d %s\n",
+					printf("\td %04o %9lu             %5d:%-3d %s\n",
 							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) (e->sb.st_uid), (int) (e->sb.st_gid),
 							e->name);
@@ -1279,7 +1285,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFSOCK:
 				if (verbose) {
-					printf("\ts %04o %9lu %5d:%-3d %s\n",
+					printf("\ts %04o %9lu             %5d:%-3d %s\n",
 							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
@@ -1288,7 +1294,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFIFO:
 				if (verbose) {
-					printf("\tp %04o %9lu %5d:%-3d %s\n",
+					printf("\tp %04o %9lu             %5d:%-3d %s\n",
 							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
@@ -1297,7 +1303,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFCHR:
 				if (verbose) {
-					printf("\tc %04o %4d,%4d %5d:%-3d %s\n",
+					printf("\tc %04o %4d,%4d             %5d:%-3d %s\n",
 							e->sb.st_mode & ~S_IFMT, major(e->sb.st_rdev),
 							minor(e->sb.st_rdev), (int) e->sb.st_uid,
 							(int) e->sb.st_gid, e->name);
@@ -1307,7 +1313,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFBLK:
 				if (verbose) {
-					printf("\tb %04o %4d,%4d %5d:%-3d %s\n",
+					printf("\tb %04o %4d,%4d             %5d:%-3d %s\n",
 							e->sb.st_mode & ~S_IFMT, major(e->sb.st_rdev),
 							minor(e->sb.st_rdev), (int) e->sb.st_uid,
 							(int) e->sb.st_gid, e->name);
@@ -1317,7 +1323,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFLNK:
 				if (verbose) {
-					printf("\tl %04o %9lu %5d:%-3d %s -> %s\n",
+					printf("\tl %04o %9lu             %5d:%-3d %s -> %s\n",
 							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name,
 							e->link);
@@ -1326,13 +1332,13 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				write_xattr_entry(e);
 				break;
 			case S_IFREG:
+				wrote = write_regular_file(e);
+				write_xattr_entry(e);
 				if (verbose) {
-					printf("\tf %04o %9lu %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
+					printf("\tf %04o %9lu (%9u) %5d:%-3d %s\n",
+							e->sb.st_mode & ~S_IFMT, e->sb.st_size, wrote,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
-				write_regular_file(e);
-				write_xattr_entry(e);
 				break;
 			default:
 				error_msg("Unknown mode %o for %s", e->sb.st_mode,
