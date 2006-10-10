@@ -2,7 +2,7 @@
 
    Copyright (C) 2000 Arcom Control System Ltd
 
-    Renamed to flash_eraseall.c
+   Renamed to flash_eraseall.c
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
 
    $Id: flash_eraseall.c,v 1.22 2005/02/17 14:55:06 hvr Exp $
-*/
+ */
 #include <sys/types.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -107,18 +107,18 @@ int main (int argc, char *argv[])
 			} else {
 				/* Legacy mode */
 				switch (meminfo.oobsize) {
-				case 8:
-					clmpos = 6;
-					clmlen = 2;
-					break;
-				case 16:
-					clmpos = 8;
-					clmlen = 8;
-					break;
-				case 64:
-					clmpos = 16;
-					clmlen = 8;
-					break;
+					case 8:
+						clmpos = 6;
+						clmlen = 2;
+						break;
+					case 16:
+						clmpos = 8;
+						clmlen = 8;
+						break;
+					case 64:
+						clmpos = 16;
+						clmlen = 8;
+						break;
 				}
 			}
 			cleanmarker.totlen = cpu_to_je32(8);
@@ -150,10 +150,10 @@ int main (int argc, char *argv[])
 
 		if (!quiet) {
 			printf
-                           ("\rErasing %d Kibyte @ %x -- %2llu %% complete.",
-			     meminfo.erasesize / 1024, erase.start,
-			     (unsigned long long)
-			     erase.start * 100 / meminfo.size);
+				("\rErasing %d Kibyte @ %x -- %2llu %% complete.",
+				 meminfo.erasesize / 1024, erase.start,
+				 (unsigned long long)
+				 erase.start * 100 / meminfo.size);
 		}
 		fflush(stdout);
 
@@ -216,31 +216,31 @@ void process_options (int argc, char *argv[])
 		};
 
 		int c = getopt_long(argc, argv, short_options,
-				    long_options, &option_index);
+				long_options, &option_index);
 		if (c == EOF) {
 			break;
 		}
 
 		switch (c) {
-		case 0:
-			switch (option_index) {
 			case 0:
-				display_help();
+				switch (option_index) {
+					case 0:
+						display_help();
+						break;
+					case 1:
+						display_version();
+						break;
+				}
 				break;
-			case 1:
-				display_version();
+			case 'q':
+				quiet = 1;
 				break;
-			}
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		case 'j':
-			jffs2 = 1;
-			break;
-		case '?':
-			error = 1;
-			break;
+			case 'j':
+				jffs2 = 1;
+				break;
+			case '?':
+				error = 1;
+				break;
 		}
 	}
 	if (optind == argc) {
@@ -249,7 +249,7 @@ void process_options (int argc, char *argv[])
 	}
 	if (error) {
 		fprintf(stderr, "Try `%s --help' for more information.\n",
-			exe_name);
+				exe_name);
 		exit(1);
 	}
 
@@ -260,14 +260,14 @@ void process_options (int argc, char *argv[])
 void display_help (void)
 {
 	printf("Usage: %s [OPTION] MTD_DEVICE\n"
-	       "Erases all of the specified MTD device.\n"
-	       "\n"
-	       "  -j, --jffs2    format the device for jffs2\n"
-	       "  -q, --quiet    don't display progress messages\n"
-	       "      --silent   same as --quiet\n"
-	       "      --help     display this help and exit\n"
-	       "      --version  output version information and exit\n",
-	       exe_name);
+			"Erases all of the specified MTD device.\n"
+			"\n"
+			"  -j, --jffs2    format the device for jffs2\n"
+			"  -q, --quiet    don't display progress messages\n"
+			"      --silent   same as --quiet\n"
+			"      --help     display this help and exit\n"
+			"      --version  output version information and exit\n",
+			exe_name);
 	exit(0);
 }
 
@@ -275,14 +275,14 @@ void display_help (void)
 void display_version (void)
 {
 	printf(PROGRAM " " VERSION "\n"
-	       "\n"
-	       "Copyright (C) 2000 Arcom Control Systems Ltd\n"
-	       "\n"
-	       PROGRAM " comes with NO WARRANTY\n"
-	       "to the extent permitted by law.\n"
-	       "\n"
-	       "You may redistribute copies of " PROGRAM "\n"
-	       "under the terms of the GNU General Public Licence.\n"
-	       "See the file `COPYING' for more information.\n");
+			"\n"
+			"Copyright (C) 2000 Arcom Control Systems Ltd\n"
+			"\n"
+			PROGRAM " comes with NO WARRANTY\n"
+			"to the extent permitted by law.\n"
+			"\n"
+			"You may redistribute copies of " PROGRAM "\n"
+			"under the terms of the GNU General Public Licence.\n"
+			"See the file `COPYING' for more information.\n");
 	exit(0);
 }

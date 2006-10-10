@@ -212,26 +212,26 @@ int main(int argc, char **argv)
 	printf("$Id: nftl_format.c,v 1.24 2005/11/07 11:15:13 gleixner Exp $\n");
 
 	if (argc < 2)
-        	usage(1);
+		usage(1);
 
 	nftl = "NFTL";
 
 	while ((c = getopt(argc, argv, "?hib")) > 0) {
 		switch (c) {
-		case 'i':
-			nftl = "INFTL";
-			do_inftl = 1;
-			break;
-		case 'b':
-			do_bbt = 1;
-			break;
-		case 'h':
-		case '?':
-			usage(0);
-			break;
-		default:
-			usage(1);
-			break;
+			case 'i':
+				nftl = "INFTL";
+				do_inftl = 1;
+				break;
+			case 'b':
+				do_bbt = 1;
+				break;
+			case 'h':
+			case '?':
+				usage(0);
+				break;
+			default:
+				usage(1);
+				break;
 		}
 	}
 
@@ -256,16 +256,16 @@ int main(int argc, char **argv)
 	}
 
 	switch (meminfo.erasesize) {
-	case 0x1000:
-	case 0x2000:
-	case 0x4000:
-	case 0x8000:
-		break;
-	default:
-		printf("Unrecognized Erase size, 0x%x - I'm confused\n",
-			meminfo.erasesize);
-		close(fd);
-		return 1;
+		case 0x1000:
+		case 0x2000:
+		case 0x4000:
+		case 0x8000:
+			break;
+		default:
+			printf("Unrecognized Erase size, 0x%x - I'm confused\n",
+					meminfo.erasesize);
+			close(fd);
+			return 1;
 	}
 	writebuf[0] = malloc(meminfo.erasesize * 5);
 	if (!writebuf[0]) {
@@ -307,9 +307,9 @@ int main(int argc, char **argv)
 	/* Phase 1. Erasing and checking each erase zones in the NFTL partition.
 	   N.B. Erase Zones not used by the NFTL partition are untouched and marked ZONE_GOOD */
 	printf("Phase 1. Checking and erasing Erase Zones from 0x%08lx to 0x%08lx\n",
-	       startofs, startofs + part_size);
+			startofs, startofs + part_size);
 	for (ezone = startofs / meminfo.erasesize;
-	     ezone < (ezones + startofs / meminfo.erasesize); ezone++) {
+			ezone < (ezones + startofs / meminfo.erasesize); ezone++) {
 		if (BadUnitTable[ezone] != ZONE_GOOD)
 			continue;
 		if ((BadUnitTable[ezone] = erase_block(ezone)) == ZONE_GOOD) {
@@ -380,7 +380,7 @@ int main(int argc, char **argv)
 	pwrite(fd, writebuf[0], 512, MediaUnit1 * meminfo.erasesize + MediaUnitOff1);
 	for (ezone = 0; ezone < (meminfo.size / meminfo.erasesize); ezone += 512) {
 		pwrite(fd, BadUnitTable + ezone, 512,
-			(MediaUnit1 * meminfo.erasesize) + 512 * (1 + ezone / 512));
+				(MediaUnit1 * meminfo.erasesize) + 512 * (1 + ezone / 512));
 	}
 
 #if 0
@@ -388,13 +388,13 @@ int main(int argc, char **argv)
 	printf("    NumEraseUnits: %d\n", le16_to_cpu(NFTLhdr->NumEraseUnits));
 	printf("    FirstPhysicalEUN: %d\n", le16_to_cpu(NFTLhdr->FirstPhysicalEUN));
 	printf("    FormattedSize: %d (%d sectors)\n", le32_to_cpu(NFTLhdr->FormattedSize),
-	       le32_to_cpu(NFTLhdr->FormattedSize)/512);
+			le32_to_cpu(NFTLhdr->FormattedSize)/512);
 #endif
 	printf("Phase 2.b Writing Spare %s Media Header and Spare Bad Unit Table\n", nftl);
 	pwrite(fd, writebuf[0], 512, MediaUnit2 * meminfo.erasesize + MediaUnitOff2);
 	for (ezone = 0; ezone < (meminfo.size / meminfo.erasesize); ezone += 512) {
 		pwrite(fd, BadUnitTable + ezone, 512,
-			(MediaUnit2 * meminfo.erasesize + MediaUnitOff2) + 512 * (1 + ezone / 512));
+				(MediaUnit2 * meminfo.erasesize + MediaUnitOff2) + 512 * (1 + ezone / 512));
 	}
 
 	/* UCI #1 for newly erased Erase Unit */

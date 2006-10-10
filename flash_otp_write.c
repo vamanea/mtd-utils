@@ -1,6 +1,6 @@
 /*
  * flash_otp_write.c -- write One-Time-Program data
-*/
+ */
 
 #include <stdio.h>
 #include <unistd.h>

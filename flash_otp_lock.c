@@ -1,6 +1,6 @@
 /*
  * flash_otp_lock.c -- lock area of One-Time-Program data
-*/
+ */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -50,7 +50,7 @@ int main(int argc,char *argv[])
 	}
 
 	printf("About to lock OTP user data on %s from 0x%x to 0x%x\n",
-	       argv[2], offset, offset + size);
+			argv[2], offset, offset + size);
 	printf("Are you sure (yes|no)? ");
 	if (fgets(buf, sizeof(buf), stdin) && strcmp(buf, "yes\n") == 0) {
 		struct otp_info info;

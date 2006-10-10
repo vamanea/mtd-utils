@@ -1,6 +1,6 @@
 /*
  * flash_erase.c -- erase parts of a MTD device
-*/
+ */
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -144,7 +144,7 @@ int main(int argc,char *argv[])
 
 	if (1 >= argc ||  !strcmp(argv[1], "-h") || !strcmp (argv[1], "--help") ) {
 		printf("Usage: flash_erase MTD-device [start] [cnt (# erase blocks)] [lock]\n"
-		       "       flash_erase -h | --help\n") ;
+				"       flash_erase -h | --help\n") ;
 		return 16 ;
 	}
 

@@ -1,6 +1,6 @@
 /*
  * flash_otp_info.c -- print info about One-Time-Programm data
-*/
+ */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -40,22 +40,22 @@ int main(int argc,char *argv[])
 	}
 
 	printf("Number of OTP %s blocks on %s: %d\n",
-	       argv[1][1] == 'f' ? "factory" : "user", argv[2], val);
+			argv[1][1] == 'f' ? "factory" : "user", argv[2], val);
 
 	if (val > 0) {
 		struct otp_info info[val];
 
 		ret = ioctl(fd, OTPGETREGIONINFO, &info);
-	       if (ret	< 0) {
+		if (ret	< 0) {
 			perror("OTPGETREGIONCOUNT");
 			return errno;
 		}
 
 		for (i = 0; i < val; i++)
 			printf("block %2d:  offset = 0x%04x  "
-			       "size = %2d bytes  %s\n",
-			       i, info[i].start, info[i].length,
-			       info[i].locked ? "[locked]" : "[unlocked]");
+					"size = %2d bytes  %s\n",
+					i, info[i].start, info[i].length,
+					info[i].locked ? "[locked]" : "[unlocked]");
 	}
 
 	close(fd);

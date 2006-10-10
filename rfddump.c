@@ -59,23 +59,23 @@ struct rfd {
 void display_help(void)
 {
 	printf("Usage: " PROGRAM " [OPTIONS] MTD-device filename\n"
-	       "Dumps the contents of a resident flash disk\n"
-	       "\n"
-	       "-h         --help               display this help and exit\n"
-	       "-V         --version            output version information and exit\n"
-	       "-v         --verbose		Be verbose\n"
-	       "-b size    --blocksize          Block size (defaults to erase unit)\n");
+			"Dumps the contents of a resident flash disk\n"
+			"\n"
+			"-h         --help               display this help and exit\n"
+			"-V         --version            output version information and exit\n"
+			"-v         --verbose		Be verbose\n"
+			"-b size    --blocksize          Block size (defaults to erase unit)\n");
 	exit(0);
 }
 
 void display_version(void)
 {
-        printf(PROGRAM " " VERSION "\n"
-               "\n"
-	       "This is free software; see the source for copying conditions.  There is NO\n"
-	       "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
+	printf(PROGRAM " " VERSION "\n"
+			"\n"
+			"This is free software; see the source for copying conditions.  There is NO\n"
+			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 
-        exit(0);
+	exit(0);
 }
 
 void process_options(int argc, char *argv[], struct rfd *rfd)
@@ -102,21 +102,21 @@ void process_options(int argc, char *argv[], struct rfd *rfd)
 			break;
 
 		switch (c) {
-		case 'h':
-			display_help();
-			break;
-		case 'V':
-			display_version();
-			break;
-		case 'v':
-			rfd->verbose = 1;
-			break;
-		case 'b':
-			rfd->block_size = atoi(optarg);
-			break;
-		case '?':
-			error = 1;
-			break;
+			case 'h':
+				display_help();
+				break;
+			case 'V':
+				display_version();
+				break;
+			case 'v':
+				rfd->verbose = 1;
+				break;
+			case 'b':
+				rfd->block_size = atoi(optarg);
+				break;
+			case '?':
+				error = 1;
+				break;
 		}
 	}
 
@@ -156,13 +156,13 @@ int build_block_map(struct rfd *rfd, int fd, int block)
 
 		if (entry >= rfd->sector_count) {
 			fprintf(stderr, "%s: warning: sector %d out of range\n",
-				rfd->mtd_filename, entry);
+					rfd->mtd_filename, entry);
 			continue;
 		}
 
 		if (rfd->sector_map[entry] != -1) {
 			fprintf(stderr, "%s: warning: more than one entry "
-				"for sector %d\n", rfd->mtd_filename, entry);
+					"for sector %d\n", rfd->mtd_filename, entry);
 			continue;
 		}
 
@@ -239,8 +239,8 @@ int main(int argc, char *argv[])
 	}
 
 	rfd.header_sectors =
-                ((HEADER_MAP_OFFSET + sectors_per_block) *
-                  sizeof(uint16_t) + SECTOR_SIZE - 1) / SECTOR_SIZE;
+		((HEADER_MAP_OFFSET + sectors_per_block) *
+		 sizeof(uint16_t) + SECTOR_SIZE - 1) / SECTOR_SIZE;
 	rfd.data_sectors = sectors_per_block - rfd.header_sectors;
 	cylinders = ((rfd.block_count - 1) * rfd.data_sectors - 1)
 		/ SECTORS_PER_TRACK;

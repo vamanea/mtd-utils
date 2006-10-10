@@ -27,7 +27,7 @@
 
 /* _compress returns the compressed size, -1 if bigger */
 static int jffs2_rtime_compress(unsigned char *data_in, unsigned char *cpage_out,
-		   uint32_t *sourcelen, uint32_t *dstlen, void *model)
+		uint32_t *sourcelen, uint32_t *dstlen, void *model)
 {
 	short positions[256];
 	int outpos = 0;
@@ -35,7 +35,7 @@ static int jffs2_rtime_compress(unsigned char *data_in, unsigned char *cpage_out
 
 	memset(positions,0,sizeof(positions));
 
- 	while (pos < (*sourcelen) && outpos <= (*dstlen)-2) {
+	while (pos < (*sourcelen) && outpos <= (*dstlen)-2) {
 		int backpos, runlen=0;
 		unsigned char value;
 
@@ -47,7 +47,7 @@ static int jffs2_rtime_compress(unsigned char *data_in, unsigned char *cpage_out
 		positions[value]=pos;
 
 		while ((backpos < pos) && (pos < (*sourcelen)) &&
-		       (data_in[pos]==data_in[backpos++]) && (runlen<255)) {
+				(data_in[pos]==data_in[backpos++]) && (runlen<255)) {
 			pos++;
 			runlen++;
 		}
@@ -67,7 +67,7 @@ static int jffs2_rtime_compress(unsigned char *data_in, unsigned char *cpage_out
 
 
 static int jffs2_rtime_decompress(unsigned char *data_in, unsigned char *cpage_out,
-		      uint32_t srclen, uint32_t destlen, void *model)
+		uint32_t srclen, uint32_t destlen, void *model)
 {
 	short positions[256];
 	int outpos = 0;
@@ -98,25 +98,25 @@ static int jffs2_rtime_decompress(unsigned char *data_in, unsigned char *cpage_o
 			}
 		}
 	}
-        return 0;
+	return 0;
 }
 
 
 static struct jffs2_compressor jffs2_rtime_comp = {
-    .priority = JFFS2_RTIME_PRIORITY,
-    .name = "rtime",
-    .disabled = 0,
-    .compr = JFFS2_COMPR_RTIME,
-    .compress = &jffs2_rtime_compress,
-    .decompress = &jffs2_rtime_decompress,
+	.priority = JFFS2_RTIME_PRIORITY,
+	.name = "rtime",
+	.disabled = 0,
+	.compr = JFFS2_COMPR_RTIME,
+	.compress = &jffs2_rtime_compress,
+	.decompress = &jffs2_rtime_decompress,
 };
 
 int jffs2_rtime_init(void)
 {
-    return jffs2_register_compressor(&jffs2_rtime_comp);
+	return jffs2_register_compressor(&jffs2_rtime_comp);
 }
 
 void jffs2_rtime_exit(void)
 {
-    jffs2_unregister_compressor(&jffs2_rtime_comp);
+	jffs2_unregister_compressor(&jffs2_rtime_comp);
 }

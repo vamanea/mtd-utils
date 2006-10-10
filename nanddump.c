@@ -41,31 +41,31 @@ struct nand_oobinfo none_oobinfo = {
 void display_help (void)
 {
 	printf("Usage: nanddump [OPTIONS] MTD-device\n"
-	       "Dumps the contents of a nand mtd partition.\n"
-	       "\n"
-	       "           --help	        display this help and exit\n"
-	       "           --version	        output version information and exit\n"
-	       "-f file    --file=file          dump to file\n"
-	       "-i         --ignoreerrors       ignore errors\n"
-	       "-l length  --length=length      length\n"
-	       "-n         --noecc              read without error correction\n"
-	       "-o         --omitoob            omit oob data\n"
-	       "-b         --omitbad            omit bad blocks from the dump\n"
-	       "-p         --prettyprint        print nice (hexdump)\n"
-	       "-s addr    --startaddress=addr  start address\n");
+			"Dumps the contents of a nand mtd partition.\n"
+			"\n"
+			"           --help	        display this help and exit\n"
+			"           --version	        output version information and exit\n"
+			"-f file    --file=file          dump to file\n"
+			"-i         --ignoreerrors       ignore errors\n"
+			"-l length  --length=length      length\n"
+			"-n         --noecc              read without error correction\n"
+			"-o         --omitoob            omit oob data\n"
+			"-b         --omitbad            omit bad blocks from the dump\n"
+			"-p         --prettyprint        print nice (hexdump)\n"
+			"-s addr    --startaddress=addr  start address\n");
 	exit(0);
 }
 
 void display_version (void)
 {
 	printf(PROGRAM " " VERSION "\n"
-	       "\n"
-	       PROGRAM " comes with NO WARRANTY\n"
-	       "to the extent permitted by law.\n"
-	       "\n"
-	       "You may redistribute copies of " PROGRAM "\n"
-	       "under the terms of the GNU General Public Licence.\n"
-	       "See the file `COPYING' for more information.\n");
+			"\n"
+			PROGRAM " comes with NO WARRANTY\n"
+			"to the extent permitted by law.\n"
+			"\n"
+			"You may redistribute copies of " PROGRAM "\n"
+			"under the terms of the GNU General Public Licence.\n"
+			"See the file `COPYING' for more information.\n");
 	exit(0);
 }
 
@@ -102,52 +102,52 @@ void process_options (int argc, char *argv[])
 		};
 
 		int c = getopt_long(argc, argv, short_options,
-				    long_options, &option_index);
+				long_options, &option_index);
 		if (c == EOF) {
 			break;
 		}
 
 		switch (c) {
-		case 0:
-			switch (option_index) {
 			case 0:
-				display_help();
+				switch (option_index) {
+					case 0:
+						display_help();
+						break;
+					case 1:
+						display_version();
+						break;
+				}
 				break;
-			case 1:
-				display_version();
+			case 'b':
+				omitbad = 1;
 				break;
-			}
-			break;
-		case 'b':
-			omitbad = 1;
-			break;
-		case 's':
-			start_addr = strtol(optarg, NULL, 0);
-			break;
-		case 'f':
-			if (!(dumpfile = strdup(optarg))) {
-				perror("stddup");
-				exit(1);
-			}
-			break;
-		case 'i':
-			ignoreerrors = 1;
-			break;
-		case 'l':
-			length = strtol(optarg, NULL, 0);
-			break;
-		case 'o':
-			omitoob = 1;
-			break;
-		case 'p':
-			pretty_print = 1;
-			break;
-		case 'n':
-			noecc = 1;
-			break;
-		case '?':
-			error = 1;
-			break;
+			case 's':
+				start_addr = strtol(optarg, NULL, 0);
+				break;
+			case 'f':
+				if (!(dumpfile = strdup(optarg))) {
+					perror("stddup");
+					exit(1);
+				}
+				break;
+			case 'i':
+				ignoreerrors = 1;
+				break;
+			case 'l':
+				length = strtol(optarg, NULL, 0);
+				break;
+			case 'o':
+				omitoob = 1;
+				break;
+			case 'p':
+				pretty_print = 1;
+				break;
+			case 'n':
+				noecc = 1;
+				break;
+			case '?':
+				error = 1;
+				break;
 		}
 	}
 
@@ -196,8 +196,8 @@ int main(int argc, char **argv)
 
 	/* Make sure device page sizes are valid */
 	if (!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
-	    !(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
-	    !(meminfo.oobsize == 8 && meminfo.writesize == 256)) {
+			!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
+			!(meminfo.oobsize == 8 && meminfo.writesize == 256)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
 		exit(1);
@@ -208,27 +208,27 @@ int main(int argc, char **argv)
 	if (noecc)  {
 		switch (ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW)) {
 
-		case -ENOTTY:
-			if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-				perror ("MEMGETOOBSEL");
-				close (fd);
-				exit (1);
-			}
-			if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-				perror ("MEMSETOOBSEL");
-				close (fd);
-				exit (1);
-			}
-			oobinfochanged = 1;
-			break;
+			case -ENOTTY:
+				if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+					perror ("MEMGETOOBSEL");
+					close (fd);
+					exit (1);
+				}
+				if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
+					perror ("MEMSETOOBSEL");
+					close (fd);
+					exit (1);
+				}
+				oobinfochanged = 1;
+				break;
 
-		case 0:
-			oobinfochanged = 2;
-			break;
-		default:
-			perror ("MTDFILEMODE");
-			close (fd);
-			exit (1);
+			case 0:
+				oobinfochanged = 2;
+				break;
+			default:
+				perror ("MTDFILEMODE");
+				close (fd);
+				exit (1);
 		}
 	} else {
 
@@ -263,10 +263,10 @@ int main(int argc, char **argv)
 
 	/* Print informative message */
 	fprintf(stderr, "Block size %u, page size %u, OOB size %u\n",
-		meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
+			meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
 	fprintf(stderr,
-		"Dumping data starting at 0x%08x and ending at 0x%08x...\n",
-		(unsigned int) start_addr, (unsigned int) end_addr);
+			"Dumping data starting at 0x%08x and ending at 0x%08x...\n",
+			(unsigned int) start_addr, (unsigned int) end_addr);
 
 	/* Dump the flash contents */
 	for (ofs = start_addr; ofs < end_addr ; ofs+=bs) {
@@ -300,12 +300,12 @@ int main(int argc, char **argv)
 			}
 			if (stat1.failed != stat2.failed)
 				fprintf(stderr, "ECC: %d uncorrectable bitflip(s)"
-					" at offset 0x%08lx\n",
-					stat2.failed - stat1.failed, ofs);
+						" at offset 0x%08lx\n",
+						stat2.failed - stat1.failed, ofs);
 			if (stat1.corrected != stat2.corrected)
 				fprintf(stderr, "ECC: %d corrected bitflip(s) at"
-					" offset 0x%08lx\n",
-					stat2.corrected - stat1.corrected, ofs);
+						" offset 0x%08lx\n",
+						stat2.corrected - stat1.corrected, ofs);
 			stat1 = stat2;
 		}
 
@@ -313,17 +313,17 @@ int main(int argc, char **argv)
 		if (pretty_print) {
 			for (i = 0; i < bs; i += 16) {
 				sprintf(pretty_buf,
-					"0x%08x: %02x %02x %02x %02x %02x %02x %02x "
-					"%02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-					(unsigned int) (ofs + i),  readbuf[i],
-					readbuf[i+1], readbuf[i+2],
-					readbuf[i+3], readbuf[i+4],
-					readbuf[i+5], readbuf[i+6],
-					readbuf[i+7], readbuf[i+8],
-					readbuf[i+9], readbuf[i+10],
-					readbuf[i+11], readbuf[i+12],
-					readbuf[i+13], readbuf[i+14],
-					readbuf[i+15]);
+						"0x%08x: %02x %02x %02x %02x %02x %02x %02x "
+						"%02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+						(unsigned int) (ofs + i),  readbuf[i],
+						readbuf[i+1], readbuf[i+2],
+						readbuf[i+3], readbuf[i+4],
+						readbuf[i+5], readbuf[i+6],
+						readbuf[i+7], readbuf[i+8],
+						readbuf[i+9], readbuf[i+10],
+						readbuf[i+11], readbuf[i+12],
+						readbuf[i+13], readbuf[i+14],
+						readbuf[i+15]);
 				write(ofd, pretty_buf, 60);
 			}
 		} else
@@ -349,23 +349,23 @@ int main(int argc, char **argv)
 		if (pretty_print) {
 			if (meminfo.oobsize < 16) {
 				sprintf(pretty_buf, "  OOB Data: %02x %02x %02x %02x %02x %02x "
-					"%02x %02x\n",
-					oobbuf[0], oobbuf[1], oobbuf[2],
-					oobbuf[3], oobbuf[4], oobbuf[5],
-					oobbuf[6], oobbuf[7]);
+						"%02x %02x\n",
+						oobbuf[0], oobbuf[1], oobbuf[2],
+						oobbuf[3], oobbuf[4], oobbuf[5],
+						oobbuf[6], oobbuf[7]);
 				write(ofd, pretty_buf, 48);
 				continue;
 			}
 
 			for (i = 0; i < meminfo.oobsize; i += 16) {
 				sprintf(pretty_buf, "  OOB Data: %02x %02x %02x %02x %02x %02x "
-					"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-					oobbuf[i], oobbuf[i+1], oobbuf[i+2],
-					oobbuf[i+3], oobbuf[i+4], oobbuf[i+5],
-					oobbuf[i+6], oobbuf[i+7], oobbuf[i+8],
-					oobbuf[i+9], oobbuf[i+10], oobbuf[i+11],
-					oobbuf[i+12], oobbuf[i+13], oobbuf[i+14],
-					oobbuf[i+15]);
+						"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+						oobbuf[i], oobbuf[i+1], oobbuf[i+2],
+						oobbuf[i+3], oobbuf[i+4], oobbuf[i+5],
+						oobbuf[i+6], oobbuf[i+7], oobbuf[i+8],
+						oobbuf[i+9], oobbuf[i+10], oobbuf[i+11],
+						oobbuf[i+12], oobbuf[i+13], oobbuf[i+14],
+						oobbuf[i+15]);
 				write(ofd, pretty_buf, 60);
 			}
 		} else
@@ -388,7 +388,7 @@ int main(int argc, char **argv)
 	/* Exit happy */
 	return 0;
 
- closeall:
+closeall:
 	/* The new mode change is per file descriptor ! */
 	if (oobinfochanged == 1) {
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0)  {

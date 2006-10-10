@@ -52,7 +52,7 @@
 #define KERN_DEBUG
 
 struct list_head {
-        struct list_head *next, *prev;
+	struct list_head *next, *prev;
 };
 
 void jffs2_set_compression_mode(int mode);
@@ -65,22 +65,22 @@ int jffs2_disable_compressor_name(const char *name);
 int jffs2_set_compressor_priority(const char *name, int priority);
 
 struct jffs2_compressor {
-        struct list_head list;
-        int priority;             /* used by prirority comr. mode */
-        char *name;
-        char compr;               /* JFFS2_COMPR_XXX */
-        int (*compress)(unsigned char *data_in, unsigned char *cpage_out,
-                        uint32_t *srclen, uint32_t *destlen, void *model);
-        int (*decompress)(unsigned char *cdata_in, unsigned char *data_out,
-                        uint32_t cdatalen, uint32_t datalen, void *model);
-        int usecount;
-        int disabled;             /* if seted the compressor won't compress */
-        unsigned char *compr_buf; /* used by size compr. mode */
-        uint32_t compr_buf_size;  /* used by size compr. mode */
-        uint32_t stat_compr_orig_size;
-        uint32_t stat_compr_new_size;
-        uint32_t stat_compr_blocks;
-        uint32_t stat_decompr_blocks;
+	struct list_head list;
+	int priority;             /* used by prirority comr. mode */
+	char *name;
+	char compr;               /* JFFS2_COMPR_XXX */
+	int (*compress)(unsigned char *data_in, unsigned char *cpage_out,
+			uint32_t *srclen, uint32_t *destlen, void *model);
+	int (*decompress)(unsigned char *cdata_in, unsigned char *data_out,
+			uint32_t cdatalen, uint32_t datalen, void *model);
+	int usecount;
+	int disabled;             /* if seted the compressor won't compress */
+	unsigned char *compr_buf; /* used by size compr. mode */
+	uint32_t compr_buf_size;  /* used by size compr. mode */
+	uint32_t stat_compr_orig_size;
+	uint32_t stat_compr_new_size;
+	uint32_t stat_compr_blocks;
+	uint32_t stat_decompr_blocks;
 };
 
 int jffs2_register_compressor(struct jffs2_compressor *comp);
@@ -90,7 +90,7 @@ int jffs2_compressors_init(void);
 int jffs2_compressors_exit(void);
 
 uint16_t jffs2_compress(unsigned char *data_in, unsigned char **cpage_out,
-                             uint32_t *datalen, uint32_t *cdatalen);
+		uint32_t *datalen, uint32_t *cdatalen);
 
 /* If it is setted, a decompress will be called after every compress */
 void jffs2_compression_check_set(int yesno);

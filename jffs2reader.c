@@ -45,24 +45,24 @@
  *  -Erik, 13 September 2001
  *
  * $Id: jffs2reader.c,v 1.6 2005/11/07 11:15:12 gleixner Exp $
-*/
+ */
 
 
 /*
-  TODO:
+TODO:
 
-  - Add CRC checking code to places marked with XXX.
-  - Add support for other node compression types.
+- Add CRC checking code to places marked with XXX.
+- Add support for other node compression types.
 
-  - Test with real life images.
-  - Maybe port into bootloader.
-*/
+- Test with real life images.
+- Maybe port into bootloader.
+ */
 
 /*
-  BUGS:
+BUGS:
 
-  - Doesn't check CRC checksums.
-*/
+- Doesn't check CRC checksums.
+ */
 
 
 #include <errno.h>
@@ -104,19 +104,19 @@ struct dir {
 void putblock(char *, size_t, size_t *, struct jffs2_raw_inode *);
 struct dir *putdir(struct dir *, struct jffs2_raw_dirent *);
 void printdir(char *o, size_t size, struct dir *d, char *path,
-			  int recurse);
+		int recurse);
 void freedir(struct dir *);
 
 struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino);
 struct jffs2_raw_dirent *resolvedirent(char *, size_t, uint32_t, uint32_t,
-									   char *, uint8_t);
+		char *, uint8_t);
 struct jffs2_raw_dirent *resolvename(char *, size_t, uint32_t, char *, uint8_t);
 struct jffs2_raw_dirent *resolveinode(char *, size_t, uint32_t);
 
 struct jffs2_raw_dirent *resolvepath0(char *, size_t, uint32_t, char *,
-									  uint32_t *, int);
+		uint32_t *, int);
 struct jffs2_raw_dirent *resolvepath(char *, size_t, uint32_t, char *,
-									 uint32_t *);
+		uint32_t *);
 
 void lsdir(char *, size_t, char *, int);
 void catfile(char *, size_t, char *, char *, size_t, size_t *);
@@ -127,14 +127,14 @@ int main(int, char **);
 /* reading all valid nodes in version order reconstructs the file. */
 
 /*
-  b       - buffer
-  bsize   - buffer size
-  rsize   - result size
-  n       - node
-*/
+   b       - buffer
+   bsize   - buffer size
+   rsize   - result size
+   n       - node
+ */
 
 void putblock(char *b, size_t bsize, size_t * rsize,
-			  struct jffs2_raw_inode *n)
+		struct jffs2_raw_inode *n)
 {
 	uLongf dlen = n->dsize;
 
@@ -147,26 +147,26 @@ void putblock(char *b, size_t bsize, size_t * rsize,
 		bzero(b + *rsize, n->isize - *rsize);
 
 	switch (n->compr) {
-	case JFFS2_COMPR_ZLIB:
-		uncompress((Bytef *) b + n->offset, &dlen,
-				   (Bytef *) ((char *) n) + sizeof(struct jffs2_raw_inode),
-				   (uLongf) n->csize);
-		break;
+		case JFFS2_COMPR_ZLIB:
+			uncompress((Bytef *) b + n->offset, &dlen,
+					(Bytef *) ((char *) n) + sizeof(struct jffs2_raw_inode),
+					(uLongf) n->csize);
+			break;
 
-	case JFFS2_COMPR_NONE:
-		memcpy(b + n->offset,
-			   ((char *) n) + sizeof(struct jffs2_raw_inode), dlen);
-		break;
+		case JFFS2_COMPR_NONE:
+			memcpy(b + n->offset,
+					((char *) n) + sizeof(struct jffs2_raw_inode), dlen);
+			break;
 
-	case JFFS2_COMPR_ZERO:
-		bzero(b + n->offset, dlen);
-		break;
+		case JFFS2_COMPR_ZERO:
+			bzero(b + n->offset, dlen);
+			break;
 
-		/* [DYN]RUBIN support required! */
+			/* [DYN]RUBIN support required! */
 
-	default:
-		fprintf(stderr, "Unsupported compression method!\n");
-		exit(EXIT_FAILURE);
+		default:
+			fprintf(stderr, "Unsupported compression method!\n");
+			exit(EXIT_FAILURE);
 	}
 
 	*rsize = n->isize;
@@ -176,11 +176,11 @@ void putblock(char *b, size_t bsize, size_t * rsize,
 /* reading all valid nodes in version order reconstructs the directory. */
 
 /*
-  dd      - directory struct being processed
-  n       - node
+   dd      - directory struct being processed
+   n       - node
 
-  return value: directory struct value replacing dd
-*/
+   return value: directory struct value replacing dd
+ */
 
 struct dir *putdir(struct dir *dd, struct jffs2_raw_dirent *n)
 {
@@ -202,7 +202,7 @@ struct dir *putdir(struct dir *dd, struct jffs2_raw_dirent *n)
 
 		while (1) {
 			if (n->nsize == dd->nsize &&
-				!memcmp(n->name, dd->name, n->nsize)) {
+					!memcmp(n->name, dd->name, n->nsize)) {
 				dd->type = n->type;
 				dd->ino = n->ino;
 
@@ -240,7 +240,7 @@ struct dir *putdir(struct dir *dd, struct jffs2_raw_dirent *n)
 				return o;
 
 			if (n->nsize == dd->nsize &&
-				!memcmp(n->name, dd->name, n->nsize)) {
+					!memcmp(n->name, dd->name, n->nsize)) {
 				p->next = dd->next;
 				free(dd);
 
@@ -296,8 +296,8 @@ const char *mode_string(int mode)
 /* prints contents of directory structure */
 
 /*
-  d       - dir struct
-*/
+   d       - dir struct
+ */
 
 void printdir(char *o, size_t size, struct dir *d, char *path, int recurse)
 {
@@ -313,36 +313,36 @@ void printdir(char *o, size_t size, struct dir *d, char *path, int recurse)
 
 	while (d != NULL) {
 		switch (d->type) {
-		case DT_REG:
-			m = ' ';
-			break;
+			case DT_REG:
+				m = ' ';
+				break;
 
-		case DT_FIFO:
-			m = '|';
-			break;
+			case DT_FIFO:
+				m = '|';
+				break;
 
-		case DT_CHR:
-			m = ' ';
-			break;
+			case DT_CHR:
+				m = ' ';
+				break;
 
-		case DT_BLK:
-			m = ' ';
-			break;
+			case DT_BLK:
+				m = ' ';
+				break;
 
-		case DT_DIR:
-			m = '/';
-			break;
+			case DT_DIR:
+				m = '/';
+				break;
 
-		case DT_LNK:
-			m = ' ';
-			break;
+			case DT_LNK:
+				m = ' ';
+				break;
 
-		case DT_SOCK:
-			m = '=';
-			break;
+			case DT_SOCK:
+				m = '=';
+				break;
 
-		default:
-			m = '?';
+			default:
+				m = '?';
 		}
 		ri = find_raw_inode(o, size, d->ino);
 		if (!ri) {
@@ -354,7 +354,7 @@ void printdir(char *o, size_t size, struct dir *d, char *path, int recurse)
 		filetime = ctime((const time_t *) &(ri->ctime));
 		age = time(NULL) - ri->ctime;
 		printf("%s %-4d %-8d %-8d ", mode_string(ri->mode),
-			   1, ri->uid, ri->gid);
+				1, ri->uid, ri->gid);
 		if ( d->type==DT_BLK || d->type==DT_CHR ) {
 			dev_t rdev;
 			size_t devsize;
@@ -398,8 +398,8 @@ void printdir(char *o, size_t size, struct dir *d, char *path, int recurse)
 /* frees memory used by directory structure */
 
 /*
-  d       - dir struct
-*/
+   d       - dir struct
+ */
 
 void freedir(struct dir *d)
 {
@@ -415,16 +415,16 @@ void freedir(struct dir *d)
 /* collects directory/file nodes in version order. */
 
 /*
-  f       - file flag.
-            if zero, collect file, compare ino to inode
-            otherwise, collect directory, compare ino to parent inode
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  ino     - inode to compare against. see f.
+   f       - file flag.
+   if zero, collect file, compare ino to inode
+   otherwise, collect directory, compare ino to parent inode
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   ino     - inode to compare against. see f.
 
-  return value: a jffs2_raw_inode that corresponds the the specified
-    inode, or NULL
-*/
+   return value: a jffs2_raw_inode that corresponds the the specified
+   inode, or NULL
+ */
 
 struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
 {
@@ -452,7 +452,7 @@ struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
 
 		if (n < e && n->u.magic == JFFS2_MAGIC_BITMASK) {
 			if (n->u.nodetype == JFFS2_NODETYPE_INODE &&
-				n->i.ino == ino && (v = n->i.version) > vcur) {
+					n->i.ino == ino && (v = n->i.version) > vcur) {
 				/* XXX crc check */
 
 				if (vmaxt < v)
@@ -486,13 +486,13 @@ struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
 /* collects dir struct for selected inode */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  pino    - inode of the specified directory
-  d       - input directory structure
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   pino    - inode of the specified directory
+   d       - input directory structure
 
-  return value: result directory structure, replaces d.
-*/
+   return value: result directory structure, replaces d.
+ */
 
 struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
 {
@@ -553,7 +553,7 @@ struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
 
 				lr = n =
 					(union jffs2_node_union *) (((char *) mp) +
-												((mp->u.totlen + 3) & ~3));
+							((mp->u.totlen + 3) & ~3));
 
 				vcur = vmin;
 			}
@@ -568,23 +568,23 @@ struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
 /* resolve dirent based on criteria */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  ino     - if zero, ignore,
-            otherwise compare against dirent inode
-  pino    - if zero, ingore,
-            otherwise compare against parent inode
-            and use name and nsize as extra criteria
-  name    - name of wanted dirent, used if pino!=0
-  nsize   - length of name of wanted dirent, used if pino!=0
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   ino     - if zero, ignore,
+   otherwise compare against dirent inode
+   pino    - if zero, ingore,
+   otherwise compare against parent inode
+   and use name and nsize as extra criteria
+   name    - name of wanted dirent, used if pino!=0
+   nsize   - length of name of wanted dirent, used if pino!=0
 
-  return value: pointer to relevant dirent structure in
-                filesystem image or NULL
-*/
+   return value: pointer to relevant dirent structure in
+   filesystem image or NULL
+ */
 
 struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
-									   uint32_t ino, uint32_t pino,
-									   char *name, uint8_t nsize)
+		uint32_t ino, uint32_t pino,
+		char *name, uint8_t nsize)
 {
 	/* aligned! */
 	union jffs2_node_union *n;
@@ -607,11 +607,11 @@ struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
 
 		if (n < e && n->u.magic == JFFS2_MAGIC_BITMASK) {
 			if (n->u.nodetype == JFFS2_NODETYPE_DIRENT &&
-				(!ino || n->d.ino == ino) &&
-				(v = n->d.version) > vmax &&
-				(!pino || (n->d.pino == pino &&
-						   nsize == n->d.nsize &&
-						   !memcmp(name, n->d.name, nsize)))) {
+					(!ino || n->d.ino == ino) &&
+					(v = n->d.version) > vmax &&
+					(!pino || (n->d.pino == pino &&
+							   nsize == n->d.nsize &&
+							   !memcmp(name, n->d.name, nsize)))) {
 				/* XXX crc check */
 
 				if (vmax < v) {
@@ -629,18 +629,18 @@ struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
 /* resolve name under certain parent inode to dirent */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  pino    - requested parent inode
-  name    - name of wanted dirent
-  nsize   - length of name of wanted dirent
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   pino    - requested parent inode
+   name    - name of wanted dirent
+   nsize   - length of name of wanted dirent
 
-  return value: pointer to relevant dirent structure in
-                filesystem image or NULL
-*/
+   return value: pointer to relevant dirent structure in
+   filesystem image or NULL
+ */
 
 struct jffs2_raw_dirent *resolvename(char *o, size_t size, uint32_t pino,
-									 char *name, uint8_t nsize)
+		char *name, uint8_t nsize)
 {
 	return resolvedirent(o, size, 0, pino, name, nsize);
 }
@@ -648,13 +648,13 @@ struct jffs2_raw_dirent *resolvename(char *o, size_t size, uint32_t pino,
 /* resolve inode to dirent */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  ino     - compare against dirent inode
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   ino     - compare against dirent inode
 
-  return value: pointer to relevant dirent structure in
-                filesystem image or NULL
-*/
+   return value: pointer to relevant dirent structure in
+   filesystem image or NULL
+ */
 
 struct jffs2_raw_dirent *resolveinode(char *o, size_t size, uint32_t ino)
 {
@@ -664,23 +664,23 @@ struct jffs2_raw_dirent *resolveinode(char *o, size_t size, uint32_t ino)
 /* resolve slash-style path into dirent and inode.
    slash as first byte marks absolute path (root=inode 1).
    . and .. are resolved properly, and symlinks are followed.
-*/
+ */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  ino     - root inode, used if path is relative
-  p       - path to be resolved
-  inos    - result inode, zero if failure
-  recc    - recursion count, to detect symlink loops
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   ino     - root inode, used if path is relative
+   p       - path to be resolved
+   inos    - result inode, zero if failure
+   recc    - recursion count, to detect symlink loops
 
-  return value: pointer to dirent struct in file system image.
-                note that root directory doesn't have dirent struct
-                (return value is NULL), but it has inode (*inos=1)
-*/
+   return value: pointer to dirent struct in file system image.
+   note that root directory doesn't have dirent struct
+   (return value is NULL), but it has inode (*inos=1)
+ */
 
 struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
-									  char *p, uint32_t * inos, int recc)
+		char *p, uint32_t * inos, int recc)
 {
 	struct jffs2_raw_dirent *dir = NULL;
 
@@ -739,8 +739,8 @@ struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
 		dir = resolvename(o, size, ino, path, (uint8_t) strlen(path));
 
 		if (DIRENT_INO(dir) == 0 ||
-			(next != NULL &&
-			 !(dir->type == DT_DIR || dir->type == DT_LNK))) {
+				(next != NULL &&
+				 !(dir->type == DT_DIR || dir->type == DT_LNK))) {
 			free(pp);
 
 			*inos = 0;
@@ -760,7 +760,7 @@ struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
 			dir = resolvepath0(o, size, tino, symbuf, &ino, ++recc);
 
 			if (dir != NULL && next != NULL &&
-				!(dir->type == DT_DIR || dir->type == DT_LNK)) {
+					!(dir->type == DT_DIR || dir->type == DT_LNK)) {
 				free(pp);
 
 				*inos = 0;
@@ -781,22 +781,22 @@ struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
 /* resolve slash-style path into dirent and inode.
    slash as first byte marks absolute path (root=inode 1).
    . and .. are resolved properly, and symlinks are followed.
-*/
+ */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  ino     - root inode, used if path is relative
-  p       - path to be resolved
-  inos    - result inode, zero if failure
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   ino     - root inode, used if path is relative
+   p       - path to be resolved
+   inos    - result inode, zero if failure
 
-  return value: pointer to dirent struct in file system image.
-                note that root directory doesn't have dirent struct
-                (return value is NULL), but it has inode (*inos=1)
-*/
+   return value: pointer to dirent struct in file system image.
+   note that root directory doesn't have dirent struct
+   (return value is NULL), but it has inode (*inos=1)
+ */
 
 struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
-									 char *p, uint32_t * inos)
+		char *p, uint32_t * inos)
 {
 	return resolvepath0(o, size, ino, p, inos, 0);
 }
@@ -804,10 +804,10 @@ struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
 /* lists files on directory specified by path */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  p       - path to be resolved
-*/
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   p       - path to be resolved
+ */
 
 void lsdir(char *o, size_t size, char *path, int recurse)
 {
@@ -819,7 +819,7 @@ void lsdir(char *o, size_t size, char *path, int recurse)
 	dd = resolvepath(o, size, 1, path, &ino);
 
 	if (ino == 0 ||
-		(dd == NULL && ino == 0) || (dd != NULL && dd->type != DT_DIR)) {
+			(dd == NULL && ino == 0) || (dd != NULL && dd->type != DT_DIR)) {
 		fprintf(stderr, "jffs2reader: %s: No such file or directory\n",
 				path);
 		exit(EXIT_FAILURE);
@@ -833,16 +833,16 @@ void lsdir(char *o, size_t size, char *path, int recurse)
 /* writes file specified by path to the buffer */
 
 /*
-  o       - filesystem image pointer
-  size    - size of filesystem image
-  p       - path to be resolved
-  b       - file buffer
-  bsize   - file buffer size
-  rsize   - file result size
-*/
+   o       - filesystem image pointer
+   size    - size of filesystem image
+   p       - path to be resolved
+   b       - file buffer
+   bsize   - file buffer size
+   rsize   - file result size
+ */
 
 void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
-			 size_t * rsize)
+		size_t * rsize)
 {
 	struct jffs2_raw_dirent *dd;
 	struct jffs2_raw_inode *ri;
@@ -880,19 +880,19 @@ int main(int argc, char **argv)
 
 	while ((opt = getopt(argc, argv, "rd:f:")) > 0) {
 		switch (opt) {
-		case 'd':
-			dir = optarg;
-			break;
-		case 'f':
-			file = optarg;
-			break;
-		case 'r':
-			recurse++;
-			break;
-		default:
-			fprintf(stderr,
-					"Usage: jffs2reader <image> [-d|-f] < path > \n");
-			exit(EXIT_FAILURE);
+			case 'd':
+				dir = optarg;
+				break;
+			case 'f':
+				file = optarg;
+				break;
+			case 'r':
+				recurse++;
+				break;
+			default:
+				fprintf(stderr,
+						"Usage: jffs2reader <image> [-d|-f] < path > \n");
+				exit(EXIT_FAILURE);
 		}
 	}
 

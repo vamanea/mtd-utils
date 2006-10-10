@@ -44,17 +44,17 @@
 
 #define min(x,y) ((x)<(y)?(x):(y))
 
-	/* Plan: call deflate() with avail_in == *sourcelen,
-		avail_out = *dstlen - 12 and flush == Z_FINISH.
-		If it doesn't manage to finish,	call it again with
-		avail_in == 0 and avail_out set to the remaining 12
-		bytes for it to clean up.
-	   Q: Is 12 bytes sufficient?
-	*/
+/* Plan: call deflate() with avail_in == *sourcelen,
+   avail_out = *dstlen - 12 and flush == Z_FINISH.
+   If it doesn't manage to finish,	call it again with
+   avail_in == 0 and avail_out set to the remaining 12
+   bytes for it to clean up.
+Q: Is 12 bytes sufficient?
+ */
 #define STREAM_END_SPACE 12
 
 int jffs2_zlib_compress(unsigned char *data_in, unsigned char *cpage_out,
-		   uint32_t *sourcelen, uint32_t *dstlen, void *model)
+		uint32_t *sourcelen, uint32_t *dstlen, void *model)
 {
 	z_stream strm;
 	int ret;
@@ -102,7 +102,7 @@ int jffs2_zlib_compress(unsigned char *data_in, unsigned char *cpage_out,
 }
 
 int jffs2_zlib_decompress(unsigned char *data_in, unsigned char *cpage_out,
-		      uint32_t srclen, uint32_t destlen, void *model)
+		uint32_t srclen, uint32_t destlen, void *model)
 {
 	z_stream strm;
 	int ret;
@@ -125,24 +125,24 @@ int jffs2_zlib_decompress(unsigned char *data_in, unsigned char *cpage_out,
 		;
 
 	inflateEnd(&strm);
-        return 0;
+	return 0;
 }
 
 static struct jffs2_compressor jffs2_zlib_comp = {
-    .priority = JFFS2_ZLIB_PRIORITY,
-    .name = "zlib",
-    .disabled = 0,
-    .compr = JFFS2_COMPR_ZLIB,
-    .compress = &jffs2_zlib_compress,
-    .decompress = &jffs2_zlib_decompress,
+	.priority = JFFS2_ZLIB_PRIORITY,
+	.name = "zlib",
+	.disabled = 0,
+	.compr = JFFS2_COMPR_ZLIB,
+	.compress = &jffs2_zlib_compress,
+	.decompress = &jffs2_zlib_decompress,
 };
 
 int jffs2_zlib_init(void)
 {
-    return jffs2_register_compressor(&jffs2_zlib_comp);
+	return jffs2_register_compressor(&jffs2_zlib_comp);
 }
 
 void jffs2_zlib_exit(void)
 {
-    jffs2_unregister_compressor(&jffs2_zlib_comp);
+	jffs2_unregister_compressor(&jffs2_zlib_comp);
 }

@@ -75,35 +75,35 @@ struct nand_oobinfo autoplace_oobinfo = {
 void display_help (void)
 {
 	printf("Usage: nandwrite [OPTION] MTD_DEVICE INPUTFILE\n"
-	       "Writes to the specified MTD device.\n"
-	       "\n"
-	       "  -a, --autoplace	Use auto oob layout\n"
-	       "  -j, --jffs2		force jffs2 oob layout (legacy support)\n"
-	       "  -y, --yaffs		force yaffs oob layout (legacy support)\n"
-	       "  -f, --forcelegacy     force legacy support on autoplacement enabled mtd device\n"
-	       "  -n, --noecc		write without ecc\n"
-	       "  -o, --oob		image contains oob data\n"
-	       "  -s addr, --start=addr set start address (default is 0)\n"
-	       "  -p, --pad             pad to page size\n"
-	       "  -b, --blockalign=1|2|4 set multiple of eraseblocks to align to\n"
-	       "  -q, --quiet		don't display progress messages\n"
-	       "      --help		display this help and exit\n"
-	       "      --version		output version information and exit\n");
+			"Writes to the specified MTD device.\n"
+			"\n"
+			"  -a, --autoplace	Use auto oob layout\n"
+			"  -j, --jffs2		force jffs2 oob layout (legacy support)\n"
+			"  -y, --yaffs		force yaffs oob layout (legacy support)\n"
+			"  -f, --forcelegacy     force legacy support on autoplacement enabled mtd device\n"
+			"  -n, --noecc		write without ecc\n"
+			"  -o, --oob		image contains oob data\n"
+			"  -s addr, --start=addr set start address (default is 0)\n"
+			"  -p, --pad             pad to page size\n"
+			"  -b, --blockalign=1|2|4 set multiple of eraseblocks to align to\n"
+			"  -q, --quiet		don't display progress messages\n"
+			"      --help		display this help and exit\n"
+			"      --version		output version information and exit\n");
 	exit(0);
 }
 
 void display_version (void)
 {
 	printf(PROGRAM " " VERSION "\n"
-	       "\n"
-	       "Copyright (C) 2003 Thomas Gleixner \n"
-	       "\n"
-	       PROGRAM " comes with NO WARRANTY\n"
-	       "to the extent permitted by law.\n"
-	       "\n"
-	       "You may redistribute copies of " PROGRAM "\n"
-	       "under the terms of the GNU General Public Licence.\n"
-	       "See the file `COPYING' for more information.\n");
+			"\n"
+			"Copyright (C) 2003 Thomas Gleixner \n"
+			"\n"
+			PROGRAM " comes with NO WARRANTY\n"
+			"to the extent permitted by law.\n"
+			"\n"
+			"You may redistribute copies of " PROGRAM "\n"
+			"under the terms of the GNU General Public Licence.\n"
+			"See the file `COPYING' for more information.\n");
 	exit(0);
 }
 
@@ -143,55 +143,55 @@ void process_options (int argc, char *argv[])
 		};
 
 		int c = getopt_long(argc, argv, short_options,
-				    long_options, &option_index);
+				long_options, &option_index);
 		if (c == EOF) {
 			break;
 		}
 
 		switch (c) {
-		case 0:
-			switch (option_index) {
 			case 0:
-				display_help();
+				switch (option_index) {
+					case 0:
+						display_help();
+						break;
+					case 1:
+						display_version();
+						break;
+				}
 				break;
-			case 1:
-				display_version();
+			case 'q':
+				quiet = 1;
 				break;
-			}
-			break;
-		case 'q':
-			quiet = 1;
-			break;
-		case 'a':
-			autoplace = 1;
-			break;
-		case 'j':
-			forcejffs2 = 1;
-			break;
-		case 'y':
-			forceyaffs = 1;
-			break;
-		case 'f':
-			forcelegacy = 1;
-			break;
-		case 'n':
-			noecc = 1;
-			break;
-		case 'o':
-			writeoob = 1;
-			break;
-		case 'p':
-			pad = 1;
-			break;
-		case 's':
-			mtdoffset = strtol (optarg, NULL, 0);
-			break;
-		case 'b':
-			blockalign = atoi (optarg);
-			break;
-		case '?':
-			error = 1;
-			break;
+			case 'a':
+				autoplace = 1;
+				break;
+			case 'j':
+				forcejffs2 = 1;
+				break;
+			case 'y':
+				forceyaffs = 1;
+				break;
+			case 'f':
+				forcelegacy = 1;
+				break;
+			case 'n':
+				noecc = 1;
+				break;
+			case 'o':
+				writeoob = 1;
+				break;
+			case 'p':
+				pad = 1;
+				break;
+			case 's':
+				mtdoffset = strtol (optarg, NULL, 0);
+				break;
+			case 'b':
+				blockalign = atoi (optarg);
+				break;
+			case '?':
+				error = 1;
+				break;
 		}
 	}
 
@@ -243,8 +243,8 @@ int main(int argc, char **argv)
 
 	/* Make sure device page sizes are valid */
 	if (!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
-	    !(meminfo.oobsize == 8 && meminfo.writesize == 256) &&
-	    !(meminfo.oobsize == 64 && meminfo.writesize == 2048)) {
+			!(meminfo.oobsize == 8 && meminfo.writesize == 256) &&
+			!(meminfo.oobsize == 64 && meminfo.writesize == 2048)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
 		exit(1);
@@ -273,27 +273,27 @@ int main(int argc, char **argv)
 	if (noecc)  {
 		switch (ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW)) {
 
-		case -ENOTTY:
-			if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-				perror ("MEMGETOOBSEL");
-				close (fd);
-				exit (1);
-			}
-			if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-				perror ("MEMSETOOBSEL");
-				close (fd);
-				exit (1);
-			}
-			oobinfochanged = 1;
-			break;
+			case -ENOTTY:
+				if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+					perror ("MEMGETOOBSEL");
+					close (fd);
+					exit (1);
+				}
+				if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
+					perror ("MEMSETOOBSEL");
+					close (fd);
+					exit (1);
+				}
+				oobinfochanged = 1;
+				break;
 
-		case 0:
-			oobinfochanged = 2;
-			break;
-		default:
-			perror ("MTDFILEMODE");
-			close (fd);
-			exit (1);
+			case 0:
+				oobinfochanged = 2;
+				break;
+			default:
+				perror ("MTDFILEMODE");
+				close (fd);
+				exit (1);
 		}
 	}
 
@@ -381,8 +381,8 @@ int main(int argc, char **argv)
 					baderaseblock = 1;
 					if (!quiet)
 						fprintf (stderr, "Bad block at %x, %u block(s) "
-							 "from %x will be skipped\n",
-							 (int) offs, blockalign, blockstart);
+								"from %x will be skipped\n",
+								(int) offs, blockalign, blockstart);
 				}
 
 				if (baderaseblock) {
@@ -429,16 +429,16 @@ int main(int argc, char **argv)
 						start = old_oobinfo.oobfree[i][0];
 						len = old_oobinfo.oobfree[i][1];
 						memcpy(oobbuf + start,
-							oobreadbuf + start,
-							len);
+								oobreadbuf + start,
+								len);
 					}
 				} else {
 					/* Set at least the ecc byte positions to 0xff */
 					start = old_oobinfo.eccbytes;
 					len = meminfo.oobsize - start;
 					memcpy(oobbuf + start,
-						oobreadbuf + start,
-						len);
+							oobreadbuf + start,
+							len);
 				}
 			}
 			/* Write OOB data first, as ecc will be placed in there*/
@@ -459,10 +459,10 @@ int main(int argc, char **argv)
 		mtdoffset += meminfo.writesize;
 	}
 
- closeall:
+closeall:
 	close(ifd);
 
- restoreoob:
+restoreoob:
 	if (oobinfochanged == 1) {
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
 			perror ("MEMSETOOBSEL");

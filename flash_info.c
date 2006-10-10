@@ -1,6 +1,6 @@
 /*
  * flash_info.c -- print info about a MTD device
-*/
+ */
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -41,13 +41,13 @@ int main(int argc,char *argv[])
 			if(ioctl(Fd, MEMGETREGIONINFO, &reginfo) == 0)
 			{
 				printf("Region %d is at 0x%x with size 0x%x and "
-				       "has 0x%x blocks\n", i, reginfo.offset,
-				       reginfo.erasesize, reginfo.numblocks);
+						"has 0x%x blocks\n", i, reginfo.offset,
+						reginfo.erasesize, reginfo.numblocks);
 			}
 			else
 			{
 				printf("Strange can not read region %d from a %d region device\n",
-				       i, regcount);
+						i, regcount);
 			}
 		}
 	}

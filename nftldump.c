@@ -88,13 +88,13 @@ static unsigned int find_media_headers(void)
 			if (NumMedHeads == 0) {
 				printf("NFTL Media Header found at offset 0x%08lx:\n", ofs);
 				printf("NumEraseUnits:    %d\n",
-				       MedHead[NumMedHeads].NumEraseUnits);
+						MedHead[NumMedHeads].NumEraseUnits);
 				printf("FirstPhysicalEUN: %d\n",
-				       MedHead[NumMedHeads].FirstPhysicalEUN);
+						MedHead[NumMedHeads].FirstPhysicalEUN);
 				printf("Formatted Size:   %d\n",
-				       MedHead[NumMedHeads].FormattedSize);
+						MedHead[NumMedHeads].FormattedSize);
 				printf("UnitSizeFactor:   0x%x\n",
-				       MedHead[NumMedHeads].UnitSizeFactor);
+						MedHead[NumMedHeads].UnitSizeFactor);
 
 				/* read BadUnitTable, I don't know why pread() does not work for
 				   larger (7680 bytes) chunks */
@@ -109,7 +109,7 @@ static unsigned int find_media_headers(void)
 		if (NumMedHeads == 2) {
 			if (strncmp((char *)&MedHead[0], (char *)&MedHead[1], sizeof(struct NFTLMediaHeader)) != 0) {
 				printf("warning: NFTL Media Header is not consistent with "
-				       "Spare NFTL Media Header\n");
+						"Spare NFTL Media Header\n");
 			}
 			break;
 		}
@@ -126,7 +126,7 @@ static void dump_erase_units(void)
 	unsigned long ofs;
 
 	for (i = MedHead[0].FirstPhysicalEUN; i < MedHead[0].FirstPhysicalEUN +
-		     MedHead[0].NumEraseUnits; i++) {
+			MedHead[0].NumEraseUnits; i++) {
 		/* For each Erase Unit */
 		ofs = i * meminfo.erasesize;
 
@@ -135,12 +135,12 @@ static void dump_erase_units(void)
 			oob.start = ofs + (j * 512);
 			if (ioctl(fd, MEMREADOOB, &oob))
 				printf("MEMREADOOB at %lx: %s\n",
-				       (unsigned long) oob.start, strerror(errno));
+						(unsigned long) oob.start, strerror(errno));
 			memcpy(&UCItable[i][j], &oobbuf.u, 8);
 		}
 		if (UCItable[i][1].b.EraseMark != cpu_to_le16(0x3c69)) {
 			printf("EraseMark not present in unit %d: %x\n",
-			       i, UCItable[i][1].b.EraseMark);
+					i, UCItable[i][1].b.EraseMark);
 		} else {
 			/* a properly formatted unit */
 			SWAP16(UCItable[i][0].a.VirtUnitNum);
@@ -157,21 +157,21 @@ static void dump_erase_units(void)
 				/* If this is the first in a chain, store the EUN in the VUC table */
 				if (VUCtable[UCItable[i][0].a.VirtUnitNum & 0x7fff]) {
 					printf("Duplicate start of chain for VUC %d: "
-					       "Unit %d replaces Unit %d\n",
-					       UCItable[i][0].a.VirtUnitNum & 0x7fff,
-					       i, VUCtable[UCItable[i][0].a.VirtUnitNum & 0x7fff]);
+							"Unit %d replaces Unit %d\n",
+							UCItable[i][0].a.VirtUnitNum & 0x7fff,
+							i, VUCtable[UCItable[i][0].a.VirtUnitNum & 0x7fff]);
 				}
 				VUCtable[UCItable[i][0].a.VirtUnitNum & 0x7fff] = i;
 			}
 		}
 
 		switch (BadUnitTable[i]) {
-		case ZONE_BAD_ORIGINAL:
-			printf("Unit %d is marked as ZONE_BAD_ORIGINAL\n", i);
-			continue;
-		case ZONE_BAD_MARKED:
-			printf("Unit %d is marked as ZONE_BAD_MARKED\n", i);
-			continue;
+			case ZONE_BAD_ORIGINAL:
+				printf("Unit %d is marked as ZONE_BAD_ORIGINAL\n", i);
+				continue;
+			case ZONE_BAD_MARKED:
+				printf("Unit %d is marked as ZONE_BAD_MARKED\n", i);
+				continue;
 		}
 
 		/* ZONE_GOOD */
@@ -179,8 +179,8 @@ static void dump_erase_units(void)
 			printf("Unit %d is free\n", i);
 		else
 			printf("Unit %d is in chain %d and %s a replacement\n", i,
-			       UCItable[i][0].a.VirtUnitNum & 0x7fff,
-			       UCItable[i][0].a.VirtUnitNum & 0x8000 ? "is" : "is not");
+					UCItable[i][0].a.VirtUnitNum & 0x7fff,
+					UCItable[i][0].a.VirtUnitNum & 0x8000 ? "is" : "is not");
 	}
 }
 
@@ -189,7 +189,7 @@ static void dump_virtual_units(void)
 	int i, j;
 	char readbuf[512];
 
-    	for (i = 0; i < (MedHead[0].FormattedSize / meminfo.erasesize); i++) {
+	for (i = 0; i < (MedHead[0].FormattedSize / meminfo.erasesize); i++) {
 		unsigned short curEUN = VUCtable[i];
 
 		printf("Virtual Unit #%d: ", i);
@@ -220,15 +220,15 @@ static void dump_virtual_units(void)
 					status = oobbuf.b.Status | oobbuf.b.Status1;
 
 					switch (status) {
-					case SECTOR_FREE:
-						/* This is still free. Don't look any more */
-						thisEUN = 0;
-						break;
+						case SECTOR_FREE:
+							/* This is still free. Don't look any more */
+							thisEUN = 0;
+							break;
 
-					case SECTOR_USED:
-						/* SECTOR_USED. This is a good one. */
-						lastgoodEUN = thisEUN;
-						break;
+						case SECTOR_USED:
+							/* SECTOR_USED. This is a good one. */
+							lastgoodEUN = thisEUN;
+							break;
 					}
 
 					/* Find the next erase unit in this chain, if any */
@@ -240,7 +240,7 @@ static void dump_virtual_units(void)
 					memset(readbuf, 0, 512);
 				else
 					pread(fd, readbuf, 512,
-					      (lastgoodEUN * ERASESIZE) + (j * 512));
+							(lastgoodEUN * ERASESIZE) + (j * 512));
 
 				write(ofd, readbuf, 512);
 			}

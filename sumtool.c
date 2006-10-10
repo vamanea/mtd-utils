@@ -91,27 +91,27 @@ static struct option long_options[] = {
 };
 
 static char *helptext =
-	"Usage: sumtool [OPTIONS] -i inputfile -o outputfile\n\n"
-	"Convert the input JFFS2 image to a summarized JFFS2 image\n"
-	"Summary makes mounting faster - if summary support enabled in your kernel\n\n"
-	"Options:\n"
-	"  -e, --eraseblock=SIZE     Use erase block size SIZE (default: 64KiB)\n"
-	"                            (usually 16KiB on NAND)\n"
-	"  -c, --cleanmarker=SIZE    Size of cleanmarker (default 12).\n"
-	"                            (usually 16 bytes on NAND, and will be set to\n"
-	"                            this value if left at the default 12). Will be\n"
-	"                            stored in OOB after each physical page composing\n"
-	"                            a physical eraseblock.\n"
-	"  -n, --no-cleanmarkers     Don't add a cleanmarker to every eraseblock\n"
-	"  -o, --output=FILE         Output to FILE \n"
-	"  -i, --input=FILE          Input from FILE \n"
-	"  -b, --bigendian           Image is big endian\n"
-	"  -l  --littleendian        Image is little endian\n"
-	"  -h, --help                Display this help text\n"
-	"  -v, --verbose             Verbose operation\n"
-	"  -V, --version             Display version information\n"
-	"  -p, --pad                 Pad the OUTPUT with 0xFF to the end of the final\n"
-	"                            eraseblock\n\n";
+"Usage: sumtool [OPTIONS] -i inputfile -o outputfile\n\n"
+"Convert the input JFFS2 image to a summarized JFFS2 image\n"
+"Summary makes mounting faster - if summary support enabled in your kernel\n\n"
+"Options:\n"
+"  -e, --eraseblock=SIZE     Use erase block size SIZE (default: 64KiB)\n"
+"                            (usually 16KiB on NAND)\n"
+"  -c, --cleanmarker=SIZE    Size of cleanmarker (default 12).\n"
+"                            (usually 16 bytes on NAND, and will be set to\n"
+"                            this value if left at the default 12). Will be\n"
+"                            stored in OOB after each physical page composing\n"
+"                            a physical eraseblock.\n"
+"  -n, --no-cleanmarkers     Don't add a cleanmarker to every eraseblock\n"
+"  -o, --output=FILE         Output to FILE \n"
+"  -i, --input=FILE          Input from FILE \n"
+"  -b, --bigendian           Image is big endian\n"
+"  -l  --littleendian        Image is little endian\n"
+"  -h, --help                Display this help text\n"
+"  -v, --verbose             Verbose operation\n"
+"  -V, --version             Display version information\n"
+"  -p, --pad                 Pad the OUTPUT with 0xFF to the end of the final\n"
+"                            eraseblock\n\n";
 
 
 static char *revtext = "$Revision: 1.9 $";
@@ -212,58 +212,58 @@ void process_options (int argc, char **argv)
 						(int) strlen(revtext) - 13, revtext + 11);
 
 			case 'e': {
-				char *next;
-				unsigned units = 0;
-				erase_block_size = strtol(optarg, &next, 0);
-				if (!erase_block_size)
-					error_msg_and_die("Unrecognisable erase size\n");
+						  char *next;
+						  unsigned units = 0;
+						  erase_block_size = strtol(optarg, &next, 0);
+						  if (!erase_block_size)
+							  error_msg_and_die("Unrecognisable erase size\n");
 
-				if (*next) {
-					if (!strcmp(next, "KiB")) {
-						units = 1024;
-					} else if (!strcmp(next, "MiB")) {
-						units = 1024 * 1024;
-					} else {
-						error_msg_and_die("Unknown units in erasesize\n");
-					}
-				} else {
-					if (erase_block_size < 0x1000)
-						units = 1024;
-					else
-						units = 1;
-				}
-				erase_block_size *= units;
+						  if (*next) {
+							  if (!strcmp(next, "KiB")) {
+								  units = 1024;
+							  } else if (!strcmp(next, "MiB")) {
+								  units = 1024 * 1024;
+							  } else {
+								  error_msg_and_die("Unknown units in erasesize\n");
+							  }
+						  } else {
+							  if (erase_block_size < 0x1000)
+								  units = 1024;
+							  else
+								  units = 1;
+						  }
+						  erase_block_size *= units;
 
-				/* If it's less than 8KiB, they're not allowed */
-				if (erase_block_size < 0x2000) {
-					fprintf(stderr, "Erase size 0x%x too small. Increasing to 8KiB minimum\n",
-						erase_block_size);
-					erase_block_size = 0x2000;
-				}
-				break;
-			}
+						  /* If it's less than 8KiB, they're not allowed */
+						  if (erase_block_size < 0x2000) {
+							  fprintf(stderr, "Erase size 0x%x too small. Increasing to 8KiB minimum\n",
+									  erase_block_size);
+							  erase_block_size = 0x2000;
+						  }
+						  break;
+					  }
 
 			case 'n':
-				add_cleanmarkers = 0;
-				break;
+					  add_cleanmarkers = 0;
+					  break;
 			case 'c':
-				cleanmarker_size = strtol(optarg, NULL, 0);
+					  cleanmarker_size = strtol(optarg, NULL, 0);
 
-				if (cleanmarker_size < sizeof(cleanmarker)) {
-					error_msg_and_die("cleanmarker size must be >= 12");
-				}
-				if (cleanmarker_size >= erase_block_size) {
-					error_msg_and_die("cleanmarker size must be < eraseblock size");
-				}
+					  if (cleanmarker_size < sizeof(cleanmarker)) {
+						  error_msg_and_die("cleanmarker size must be >= 12");
+					  }
+					  if (cleanmarker_size >= erase_block_size) {
+						  error_msg_and_die("cleanmarker size must be < eraseblock size");
+					  }
 
-				use_input_cleanmarker_size = 0;
-				found_cleanmarkers = 1;
-				setup_cleanmarker();
+					  use_input_cleanmarker_size = 0;
+					  found_cleanmarkers = 1;
+					  setup_cleanmarker();
 
-				break;
+					  break;
 			case 'p':
-				padto = 1;
-				break;
+					  padto = 1;
+					  break;
 		}
 	}
 }
@@ -412,63 +412,63 @@ void dump_sum_records()
 		switch(je16_to_cpu(sum_collected->sum_list_head->u.nodetype)) {
 
 			case JFFS2_NODETYPE_INODE : {
-				struct jffs2_sum_inode_flash *sino_ptr = wpage;
+											struct jffs2_sum_inode_flash *sino_ptr = wpage;
 
-				sino_ptr->nodetype = sum_collected->sum_list_head->i.nodetype;
-				sino_ptr->inode = sum_collected->sum_list_head->i.inode;
-				sino_ptr->version = sum_collected->sum_list_head->i.version;
-				sino_ptr->offset = sum_collected->sum_list_head->i.offset;
-				sino_ptr->totlen = sum_collected->sum_list_head->i.totlen;
+											sino_ptr->nodetype = sum_collected->sum_list_head->i.nodetype;
+											sino_ptr->inode = sum_collected->sum_list_head->i.inode;
+											sino_ptr->version = sum_collected->sum_list_head->i.version;
+											sino_ptr->offset = sum_collected->sum_list_head->i.offset;
+											sino_ptr->totlen = sum_collected->sum_list_head->i.totlen;
 
-				wpage += JFFS2_SUMMARY_INODE_SIZE;
-				break;
-			}
+											wpage += JFFS2_SUMMARY_INODE_SIZE;
+											break;
+										}
 
 			case JFFS2_NODETYPE_DIRENT : {
-				struct jffs2_sum_dirent_flash *sdrnt_ptr = wpage;
+											 struct jffs2_sum_dirent_flash *sdrnt_ptr = wpage;
 
-				sdrnt_ptr->nodetype = sum_collected->sum_list_head->d.nodetype;
-				sdrnt_ptr->totlen = sum_collected->sum_list_head->d.totlen;
-				sdrnt_ptr->offset = sum_collected->sum_list_head->d.offset;
-				sdrnt_ptr->pino = sum_collected->sum_list_head->d.pino;
-				sdrnt_ptr->version = sum_collected->sum_list_head->d.version;
-				sdrnt_ptr->ino = sum_collected->sum_list_head->d.ino;
-				sdrnt_ptr->nsize = sum_collected->sum_list_head->d.nsize;
-				sdrnt_ptr->type = sum_collected->sum_list_head->d.type;
+											 sdrnt_ptr->nodetype = sum_collected->sum_list_head->d.nodetype;
+											 sdrnt_ptr->totlen = sum_collected->sum_list_head->d.totlen;
+											 sdrnt_ptr->offset = sum_collected->sum_list_head->d.offset;
+											 sdrnt_ptr->pino = sum_collected->sum_list_head->d.pino;
+											 sdrnt_ptr->version = sum_collected->sum_list_head->d.version;
+											 sdrnt_ptr->ino = sum_collected->sum_list_head->d.ino;
+											 sdrnt_ptr->nsize = sum_collected->sum_list_head->d.nsize;
+											 sdrnt_ptr->type = sum_collected->sum_list_head->d.type;
 
-				memcpy(sdrnt_ptr->name, sum_collected->sum_list_head->d.name,
-						sum_collected->sum_list_head->d.nsize);
+											 memcpy(sdrnt_ptr->name, sum_collected->sum_list_head->d.name,
+													 sum_collected->sum_list_head->d.nsize);
 
-				wpage += JFFS2_SUMMARY_DIRENT_SIZE(sum_collected->sum_list_head->d.nsize);
-				break;
-			}
+											 wpage += JFFS2_SUMMARY_DIRENT_SIZE(sum_collected->sum_list_head->d.nsize);
+											 break;
+										 }
 
 			case JFFS2_NODETYPE_XATTR: {
-				struct jffs2_sum_xattr_flash *sxattr_ptr = wpage;
+										   struct jffs2_sum_xattr_flash *sxattr_ptr = wpage;
 
-				sxattr_ptr->nodetype = sum_collected->sum_list_head->x.nodetype;
-				sxattr_ptr->xid = sum_collected->sum_list_head->x.xid;
-				sxattr_ptr->version = sum_collected->sum_list_head->x.version;
-				sxattr_ptr->offset = sum_collected->sum_list_head->x.offset;
-				sxattr_ptr->totlen = sum_collected->sum_list_head->x.totlen;
+										   sxattr_ptr->nodetype = sum_collected->sum_list_head->x.nodetype;
+										   sxattr_ptr->xid = sum_collected->sum_list_head->x.xid;
+										   sxattr_ptr->version = sum_collected->sum_list_head->x.version;
+										   sxattr_ptr->offset = sum_collected->sum_list_head->x.offset;
+										   sxattr_ptr->totlen = sum_collected->sum_list_head->x.totlen;
 
-				wpage += JFFS2_SUMMARY_XATTR_SIZE;
-				break;
-			}
+										   wpage += JFFS2_SUMMARY_XATTR_SIZE;
+										   break;
+									   }
 
 			case JFFS2_NODETYPE_XREF: {
-				struct jffs2_sum_xref_flash *sxref_ptr = wpage;
+										  struct jffs2_sum_xref_flash *sxref_ptr = wpage;
 
-				sxref_ptr->nodetype = sum_collected->sum_list_head->r.nodetype;
-				sxref_ptr->offset = sum_collected->sum_list_head->r.offset;
+										  sxref_ptr->nodetype = sum_collected->sum_list_head->r.nodetype;
+										  sxref_ptr->offset = sum_collected->sum_list_head->r.offset;
 
-				wpage += JFFS2_SUMMARY_XREF_SIZE;
-				break;
-			}
+										  wpage += JFFS2_SUMMARY_XREF_SIZE;
+										  break;
+									  }
 
 			default : {
-				printf("Unknown node type!\n");
-			}
+						  printf("Unknown node type!\n");
+					  }
 		}
 
 		temp = sum_collected->sum_list_head;
@@ -637,7 +637,7 @@ void add_sum_inode_mem(union jffs2_node_union *node)
 void add_sum_dirent_mem(union jffs2_node_union *node)
 {
 	struct jffs2_sum_dirent_mem *temp = (struct jffs2_sum_dirent_mem *)
-			malloc(sizeof(struct jffs2_sum_dirent_mem) + node->d.nsize);
+		malloc(sizeof(struct jffs2_sum_dirent_mem) + node->d.nsize);
 
 	if (!temp)
 		error_msg_and_die("Can't allocate memory for summary information!\n");
@@ -659,7 +659,7 @@ void add_sum_dirent_mem(union jffs2_node_union *node)
 void add_sum_xattr_mem(union jffs2_node_union *node)
 {
 	struct jffs2_sum_xattr_mem *temp = (struct jffs2_sum_xattr_mem *)
-			malloc(sizeof(struct jffs2_sum_xattr_mem));
+		malloc(sizeof(struct jffs2_sum_xattr_mem));
 	if (!temp)
 		error_msg_and_die("Can't allocate memory for summary information!\n");
 
@@ -676,7 +676,7 @@ void add_sum_xattr_mem(union jffs2_node_union *node)
 void add_sum_xref_mem(union jffs2_node_union *node)
 {
 	struct jffs2_sum_xref_mem *temp = (struct jffs2_sum_xref_mem *)
-			malloc(sizeof(struct jffs2_sum_xref_mem));
+		malloc(sizeof(struct jffs2_sum_xref_mem));
 	if (!temp)
 		error_msg_and_die("Can't allocate memory for summary information!\n");
 
@@ -770,10 +770,10 @@ void create_summed_image(int inp_size)
 			case JFFS2_NODETYPE_INODE:
 				if (verbose)
 					printf ("%8s Inode      node at 0x%08x, totlen 0x%08x, #ino  %5d, version %5d, isize %8d, csize %8d, dsize %8d, offset %8d\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->i.totlen), je32_to_cpu (node->i.ino),
-						je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
-						je32_to_cpu (node->i.csize), je32_to_cpu (node->i.dsize), je32_to_cpu (node->i.offset));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->i.totlen), je32_to_cpu (node->i.ino),
+							je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
+							je32_to_cpu (node->i.csize), je32_to_cpu (node->i.dsize), je32_to_cpu (node->i.offset));
 
 				crc = crc32 (0, node, sizeof (struct jffs2_raw_inode) - 8);
 				if (crc != je32_to_cpu (node->i.node_crc)) {
@@ -800,10 +800,10 @@ void create_summed_image(int inp_size)
 
 				if (verbose)
 					printf ("%8s Dirent     node at 0x%08x, totlen 0x%08x, #pino %5d, version %5d, #ino  %8d, nsize %8d, name %s\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->d.totlen), je32_to_cpu (node->d.pino),
-						je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
-						node->d.nsize, name);
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->d.totlen), je32_to_cpu (node->d.pino),
+							je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
+							node->d.nsize, name);
 
 				crc = crc32 (0, node, sizeof (struct jffs2_raw_dirent) - 8);
 				if (crc != je32_to_cpu (node->d.node_crc)) {
@@ -829,14 +829,14 @@ void create_summed_image(int inp_size)
 					obsolete = 1;
 				if (verbose)
 					printf("%8s Xdatum     node at 0x%08x, totlen 0x%08x, "
-					       "#xid  %5u, version %5u\n",
-					       obsolete ? "Obsolete" : "",
-					       p - file_buffer, je32_to_cpu (node->x.totlen),
-					       je32_to_cpu(node->x.xid), je32_to_cpu(node->x.version));
+							"#xid  %5u, version %5u\n",
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->x.totlen),
+							je32_to_cpu(node->x.xid), je32_to_cpu(node->x.version));
 				crc = crc32(0, node, sizeof (struct jffs2_raw_xattr) - 4);
 				if (crc != je32_to_cpu(node->x.node_crc)) {
 					printf("Wrong node_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
-					       p - file_buffer, je32_to_cpu(node->x.node_crc), crc);
+							p - file_buffer, je32_to_cpu(node->x.node_crc), crc);
 					p += PAD(je32_to_cpu (node->x.totlen));
 					continue;
 				}
@@ -844,7 +844,7 @@ void create_summed_image(int inp_size)
 				crc = crc32(0, node->x.data, length);
 				if (crc != je32_to_cpu(node->x.data_crc)) {
 					printf("Wrong data_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
-					       p - file_buffer, je32_to_cpu(node->x.data_crc), crc);
+							p - file_buffer, je32_to_cpu(node->x.data_crc), crc);
 					p += PAD(je32_to_cpu (node->x.totlen));
 					continue;
 				}
@@ -858,14 +858,14 @@ void create_summed_image(int inp_size)
 					obsolete = 1;
 				if (verbose)
 					printf("%8s Xref       node at 0x%08x, totlen 0x%08x, "
-					       "#ino  %5u, xid     %5u\n",
-					       obsolete ? "Obsolete" : "",
-					       p - file_buffer, je32_to_cpu(node->r.totlen),
-					       je32_to_cpu(node->r.ino), je32_to_cpu(node->r.xid));
+							"#ino  %5u, xid     %5u\n",
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu(node->r.totlen),
+							je32_to_cpu(node->r.ino), je32_to_cpu(node->r.xid));
 				crc = crc32(0, node, sizeof (struct jffs2_raw_xref) - 4);
 				if (crc != je32_to_cpu(node->r.node_crc)) {
 					printf("Wrong node_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
-					       p - file_buffer, je32_to_cpu(node->r.node_crc), crc);
+							p - file_buffer, je32_to_cpu(node->r.node_crc), crc);
 					p += PAD(je32_to_cpu (node->r.totlen));
 					continue;
 				}
@@ -877,8 +877,8 @@ void create_summed_image(int inp_size)
 			case JFFS2_NODETYPE_CLEANMARKER:
 				if (verbose) {
 					printf ("%8s Cleanmarker     at 0x%08x, totlen 0x%08x\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->u.totlen));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
 
 				if (!found_cleanmarkers) {
@@ -896,8 +896,8 @@ void create_summed_image(int inp_size)
 			case JFFS2_NODETYPE_PADDING:
 				if (verbose) {
 					printf ("%8s Padding    node at 0x%08x, totlen 0x%08x\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->u.totlen));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
 				p += PAD(je32_to_cpu (node->u.totlen));
 				break;
@@ -909,8 +909,8 @@ void create_summed_image(int inp_size)
 			default:
 				if (verbose) {
 					printf ("%8s Unknown    node at 0x%08x, totlen 0x%08x\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->u.totlen));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
 
 				p += PAD(je32_to_cpu (node->u.totlen));

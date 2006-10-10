@@ -217,8 +217,8 @@ extern char *xreadlink(const char *path)
 		buf = xrealloc(buf, bufsize += GROWBY);
 		readsize = readlink(path, buf, bufsize); /* 1st try */
 		if (readsize == -1) {
-		    perror_msg("%s:%s", app_name, path);
-		    return NULL;
+			perror_msg("%s:%s", app_name, path);
+			return NULL;
 		}
 	}
 	while (bufsize < readsize + 1);
@@ -388,7 +388,7 @@ static struct filesystem_entry *recursive_add_host_directory(
 	{
 		dp = namelist[i];
 		if (dp->d_name[0] == '.' && (dp->d_name[1] == 0 ||
-		   (dp->d_name[1] == '.' &&  dp->d_name[2] == 0)))
+					(dp->d_name[1] == '.' &&  dp->d_name[2] == 0)))
 		{
 			free(dp);
 			continue;
@@ -432,8 +432,8 @@ static struct filesystem_entry *recursive_add_host_directory(
 }
 
 /* the GNU C library has a wonderful scanf("%as", string) which will
- allocate the string with the right size, good to avoid buffer overruns.
- the following macros use it if available or use a hacky workaround...
+   allocate the string with the right size, good to avoid buffer overruns.
+   the following macros use it if available or use a hacky workaround...
  */
 
 #ifdef __GNUC__
@@ -457,22 +457,22 @@ inline int snprintf(char *str, size_t n, const char *fmt, ...)
 #endif
 
 /*  device table entries take the form of:
-    <path>	<type> <mode>	<uid>	<gid>	<major>	<minor>	<start>	<inc>	<count>
-    /dev/mem     c    640       0       0         1       1       0     0         -
+	<path>	<type> <mode>	<uid>	<gid>	<major>	<minor>	<start>	<inc>	<count>
+	/dev/mem     c    640       0       0         1       1       0     0         -
 
-    type can be one of:
+	type can be one of:
 	f	A regular file
 	d	Directory
 	c	Character special device file
 	b	Block special device file
 	p	Fifo (named pipe)
 
-    I don't bother with symlinks (permissions are irrelevant), hard
-    links (special cases of regular files), or sockets (why bother).
+	I don't bother with symlinks (permissions are irrelevant), hard
+	links (special cases of regular files), or sockets (why bother).
 
-    Regular files must exist in the target root directory.  If a char,
-    block, fifo, or directory does not exist, it will be created.
-*/
+	Regular files must exist in the target root directory.  If a char,
+	block, fifo, or directory does not exist, it will be created.
+ */
 static int interpret_table_entry(struct filesystem_entry *root, char *line)
 {
 	char *hostpath;
@@ -482,8 +482,8 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 	struct filesystem_entry *parent, *entry;
 
 	if (sscanf (line, "%" SCANF_PREFIX "s %c %lo %lu %lu %lu %lu %lu %lu %lu",
-		 SCANF_STRING(name), &type, &mode, &uid, &gid, &major, &minor,
-		 &start, &increment, &count) < 0)
+				SCANF_STRING(name), &type, &mode, &uid, &gid, &major, &minor,
+				&start, &increment, &count) < 0)
 	{
 		return 1;
 	}
@@ -666,7 +666,7 @@ static int add_cleanmarkers = 1;
 static struct jffs2_unknown_node cleanmarker;
 static int cleanmarker_size = sizeof(cleanmarker);
 static unsigned char ffbuf[16] =
-	{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff
 };
 
@@ -829,7 +829,7 @@ static unsigned int write_regular_file(struct filesystem_entry *e)
 
 		while (len) {
 			uint32_t dsize, space;
-                        uint16_t compression;
+			uint16_t compression;
 
 			pad_block_if_less_than(sizeof(ri) + JFFS2_MIN_DATA_LEN);
 
@@ -1078,32 +1078,32 @@ static void formalize_posix_acl(void *xvalue, int *value_len)
 
 	while (pent < plim) {
 		switch(le16_to_cpu(pent->e_tag)) {
-		case ACL_USER_OBJ:
-		case ACL_GROUP_OBJ:
-		case ACL_MASK:
-		case ACL_OTHER:
-			jent_s = (struct jffs2_acl_entry_short *)(buffer + offset);
-			offset += sizeof(struct jffs2_acl_entry_short);
-			jent_s->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
-			jent_s->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
-			break;
-		case ACL_USER:
-		case ACL_GROUP:
-			jent = (struct jffs2_acl_entry *)(buffer + offset);
-			offset += sizeof(struct jffs2_acl_entry);
-			jent->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
-			jent->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
-			jent->e_id = cpu_to_je32(le32_to_cpu(pent->e_id));
-			break;
-		default:
-			printf("%04x : Unknown XATTR entry tag.\n", le16_to_cpu(pent->e_tag));
-			exit(1);
+			case ACL_USER_OBJ:
+			case ACL_GROUP_OBJ:
+			case ACL_MASK:
+			case ACL_OTHER:
+				jent_s = (struct jffs2_acl_entry_short *)(buffer + offset);
+				offset += sizeof(struct jffs2_acl_entry_short);
+				jent_s->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
+				jent_s->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
+				break;
+			case ACL_USER:
+			case ACL_GROUP:
+				jent = (struct jffs2_acl_entry *)(buffer + offset);
+				offset += sizeof(struct jffs2_acl_entry);
+				jent->e_tag = cpu_to_je16(le16_to_cpu(pent->e_tag));
+				jent->e_perm = cpu_to_je16(le16_to_cpu(pent->e_perm));
+				jent->e_id = cpu_to_je32(le32_to_cpu(pent->e_id));
+				break;
+			default:
+				printf("%04x : Unknown XATTR entry tag.\n", le16_to_cpu(pent->e_tag));
+				exit(1);
 		}
 		pent++;
 	}
 	if (offset > *value_len) {
 		printf("Length of JFFS2 ACL expression(%u) is longer than general one(%u).\n",
-		       offset, *value_len);
+				offset, *value_len);
 		exit(1);
 	}
 	memcpy(xvalue, buffer, offset);
@@ -1164,16 +1164,16 @@ static xattr_entry_t *find_xattr_entry(int xprefix, char *xname, char *xvalue, i
 		xentry_hash = xcalloc(1, sizeof(xe) * XATTRENTRY_HASHSIZE);
 
 	if (xprefix == JFFS2_XPREFIX_ACL_ACCESS
-	    || xprefix == JFFS2_XPREFIX_ACL_DEFAULT)
+			|| xprefix == JFFS2_XPREFIX_ACL_DEFAULT)
 		formalize_posix_acl(xvalue, &value_len);
 
 	name_len = strlen(xname);
 	index = (crc32(0, xname, name_len) ^ crc32(0, xvalue, value_len)) % XATTRENTRY_HASHSIZE;
 	for (xe = xentry_hash[index]; xe; xe = xe->next) {
 		if (xe->xprefix == xprefix
-		    && xe->value_len == value_len
-		    && !strcmp(xe->xname, xname)
-		    && !memcmp(xe->xvalue, xvalue, value_len))
+				&& xe->value_len == value_len
+				&& !strcmp(xe->xname, xname)
+				&& !memcmp(xe->xvalue, xvalue, value_len))
 			break;
 	}
 	if (!xe) {
@@ -1200,7 +1200,7 @@ static void write_xattr_entry(struct filesystem_entry *e)
 	if (list_sz < 0) {
 		if (verbose)
 			printf("llistxattr('%s') = %d : %s\n",
-			       e->hostname, errno, strerror(errno));
+					e->hostname, errno, strerror(errno));
 		return;
 	}
 
@@ -1222,7 +1222,7 @@ static void write_xattr_entry(struct filesystem_entry *e)
 		if (!xprefix) {
 			if (verbose)
 				printf("%s: xattr '%s' is not supported.\n",
-				       e->hostname, xname);
+						e->hostname, xname);
 			continue;
 		}
 		if ((enable_xattr & (1 << xprefix)) == 0)
@@ -1232,14 +1232,14 @@ static void write_xattr_entry(struct filesystem_entry *e)
 		if (value_len < 0) {
 			if (verbose)
 				printf("lgetxattr('%s', '%s') = %d : %s\n",
-				       e->hostname, xname, errno, strerror(errno));
+						e->hostname, xname, errno, strerror(errno));
 			continue;
 		}
 		xe = find_xattr_entry(xprefix, xname + prefix_len, xvalue, value_len);
 		if (!xe) {
 			if (verbose)
 				printf("%s : xattr '%s' was ignored.\n",
-				       e->hostname, xname);
+						e->hostname, xname);
 			continue;
 		}
 
@@ -1423,41 +1423,41 @@ static struct option long_options[] = {
 };
 
 static char *helptext =
-	"Usage: mkfs.jffs2 [OPTIONS]\n"
-	"Make a JFFS2 file system image from an existing directory tree\n\n"
-	"Options:\n"
-	"  -p, --pad[=SIZE]        Pad output to SIZE bytes with 0xFF. If SIZE is\n"
-	"                          not specified, the output is padded to the end of\n"
-	"                          the final erase block\n"
-	"  -r, -d, --root=DIR      Build file system from directory DIR (default: cwd)\n"
-	"  -s, --pagesize=SIZE     Use page size (max data node size) SIZE (default: 4KiB)\n"
-	"  -e, --eraseblock=SIZE   Use erase block size SIZE (default: 64KiB)\n"
-	"  -c, --cleanmarker=SIZE  Size of cleanmarker (default 12)\n"
-	"  -m, --compr-mode=MODE   Select compression mode (default: priortiry)\n"
-        "  -x, --disable-compressor=COMPRESSOR_NAME\n"
-        "                          Disable a compressor\n"
-        "  -X, --enable-compressor=COMPRESSOR_NAME\n"
-        "                          Enable a compressor\n"
-        "  -y, --compressor-priority=PRIORITY:COMPRESSOR_NAME\n"
-        "                          Set the priority of a compressor\n"
-        "  -L, --list-compressors  Show the list of the avaiable compressors\n"
-        "  -t, --test-compression  Call decompress and compare with the original (for test)\n"
-	"  -n, --no-cleanmarkers   Don't add a cleanmarker to every eraseblock\n"
-	"  -o, --output=FILE       Output to FILE (default: stdout)\n"
-	"  -l, --little-endian     Create a little-endian filesystem\n"
-	"  -b, --big-endian        Create a big-endian filesystem\n"
-	"  -D, --devtable=FILE     Use the named FILE as a device table file\n"
-	"  -f, --faketime          Change all file times to '0' for regression testing\n"
-	"  -q, --squash            Squash permissions and owners making all files be owned by root\n"
-	"  -U, --squash-uids       Squash owners making all files be owned by root\n"
-	"  -P, --squash-perms      Squash permissions on all files\n"
-	"      --with-xattr        stuff all xattr entries into image\n"
-	"      --with-selinux      stuff only SELinux Labels into jffs2 image\n"
-	"      --with-posix-acl    stuff only POSIX ACL entries into jffs2 image\n"
-	"  -h, --help              Display this help text\n"
-	"  -v, --verbose           Verbose operation\n"
-	"  -V, --version           Display version information\n"
-	"  -i, --incremental=FILE  Parse FILE and generate appendage output for it\n\n";
+"Usage: mkfs.jffs2 [OPTIONS]\n"
+"Make a JFFS2 file system image from an existing directory tree\n\n"
+"Options:\n"
+"  -p, --pad[=SIZE]        Pad output to SIZE bytes with 0xFF. If SIZE is\n"
+"                          not specified, the output is padded to the end of\n"
+"                          the final erase block\n"
+"  -r, -d, --root=DIR      Build file system from directory DIR (default: cwd)\n"
+"  -s, --pagesize=SIZE     Use page size (max data node size) SIZE (default: 4KiB)\n"
+"  -e, --eraseblock=SIZE   Use erase block size SIZE (default: 64KiB)\n"
+"  -c, --cleanmarker=SIZE  Size of cleanmarker (default 12)\n"
+"  -m, --compr-mode=MODE   Select compression mode (default: priortiry)\n"
+"  -x, --disable-compressor=COMPRESSOR_NAME\n"
+"                          Disable a compressor\n"
+"  -X, --enable-compressor=COMPRESSOR_NAME\n"
+"                          Enable a compressor\n"
+"  -y, --compressor-priority=PRIORITY:COMPRESSOR_NAME\n"
+"                          Set the priority of a compressor\n"
+"  -L, --list-compressors  Show the list of the avaiable compressors\n"
+"  -t, --test-compression  Call decompress and compare with the original (for test)\n"
+"  -n, --no-cleanmarkers   Don't add a cleanmarker to every eraseblock\n"
+"  -o, --output=FILE       Output to FILE (default: stdout)\n"
+"  -l, --little-endian     Create a little-endian filesystem\n"
+"  -b, --big-endian        Create a big-endian filesystem\n"
+"  -D, --devtable=FILE     Use the named FILE as a device table file\n"
+"  -f, --faketime          Change all file times to '0' for regression testing\n"
+"  -q, --squash            Squash permissions and owners making all files be owned by root\n"
+"  -U, --squash-uids       Squash owners making all files be owned by root\n"
+"  -P, --squash-perms      Squash permissions on all files\n"
+"      --with-xattr        stuff all xattr entries into image\n"
+"      --with-selinux      stuff only SELinux Labels into jffs2 image\n"
+"      --with-posix-acl    stuff only POSIX ACL entries into jffs2 image\n"
+"  -h, --help              Display this help text\n"
+"  -v, --verbose           Verbose operation\n"
+"  -V, --version           Display version information\n"
+"  -i, --incremental=FILE  Parse FILE and generate appendage output for it\n\n";
 
 static char *revtext = "$Revision: 1.50 $";
 
@@ -1493,7 +1493,7 @@ void process_buffer(int inp_size) {
 
 		if (je16_to_cpu (node->u.magic) != JFFS2_MAGIC_BITMASK)	{
 			if (!bitchbitmask++)
-    			    printf ("Wrong bitmask  at  0x%08x, 0x%04x\n", p - file_buffer, je16_to_cpu (node->u.magic));
+				printf ("Wrong bitmask  at  0x%08x, 0x%04x\n", p - file_buffer, je16_to_cpu (node->u.magic));
 			p += 4;
 			continue;
 		}
@@ -1514,10 +1514,10 @@ void process_buffer(int inp_size) {
 			case JFFS2_NODETYPE_INODE:
 				if(verbose)
 					printf ("%8s Inode      node at 0x%08x, totlen 0x%08x, #ino  %5d, version %5d, isize %8d, csize %8d, dsize %8d, offset %8d\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->i.totlen), je32_to_cpu (node->i.ino),
-						je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
-						je32_to_cpu (node->i.csize), je32_to_cpu (node->i.dsize), je32_to_cpu (node->i.offset));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->i.totlen), je32_to_cpu (node->i.ino),
+							je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
+							je32_to_cpu (node->i.csize), je32_to_cpu (node->i.dsize), je32_to_cpu (node->i.offset));
 
 				if ( je32_to_cpu (node->i.ino) > ino )
 					ino = je32_to_cpu (node->i.ino);
@@ -1531,10 +1531,10 @@ void process_buffer(int inp_size) {
 
 				if(verbose)
 					printf ("%8s Dirent     node at 0x%08x, totlen 0x%08x, #pino %5d, version %5d, #ino  %8d, nsize %8d, name %s\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->d.totlen), je32_to_cpu (node->d.pino),
-						je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
-						node->d.nsize, name);
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->d.totlen), je32_to_cpu (node->d.pino),
+							je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
+							node->d.nsize, name);
 
 				p += PAD(je32_to_cpu (node->d.totlen));
 				break;
@@ -1542,8 +1542,8 @@ void process_buffer(int inp_size) {
 			case JFFS2_NODETYPE_CLEANMARKER:
 				if (verbose) {
 					printf ("%8s Cleanmarker     at 0x%08x, totlen 0x%08x\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->u.totlen));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
 
 				p += PAD(je32_to_cpu (node->u.totlen));
@@ -1552,8 +1552,8 @@ void process_buffer(int inp_size) {
 			case JFFS2_NODETYPE_PADDING:
 				if (verbose) {
 					printf ("%8s Padding    node at 0x%08x, totlen 0x%08x\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->u.totlen));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
 
 				p += PAD(je32_to_cpu (node->u.totlen));
@@ -1566,8 +1566,8 @@ void process_buffer(int inp_size) {
 			default:
 				if (verbose) {
 					printf ("%8s Unknown    node at 0x%08x, totlen 0x%08x\n",
-						obsolete ? "Obsolete" : "",
-						p - file_buffer, je32_to_cpu (node->u.totlen));
+							obsolete ? "Obsolete" : "",
+							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
 
 				p += PAD(je32_to_cpu (node->u.totlen));
@@ -1604,10 +1604,10 @@ int main(int argc, char **argv)
 	struct stat sb;
 	FILE *devtable = NULL;
 	struct filesystem_entry *root;
-        char *compr_name = NULL;
-        int compr_prior  = -1;
+	char *compr_name = NULL;
+	int compr_prior  = -1;
 
-        jffs2_compressors_init();
+	jffs2_compressors_init();
 
 	while ((opt = getopt_long(argc, argv,
 					"D:d:r:s:o:qUPfh?vVe:lbp::nc:m:x:X:Lty:i:", long_options, &c)) >= 0)
@@ -1673,119 +1673,119 @@ int main(int argc, char **argv)
 						(int) strlen(revtext) - 13, revtext + 11);
 
 			case 'e': {
-				char *next;
-				unsigned units = 0;
-				erase_block_size = strtol(optarg, &next, 0);
-				if (!erase_block_size)
-					error_msg_and_die("Unrecognisable erase size\n");
+						  char *next;
+						  unsigned units = 0;
+						  erase_block_size = strtol(optarg, &next, 0);
+						  if (!erase_block_size)
+							  error_msg_and_die("Unrecognisable erase size\n");
 
-				if (*next) {
-					if (!strcmp(next, "KiB")) {
-						units = 1024;
-					} else if (!strcmp(next, "MiB")) {
-						units = 1024 * 1024;
-					} else {
-						error_msg_and_die("Unknown units in erasesize\n");
-					}
-				} else {
-					if (erase_block_size < 0x1000)
-						units = 1024;
-					else
-						units = 1;
-				}
-				erase_block_size *= units;
+						  if (*next) {
+							  if (!strcmp(next, "KiB")) {
+								  units = 1024;
+							  } else if (!strcmp(next, "MiB")) {
+								  units = 1024 * 1024;
+							  } else {
+								  error_msg_and_die("Unknown units in erasesize\n");
+							  }
+						  } else {
+							  if (erase_block_size < 0x1000)
+								  units = 1024;
+							  else
+								  units = 1;
+						  }
+						  erase_block_size *= units;
 
-				/* If it's less than 8KiB, they're not allowed */
-				if (erase_block_size < 0x2000) {
-					fprintf(stderr, "Erase size 0x%x too small. Increasing to 8KiB minimum\n",
-						erase_block_size);
-					erase_block_size = 0x2000;
-				}
-				break;
-			}
+						  /* If it's less than 8KiB, they're not allowed */
+						  if (erase_block_size < 0x2000) {
+							  fprintf(stderr, "Erase size 0x%x too small. Increasing to 8KiB minimum\n",
+									  erase_block_size);
+							  erase_block_size = 0x2000;
+						  }
+						  break;
+					  }
 
 			case 'l':
-				target_endian = __LITTLE_ENDIAN;
-				break;
+					  target_endian = __LITTLE_ENDIAN;
+					  break;
 
 			case 'b':
-				target_endian = __BIG_ENDIAN;
-				break;
+					  target_endian = __BIG_ENDIAN;
+					  break;
 
 			case 'p':
-				if (optarg)
-					pad_fs_size = strtol(optarg, NULL, 0);
-				else
-					pad_fs_size = -1;
-				break;
+					  if (optarg)
+						  pad_fs_size = strtol(optarg, NULL, 0);
+					  else
+						  pad_fs_size = -1;
+					  break;
 			case 'n':
-				add_cleanmarkers = 0;
-				break;
+					  add_cleanmarkers = 0;
+					  break;
 			case 'c':
-				cleanmarker_size = strtol(optarg, NULL, 0);
-				if (cleanmarker_size < sizeof(cleanmarker)) {
-					error_msg_and_die("cleanmarker size must be >= 12");
-				}
-				if (cleanmarker_size >= erase_block_size) {
-					error_msg_and_die("cleanmarker size must be < eraseblock size");
-				}
-				break;
-                        case 'm':
-                                if (jffs2_set_compression_mode_name(optarg)) {
-					error_msg_and_die("Unknown compression mode %s", optarg);
-				}
-                                break;
-                        case 'x':
-                                if (jffs2_disable_compressor_name(optarg)) {
-                                        error_msg_and_die("Unknown compressor name %s",optarg);
-                                }
-                                break;
-                        case 'X':
-                                if (jffs2_enable_compressor_name(optarg)) {
-                                        error_msg_and_die("Unknown compressor name %s",optarg);
-                                }
-                                break;
-                        case 'L':
-                                error_msg_and_die("\n%s",jffs2_list_compressors());
-                                break;
-                        case 't':
-                                jffs2_compression_check_set(1);
-                                break;
-                        case 'y':
-                                compr_name = malloc(strlen(optarg));
-                                sscanf(optarg,"%d:%s",&compr_prior,compr_name);
-                                if ((compr_prior>=0)&&(compr_name)) {
-                                        if (jffs2_set_compressor_priority(compr_name, compr_prior))
-	                                        exit(EXIT_FAILURE);
-                                }
-                                else {
-                                        error_msg_and_die("Cannot parse %s",optarg);
-                                }
-                                free(compr_name);
-                                break;
+					  cleanmarker_size = strtol(optarg, NULL, 0);
+					  if (cleanmarker_size < sizeof(cleanmarker)) {
+						  error_msg_and_die("cleanmarker size must be >= 12");
+					  }
+					  if (cleanmarker_size >= erase_block_size) {
+						  error_msg_and_die("cleanmarker size must be < eraseblock size");
+					  }
+					  break;
+			case 'm':
+					  if (jffs2_set_compression_mode_name(optarg)) {
+						  error_msg_and_die("Unknown compression mode %s", optarg);
+					  }
+					  break;
+			case 'x':
+					  if (jffs2_disable_compressor_name(optarg)) {
+						  error_msg_and_die("Unknown compressor name %s",optarg);
+					  }
+					  break;
+			case 'X':
+					  if (jffs2_enable_compressor_name(optarg)) {
+						  error_msg_and_die("Unknown compressor name %s",optarg);
+					  }
+					  break;
+			case 'L':
+					  error_msg_and_die("\n%s",jffs2_list_compressors());
+					  break;
+			case 't':
+					  jffs2_compression_check_set(1);
+					  break;
+			case 'y':
+					  compr_name = malloc(strlen(optarg));
+					  sscanf(optarg,"%d:%s",&compr_prior,compr_name);
+					  if ((compr_prior>=0)&&(compr_name)) {
+						  if (jffs2_set_compressor_priority(compr_name, compr_prior))
+							  exit(EXIT_FAILURE);
+					  }
+					  else {
+						  error_msg_and_die("Cannot parse %s",optarg);
+					  }
+					  free(compr_name);
+					  break;
 			case 'i':
-				if (in_fd != -1) {
-					error_msg_and_die("(incremental) filename specified more than once");
-				}
-				in_fd = open(optarg, O_RDONLY);
-				if (in_fd == -1) {
-					perror_msg_and_die("cannot open (incremental) file");
-				}
-				break;
+					  if (in_fd != -1) {
+						  error_msg_and_die("(incremental) filename specified more than once");
+					  }
+					  in_fd = open(optarg, O_RDONLY);
+					  if (in_fd == -1) {
+						  perror_msg_and_die("cannot open (incremental) file");
+					  }
+					  break;
 			case 1000:	/* --with-xattr  */
-				enable_xattr |= (1 << JFFS2_XPREFIX_USER)
-						| (1 << JFFS2_XPREFIX_SECURITY)
-						| (1 << JFFS2_XPREFIX_ACL_ACCESS)
-						| (1 << JFFS2_XPREFIX_ACL_DEFAULT)
-						| (1 << JFFS2_XPREFIX_TRUSTED);
-				break;
+					  enable_xattr |= (1 << JFFS2_XPREFIX_USER)
+						  | (1 << JFFS2_XPREFIX_SECURITY)
+						  | (1 << JFFS2_XPREFIX_ACL_ACCESS)
+						  | (1 << JFFS2_XPREFIX_ACL_DEFAULT)
+						  | (1 << JFFS2_XPREFIX_TRUSTED);
+					  break;
 			case 1001:	/*  --with-selinux  */
-				enable_xattr |= (1 << JFFS2_XPREFIX_SECURITY);
-				break;
+					  enable_xattr |= (1 << JFFS2_XPREFIX_SECURITY);
+					  break;
 			case 1002:	/*  --with-posix-acl  */
-				enable_xattr |= (1 << JFFS2_XPREFIX_ACL_ACCESS)
-						| (1 << JFFS2_XPREFIX_ACL_DEFAULT);
-				break;
+					  enable_xattr |= (1 << JFFS2_XPREFIX_ACL_ACCESS)
+						  | (1 << JFFS2_XPREFIX_ACL_DEFAULT);
+					  break;
 		}
 	}
 	if (out_fd == -1) {
@@ -1820,16 +1820,16 @@ int main(int argc, char **argv)
 
 	close(out_fd);
 
-        if (verbose) {
-                char *s = jffs2_stats();
-                fprintf(stderr,"\n\n%s",s);
-                free(s);
-        }
-        if ((verbose)||(jffs2_compression_check_get()&&(jffs2_compression_check_errorcnt_get()))) {
-                fprintf(stderr,"Compression errors: %d\n",jffs2_compression_check_errorcnt_get());
-        }
+	if (verbose) {
+		char *s = jffs2_stats();
+		fprintf(stderr,"\n\n%s",s);
+		free(s);
+	}
+	if ((verbose)||(jffs2_compression_check_get()&&(jffs2_compression_check_errorcnt_get()))) {
+		fprintf(stderr,"Compression errors: %d\n",jffs2_compression_check_errorcnt_get());
+	}
 
-        jffs2_compressors_exit();
+	jffs2_compressors_exit();
 
 	return 0;
 }

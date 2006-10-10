@@ -1,6 +1,6 @@
 /*
  * flash_otp_dump.c -- display One-Time-Programm data
-*/
+ */
 
 #include <stdio.h>
 #include <unistd.h>
@@ -35,7 +35,7 @@ int main(int argc,char *argv[])
 	}
 
 	printf("OTP %s data for %s\n",
-	       argv[1][1] == 'f' ? "factory" : "user", argv[2]);
+			argv[1][1] == 'f' ? "factory" : "user", argv[2]);
 	offset = 0;
 	while ((ret = read(fd, buf, sizeof(buf)))) {
 		if (ret < 0) {

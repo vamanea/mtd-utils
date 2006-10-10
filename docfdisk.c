@@ -53,32 +53,32 @@ void show_header(int mhoffs) {
 
 	bmbits = le32_to_cpu(mh->BlockMultiplierBits);
 	printf("  bootRecordID          = %s\n"
-		"  NoOfBootImageBlocks   = %d\n"
-		"  NoOfBinaryPartitions  = %d\n"
-		"  NoOfBDTLPartitions    = %d\n"
-		"  BlockMultiplierBits   = %d\n"
-		"  FormatFlags           = %d\n"
-		"  OsakVersion           = %d.%d.%d.%d\n"
-                "  PercentUsed           = %d\n",
-                mh->bootRecordID, le32_to_cpu(mh->NoOfBootImageBlocks),
-                le32_to_cpu(mh->NoOfBinaryPartitions),
-                le32_to_cpu(mh->NoOfBDTLPartitions),
-                bmbits,
-                le32_to_cpu(mh->FormatFlags),
-                ((unsigned char *) &mh->OsakVersion)[0] & 0xf,
-                ((unsigned char *) &mh->OsakVersion)[1] & 0xf,
-                ((unsigned char *) &mh->OsakVersion)[2] & 0xf,
-                ((unsigned char *) &mh->OsakVersion)[3] & 0xf,
-                le32_to_cpu(mh->PercentUsed));
+			"  NoOfBootImageBlocks   = %d\n"
+			"  NoOfBinaryPartitions  = %d\n"
+			"  NoOfBDTLPartitions    = %d\n"
+			"  BlockMultiplierBits   = %d\n"
+			"  FormatFlags           = %d\n"
+			"  OsakVersion           = %d.%d.%d.%d\n"
+			"  PercentUsed           = %d\n",
+			mh->bootRecordID, le32_to_cpu(mh->NoOfBootImageBlocks),
+			le32_to_cpu(mh->NoOfBinaryPartitions),
+			le32_to_cpu(mh->NoOfBDTLPartitions),
+			bmbits,
+			le32_to_cpu(mh->FormatFlags),
+			((unsigned char *) &mh->OsakVersion)[0] & 0xf,
+			((unsigned char *) &mh->OsakVersion)[1] & 0xf,
+			((unsigned char *) &mh->OsakVersion)[2] & 0xf,
+			((unsigned char *) &mh->OsakVersion)[3] & 0xf,
+			le32_to_cpu(mh->PercentUsed));
 
 	numpart = le32_to_cpu(mh->NoOfBinaryPartitions) +
-		  le32_to_cpu(mh->NoOfBDTLPartitions);
+		le32_to_cpu(mh->NoOfBDTLPartitions);
 	unitsize = meminfo.erasesize >> bmbits;
 	numunits = meminfo.size / unitsize;
 	nextunit = mhoffs / unitsize;
 	nextunit++;
 	printf("Unitsize is %d bytes.  Device has %d units.\n",
-		unitsize, numunits);
+			unitsize, numunits);
 	if (numunits > 32768) {
 		printf("WARNING: More than 32768 units! Unexpectedly small BlockMultiplierBits.\n");
 	}
@@ -96,24 +96,24 @@ void show_header(int mhoffs) {
 		}
 		if (start > nextunit) {
 			printf("  Unpartitioned space: %d bytes\n"
-				"    virtualUnits  = %d\n"
-				"    firstUnit     = %d\n"
-				"    lastUnit      = %d\n",
-				(start - nextunit) * unitsize, start - nextunit,
-				nextunit, start - 1);
+					"    virtualUnits  = %d\n"
+					"    firstUnit     = %d\n"
+					"    lastUnit      = %d\n",
+					(start - nextunit) * unitsize, start - nextunit,
+					nextunit, start - 1);
 		}
 		if (flags & INFTL_BINARY)
 			printf("  Partition %d   (BDK):", i+1);
 		else
 			printf("  Partition %d  (BDTL):", i+1);
 		printf(" %d bytes\n"
-			"    virtualUnits  = %d\n"
-			"    firstUnit     = %d\n"
-			"    lastUnit      = %d\n"
-			"    flags         = 0x%x\n"
-			"    spareUnits    = %d\n",
-			num * unitsize, num, start, end,
-			le32_to_cpu(ip->flags), le32_to_cpu(ip->spareUnits));
+				"    virtualUnits  = %d\n"
+				"    firstUnit     = %d\n"
+				"    lastUnit      = %d\n"
+				"    flags         = 0x%x\n"
+				"    spareUnits    = %d\n",
+				num * unitsize, num, start, end,
+				le32_to_cpu(ip->flags), le32_to_cpu(ip->spareUnits));
 		if (num > (1 + end - start)) {
 			printf("ERROR: virtualUnits not consistent with first/lastUnit!\n");
 		}
@@ -135,11 +135,11 @@ void show_header(int mhoffs) {
 	}
 	if (nextunit < numunits) {
 		printf("  Unpartitioned space: %d bytes\n"
-			"    virtualUnits  = %d\n"
-			"    firstUnit     = %d\n"
-			"    lastUnit      = %d\n",
-			(numunits - nextunit) * unitsize, numunits - nextunit,
-			nextunit, numunits - 1);
+				"    virtualUnits  = %d\n"
+				"    firstUnit     = %d\n"
+				"    lastUnit      = %d\n",
+				(numunits - nextunit) * unitsize, numunits - nextunit,
+				nextunit, numunits - 1);
 	}
 }
 
@@ -158,10 +158,10 @@ int main(int argc, char **argv)
 
 	if (argc < 2) {
 		printf(
-"Usage: %s <mtddevice> [<size1> [<size2> [<size3> [<size4]]]]\n"
-"  Sizes are in device units (run with no sizes to show unitsize and current\n"
-"  partitions).  Last size = 0 means go to end of device.\n",
-			argv[0]);
+				"Usage: %s <mtddevice> [<size1> [<size2> [<size3> [<size4]]]]\n"
+				"  Sizes are in device units (run with no sizes to show unitsize and current\n"
+				"  partitions).  Last size = 0 means go to end of device.\n",
+				argv[0]);
 		return 1;
 	}
 
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 	}
 
 	printf("Device size is %d bytes.  Erasesize is %d bytes.\n",
-		meminfo.size, meminfo.erasesize);
+			meminfo.size, meminfo.erasesize);
 
 	buf = malloc(meminfo.erasesize);
 	oobbuf = malloc((meminfo.erasesize / meminfo.writesize) * meminfo.oobsize);
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
 		return 0;
 
 	printf("\n"
-"-------------------------------------------------------------------------\n");
+			"-------------------------------------------------------------------------\n");
 
 	unitsize = meminfo.erasesize >> le32_to_cpu(mh->BlockMultiplierBits);
 	totblocks = meminfo.size / unitsize;

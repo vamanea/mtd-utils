@@ -34,21 +34,21 @@
 void display_help(void)
 {
 	printf("Usage: " PROGRAM " [OPTIONS] MTD-device\n"
-	       "Formats NOR flash for resident flash disk\n"
-	       "\n"
-	       "-h         --help               display this help and exit\n"
-	       "-V         --version            output version information and exit\n");
+			"Formats NOR flash for resident flash disk\n"
+			"\n"
+			"-h         --help               display this help and exit\n"
+			"-V         --version            output version information and exit\n");
 	exit(0);
 }
 
 void display_version(void)
 {
-        printf(PROGRAM " " VERSION "\n"
-               "\n"
-	       "This is free software; see the source for copying conditions.  There is NO\n"
-	       "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
+	printf(PROGRAM " " VERSION "\n"
+			"\n"
+			"This is free software; see the source for copying conditions.  There is NO\n"
+			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 
-        exit(0);
+	exit(0);
 }
 
 void process_options(int argc, char *argv[], const char **mtd_filename)
@@ -70,15 +70,15 @@ void process_options(int argc, char *argv[], const char **mtd_filename)
 			break;
 
 		switch (c) {
-		case 'h':
-			display_help();
-			break;
-		case 'V':
-			display_version();
-			break;
-		case '?':
-			error = 1;
-			break;
+			case 'h':
+				display_help();
+				break;
+			case 'V':
+				display_version();
+				break;
+			case '?':
+				error = 1;
+				break;
 		}
 	}
 
