@@ -5,12 +5,18 @@
 # Written in shell language to reduce dependencies to more sophisticated 
 # interpreters, which may not be available on some stupid platforms.
 #
+# Author: Frank Haverkamp <haver@vnet.ibm.com>
+#
+# 1.0 Initial version
+#
+
+VERSION="1.0"
 
 export PATH=$PATH:~/bin:/usr/local/bin:/home/dedekind/work/prj/ubi/tools/flashutils/bin/
 
 UBIMKVOL=ubimkvol
 UBIRMVOL=ubirmvol
-UBIWRITEVOL=ubiupdateevol
+UBIWRITEVOL=ubiwritevol
 
 # 128 KiB 131072
 # 256 KiB 262144
@@ -135,6 +141,7 @@ mkvol_rmvol_test ()
 
     for i in `seq $MINVOL $MAXVOL`; do
 	echo "*** Creating UBI Volume $i ... "
+	echo "    $UBIMKVOL -d0 -n$i -t$type -NNEW$i -s $SIZE_512K"
 
 	$UBIMKVOL -d0 -n$i -t$type -N"NEW$i" -s $SIZE_512K
 	if [ $? -ne "0" ] ; then
@@ -204,8 +211,10 @@ writevol_test ()
     fi
     passed
 
-    echo -n "*** Now writing data to volume ... "
+    echo "*** Now writing data to volume ... "
+    # sleep 5
     ls -l testdata.bin
+    echo "    $UBIWRITEVOL -d0 -n$MINVOL testdata.bin"
     $UBIWRITEVOL -d0 -n$MINVOL testdata.bin
     if [ $? -ne "0" ] ; then
 	exit_failure
@@ -265,7 +274,7 @@ if [ $? -ne "0" ]; then
 fi
 
 # Set to zero if not running on example hardware
-grep 114218D /proc/cpuinfo > /dev/null
+grep 1142 /proc/cpuinfo > /dev/null
 if [ $? -eq "0" ]; then
     echo "Running on example hardware"
     mount -o remount,rw / /
@@ -304,8 +313,8 @@ done
 echo "***********************************************************************"
 echo "*                write to dynamic volumes ...                         *"
 echo "***********************************************************************"
+echo "VERSION: $VERSION"
 
-#for size in 31313  ; do
 for size in 131073 131072 2048 1 4096 12800 31313 262144 ; do
     writevol_test $size dynamic
 done

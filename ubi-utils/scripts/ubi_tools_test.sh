@@ -7,6 +7,12 @@
 # Written in shell language to reduce dependencies to more sophisticated 
 # interpreters, which may not be available on some stupid platforms.
 #
+# Author: Frank Haverkamp <haver@vnet.ibm.com>
+#
+# 1.0 Initial version
+#
+
+VERSION="1.0"
 
 export PATH=$PATH:~/bin:/usr/local/bin:/home/dedekind/work/prj/ubi/tools/flashutils/bin/
 
@@ -121,7 +127,7 @@ if [ $? -ne "0" ]; then
 fi
 
 # Set to zero if not running on example hardware
-grep 114218D /proc/cpuinfo > /dev/null
+grep 1142 /proc/cpuinfo > /dev/null
 if [ $? -eq "0" ]; then
     echo "Running on example hardware"
     mount -o remount,rw / /
@@ -135,6 +141,7 @@ fi
 pfiflash_basic ()
 {
     echo "Calling pfiflash with test-data ... "
+    echo "    $PFIFLASH $test_pfi"
     $PFIFLASH $test_pfi
     if [ $? -ne "0" ]; then
 	echo "Uhhh something went wrong!"
@@ -232,6 +239,7 @@ pfiflash_advanced ()
 echo "***********************************************************************"
 echo "*                Testing pfiflash ...                                 *"
 echo "***********************************************************************"
+echo "VERSION: $VERSION"
 
 pfiflash_basic
 pfiflash_advanced
