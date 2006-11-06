@@ -14,13 +14,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * Author: Frank Haverkamp
- *
- * An utility to decompose UBI images. Not yet finished ...
  */
 
-#include <config.h>
+/*
+ * Authors: Frank Haverkamp, haver@vnet.ibm.com
+ *	    Drake Dowsett, dowsett@de.ibm.com
+ */
+
+/*
+ * unubi  reads  an  image  file containing blocks of UBI headers and data
+ * (such as produced from nand2bin) and rebuilds the volumes within.   The
+ * default  operation  (when  no  flags are given) is to rebuild all valid
+ * volumes found in the image. unubi  can  also  read  straight  from  the
+ * onboard MTD device (ex. /dev/mtdblock/NAND).
+ */
+
+/* TODO: consideration for dynamic vs. static volumes */
+
 #include <argp.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -34,359 +44,802 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include "crc32.h"
 #include <mtd/ubi-header.h>
 
-#define MAXPATH		1024
-#define MIN(x,y)	((x)<(y)?(x):(y))
+#include "crc32.h"
+#include "eb_chain.h"
+#include "unubi_analyze.h"
+
+#define EXEC		"unubi"
+#define CONTACT		"haver@vnet.ibm.com"
+#define VERSION		"0.9"
+
+static char doc[] = "\nVersion: " VERSION "\n\t"
+	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
+	"\nAnalyze raw flash containing UBI data.\n";
+
+#define ERR_MSG(fmt...)							\
+	fprintf(stderr, EXEC ": " fmt)
+
+#define SPLIT_DATA	1
+#define SPLIT_RAW	2
+
+#define DIR_FMT		"unubi_%s"
+#define KIB		1024
+#define MIB		(KIB * KIB)
+#define MAXPATH		KIB
+
+/* filenames */
+#define FN_INVAL	"%s/eb%04u%s"			/* invalid eraseblock */
+#define FN_NSURE	"%s/eb%04u_%03u_%03u_%03x%s"	/* unsure eraseblock */
+#define FN_VALID	"%s/eb%04u_%03u_%03u_%03x%s"	/* valid eraseblock */
+#define FN_VOLSP	"%s/vol%03u_%03u_%03u_%04u"	/* split volume */
+#define FN_VOLWH	"%s/volume%03u"			/* whole volume */
 
 static uint32_t crc32_table[256];
 
+/* struct args:
+ *	bsize		int, blocksize of image blocks
+ *	analyze		flag, when non-zero produce analysis
+ *	eb_split	flag, when non-zero output eb####
+ *			note: SPLIT_DATA vs. SPLIT_RAW
+ *	vol_split	flag, when non-zero output vol###_####
+ *			note: SPLIT_DATA vs. SPLIT_RAW
+ *	odir_path	string, directory to place volumes in
+ *	img_path	string, file to read as ubi image
+ *	vols		int array of size UBI_MAX_VOLUMES, where a 1 can be
+ *			written for each --rebuild flag in the index specified
+ *			then the array can be counted and collapsed using
+ *			count_set() and collapse()
+ */
 struct args {
-	const char *output_dir;
-	uint32_t hdr_offs;
-	uint32_t data_offs;
-	uint32_t blocksize;
+	uint32_t bsize;
+	int analyze;
+	int eb_split;
+	int vol_split;
+	char *odir_path;
+	char *img_path;
+	uint32_t *vols;
 
-	/* special stuff needed to get additional arguments */
-	char *arg1;
-	char **options;		/* [STRING...] */
+	char **options;
 };
 
-static struct args myargs = {
-	.output_dir = "unubi",
-	.hdr_offs = 64,
-	.data_offs = 128,
-	.blocksize = 128 * 1024,
-	.arg1 = NULL,
-	.options = NULL,
-};
+static error_t parse_opt(int key, char *arg, struct argp_state *state);
 
-static error_t parse_opt (int key, char *arg, struct argp_state *state);
-
-const char *argp_program_bug_address =
-	"... uuuh, lets wait until it looks nicer";
-
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\t"
-	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
-	"\nWrite to UBI Volume.\n";
+const char *argp_program_version = VERSION;
+const char *argp_program_bug_address = CONTACT;
 
 static struct argp_option options[] = {
-	{ .name = "dir",
-	  .key = 'd',
-	  .arg = "<output-dir>",
-	  .flags = 0,
-	  .doc = "output directory",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "blocksize",
-	  .key = 'b',
-	  .arg = "<blocksize>",
-	  .flags = 0,
-	  .doc = "blocksize",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "data-offs",
-	  .key = 'x',
-	  .arg = "<data-offs>",
-	  .flags = 0,
-	  .doc = "data offset",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "hdr-offs",
-	  .key = 'x',
-	  .arg = "<hdr-offs>",
-	  .flags = 0,
-	  .doc = "hdr offset",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = NULL, .key = 0, .arg = NULL, .flags = 0,
-	  .doc = NULL, .group = 0 },
+	{
+		name: NULL, key: 0, arg: NULL,
+		flags: 0, group: 0, doc: "OPTIONS",
+	},
+	{
+		name: "rebuild", key: 'r', arg: "<volume-id>",
+		flags: 0, group: 1, doc: "Extract and rebuild volume",
+	},
+	{
+		name: "dir", key: 'd', arg: "<output-dir>",
+		flags: 0, group: 2, doc: "Specify output directory",
+	},
+	{
+		name: "analyze", key: 'a', arg: NULL,
+		flags: 0, group: 3, doc: "Analyze image",
+	},
+	{
+		name: "blocksize", key: 'b', arg: "<block-size>",
+		flags: 0, group: 4, doc: "Specify size of eraseblocks "
+					 "in image in bytes (default "
+					 "128KiB)",
+	},
+	{
+		name: "eb-split", key: 'e', arg: NULL,
+		flags: 0, group: 5, doc: "Generate individual eraseblock "
+					 "images (all eraseblocks)",
+	},
+	{
+		name: "vol-split", key: 'v', arg: NULL,
+		flags: 0, group: 5, doc: "Generate individual eraseblock "
+					 "images (valid eraseblocks only)",
+	},
+	{
+		name: "vol-split!", key: 'V', arg: NULL,
+		flags: 0, group: 5, doc: "Raw split by eraseblock "
+					 "(valid eraseblocks only)",
+	},
+	{
+		name: NULL, key: 0, arg: NULL,
+		flags: 0, group: 0, doc: NULL,
+	},
 };
 
 static struct argp argp = {
 	.options = options,
 	.parser = parse_opt,
 	.args_doc = "image-file",
-	.doc =	doc,
+	.doc = doc,
 	.children = NULL,
 	.help_filter = NULL,
 	.argp_domain = NULL,
 };
 
-/*
- * str_to_num - Convert string into number and cope with endings like
- *              k, K, kib, KiB for kilobyte
- *              m, M, mib, MiB for megabyte
- */
-uint32_t str_to_num(char *str)
+
+/**
+ * parses out a numerical value from a string of numbers followed by:
+ *	k, K, kib, KiB for kibibyte
+ *	m, M, mib, MiB for mebibyte
+ **/
+static uint32_t
+str_to_num(char *str)
 {
-	char *s = str;
-	ulong num = strtoul(s, &s, 0);
+	char *s;
+	ulong num;
+
+	s = str;
+	num = strtoul(s, &s, 0);
 
 	if (*s != '\0') {
-		if (strcmp(s, "KiB") == 0)
-			num *= 1024;
-		else if (strcmp(s, "MiB") == 0)
-			num *= 1024*1024;
-		else {
-			fprintf(stderr, "WARNING: Wrong number format "
-				"\"%s\", check your paramters!\n", str);
-		}
+		if ((strcmp(s, "KiB") == 0) || (strcmp(s, "K") == 0) ||
+		    (strcmp(s, "kib") == 0) || (strcmp(s, "k") == 0))
+			num *= KIB;
+		if ((strcmp(s, "MiB") == 0) || (strcmp(s, "M") == 0) ||
+		    (strcmp(s, "mib") == 0) || (strcmp(s, "m") == 0))
+			num *= MIB;
+		else
+			ERR_MSG("couldn't parse '%s', assuming %lu\n",
+				s, num);
 	}
 	return num;
 }
 
-/*
- * @brief Parse the arguments passed into the test case.
- *
- * @param key            The parameter.
- * @param arg            Argument passed to parameter.
- * @param state          Location to put information on parameters.
- *
- * @return error
- *
- * Get the `input' argument from `argp_parse', which we know is a
- * pointer to our arguments structure.
- */
+
+/**
+ * parses the arguments passed into the program
+ * get the input argument from argp_parse, which we know is a
+ * pointer to our arguments structure;
+ **/
 static error_t
 parse_opt(int key, char *arg, struct argp_state *state)
 {
+	uint32_t i;
 	struct args *args = state->input;
 
 	switch (key) {
-	case 'b': /* --blocksize<blocksize> */
-		args->blocksize = str_to_num(arg);
+	case 'a':
+		args->analyze = 1;
 		break;
-
-	case 'x': /* --data-offs=<data-offs> */
-		args->data_offs = str_to_num(arg);
+	case 'b':
+		args->bsize = str_to_num(arg);
 		break;
-
-	case 'y': /* --hdr-offs=<hdr-offs> */
-		args->hdr_offs = str_to_num(arg);
+	case 'd':
+		args->odir_path = arg;
 		break;
-
-	case 'd': /* --dir=<output-dir> */
-		args->output_dir = arg;
+	case 'e':
+		args->eb_split = SPLIT_RAW;
 		break;
-
+	case 'r':
+		i = str_to_num(arg);
+		if (i < UBI_MAX_VOLUMES)
+			args->vols[str_to_num(arg)] = 1;
+		else {
+			ERR_MSG("volume-id out of bounds\n");
+			return ARGP_ERR_UNKNOWN;
+		}
+		break;
+	case 'v':
+		if (args->vol_split != SPLIT_RAW)
+			args->vol_split = SPLIT_DATA;
+		break;
+	case 'V':
+		args->vol_split = SPLIT_RAW;
+		break;
 	case ARGP_KEY_NO_ARGS:
-		/* argp_usage(state); */
 		break;
-
 	case ARGP_KEY_ARG:
-		args->arg1 = arg;
-		/* Now we consume all the rest of the arguments.
-                   `state->next' is the index in `state->argv' of the
-                   next argument to be parsed, which is the first STRING
-                   we're interested in, so we can just use
-                   `&state->argv[state->next]' as the value for
-                   arguments->strings.
-
-                   _In addition_, by setting `state->next' to the end
-                   of the arguments, we can force argp to stop parsing
-                   here and return. */
-
+		args->img_path = arg;
 		args->options = &state->argv[state->next];
 		state->next = state->argc;
 		break;
-
 	case ARGP_KEY_END:
-		/* argp_usage(state); */
 		break;
-
 	default:
-		return(ARGP_ERR_UNKNOWN);
+		return ARGP_ERR_UNKNOWN;
 	}
 
 	return 0;
 }
 
-static inline void
-hexdump(FILE *fp, const void *p, ssize_t size)
-{
-	int k;
-	const uint8_t *buf = p;
 
-	for (k = 0; k < size; k++) {
-		fprintf(fp, "%02x ", buf[k]);
-		if ((k & 15) == 15)
-			fprintf(fp, "\n");
-	}
+/**
+ * counts the number of indicies which are flagged in full_array;
+ * full_array is an array of flags (1/0);
+ **/
+static size_t
+count_set(uint32_t *full_array, size_t full_len)
+{
+	size_t count, i;
+
+	if (full_array == NULL)
+		return 0;
+
+	for (i = 0, count = 0; i < full_len; i++)
+		if (full_array[i] != 0)
+			count++;
+
+	return count;
 }
 
-/*
- * This was put together in 1.5 hours and this is exactly how it looks
- * like! FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
- * FIXME FIXME FIXME FIXME FIXME FIXME!
- */
-static int extract_volume(struct args *args, const uint8_t *buf,
-			  int len, int volume, FILE *fp)
+
+/**
+ * generates coll_array from full_array;
+ * full_array is an array of flags (1/0);
+ * coll_array is an array of the indicies in full_array which are flagged (1);
+ **/
+static size_t
+collapse(uint32_t *full_array, size_t full_len,
+	 uint32_t *coll_array, size_t coll_len)
 {
-	int i, rc;
-	int nrblocks = len / args->blocksize;
-	int max_lnum = -1, lnum = 0;
-	const uint8_t *ptr;
-	uint8_t **vol_tab;
-	int *vol_len;
+	size_t i, j;
 
-	vol_tab = calloc(nrblocks, sizeof(uint8_t *));
-	vol_len = calloc(nrblocks, sizeof(int));
+	if ((full_array == NULL) || (coll_array == NULL))
+		return 0;
 
-	if (!buf || !vol_tab || !vol_len)
-		exit(EXIT_FAILURE);
+	for (i = 0, j = 0; (i < full_len) && (j < coll_len); i++)
+		if (full_array[i] != 0) {
+			coll_array[j] = i;
+			j++;
+		}
 
-	for (i = 0, ptr = buf; i < nrblocks; i++, ptr += args->blocksize) {
+	return j;
+}
+
+
+/**
+ * header_crc: calculate the crc of EITHER a eb_hdr or vid_hdr
+ * one of the first to args MUST be NULL, the other is the header
+ *	to caculate the crc on
+ * always returns 0
+ **/
+static int
+header_crc(struct ubi_ec_hdr *ebh, struct ubi_vid_hdr *vidh, uint32_t *ret_crc)
+{
+	uint32_t crc = UBI_CRC32_INIT;
+
+	if (ret_crc == NULL)
+		return 0;
+
+	if ((ebh != NULL) && (vidh == NULL))
+		crc = clc_crc32(crc32_table, crc, ebh, UBI_EC_HDR_SIZE_CRC);
+	else if ((ebh == NULL) && (vidh != NULL))
+		crc = clc_crc32(crc32_table, crc, vidh, UBI_VID_HDR_SIZE_CRC);
+	else
+		return 0;
+
+	*ret_crc = crc;
+	return 0;
+}
+
+
+/**
+ * data_crc: save the FILE* position, calculate the crc over a span,
+ *	reset the position
+ * returns non-zero when EOF encountered
+ **/
+static int
+data_crc(FILE* fpin, size_t length, uint32_t *ret_crc)
+{
+	int rc;
+	size_t i;
+	char buf[length];
+	uint32_t crc;
+	fpos_t start;
+
+	rc = fgetpos(fpin, &start);
+	if (rc < 0)
+		return -1;
+
+	for (i = 0; i < length; i++) {
+		int c = fgetc(fpin);
+		if (c == EOF) {
+			ERR_MSG("unexpected EOF\n");
+			return -1;
+		}
+		buf[i] = (char)c;
+	}
+
+	rc = fsetpos(fpin, &start);
+	if (rc < 0)
+		return -1;
+
+	crc = clc_crc32(crc32_table, UBI_CRC32_INIT, buf, length);
+	*ret_crc = crc;
+	return 0;
+}
+
+
+/**
+ * reads data of size len from fpin and writes it to path
+ **/
+static int
+extract_data(FILE* fpin, size_t len, const char *path)
+{
+	int rc;
+	size_t i;
+	FILE* fpout;
+
+	rc = 0;
+	fpout = NULL;
+
+	fpout = fopen(path, "wb");
+	if (fpout == NULL) {
+		ERR_MSG("couldn't open file for writing: %s\n", path);
+		rc = -1;
+		goto err;
+	}
+
+	for (i = 0; i < len; i++) {
+		int c = fgetc(fpin);
+		if (c == EOF) {
+			ERR_MSG("unexpected EOF while writing: %s\n", path);
+			rc = -2;
+			goto err;
+		}
+		c = fputc(c, fpout);
+		if (c == EOF) {
+			ERR_MSG("couldn't write: %s\n", path);
+			rc = -3;
+			goto err;
+		}
+	}
+
+ err:
+	if (fpout != NULL)
+		fclose(fpout);
+	return rc;
+}
+
+
+/**
+ * using eb chain, tries to rebuild the data of volume at vol_id, or for all
+ * the known volumes, if vol_id is NULL;
+ **/
+static int
+rebuild_volume(FILE* fpin, uint32_t *vol_id, eb_info_t *head, const char* path)
+{
+	char filename[MAXPATH];
+	int rc;
+	uint32_t vol, num;
+	FILE* fpout;
+	eb_info_t cur;
+
+	rc = 0;
+
+	if ((fpin == NULL) || (head == NULL) || (*head == NULL))
+		return 0;
+
+	/* when vol_id is null, then do all  */
+	if (vol_id == NULL) {
+		cur = *head;
+		vol = ubi32_to_cpu(cur->inner.vol_id);
+	}
+	else {
+		vol = *vol_id;
+		eb_chain_position(head, vol, NULL, &cur);
+		if (cur == NULL) {
+			ERR_MSG("no valid volume %d was found\n", vol);
+			return -1;
+		}
+	}
+
+	num = 0;
+	snprintf(filename, MAXPATH, FN_VOLWH, path, vol);
+	fpout = fopen(filename, "wb");
+	if (fpout == NULL) {
+		ERR_MSG("couldn't open file for writing: %s\n", filename);
+		return -1;
+	}
+
+	while (cur != NULL) {
+		size_t i;
+
+		if (ubi32_to_cpu(cur->inner.vol_id) != vol) {
+			/* close out file */
+			fclose(fpout);
+
+			/* only stay around if that was the only volume */
+			if (vol_id != NULL)
+				goto out;
+
+			/* begin with next */
+			vol = ubi32_to_cpu(cur->inner.vol_id);
+			num = 0;
+			snprintf(filename, MAXPATH, FN_VOLWH, path, vol);
+			fpout = fopen(filename, "wb");
+			if (fpout == NULL) {
+				ERR_MSG("couldn't open file for writing: %s\n",
+					filename);
+				return -1;
+			}
+		}
+
+		if (ubi32_to_cpu(cur->inner.lnum) != num) {
+			ERR_MSG("missing valid block %d for volume %d\n",
+				num, vol);
+		}
+
+		rc = fsetpos(fpin, &(cur->eb_top));
+		if (rc < 0)
+			goto out;
+		fseek(fpin, ubi32_to_cpu(cur->outer.data_offset), SEEK_CUR);
+
+		for (i = 0; i < ubi32_to_cpu(cur->inner.data_size); i++) {
+			int c = fgetc(fpin);
+			if (c == EOF) {
+				ERR_MSG("unexpected EOF while writing: %s\n",
+					filename);
+				rc = -2;
+				goto out;
+			}
+			c = fputc(c, fpout);
+			if (c == EOF) {
+				ERR_MSG("couldn't write: %s\n", filename);
+				rc = -3;
+				goto out;
+			}
+		}
+
+		cur = cur->next;
+		num++;
+	}
+
+ out:
+	if (vol_id == NULL)
+		fclose(fpout);
+	return rc;
+}
+
+
+/**
+ * traverses FILE* trying to load complete, valid and accurate header data
+ * into the eb chain;
+ **/
+static int
+unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
+{
+	char filename[MAXPATH + 1];
+	char reason[MAXPATH + 1];
+	int rc;
+	size_t i, count;
+	/* relations:
+	 * cur ~ head
+	 * next ~ first */
+	eb_info_t head, cur, first, next;
+	eb_info_t *next_ptr;
+
+	rc = 0;
+	count = 0;
+	head = NULL;
+	first = NULL;
+	next = NULL;
+	cur = malloc(sizeof(*cur));
+	if (cur == NULL) {
+		ERR_MSG("out of memory\n");
+		rc = -ENOMEM;
+		goto err;
+	}
+	memset(cur, 0, sizeof(*cur));
+
+	fgetpos(fpin, &(cur->eb_top));
+	while (1) {
+		const char *raw_path;
 		uint32_t crc;
-		struct ubi_ec_hdr *ec_hdr = (struct ubi_ec_hdr *)ptr;
-		struct ubi_vid_hdr *vid_hdr = NULL;
-		uint8_t *data;
 
-		/* default */
-		vol_len[lnum] = args->blocksize - (2 * 1024);
+		memset(filename, 0, MAXPATH + 1);
+		memset(reason, 0, MAXPATH + 1);
 
-		/* Check UBI EC header */
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, ec_hdr,
-				UBI_EC_HDR_SIZE_CRC);
-		if (crc != ubi32_to_cpu(ec_hdr->hdr_crc))
-			continue;
+		/* in case of an incomplete ec header */
+		raw_path = FN_INVAL;
 
-		vid_hdr = (struct ubi_vid_hdr *)
-			(ptr + ubi32_to_cpu(ec_hdr->vid_hdr_offset));
-		data = (uint8_t *)(ptr + ubi32_to_cpu(ec_hdr->data_offset));
-
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, vid_hdr,
-				UBI_VID_HDR_SIZE_CRC);
-		if (crc != ubi32_to_cpu(vid_hdr->hdr_crc))
-			continue;
-
-		if (volume == (int)ubi32_to_cpu(vid_hdr->vol_id)) {
-
-			printf("****** block %4d volume %2d **********\n",
-			       i, volume);
-
-			hexdump(stdout, ptr, 64);
-
-			printf("--- vid_hdr\n");
-			hexdump(stdout, vid_hdr, 64);
-
-			printf("--- data\n");
-			hexdump(stdout, data, 64);
-
-			lnum = ubi32_to_cpu(vid_hdr->lnum);
-			vol_tab[lnum] = data;
-			if (max_lnum < lnum)
-				max_lnum = lnum;
-			if (vid_hdr->vol_type == UBI_VID_STATIC)
-				vol_len[lnum] =
-					ubi32_to_cpu(vid_hdr->data_size);
-
+		/* read erasecounter header */
+		rc = fread(&cur->outer, 1, sizeof(cur->outer), fpin);
+		if (rc == 0)
+			goto out; /* EOF */
+		if (rc != sizeof(cur->outer)) {
+			ERR_MSG("reading ec-hdr failed rc=%d\n", rc);
+			rc = -1;
+			goto err;
 		}
+
+		/* check erasecounter header magic */
+		if (ubi32_to_cpu(cur->outer.magic) != UBI_EC_HDR_MAGIC) {
+			snprintf(reason, MAXPATH, ".invalid.ec_magic");
+			goto invalid;
+		}
+
+		/* check erasecounter header crc */
+		header_crc(&(cur->outer), NULL, &crc);
+
+		if (ubi32_to_cpu(cur->outer.hdr_crc) != crc) {
+			snprintf(reason, MAXPATH, ".invalid.ec_hdr_crc");
+			goto invalid;
+		}
+
+		/* read volume id header */
+		rc = fsetpos(fpin, &(cur->eb_top));
+		if (rc != 0)
+			goto err;
+		fseek(fpin, ubi32_to_cpu(cur->outer.vid_hdr_offset), SEEK_CUR);
+
+		/* read erasecounter header */
+		rc = fread(&cur->inner, 1, sizeof(cur->inner), fpin);
+		if (rc == 0)
+			goto out; /* EOF */
+		if (rc != sizeof(cur->inner)) {
+			ERR_MSG("reading vid-hdr failed rc=%d\n", rc);
+			rc = -1;
+			goto err;
+		}
+
+		/* empty? */
+		if (ubi32_to_cpu(cur->inner.magic) == 0xffffffff) {
+			snprintf(reason, MAXPATH, ".empty");
+			goto invalid;
+		}
+
+		/* vol_id should be in bounds */
+		if ((ubi32_to_cpu(cur->inner.vol_id) >= UBI_MAX_VOLUMES) &&
+		    (ubi32_to_cpu(cur->inner.vol_id) <
+		     UBI_INTERNAL_VOL_START)) {
+			snprintf(reason, MAXPATH, ".invalid");
+			goto invalid;
+		} else
+			raw_path = FN_NSURE;
+
+		/* check volume id header magic */
+		if (ubi32_to_cpu(cur->inner.magic) != UBI_VID_HDR_MAGIC) {
+			snprintf(reason, MAXPATH, ".invalid.vid_magic");
+			goto invalid;
+		}
+
+		/* check volume id header crc */
+		header_crc(NULL, &(cur->inner), &crc);
+		if (ubi32_to_cpu(cur->inner.hdr_crc) != crc) {
+			snprintf(reason, MAXPATH, ".invalid.vid_hdr_crc");
+			goto invalid;
+		}
+
+		/* check data crc */
+		rc = data_crc(fpin, ubi32_to_cpu(cur->inner.data_size), &crc);
+		if (rc < 0)
+			goto err;
+		if (ubi32_to_cpu(cur->inner.data_crc) != crc) {
+			snprintf(reason, MAXPATH, ".invalid.data_crc");
+			goto invalid;
+		}
+
+		/* enlist this vol, it's valid */
+		raw_path = FN_VALID;
+		cur->linear = count;
+		rc = eb_chain_insert(&head, cur);
+		if (rc < 0) {
+			if (rc == -ENOMEM) {
+				ERR_MSG("out of memory\n");
+				goto err;
+			}
+			ERR_MSG("unknown and unexpected error, please contact "
+				CONTACT "\n");
+			goto err;
+		}
+
+		if (a->vol_split) {
+			size_t size = 0;
+
+			rc = fsetpos(fpin, &(cur->eb_top));
+			if (rc != 0)
+				goto err;
+
+			if (a->vol_split == SPLIT_DATA) {
+				/* write only data section */
+				size = ubi32_to_cpu(cur->inner.data_size);
+				fseek(fpin,
+				      ubi32_to_cpu(cur->outer.data_offset),
+				      SEEK_CUR);
+			}
+			else if (a->vol_split == SPLIT_RAW)
+				/* write entire eraseblock */
+				size = a->bsize;
+
+			snprintf(filename, MAXPATH, FN_VOLSP,
+				 a->odir_path,
+				 ubi32_to_cpu(cur->inner.vol_id),
+				 ubi32_to_cpu(cur->inner.lnum),
+				 ubi32_to_cpu(cur->inner.leb_ver), count);
+			rc = extract_data(fpin, size, filename);
+			if (rc < 0)
+				goto err;
+		}
+
+ invalid:
+		if (a->eb_split) {
+			/* jump to top of block */
+			rc = fsetpos(fpin, &(cur->eb_top));
+			if (rc != 0)
+				goto err;
+
+			if (strcmp(raw_path, FN_INVAL) == 0)
+				snprintf(filename, MAXPATH, raw_path,
+					 a->odir_path, count, reason);
+			else
+				snprintf(filename, MAXPATH, raw_path,
+					 a->odir_path,
+					 count,
+					 ubi32_to_cpu(cur->inner.vol_id),
+					 ubi32_to_cpu(cur->inner.lnum),
+					 ubi32_to_cpu(cur->inner.leb_ver),
+					 reason);
+
+			rc = extract_data(fpin, a->bsize, filename);
+			if (rc < 0)
+				goto err;
+		}
+
+		/* append to simple linked list */
+		if (first == NULL)
+			next_ptr = &first;
+		else
+			next_ptr = &next->next;
+
+		*next_ptr = malloc(sizeof(**next_ptr));
+		if (*next_ptr == NULL) {
+			ERR_MSG("out of memory\n");
+			rc = -ENOMEM;
+			goto err;
+		}
+		memset(*next_ptr, 0, sizeof(**next_ptr));
+
+		next = *next_ptr;
+		memcpy(next, cur, sizeof(*next));
+		next->next = NULL;
+
+		count++;
+		rc = fsetpos(fpin, &(cur->eb_top));
+		if (rc != 0)
+			goto err;
+		fseek(fpin, a->bsize, SEEK_CUR);
+		memset(cur, 0, sizeof(*cur));
+
+		fgetpos(fpin, &(cur->eb_top));
 	}
 
-	for (lnum = 0; lnum <= max_lnum; lnum++) {
-		if (vol_tab[lnum]) {
-			rc = fwrite(vol_tab[lnum], 1, vol_len[lnum], fp);
-			if (ferror(fp) || (vol_len[lnum] != rc)) {
-				perror("could not write file");
-				exit(EXIT_FAILURE);
-			}
-		} else {
-			/* Fill up empty areas by 0xff, for static
-			 * volumes this means they are broken!
-			 */
-			for (i = 0; i < vol_len[lnum]; i++) {
-				if (fputc(0xff, fp) == EOF) {
-					perror("could not write char");
-					exit(EXIT_FAILURE);
-				}
-			}
-		}
+ out:
+	for (i = 0; i < vc; i++) {
+		rc = rebuild_volume(fpin, &vols[i], &head, a->odir_path);
+		if (rc < 0)
+			goto err;
 	}
 
-	free(vol_tab);
-	free(vol_len);
-	return 0;
+	/* if there were no volumes specified, rebuild them all,
+	 * UNLESS eb_ or vol_ split or analyze was specified */
+	if ((vc == 0) && (!a->eb_split) && (!a->vol_split) && (!a->analyze)) {
+		rc = rebuild_volume(fpin, NULL, &head, a->odir_path);
+		if (rc < 0)
+			goto err;
+	}
+
+ err:
+	free(cur);
+
+	if (a->analyze)
+		unubi_analyze(&head, first, a->odir_path);
+	eb_chain_destroy(&head);
+	eb_chain_destroy(&first);
+
+	return rc;
 }
 
+
+/**
+ * handles command line arguments, then calls unubi_volumes
+ **/
 int
 main(int argc, char *argv[])
 {
-	int len, rc;
-	FILE *fp;
-	struct stat file_info;
-	uint8_t *buf;
-	int i;
+	int rc, free_a_odir;
+	size_t vols_len;
+	uint32_t *vols;
+	FILE* fpin;
+	struct args a;
 
+	rc = 0;
+	free_a_odir = 0;
+	vols_len = 0;
+	vols = NULL;
+	fpin = NULL;
 	init_crc32_table(crc32_table);
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &myargs);
+	/* setup struct args a */
+	memset(&a, 0, sizeof(a));
+	a.bsize = 128 * KIB;
+	a.vols = malloc(sizeof(*a.vols) * UBI_MAX_VOLUMES);
+	if (a.vols == NULL) {
+		ERR_MSG("out of memory\n");
+		rc = ENOMEM;
+		goto err;
+	}
+	memset(a.vols, 0, sizeof(*a.vols) * UBI_MAX_VOLUMES);
 
-	if (!myargs.arg1) {
-		fprintf(stderr, "Please specify input file!\n");
-		exit(EXIT_FAILURE);
+	/* parse args and check for validity */
+	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &a);
+	if (a.img_path == NULL) {
+		ERR_MSG("no image file specified\n");
+		rc = EINVAL;
+		goto err;
 	}
+	else if (a.odir_path == NULL) {
+		char *ptr;
+		int len;
 
-	fp = fopen(myargs.arg1, "r");
-	if (!fp) {
-		perror("Cannot open file");
-		exit(EXIT_FAILURE);
-	}
-	if (fstat(fileno(fp), &file_info) != 0) {
-		fprintf(stderr, "Cannot fetch file size "
-			"from input file.\n");
-	}
-	len = file_info.st_size;
-	buf = malloc(len);
-	if (!buf) {
-		perror("out of memory!");
-		exit(EXIT_FAILURE);
-	}
-	rc = fread(buf, 1, len, fp);
-	if (ferror(fp) || (len != rc)) {
-		perror("could not read file");
-		exit(EXIT_FAILURE);
-	}
-	if (!myargs.output_dir) {
-		fprintf(stderr, "No output directory specified!\n");
-		exit(EXIT_FAILURE);
-	}
+		ptr = strrchr(a.img_path, '/');
+		if (ptr == NULL)
+			ptr = a.img_path;
+		else
+			ptr++;
 
-	rc = mkdir(myargs.output_dir, 0777);
-	if (rc && errno != EEXIST) {
-		perror("Cannot create output directory");
-		exit(EXIT_FAILURE);
-	}
-	for (i = 0; i < 32; i++) {
-		char fname[1024];
-		FILE *fpout;
-
-		printf("######### VOLUME %d ############################\n",
-		       i);
-
-		sprintf(fname, "%s/ubivol_%d.bin", myargs.output_dir, i);
-		fpout = fopen(fname, "w+");
-		if (!fpout) {
-			perror("Cannot open file");
-			exit(EXIT_FAILURE);
+		len = strlen(DIR_FMT) + strlen(ptr);
+		free_a_odir = 1;
+		a.odir_path = malloc(sizeof(*a.odir_path) * len);
+		if (a.odir_path == NULL) {
+			ERR_MSG("out of memory\n");
+			rc = ENOMEM;
+			goto err;
 		}
-		extract_volume(&myargs, buf, len, i, fpout);
-		fclose(fpout);
+		snprintf(a.odir_path, len, DIR_FMT, ptr);
 	}
 
-	fclose(fp);
-	free(buf);
-	exit(EXIT_SUCCESS);
+	fpin = fopen(a.img_path, "rb");
+	if (fpin == NULL) {
+		ERR_MSG("couldn't open file for reading: "
+			"%s\n", a.img_path);
+		rc = EINVAL;
+		goto err;
+	}
+
+	rc = mkdir(a.odir_path, 0777);
+	if ((rc < 0) && (errno != EEXIST)) {
+		ERR_MSG("couldn't create ouput directory: "
+			"%s\n", a.odir_path);
+		rc = -rc;
+		goto err;
+	}
+
+	/* fill in vols array */
+	vols_len = count_set(a.vols, UBI_MAX_VOLUMES);
+	if (vols_len > 0) {
+		vols = malloc(sizeof(*vols) * vols_len);
+		if (vols == NULL) {
+			ERR_MSG("out of memory\n");
+			rc = ENOMEM;
+			goto err;
+		}
+		collapse(a.vols, UBI_MAX_VOLUMES, vols, vols_len);
+	}
+
+	/* unubi volumes */
+	rc = unubi_volumes(fpin, vols, vols_len, &a);
+	if (rc < 0) {
+		ERR_MSG("error encountered while working on image file: "
+			"%s\n", a.img_path);
+		rc = -rc;
+		goto err;
+	}
+
+ err:
+	free(a.vols);
+	if (free_a_odir != 0)
+		free(a.odir_path);
+	if (fpin != NULL)
+		fclose(fpin);
+	if (vols_len > 0)
+		free(vols);
+	return rc;
 }

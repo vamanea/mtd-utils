@@ -71,7 +71,7 @@ ubigen: ubigen.o libubigen.o crc32.o
 mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-unubi: unubi.o crc32.o
+unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
