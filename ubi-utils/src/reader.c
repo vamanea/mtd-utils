@@ -29,9 +29,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "config.h"
 #include "bootenv.h"
 #include "reader.h"
+
+#define __unused __attribute__((unused))
 
 /* @FIXME hard coded offsets right now - get them from Artem? */
 #define NAND2048_DEFAULT_VID_HDR_OFF 1984
@@ -152,6 +153,12 @@ read_pfi_raw(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_raw_t* pfi_raw,
 		goto err;
 	}
 
+	rc = pfi_header_getnumber(pfi_hd, "crc", &(res->crc));
+	if (rc != 0) {
+		EBUF_PFI("Cannot read 'crc' from PFI.");
+		goto err;
+	}
+
 	rc = pfi_header_getstring(pfi_hd, "raw_starts",
 				  tmp_str, PFI_KEYWORD_LEN);
 	if (rc != 0) {
@@ -209,6 +216,12 @@ read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 	rc = pfi_header_getnumber(pfi_hd, "size", &(res->data_size));
 	if (rc != 0) {
 		EBUF_PFI("Cannot read 'size' from PFI.");
+		goto err;
+	}
+
+	rc = pfi_header_getnumber(pfi_hd, "crc", &(res->crc));
+	if (rc != 0) {
+		EBUF_PFI("Cannot read 'crc' from PFI.");
 		goto err;
 	}
 

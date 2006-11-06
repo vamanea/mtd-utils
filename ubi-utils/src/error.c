@@ -25,6 +25,7 @@
 #include "error.h"
 
 #define MAXLINE 4096
+#define MAXWIDTH 80
 
 static FILE *logfp = NULL;
 
@@ -34,6 +35,9 @@ int
 read_procfile(FILE *fp_out, const char *procfile)
 {
 	FILE *fp;
+
+	if (!fp_out)
+		return -ENXIO;
 
 	fp = fopen(procfile, "r");
 	if (!fp)
@@ -57,6 +61,9 @@ read_procfile(FILE *fp_out, const char *procfile)
 void
 error_initlog(const char *logfile)
 {
+	if (!logfile)
+		return;
+
 	logfp = fopen(logfile, "a+");
 	read_procfile(logfp, "/proc/cpuinfo");
 }
@@ -143,7 +150,11 @@ __err_dump(const char *fmt, ...)
 	exit(EXIT_FAILURE);	/* shouldn't get here */
 }
 
-
+/**
+ * If a logfile is used we must not print on stderr and stdout
+ * anymore. Since pfilfash might be used in a server context, it is
+ * even dangerous to write to those descriptors.
+ */
 static void
 err_doit(int errnoflag, int level __attribute__((unused)),
 	 const char *fmt, va_list ap)
@@ -166,9 +177,61 @@ err_doit(int errnoflag, int level __attribute__((unused)),
 	if (logfp) {
 		fputs(buf, logfp);
 		fflush(logfp);
+		return;		/* exit when logging completes */
 	}
 
-	fputs(buf, fpout);
+	if (fpout == stderr) {
+		/* perform line wrap when outputting to stderr */
+		int word_len, post_len, chars;
+		char *buf_ptr;
+		const char *frmt = "%*s%n %n";
+
+		chars = 0;
+		buf_ptr = buf;
+		while (sscanf(buf_ptr, frmt, &word_len, &post_len) != EOF) {
+			int i;
+			char word[word_len + 1];
+			char post[post_len + 1];
+
+			strncpy(word, buf_ptr, word_len);
+			word[word_len] = '\0';
+			buf_ptr += word_len;
+			post_len -= word_len;
+
+			if (chars + word_len > MAXWIDTH) {
+				fputc('\n', fpout);
+				chars = 0;
+			}
+			fputs(word, fpout);
+			chars += word_len;
+
+			if (post_len > 0) {
+				strncpy(post, buf_ptr, post_len);
+				post[post_len] = '\0';
+				buf_ptr += post_len;
+			}
+			for (i = 0; i < post_len; i++) {
+				int inc = 1, chars_new;
+
+				if (post[i] == '\t')
+					inc = 8;
+				if (post[i] == '\n') {
+					inc = 0;
+					chars_new = 0;
+				} else
+					chars_new = chars + inc;
+
+				if (chars_new > MAXWIDTH) {
+					fputc('\n', fpout);
+					chars_new = inc;
+				}
+				fputc(post[i], fpout);
+				chars = chars_new;
+			}
+		}
+	}
+	else
+		fputs(buf, fpout);
 	fflush(fpout);
 	if (fpout != stderr)
 		fclose(fpout);

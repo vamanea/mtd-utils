@@ -50,6 +50,7 @@ struct pfi_raw {
 	uint32_t data_size;
 	uint32_t *starts;
 	uint32_t starts_size;
+	uint32_t crc;
 };
 
 struct pfi_ubi {
@@ -63,6 +64,7 @@ struct pfi_ubi {
 	enum { pfi_ubi_dynamic, pfi_ubi_static } type;
 	int curr_seqnum; /* specifies the seqnum taken in an update,
 			    default: 0 (used by pfiflash, ubimirror) */
+	uint32_t crc;
 };
 
 int read_pdd_data(FILE* fp_pdd, pdd_data_t *pdd_data,

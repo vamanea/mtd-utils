@@ -230,6 +230,10 @@ int bootenv_size(bootenv_t env, size_t *size);
  */
 int bootenv_read(FILE* fp, bootenv_t env, size_t size);
 
+/**
+ * @param ret_crc  return value of crc of read data
+ */
+int bootenv_read_crc(FILE* fp, bootenv_t env, size_t size, uint32_t *ret_crc);
 
 /**
  * @brief Read bootenv data from an text/ascii file.
@@ -248,6 +252,11 @@ int bootenv_read_txt(FILE* fp, bootenv_t env);
  * @return or error
  */
 int bootenv_write(FILE* fp, bootenv_t env);
+
+/**
+ * @param ret_crc  return value of crc of read data
+ */
+int bootenv_write_crc(FILE* fp, bootenv_t env, uint32_t* ret_crc);
 
 /**
  * @brief Write a bootenv structure to the given location (text).

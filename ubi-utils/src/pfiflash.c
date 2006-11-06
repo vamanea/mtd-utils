@@ -21,6 +21,8 @@
  * Process a PFI (partial flash image) and write the data to the
  * specified UBI volumes. This tool is intended to be used for system
  * update using PFI files.
+ *
+ * 1.1 fixed output to stderr and stdout in logfile mode.
  */
 
 #include <unistd.h>
@@ -34,12 +36,15 @@
 #include <errno.h>
 
 #include <pfiflash.h>
+#undef DEBUG
 #include "error.h"
 #include "config.h"
 
-const char *argp_program_version = PACKAGE_VERSION;
+#define PROGRAM_VERSION  "1.2"
+
+const char *argp_program_version = PROGRAM_VERSION;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"pfiflash - a tool for updating a controller with PFI files.\n";
@@ -83,12 +88,17 @@ static struct argp_option options[] = {
 	  "'keep', 'merge' or 'overwrite'.",
 	  group: 2 },
 
+	{ name: "raw-flash", key: 'r', arg: "<dev>", flags: 0,
+	  doc: "Flash the raw data. Use the specified mtd device.",
+	  group: 2 },
+
 	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
 };
 
 typedef struct myargs {
 	int verbose;
 	const char *logfile;
+	const char *raw_dev;
 
 	pdd_handling_t pdd_handling;
 	int seqnum;
@@ -168,7 +178,9 @@ parse_opt(int key, char *arg, struct argp_state *state)
 				 "Supported sides are '0' and '1'\n", arg);
 		}
 		break;
-
+	case 'r':
+		args->raw_dev = arg;
+		break;
 	case ARGP_KEY_ARG: /* input file */
 		args->fp_in = fopen(arg, "r");
 		if ((args->fp_in) == NULL) {
@@ -212,9 +224,10 @@ int main (int argc, char** argv)
 		.verbose    = 0,
 		.seqnum	    = -1,
 		.complete   = 0,
-		.logfile    = "/tmp/pfiflash.log",
+		.logfile    = NULL, /* "/tmp/pfiflash.log", */
 		.pdd_handling = PDD_KEEP,
-		.fp_in	  = stdin,
+		.fp_in	    = stdin,
+		.raw_dev    = NULL,
 	};
 
 	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
@@ -227,8 +240,16 @@ int main (int argc, char** argv)
 		goto err;
 	}
 
-	rc = pfiflash(args.fp_in, args.complete, args.seqnum,
-		      args.pdd_handling, err_buf, PFIFLASH_MAX_ERR_BUF_SIZE);
+	if (!args.raw_dev) {
+		rc = pfiflash(args.fp_in, args.complete, args.seqnum,
+			      args.pdd_handling, err_buf,
+			      PFIFLASH_MAX_ERR_BUF_SIZE);
+	} else {
+		rc = pfiflash_with_raw(args.fp_in, args.complete, args.seqnum,
+			      args.pdd_handling, args.raw_dev, err_buf,
+			      PFIFLASH_MAX_ERR_BUF_SIZE);
+	}
+
 	if (rc != 0) {
 		goto err_fp;
 	}
@@ -238,6 +259,6 @@ int main (int argc, char** argv)
 		fclose(args.fp_in);
  err:
 	if (rc != 0)
-		err_msg("Error: %s\nrc: %d\n", err_buf, rc);
+		err_msg("pfiflash: %s\nrc: %d\n", err_buf, rc);
 	return rc;
 }

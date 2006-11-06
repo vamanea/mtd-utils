@@ -48,15 +48,15 @@ ubirmvol: ubirmvol.o error.o libubi.o libubi_sysfs.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o libubi_sysfs.o
+		libubi.o libubi_sysfs.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
-		bootenv.o hashmap.o pfi.o libubi.o libubi_sysfs.o
+		bootenv.o hashmap.o pfi.o libubi.o libubi_sysfs.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o libubi_sysfs.o
+		libubi.o libubi_sysfs.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 nand2bin: nand2bin.o nandecc.o nandcorr.o
@@ -68,7 +68,7 @@ bin2nand: bin2nand.o error.o nandecc.o
 ubigen: ubigen.o libubigen.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o
+mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 unubi: unubi.o crc32.o

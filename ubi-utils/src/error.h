@@ -78,7 +78,7 @@ void info_msg(const char *fmt, ...);
 	__err_msg(fmt, ##__VA_ARGS__);				\
 } while (0)
 #else
-#define dbg_msg(fmt, ...)
+#define dbg_msg(fmt, ...) do {} while (0)
 #endif
 
 #endif /* __ERROR_H__ */

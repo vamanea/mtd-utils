@@ -27,9 +27,13 @@
 #include <sys/stat.h>
 #include <bootenv.h>
 
-#include "config.h"
 #include "hashmap.h"
 #include "error.h"
+
+#include <mtd/ubi-header.h>
+#include "crc32.h"
+
+#define __unused __attribute__((unused))
 
 #define BOOTENV_MAXLINE 512 /* max line size of a bootenv.txt file */
 
@@ -189,9 +193,10 @@ extract_pair(const char *str, bootenv_t env)
 
 	*val = '\0'; /* split strings */
 	val++;
+
 	rc = bootenv_set(env, key, val);
 
-err:
+ err:
 	free(key);
 	return rc;
 }
@@ -248,46 +253,36 @@ bootenv_create(bootenv_t* env)
 static int
 rd_buffer(bootenv_t env, const char *buf, size_t size)
 {
-	const char *curr = buf;	/* ptr to current key/value pair */
-	uint32_t i = 0;		/* current length */
-	uint32_t j = 0;		/* processed chars */
-	uint32_t items = 0;	/* processed items */
-	int rc = 0;
+	const char *curr = buf;		/* ptr to current key/value pair */
+	uint32_t i, j;			/* current length, chars processed */
 
-	if (buf[size-1] != '\0') {
+	if (buf[size - 1] != '\0')	/* must end in '\0' */
 		return BOOTENV_EFMT;
-	}
 
-	while ((i = strlen(curr)) != 0) {
-		/* there is a key value pair remaining */
-		rc = extract_pair(curr, env);
-		if (rc != 0) {
-			rc = BOOTENV_EINVAL;
-			return rc;
-		}
-		items++;
+	for (j = 0; j < size; j += i, curr += i) {
+		/* strlen returns the size of the string upto
+		   but not including the null terminator;
+		   adding 1 to account for '\0' */
+		i = strlen(curr) + 1;
 
-		j += i;
-		if (j >= size)
-			return 0; /* finished, end of buffer */
-		curr += i + 1;
+		if (i == 1)
+			return 0;	/* no string found */
+
+		if (extract_pair(curr, env) != 0)
+			return BOOTENV_EINVAL;
 	}
 
 	return 0;
 }
 
-/**
- * If we have a single file containing the boot-parameter size should
- * be specified either as the size of the file or as BOOTENV_MAXSIZE.
- * If the bootparameter are in the middle of a file we need the exact
- * length of the data.
- */
+
 int
-bootenv_read(FILE* fp, bootenv_t env, size_t size)
+bootenv_read_crc(FILE* fp, bootenv_t env, size_t size, uint32_t* ret_crc)
 {
 	int rc;
 	char *buf = NULL;
 	size_t i = 0;
+	uint32_t crc32_table[256];
 
 	if ((fp == NULL) || (env == NULL))
 		return -EINVAL;
@@ -306,32 +301,46 @@ bootenv_read(FILE* fp, bootenv_t env, size_t size)
 	 */
 	while((i < size) && (!feof(fp))) {
 		int c = fgetc(fp);
-
 		if (c == EOF) {
+			/* FIXME isn't this dangerous, to update
+			   the boot envs with incomplete data? */
 			buf[i++] = '\0';
 			break;	/* we have enough */
 		}
-
-		/* log_msg("%c", c); */	/* FIXME DBG */
-
-		buf[i++] = c;
 		if (ferror(fp)) {
 			rc = -EIO;
 			goto err;
 		}
+
+		buf[i++] = (char)c;
+	}
+
+	/* calculate crc to return */
+	if (ret_crc != NULL) {
+		init_crc32_table(crc32_table);
+		*ret_crc = clc_crc32(crc32_table, UBI_CRC32_INIT, buf, size);
 	}
 
 	/* transfer to hashmap */
 	rc = rd_buffer(env, buf, size);
-
-	/* FIXME DBG */
-	/* log_msg("\n%s:%d rc=%d\n", __func__, __LINE__, rc); */
 
 err:
 	free(buf);
 	return rc;
 }
 
+
+/**
+ * If we have a single file containing the boot-parameter size should
+ * be specified either as the size of the file or as BOOTENV_MAXSIZE.
+ * If the bootparameter are in the middle of a file we need the exact
+ * length of the data.
+ */
+int
+bootenv_read(FILE* fp, bootenv_t env, size_t size)
+{
+	return bootenv_read_crc(fp, env, size, NULL);
+}
 
 
 int
@@ -390,8 +399,8 @@ err:
 }
 
 static int
-fill_output_buffer(bootenv_t env, char *buf, size_t buf_size_max,
-		   size_t *written)
+fill_output_buffer(bootenv_t env, char *buf, size_t buf_size_max __unused,
+		size_t *written)
 {
 	int rc = 0;
 	size_t keys_size, i;
@@ -404,7 +413,7 @@ fill_output_buffer(bootenv_t env, char *buf, size_t buf_size_max,
 		goto err;
 
 	for (i = 0; i < keys_size; i++) {
-		if (wr > buf_size_max) {
+		if (wr > BOOTENV_MAXSIZE) {
 			rc = -ENOSPC;
 			goto err;
 		}
@@ -413,7 +422,7 @@ fill_output_buffer(bootenv_t env, char *buf, size_t buf_size_max,
 		if (rc != 0)
 			goto err;
 
-		wr += snprintf(buf + wr, buf_size_max - wr,
+		wr += snprintf(buf + wr, BOOTENV_MAXSIZE - wr,
 				"%s=%s", keys[i], val);
 		wr++; /* for \0 */
 	}
@@ -428,11 +437,12 @@ err:
 }
 
 int
-bootenv_write(FILE* fp, bootenv_t env)
+bootenv_write_crc(FILE* fp, bootenv_t env, uint32_t* ret_crc)
 {
 	int rc = 0;
 	size_t size = 0;
 	char *buf = NULL;
+	uint32_t crc32_table[256];
 
 	if ((fp == NULL) || (env == NULL))
 		return -EINVAL;
@@ -441,9 +451,16 @@ bootenv_write(FILE* fp, bootenv_t env)
 	if (buf == NULL)
 		return -ENOMEM;
 
+
 	rc = fill_output_buffer(env, buf, BOOTENV_MAXSIZE, &size);
 	if (rc != 0)
 		goto err;
+
+	/* calculate crc to return */
+	if (ret_crc != NULL) {
+		init_crc32_table(crc32_table);
+		*ret_crc = clc_crc32(crc32_table, UBI_CRC32_INIT, buf, size);
+	}
 
 	if (fwrite(buf, size, 1, fp) != 1) {
 		rc = -EIO;
@@ -454,6 +471,12 @@ err:
 	if (buf != NULL)
 		free(buf);
 	return rc;
+}
+
+int
+bootenv_write(FILE* fp, bootenv_t env)
+{
+	return bootenv_write_crc(fp, env, NULL);
 }
 
 int
