@@ -17,6 +17,10 @@ else
   BUILDDIR := $(CROSS:-=)
 endif
 
+ifeq ($(WITHOUT_XATTR), 1)
+  CFLAGS += -DWITHOUT_XATTR
+endif
+
 RAWTARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	mkfs.jffs ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \
 	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite \

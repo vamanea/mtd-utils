@@ -64,8 +64,10 @@
 #include <ctype.h>
 #include <time.h>
 #include <getopt.h>
+#ifndef WITHOUT_XATTR
 #include <sys/xattr.h>
 #include <sys/acl.h>
+#endif
 #include <byteswap.h>
 #define crc32 __complete_crap
 #include <zlib.h>
@@ -1030,6 +1032,7 @@ static void write_special_file(struct filesystem_entry *e)
 	padword();
 }
 
+#ifndef WITHOUT_XATTR
 typedef struct xattr_entry {
 	struct xattr_entry *next;
 	uint32_t xid;
@@ -1259,6 +1262,10 @@ static void write_xattr_entry(struct filesystem_entry *e)
 	}
 }
 
+#else /* WITHOUT_XATTR */
+#define write_xattr_entry(x)
+#endif
+
 static void recursive_populate_directory(struct filesystem_entry *dir)
 {
 	struct filesystem_entry *e;
@@ -1416,9 +1423,11 @@ static struct option long_options[] = {
 	{"test-compression", 0, NULL, 't'},
 	{"compressor-priority", 1, NULL, 'y'},
 	{"incremental", 1, NULL, 'i'},
+#ifndef WITHOUT_XATTR
 	{"with-xattr", 0, NULL, 1000 },
 	{"with-selinux", 0, NULL, 1001 },
 	{"with-posix-acl", 0, NULL, 1002 },
+#endif
 	{NULL, 0, NULL, 0}
 };
 
@@ -1451,9 +1460,11 @@ static char *helptext =
 "  -q, --squash            Squash permissions and owners making all files be owned by root\n"
 "  -U, --squash-uids       Squash owners making all files be owned by root\n"
 "  -P, --squash-perms      Squash permissions on all files\n"
+#ifndef WITHOUT_XATTR
 "      --with-xattr        stuff all xattr entries into image\n"
 "      --with-selinux      stuff only SELinux Labels into jffs2 image\n"
 "      --with-posix-acl    stuff only POSIX ACL entries into jffs2 image\n"
+#endif
 "  -h, --help              Display this help text\n"
 "  -v, --verbose           Verbose operation\n"
 "  -V, --version           Display version information\n"
@@ -1772,6 +1783,7 @@ int main(int argc, char **argv)
 						  perror_msg_and_die("cannot open (incremental) file");
 					  }
 					  break;
+#ifndef WITHOUT_XATTR
 			case 1000:	/* --with-xattr  */
 					  enable_xattr |= (1 << JFFS2_XPREFIX_USER)
 						  | (1 << JFFS2_XPREFIX_SECURITY)
@@ -1786,6 +1798,7 @@ int main(int argc, char **argv)
 					  enable_xattr |= (1 << JFFS2_XPREFIX_ACL_ACCESS)
 						  | (1 << JFFS2_XPREFIX_ACL_DEFAULT);
 					  break;
+#endif
 		}
 	}
 	if (out_fd == -1) {
