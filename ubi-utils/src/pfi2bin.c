@@ -64,12 +64,7 @@ typedef enum action_t {
 } action_t;
 
 static const char copyright [] __attribute__((unused)) =
-	"Licensed Materials - Property of IBM\n"
-	"IBM Flexible Support Processor Licensed Material\n"
-	"(c) Copyright IBM Corp 2006 All Rights Reserved.\n"
-	"US Government Users Restricted Rights - Use, duplication\n"
-	"or disclosure restricted by GSA ADP Schedule Contract\n"
-	"with IBM Corp.";
+	"(c) Copyright IBM Corp 2006\n";
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state);
 
