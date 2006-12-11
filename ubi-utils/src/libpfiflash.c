@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #define __USE_GNU
 #include <string.h>
+#include <stdlib.h>
 
 #include <libubi.h>
 #include <pfiflash.h>
