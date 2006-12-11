@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <errno.h>
 #include <mtd/ubi-header.h>
@@ -40,39 +39,44 @@ typedef enum action_t {
 } action_t;
 
 #define ABORT_ARGP do {			\
-	state->next = state->argc;	\
 	args->action = ACT_ARGP_ABORT;	\
 } while (0)
 
 #define ERR_ARGP do {			\
-	state->next = state->argc;	\
 	args->action = ACT_ARGP_ERR;	\
 } while (0)
 
 #define VOL_ARGS_MAX 2
 
+extern char *optarg;
+extern int optind;
 
-const char *argp_program_version = PACKAGE_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"ubimirror - mirrors ubi volumes.\n";
 
+static const char *optionsstr =
+"  -c, --copyright            Print copyright information.\n"
+"  -s, --side=<seqnum>        Use the side <seqnum> as source.\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
+
+static const char *usage =
+"Usage: ubimirror [-c?V] [-s <seqnum>] [--copyright] [--side=<seqnum>]\n"
+"            [--help] [--usage] [--version] <source> <destination>\n";
+
 static const char copyright [] __attribute__((unused)) =
 	"(C) IBM Coorporation 2007";
 
-
-static struct argp_option options[] = {
-	{ name: "copyright", key: 'c', arg: NULL,    flags: 0,
-	  doc: "Print copyright information.",
-	  group: 1 },
-
-	{ name: "side", key: 's', arg: "<seqnum>",    flags: 0,
-	  doc: "Use the side <seqnum> as source.",
-	  group: 1 },
-
-	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
+struct option long_options[] = {
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "side", .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
 
 typedef struct myargs {
@@ -99,58 +103,57 @@ get_update_side(const char* str)
 }
 
 
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
-	int err = 0;
+	while (1) {
+		int key;
 
-	myargs *args = state->input;
+		key = getopt_long(argc, argv, "cs:?V", long_options, NULL);
+		if (key == -1)
+			break;
 
-	switch (key) {
-	case 'c':
-		err_msg("%s\n", copyright);
-		ABORT_ARGP;
-		break;
-	case 's':
-		args->side = get_update_side(arg);
-		if (args->side < 0) {
-			err_msg("Unsupported seqnum: %s.\n"
-				 "Supported seqnums are '0' and '1'\n", arg);
-			ERR_ARGP;
-		}
-		break;
-	case ARGP_KEY_ARG:
+		switch (key) {
+			case 'c':
+				err_msg("%s", copyright);
+				ABORT_ARGP;
+				break;
+			case 's':
+				args->side = get_update_side(optarg);
+				if (args->side < 0) {
+					err_msg("Unsupported seqnum: %s.\n"
+							"Supported seqnums are '0' and '1'\n", optarg);
+					ERR_ARGP;
+				}
+				break;
+			case '?': /* help */
+				err_msg("Usage: ubimirror [OPTION...] <source> <destination>\n");
+				err_msg("%s", doc);
+				err_msg("%s", optionsstr);
+				err_msg("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+			case 'V':
+				err_msg("%s", PACKAGE_VERSION);
+				exit(0);
+				break;
+			default:
+				err_msg("%s", usage);
+				exit(-1);
+			}
+	}
+
+	while (optind < argc) {
 		/* only two entries allowed */
 		if (args->vol_no >= VOL_ARGS_MAX) {
-			err_msg("\n");
-			argp_usage(state);
+			err_msg("%s", usage);
 			ERR_ARGP;
 		}
-		args->vol[(args->vol_no)++] = arg;
-		break;
-	case ARGP_KEY_END:
-		if (err) {
-			err_msg("\n");
-			argp_usage(state);
-			ERR_ARGP;
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
+		args->vol[(args->vol_no)++] = argv[optind++];
 	}
 
 	return 0;
 }
-
-static struct argp argp = {
-	options:     options,
-	parser:	     parse_opt,
-	args_doc:    "<source> <destination>",
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
 
 
 int
@@ -167,7 +170,7 @@ main(int argc, char **argv) {
 		.options = NULL,
 	};
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 	if (args.action == ACT_ARGP_ERR) {
 		rc = 127;
 		goto err;
