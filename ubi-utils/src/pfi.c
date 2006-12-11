@@ -113,7 +113,9 @@ static const int key_descriptors_max[] = {
 	sizeof(key_desc_v1)/sizeof(struct key_descriptor), /* version 1 */
 };
 
-static const char* modes[] = {"raw", "ubi", NULL}; /* order isn't arbitrary! */
+#define ARRAY_SIZE(a)    (sizeof(a) / sizeof((a)[0]))
+
+static const char* modes[] = {"raw", "ubi"}; /* order isn't arbitrary! */
 
 /* latest version contains all possible keys */
 static const struct key_descriptor *key_desc = key_desc_v1;
@@ -131,16 +133,11 @@ static const struct key_descriptor *key_desc = key_desc_v1;
 static int
 get_mode_no(const char* mode)
 {
-	const char* ptr = modes[0];
-	int i = 0;
-	while (ptr != NULL) {
-		if(strcmp(ptr, mode) == 0) {
-			return i;
-		}
-		ptr++;
-		i++;
-	}
+	int i;
 
+	for (i = 0; i < (int)ARRAY_SIZE(modes); i++)
+		if (strcmp(mode, modes[i]) == 0)
+			return i;
 	return -1;
 }
 
