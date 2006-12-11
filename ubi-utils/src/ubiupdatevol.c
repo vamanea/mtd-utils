@@ -20,8 +20,10 @@
  * An utility to update UBI volumes.
  *
  * Author: Frank Haverkamp
+ *         Joshua W. Boyer
  *
  * 1.0 Reworked the userinterface to use argp.
+ * 1.1 Removed argp parsing because we want to use uClib.
  */
 
 #include <errno.h>
@@ -40,12 +42,13 @@
 #include <config.h>
 #include <libubi.h>
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 
 #define MAXPATH		1024
 #define BUFSIZE		128 * 1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
 
+/* FIXME is this not covered by including getopt.h? */
 extern char *optarg;
 extern int optind;
 
@@ -104,15 +107,6 @@ struct option long_options[] = {
 
 /*
  * @brief Parse the arguments passed into the test case.
- *
- * @param key            The parameter.
- * @param arg            Argument passed to parameter.
- * @param state          Location to put information on parameters.
- *
- * @return error
- *
- * Get the `input' argument from `argp_parse', which we know is a
- * pointer to our arguments structure.
  */
 static int
 parse_opt(int argc, char **argv, struct args *args)
@@ -152,11 +146,11 @@ parse_opt(int argc, char **argv, struct args *args)
 				break;
 
 			case '?': /* help */
-				fprintf(stderr, "Usage: ubiupdatevol [OPTION...]\n");
-				fprintf(stderr, "%s", doc);
-				fprintf(stderr, "%s", optionsstr);
-				fprintf(stderr, "\nReport bugs to %s\n", PACKAGE_BUGREPORT);
-				exit(0);
+				fprintf(stderr,	"Usage: "
+					"ubiupdatevol [OPTION...]\n%s%s"
+					"\nReport bugs to %s\n",
+					doc, optionsstr, PACKAGE_BUGREPORT);
+				exit(EXIT_SUCCESS);
 				break;
 
 			case 'V':
@@ -166,10 +160,14 @@ parse_opt(int argc, char **argv, struct args *args)
 
 			default:
 				fprintf(stderr, "%s", usage);
-				exit(-1);
+				exit(EXIT_FAILURE);
 		}
 	}
 
+	if (optind < argc) {
+		/* only one additional argument required */
+		args->arg1 = argv[optind++];
+	}
 	return 0;
 }
 
