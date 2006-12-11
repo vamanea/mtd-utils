@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <errno.h>
 #include <mtd/ubi-header.h>
@@ -33,8 +32,9 @@
 #include "bootenv.h"
 #include "error.h"
 
-const char *argp_program_version = PACKAGE_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
+extern char *optarg;
+extern int optind;
+
 static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
@@ -44,25 +44,25 @@ static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
 static const char copyright [] __attribute__((unused)) =
 	"Copyright (c) International Business Machines Corp., 2006";
 
-static struct argp_option options[] = {
-	{ .name = "copyright",
-	  .key = 'c',
-	  .arg = NULL,
-	  .flags = 0,
-	  .doc = "Print copyright information.",
-	  .group = 1 },
-	{ .name = "output",
-	  .key = 'o',
-	  .arg = "<output>",
-	  .flags = 0,
-	  .doc = "Write the the output data to <output> instead of stdout.",
-	  .group = 1 },
-	{ .name = NULL,
-	  .key = 0,
-	  .arg = NULL,
-	  .flags = 0,
-	  .doc = NULL,
-	  .group = 0 },
+static const char *optionsstr =
+"  -c, --copyright          Print copyright informatoin.\n"
+"  -o, --output=<fname>     Write the output data to <output> instead of\n"
+"                           stdout.\n"
+"  -?, --help               Give this help list\n"
+"      --usage              Give a short usage message\n"
+"  -V, --version            Print program version\n";
+
+static const char *usage =
+"Usage: mkbootenv [-c?V] [-o <output>] [--copyright] [--output=<output>]\n"
+"            [--help] [--usage] [--version] [bootenv-txt-file]\n";
+
+struct option long_options[] = {
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
 
 typedef struct myargs {
@@ -73,62 +73,56 @@ typedef struct myargs {
 	char **options;			/* [STRING...] */
 } myargs;
 
-
-
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
-	int err = 0;
+	while (1) {
+		int key;
 
-	myargs *args = state->input;
+		key = getopt_long(argc, argv, "co:?V", long_options, NULL);
+		if (key == -1)
+			break;
 
-	switch (key) {
-	case 'c':
-		fprintf(stderr, "%s\n", copyright);
-		exit(0);
-		break;
-	case 'o':
-		args->fp_out = fopen(arg, "wb");
-		if ((args->fp_out) == NULL) {
-			fprintf(stderr,
-			"Cannot open file %s for output\n", arg);
-			exit(1);
+		switch (key) {
+			case 'c':
+				fprintf(stderr, "%s\n", copyright);
+				exit(0);
+				break;
+			case 'o':
+				args->fp_out = fopen(optarg, "wb");
+				if ((args->fp_out) == NULL) {
+					fprintf(stderr,
+							"Cannot open file %s for output\n", optarg);
+					exit(1);
+				}
+				break;
+			case '?': /* help */
+				printf("%s", doc);
+				printf("%s", optionsstr);
+				printf("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+			case 'V':
+				printf("%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
+			default:
+				printf("%s", usage);
+				exit(-1);
 		}
-		break;
-	case ARGP_KEY_ARG:
-		args->fp_in = fopen(arg, "rb");
+	}
+
+	if (optind < argc) {
+		args->fp_in = fopen(argv[optind++], "rb");
 		if ((args->fp_in) == NULL) {
 			fprintf(stderr,
-			"Cannot open file %s for input\n", arg);
+					"Cannot open file %s for input\n", argv[optind]);
 			exit(1);
 		}
-		args->arg1 = arg;
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-	case ARGP_KEY_END:
-		if (err) {
-			fprintf(stderr, "\n");
-			argp_usage(state);
-			exit(1);
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
 
 	return 0;
 }
-
-static struct argp argp = {
-	.options     = options,
-	.parser	     = parse_opt,
-	.args_doc    = "[bootenv-txt-file]",
-	.doc	     = doc,
-	.children    = NULL,
-	.help_filter = NULL,
-	.argp_domain = NULL,
-};
 
 int
 main(int argc, char **argv) {
@@ -142,7 +136,7 @@ main(int argc, char **argv) {
 		.options = NULL,
 	};
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 
 	rc = bootenv_create(&env);
 	if (rc != 0) {
