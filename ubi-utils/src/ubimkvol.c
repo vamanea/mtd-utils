@@ -28,7 +28,6 @@
  * 1.2 Reworked the user-interface to use argp.
  */
 
-#include <argp.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -40,6 +39,9 @@
 #include <libubi.h>
 
 #define PROGRAM_VERSION "1.2"
+
+extern char *optarg;
+extern int optind;
 
 /*
  * The variables below	are set by command line arguments.
@@ -69,72 +71,43 @@ static struct args myargs = {
 };
 
 static int param_sanity_check(struct args *args, ubi_lib_t lib);
-static error_t parse_opt(int key, char *optarg, struct argp_state *state);
-
-const char *argp_program_version = PROGRAM_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nMake UBI Volume.\n";
 
-static struct argp_option options[] = {
-	{ .name = "devn",
-	  .key = 'd',
-	  .arg = "<devn>",
-	  .flags = 0,
-	  .doc = "UBI device",
-	  .group = OPTION_ARG_OPTIONAL },
+static const char *optionsstr =
+"  -a, --alignment=<alignment>   volume alignment (default is 1)\n"
+"  -d, --devn=<devn>          UBI device\n"
+"  -n, --vol_id=<volume id>   UBI volume id, if not specified, the volume ID\n"
+"                             will be assigned automatically\n"
+"  -N, --name=<name>          volume name\n"
+"  -s, --size=<bytes>         volume size volume size in bytes, kilobytes (KiB)\n"
+"                             or megabytes (MiB)\n"
+"  -t, --type=<static|dynamic>   volume type (dynamic, static), default is\n"
+"                             dynamic\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
 
-	{ .name = "vol_id",
-	  .key = 'n',
-	  .arg = "<volume id>",
-	  .flags = 0,
-	  .doc = "UBI volume id, if not specified, the volume ID will be "
-		 "assigned automatically",
-	  .group = OPTION_ARG_OPTIONAL },
+static const char *usage =
+"Usage: ubimkvol [-?V] [-a <alignment>] [-d <devn>] [-n <volume id>]\n"
+"            [-N <name>] [-s <bytes>] [-t <static|dynamic>]\n"
+"            [--alignment=<alignment>] [--devn=<devn>] [--vol_id=<volume id>]\n"
+"            [--name=<name>] [--size=<bytes>] [--type=<static|dynamic>] [--help]\n"
+"            [--usage] [--version]\n";
 
-	{ .name = "type",
-	  .key = 't',
-	  .arg = "<static|dynamic>",
-	  .flags = 0,
-	  .doc = "volume type (dynamic, static), default is dynamic",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "size",
-	  .key = 's',
-	  .arg = "<bytes>",
-	  .flags = 0,
-	  .doc = "volume size volume size in bytes, "
-	  "kilobytes (KiB) or megabytes (MiB)",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "name",
-	  .key = 'N',
-	  .arg = "<name>",
-	  .flags = 0,
-	  .doc = "volume name",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "alignment",
-	  .key = 'a',
-	  .arg = "<alignment>",
-	  .flags = 0,
-	  .doc = "volume alignment (default is 1)",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = NULL, .key = 0, .arg = NULL, .flags = 0,
-	  .doc = NULL, .group = 0 },
-};
-
-static struct argp argp = {
-	.options = options,
-	.parser = parse_opt,
-	.args_doc = 0,
-	.doc =	doc,
-	.children = NULL,
-	.help_filter = NULL,
-	.argp_domain = NULL,
+struct option long_options[] = {
+	{ .name = "alignment", .has_arg = 1, .flag = NULL, .val = 'a' },
+	{ .name = "devn", .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "vol_id", .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "name", .has_arg = 1, .flag = NULL, .val = 'N' },
+	{ .name = "size", .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "type", .has_arg = 1, .flag = NULL, .val = 't' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
 
 /*
@@ -149,105 +122,101 @@ static struct argp argp = {
  * Get the `input' argument from `argp_parse', which we know is a
  * pointer to our arguments structure.
  */
-static error_t
-parse_opt(int key, char *optarg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, struct args *args)
 {
 	char *endp;
-	struct args *args = state->input;
 
-	switch (key) {
-	case 't':
-		if (!strcmp(optarg, "dynamic"))
-			args->vol_type = UBI_DYNAMIC_VOLUME;
-		else if (!strcmp(optarg, "static"))
-			args->vol_type = UBI_STATIC_VOLUME;
-		else {
-			fprintf(stderr, "Bad volume type: \"%s\"\n",
-				optarg);
-			goto out;
+	while (1) {
+		int key;
+
+		key = getopt_long(argc, argv, "a:d:n:N:s:t:?V", long_options, NULL);
+		if (key == -1)
+			break;
+
+		switch (key) {
+			case 't':
+				if (!strcmp(optarg, "dynamic"))
+					args->vol_type = UBI_DYNAMIC_VOLUME;
+				else if (!strcmp(optarg, "static"))
+					args->vol_type = UBI_STATIC_VOLUME;
+				else {
+					fprintf(stderr, "Bad volume type: \"%s\"\n",
+							optarg);
+					goto out;
+				}
+				break;
+			case 's':
+				args->bytes = strtoull(optarg, &endp, 0);
+				if (endp == optarg || args->bytes < 0) {
+					fprintf(stderr, "Bad volume size: \"%s\"\n",
+							optarg);
+					goto out;
+				}
+				if (endp != '\0') {
+					if (strcmp(endp, "KiB") == 0)
+						args->bytes *= 1024;
+					else if (strcmp(endp, "MiB") == 0)
+						args->bytes *= 1024*1024;
+				}
+				break;
+			case 'a':
+				args->alignment = strtoul(optarg, &endp, 0);
+				if (*endp != '\0' || endp == optarg ||
+						args->alignment <= 0) {
+					fprintf(stderr, "Bad volume alignment: "
+							"\"%s\"\n", optarg);
+					goto out;
+				}
+				break;
+			case 'd': /* --devn=<device number> */
+				args->devn = strtoul(optarg, &endp, 0);
+				if (*endp != '\0' || endp == optarg || args->devn < 0) {
+					fprintf(stderr, "Bad UBI device number: "
+							"\"%s\"\n", optarg);
+					goto out;
+				}
+				break;
+			case 'n': /* --volid=<volume id> */
+				args->vol_id = strtoul(optarg, &endp, 0);
+				if (*endp != '\0' || endp == optarg ||
+						(args->vol_id < 0 && args->vol_id != UBI_DYNAMIC_VOLUME)) {
+					fprintf(stderr, "Bad volume ID: "
+							"\"%s\"\n", optarg);
+					goto out;
+				}
+				break;
+			case 'N':
+				args->name = optarg;
+				args->nlen = strlen(args->name);
+				break;
+
+			case ':':
+				fprintf(stderr, "Parameter is missing\n");
+				goto out;
+
+			case '?': /* help */
+				fprintf(stderr, "Usage: ubimkvol [OPTION...]\n");
+				fprintf(stderr, "%s", doc);
+				fprintf(stderr, "%s", optionsstr);
+				fprintf(stderr, "\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+
+			case 'V':
+				fprintf(stderr, "%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
+
+			default:
+				fprintf(stderr, "%s", usage);
+				exit(-1);
 		}
-		break;
-	case 's':
-		args->bytes = strtoull(optarg, &endp, 0);
-		if (endp == optarg || args->bytes < 0) {
-			fprintf(stderr, "Bad volume size: \"%s\"\n",
-				optarg);
-			goto out;
-		}
-		if (endp != '\0') {
-			if (strcmp(endp, "KiB") == 0)
-				args->bytes *= 1024;
-			else if (strcmp(endp, "MiB") == 0)
-				args->bytes *= 1024*1024;
-		}
-		break;
-	case 'a':
-		args->alignment = strtoul(optarg, &endp, 0);
-		if (*endp != '\0' || endp == optarg ||
-		    args->alignment <= 0) {
-			fprintf(stderr, "Bad volume alignment: "
-				"\"%s\"\n", optarg);
-			goto out;
-		}
-		break;
-	case 'd': /* --devn=<device number> */
-		args->devn = strtoul(optarg, &endp, 0);
-		if (*endp != '\0' || endp == optarg || args->devn < 0) {
-			fprintf(stderr, "Bad UBI device number: "
-				"\"%s\"\n", optarg);
-			goto out;
-		}
-		break;
-	case 'n': /* --volid=<volume id> */
-		args->vol_id = strtoul(optarg, &endp, 0);
-		if (*endp != '\0' || endp == optarg ||
-		    (args->vol_id < 0 && args->vol_id != UBI_DYNAMIC_VOLUME)) {
-			fprintf(stderr, "Bad volume ID: "
-				"\"%s\"\n", optarg);
-			goto out;
-		}
-		break;
-	case 'N':
-		args->name = optarg;
-		args->nlen = strlen(args->name);
-		break;
-
-	case ':':
-		fprintf(stderr, "Parameter is missing\n");
-		goto out;
-
-	case ARGP_KEY_NO_ARGS:
-		/* argp_usage(state); */
-		break;
-
-	case ARGP_KEY_ARG:
-		args->arg1 = optarg;
-		/* Now we consume all the rest of the arguments.
-		   `state->next' is the index in `state->argv' of the
-		   next argument to be parsed, which is the first STRING
-		   we're interested in, so we can just use
-		   `&state->argv[state->next]' as the value for
-		   arguments->strings.
-
-		   _In addition_, by setting `state->next' to the end
-		   of the arguments, we can force argp to stop parsing
-		   here and return. */
-
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-
-	case ARGP_KEY_END:
-		/* argp_usage(state); */
-		break;
-
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
 
 	return 0;
  out:
-	return(ARGP_ERR_UNKNOWN);
+	return -1;
 }
 
 static int param_sanity_check(struct args *args, ubi_lib_t lib)
@@ -292,8 +261,7 @@ int main(int argc, char * const argv[])
 	int err;
 	ubi_lib_t lib;
 
-	err = argp_parse(&argp, argc, (char **)argv, ARGP_IN_ORDER, 0,
-			 &myargs);
+	err = parse_opt(argc, (char **)argv, &myargs);
 	if (err) {
 		fprintf(stderr, "Wrong options ...\n");
 		return err == 1 ? 0 : -1;
