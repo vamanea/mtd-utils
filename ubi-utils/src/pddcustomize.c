@@ -30,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <errno.h>
 #include <mtd/ubi-header.h>
@@ -50,56 +49,55 @@ typedef enum action_t {
 } action_t;
 
 #define ABORT_ARGP do {			\
-	state->next = state->argc;	\
 	args->action = ACT_ARGP_ABORT;	\
 } while (0)
 
 #define ERR_ARGP do {			\
-	state->next = state->argc;	\
 	args->action = ACT_ARGP_ERR;	\
 } while (0)
 
-const char *argp_program_version = PACKAGE_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
+extern char *optarg;
+extern int optind;
+
 static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"pddcustomize - customize bootenv and pdd values.\n";
 
-static const char copyright [] __attribute__((unused)) =
-	"FIXME: insert license type"; /* FIXME */
+static const char *optionsstr =
+"  -b, --both                 Mirror updated PDD to redundand copy.\n"
+"  -c, --copyright            Print copyright information.\n"
+"  -i, --input=<input>        Binary input file. For debug purposes.\n"
+"  -l, --list                 List card bootenv/pdd values.\n"
+"  -o, --output=<output>      Binary output file. For debug purposes.\n"
+"  -s, --side=<seqnum>        The side/seqnum to update.\n"
+"  -x, --host                 use x86 platform for debugging.\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
 
-static struct argp_option options[] = {
-	{ name: "copyright", key: 'c', arg: NULL,    flags: 0,
-	  doc: "Print copyright information.",
-	  group: 1 },
+static const char *usage =
+"Usage: pddcustomize.orig [-bclx?V] [-i <input>] [-o <output>] [-s <seqnum>]\n"
+"           [--both] [--copyright] [--input=<input>] [--list]\n"
+"           [--output=<output>] [--side=<seqnum>] [--host] [--help] [--usage]\n"
+"           [--version] [key=value] [...]\n";
 
-	{ name: "input", key: 'i', arg: "<input>",    flags: 0,
-	  doc: "Binary input file. For debug purposes.",
-	  group: 1 },
-
-	{ name: "output", key: 'o', arg: "<output>",	flags: 0,
-	  doc: "Binary output file. For debug purposes.",
-	  group: 1 },
-
-	{ name: "list", key: 'l', arg: NULL,	flags: 0,
-	  doc: "List card bootenv/pdd values.",
-	  group: 1 },
-
-	{ name: "both", key: 'b', arg: NULL,	flags: 0,
-	  doc: "Mirror updated PDD to redundand copy.",
-	  group: 1 },
-
-	{ name: "side", key: 's', arg: "<seqnum>",    flags: 0,
-	  doc: "The side/seqnum to update.",
-	  group: 1 },
-
-	{ name: "host", key: 'x', arg: NULL,	flags: 0,
-	  doc: "use x86 platform for debugging.",
-	  group: 1 },
-
-	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
+struct option long_options[] = {
+	{ .name = "both", .has_arg = 0, .flag = NULL, .val = 'b' },
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "input", .has_arg = 1, .flag = NULL, .val = 'i' },
+	{ .name = "list", .has_arg = 0, .flag = NULL, .val = 'l' },
+	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "side", .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "host", .has_arg = 0, .flag = NULL, .val = 'x' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
+
+static const char copyright [] __attribute__((unused)) =
+	"Copyright IBM Corp 2006";
 
 typedef struct myargs {
 	action_t action;
@@ -154,72 +152,72 @@ err:
 	return rc;
 }
 
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
 	int rc = 0;
-	int err = 0;
 
-	myargs *args = state->input;
+	while (1) {
+		int key;
 
-	switch (key) {
-	case 'c':
-		err_msg("%s\n", copyright);
-		ABORT_ARGP;
-		break;
-	case 'l':
-		args->action = ACT_LIST;
-		break;
-	case 'b':
-		args->both = 1;
-		break;
-	case 'x':
-		args->x86 = 1;
-		break;
-	case 's':
-		args->side = get_update_side(arg);
-		if (args->side < 0) {
-			err_msg("Unsupported seqnum: %d.\n"
-				"Supported seqnums are '0' and '1'\n",
-				args->side, arg);
-			ERR_ARGP;
+		key = getopt_long(argc, argv, "clbxs:i:o:?V", long_options, NULL);
+		if (key == -1)
+			break;
+
+		switch (key) {
+			case 'c':
+				err_msg("%s\n", copyright);
+				ABORT_ARGP;
+				break;
+			case 'l':
+				args->action = ACT_LIST;
+				break;
+			case 'b':
+				args->both = 1;
+				break;
+			case 'x':
+				args->x86 = 1;
+				break;
+			case 's':
+				args->side = get_update_side(optarg);
+				if (args->side < 0) {
+					err_msg("Unsupported seqnum: %d.\n"
+							"Supported seqnums are '0' and '1'\n",
+							args->side, optarg);
+					ERR_ARGP;
+				}
+				break;
+			case 'i':
+				args->file_in = optarg;
+				break;
+			case 'o':
+				args->file_out = optarg;
+				break;
+			case '?': /* help */
+				err_msg("Usage: pddcustomize.orig [OPTION...] [key=value] [...]");
+				err_msg("%s", doc);
+				err_msg("%s", optionsstr);
+				err_msg("\nReport bugs to %s", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+			case 'V':
+				err_msg("%s", PACKAGE_VERSION);
+				exit(0);
+				break;
+			default:
+				err_msg("%s", usage);
+				exit(-1);
 		}
-		break;
-	case 'i':
-		args->file_in = arg;
-		break;
-	case 'o':
-		args->file_out = arg;
-		break;
-	case ARGP_KEY_ARG:
-		rc = extract_pair(args->env_in, arg);
+	}
+
+	if (optind < argc) {
+		rc = extract_pair(args->env_in, argv[optind++]);
 		if (rc != 0)
 			ERR_ARGP;
-		break;
-	case ARGP_KEY_END:
-		if (err) {
-			err_msg("\n");
-			argp_usage(state);
-			ERR_ARGP;
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
 
 	return 0;
 }
-
-static struct argp argp = {
-	options:     options,
-	parser:	     parse_opt,
-	args_doc:    "[key=value] [...]",
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
-
 
 static int
 list_bootenv(bootenv_t env)
@@ -442,7 +440,7 @@ main(int argc, char **argv) {
 		goto err;
 	}
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 	if (args.action == ACT_ARGP_ERR) {
 		rc = -1;
 		goto err;
