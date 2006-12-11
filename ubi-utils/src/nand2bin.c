@@ -20,7 +20,6 @@
  * An utility to decompose NAND images and strip OOB off. Not yet finished ...
  */
 #include <config.h>
-#include <argp.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -40,6 +39,9 @@
 #define MAXPATH		1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
 
+extern char *optarg;
+extern int optind;
+
 struct args {
 	const char *oob_file;
 	const char *output_file;
@@ -58,48 +60,29 @@ static struct args myargs = {
 	.options = NULL,
 };
 
-static error_t parse_opt (int key, char *arg, struct argp_state *state);
-
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
-
 static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nSplit data and OOB.\n";
 
-static struct argp_option options[] = {
-	{ .name = "pagesize",
-	  .key = 'p',
-	  .arg = "<pagesize>",
-	  .flags = 0,
-	  .doc = "NAND pagesize",
-	  .group = OPTION_ARG_OPTIONAL },
+static const char *optionsstr =
+"  -o, --output=<output>      Data output file\n"
+"  -O, --oob=<oob>            OOB output file\n"
+"  -p, --pagesize=<pagesize>  NAND pagesize\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n";
 
-	{ .name = "output",
-	  .key = 'o',
-	  .arg = "<output>",
-	  .flags = 0,
-	  .doc = "Data output file",
-	  .group = OPTION_ARG_OPTIONAL },
+static const char *usage =
+"Usage: nand2bin [-?] [-o <output>] [-O <oob>] [-p <pagesize>]\n"
+"          [--output=<output>] [--oob=<oob>] [--pagesize=<pagesize>] [--help]\n"
+"          [--usage] input.mif\n";
 
-	{ .name = "oob",
-	  .key = 'O',
-	  .arg = "<oob>",
-	  .flags = 0,
-	  .doc = "OOB output file",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = NULL, .key = 0, .arg = NULL, .flags = 0,
-	  .doc = NULL, .group = 0 },
-};
-
-static struct argp argp = {
-	.options = options,
-	.parser = parse_opt,
-	.args_doc = "input.mif",
-	.doc =	doc,
-	.children = NULL,
-	.help_filter = NULL,
-	.argp_domain = NULL,
+struct option long_options[] = {
+	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "oob", .has_arg = 1, .flag = NULL, .val = 'O' },
+	{ .name = "pagesize", .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ NULL, 0, NULL, 0}
 };
 
 /*
@@ -137,51 +120,50 @@ uint32_t str_to_num(char *str)
  * Get the `input' argument from `argp_parse', which we know is a
  * pointer to our arguments structure.
  */
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, struct args *args)
 {
-	struct args *args = state->input;
+	while (1) {
+		int key;
 
-	switch (key) {
-	case 'p': /* --pagesize<pagesize> */
-		args->pagesize = str_to_num(arg);		break;
+		key = getopt_long(argc, argv, "o:O:p:?", long_options, NULL);
+		if (key == -1)
+			break;
 
-	case 'o': /* --output=<output.bin> */
-		args->output_file = arg;
-		break;
+		switch (key) {
+			case 'p': /* --pagesize<pagesize> */
+				args->pagesize = str_to_num(optarg);
+				break;
 
-	case 'O': /* --oob=<oob.bin> */
-		args->output_file = arg;
-		break;
+			case 'o': /* --output=<output.bin> */
+				args->output_file = optarg;
+				break;
 
-	case ARGP_KEY_NO_ARGS:
-		/* argp_usage(state); */
-		break;
+			case 'O': /* --oob=<oob.bin> */
+				args->output_file = optarg;
+				break;
 
-	case ARGP_KEY_ARG:
-		args->arg1 = arg;
-		/* Now we consume all the rest of the arguments.
-                   `state->next' is the index in `state->argv' of the
-                   next argument to be parsed, which is the first STRING
-                   we're interested in, so we can just use
-                   `&state->argv[state->next]' as the value for
-                   arguments->strings.
+			case '?': /* help */
+				printf("Usage: nand2bin [OPTION...] input.mif\n");
+				printf("%s", doc);
+				printf("%s", optionsstr);
+				printf("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
 
-                   _In addition_, by setting `state->next' to the end
-                   of the arguments, we can force argp to stop parsing here and
-                   return. */
+			case 'V':
+				printf("%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
 
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-
-	case ARGP_KEY_END:
-		/* argp_usage(state); */
-		break;
-
-	default:
-		return(ARGP_ERR_UNKNOWN);
+			default:
+				printf("%s", usage);
+				exit(-1);
+		}
 	}
+
+	if (optind < argc)
+		args->arg1 = argv[optind++];
 
 	return 0;
 }
@@ -295,7 +277,7 @@ main(int argc, char *argv[])
 {
 	FILE *in, *bin, *oob;
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &myargs);
+	parse_opt(argc, argv, &myargs);
 
 	if (!myargs.arg1) {
 		fprintf(stderr, "Please specify input file!\n");
