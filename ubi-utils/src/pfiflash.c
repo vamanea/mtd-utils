@@ -23,6 +23,8 @@
  * update using PFI files.
  *
  * 1.1 fixed output to stderr and stdout in logfile mode.
+ * 1.2 updated.
+ * 1.3 removed argp parsing to be able to use uClib.
  */
 
 #include <unistd.h>
@@ -39,7 +41,7 @@
 #include "error.h"
 #include "config.h"
 
-#define PROGRAM_VERSION  "1.2"
+#define PROGRAM_VERSION  "1.3"
 
 extern char *optarg;
 extern int optind;
@@ -141,7 +143,8 @@ parse_opt(int argc, char **argv, myargs *args)
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "cl:vCp:r:s:?V", long_options, NULL);
+		key = getopt_long(argc, argv, "cl:vCp:r:s:?V",
+				  long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -165,15 +168,17 @@ parse_opt(int argc, char **argv, myargs *args)
 				args->pdd_handling = get_pdd_handling(optarg);
 				if ((int)args->pdd_handling < 0) {
 					err_quit("Unknown PDD handling: %s.\n"
-							"Please use either 'keep', 'merge' or"
-							"'overwrite'.\n'");
+						 "Please use either "
+						 "'keep', 'merge' or"
+						 "'overwrite'.\n'");
 				}
 				break;
 			case 's':
 				args->seqnum = get_update_seqnum(optarg);
 				if (args->seqnum < 0) {
 					err_quit("Unsupported side: %s.\n"
-							"Supported sides are '0' and '1'\n", optarg);
+						 "Supported sides are '0' "
+						 "and '1'\n", optarg);
 				}
 				break;
 			case 'r':
@@ -183,7 +188,8 @@ parse_opt(int argc, char **argv, myargs *args)
 				err_msg("Usage: pfiflash [OPTION...] [pfifile]");
 				err_msg("%s", doc);
 				err_msg("%s", optionsstr);
-				err_msg("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				err_msg("\nReport bugs to %s\n",
+					PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 			case 'V':
@@ -200,7 +206,8 @@ parse_opt(int argc, char **argv, myargs *args)
 	if (optind < argc) {
 		args->fp_in = fopen(argv[optind++], "r");
 		if ((args->fp_in) == NULL) {
-			err_sys("Cannot open PFI file %s for input", argv[optind]);
+			err_sys("Cannot open PFI file %s for input",
+				argv[optind]);
 		}
 	}
 

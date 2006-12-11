@@ -593,6 +593,8 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 
 	rc = 0;
 
+	pfi_data = NULL;
+
 	log_msg("[ rawupdate dev=%s", rawdev);
 
 	crc = UBI_CRC32_INIT;
@@ -603,6 +605,8 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 		pfi_raw_t r = (pfi_raw_t)i;
 
 		/* read in pfi data */
+		if (pfi_data != NULL)
+			free(pfi_data);
 		pfi_data = malloc(r->data_size * sizeof(char));
 		for (j = 0; j < r->data_size; j++) {
 			int c = fgetc(pfi);
@@ -629,7 +633,7 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 		/* open device */
 		mtd = fopen(rawdev, "r+");
 		if (mtd == NULL) {
-			rc = PFIFLASH_ERR_MTD_OPEN;
+			rc = -PFIFLASH_ERR_MTD_OPEN;
 			EBUF(PFIFLASH_ERRSTR[-rc], rawdev);
 			goto err;
 		}
@@ -642,11 +646,12 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 					fclose(mtd);
 					rc = -PFIFLASH_ERR_EOF;
 					EBUF(PFIFLASH_ERRSTR[-rc]);
-					return rc;
+					goto err;
 				}
 				if ((char)c != pfi_data[k]) {
 					fclose(mtd);
-					return -1;
+					rc = -1;
+					goto err;
 				}
 			}
 		}
@@ -659,6 +664,8 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 	}
 
  err:
+	if (pfi_data != NULL)
+		free(pfi_data);
 	return rc;
 }
 
@@ -692,7 +699,7 @@ erase_unmapped_ubi_volumes(int devno, list_t pfi_ubis,
 	foreach(u, ptr, pfi_ubis) {
 		/* iterate over each vol_id */
 		for(i = 0; i < u->ids_size; i++) {
-			if (u->ids[i] > PFI_UBI_MAX_VOLUMES) {
+			if (u->ids[i] >= PFI_UBI_MAX_VOLUMES) {
 				rc = -PFIFLASH_ERR_UBI_VID_OOB;
 				EBUF(PFIFLASH_ERRSTR[-rc], u->ids[i]);
 				goto err;
