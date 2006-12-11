@@ -31,7 +31,6 @@
 
 /* TODO: consideration for dynamic vs. static volumes */
 
-#include <argp.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -54,9 +53,39 @@
 #define CONTACT		"haver@vnet.ibm.com"
 #define VERSION		"0.9"
 
+extern char *optarg;
+extern int optind;
+
 static char doc[] = "\nVersion: " VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nAnalyze raw flash containing UBI data.\n";
+
+static const char *optionsstr =
+" OPTIONS\n"
+"  -r, --rebuild=<volume-id>  Extract and rebuild volume\n"
+"\n"
+"  -d, --dir=<output-dir>     Specify output directory\n"
+"\n"
+"  -a, --analyze              Analyze image\n"
+"\n"
+"  -b, --blocksize=<block-size>   Specify size of eraseblocks in image in bytes\n"
+"                             (default 128KiB)\n"
+"\n"
+"  -e, --eb-split             Generate individual eraseblock images (all\n"
+"                             eraseblocks)\n"
+"  -v, --vol-split            Generate individual eraseblock images (valid\n"
+"                             eraseblocks only)\n"
+"  -V, --vol-split!           Raw split by eraseblock (valid eraseblocks only)\n"
+"\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"      --version              Print program version\n";
+
+static const char *usage =
+"Usage: unubi [-aevV?] [-r <volume-id>] [-d <output-dir>] [-b <block-size>]\n"
+"            [--rebuild=<volume-id>] [--dir=<output-dir>] [--analyze]\n"
+"            [--blocksize=<block-size>] [--eb-split] [--vol-split]\n"
+"            [--vol-split!] [--help] [--usage] [--version] image-file\n";
 
 #define ERR_MSG(fmt...)							\
 	fprintf(stderr, EXEC ": " fmt)
@@ -104,65 +133,19 @@ struct args {
 	char **options;
 };
 
-static error_t parse_opt(int key, char *arg, struct argp_state *state);
-
-const char *argp_program_version = VERSION;
-const char *argp_program_bug_address = CONTACT;
-
-static struct argp_option options[] = {
-	{
-		name: NULL, key: 0, arg: NULL,
-		flags: 0, group: 0, doc: "OPTIONS",
-	},
-	{
-		name: "rebuild", key: 'r', arg: "<volume-id>",
-		flags: 0, group: 1, doc: "Extract and rebuild volume",
-	},
-	{
-		name: "dir", key: 'd', arg: "<output-dir>",
-		flags: 0, group: 2, doc: "Specify output directory",
-	},
-	{
-		name: "analyze", key: 'a', arg: NULL,
-		flags: 0, group: 3, doc: "Analyze image",
-	},
-	{
-		name: "blocksize", key: 'b', arg: "<block-size>",
-		flags: 0, group: 4, doc: "Specify size of eraseblocks "
-					 "in image in bytes (default "
-					 "128KiB)",
-	},
-	{
-		name: "eb-split", key: 'e', arg: NULL,
-		flags: 0, group: 5, doc: "Generate individual eraseblock "
-					 "images (all eraseblocks)",
-	},
-	{
-		name: "vol-split", key: 'v', arg: NULL,
-		flags: 0, group: 5, doc: "Generate individual eraseblock "
-					 "images (valid eraseblocks only)",
-	},
-	{
-		name: "vol-split!", key: 'V', arg: NULL,
-		flags: 0, group: 5, doc: "Raw split by eraseblock "
-					 "(valid eraseblocks only)",
-	},
-	{
-		name: NULL, key: 0, arg: NULL,
-		flags: 0, group: 0, doc: NULL,
-	},
+struct option long_options[] = {
+	{ .name = "rebuild", .has_arg = 1, .flag = NULL, .val = 'r' },
+	{ .name = "dir", .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "analyze", .has_arg = 0, .flag = NULL, .val = 'a' },
+	{ .name = "blocksize", .has_arg = 1, .flag = NULL, .val = 'b' },
+	{ .name = "eb-split", .has_arg = 0, .flag = NULL, .val = 'e' },
+	{ .name = "vol-split", .has_arg = 0, .flag = NULL, .val = 'v' },
+	{ .name = "vol-split!", .has_arg = 0, .flag = NULL, .val = 'e' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'J' },
+	{ NULL, 0, NULL, 0}
 };
-
-static struct argp argp = {
-	.options = options,
-	.parser = parse_opt,
-	.args_doc = "image-file",
-	.doc = doc,
-	.children = NULL,
-	.help_filter = NULL,
-	.argp_domain = NULL,
-};
-
 
 /**
  * parses out a numerical value from a string of numbers followed by:
@@ -198,54 +181,66 @@ str_to_num(char *str)
  * get the input argument from argp_parse, which we know is a
  * pointer to our arguments structure;
  **/
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, struct args *args)
 {
 	uint32_t i;
-	struct args *args = state->input;
 
-	switch (key) {
-	case 'a':
-		args->analyze = 1;
-		break;
-	case 'b':
-		args->bsize = str_to_num(arg);
-		break;
-	case 'd':
-		args->odir_path = arg;
-		break;
-	case 'e':
-		args->eb_split = SPLIT_RAW;
-		break;
-	case 'r':
-		i = str_to_num(arg);
-		if (i < UBI_MAX_VOLUMES)
-			args->vols[str_to_num(arg)] = 1;
-		else {
-			ERR_MSG("volume-id out of bounds\n");
-			return ARGP_ERR_UNKNOWN;
+	while (1) {
+		int key;
+
+		key = getopt_long(argc, argv, "r:d:ab:evV?", long_options, NULL);
+		if (key == -1)
+			break;
+
+		switch (key) {
+			case 'a':
+				args->analyze = 1;
+				break;
+			case 'b':
+				args->bsize = str_to_num(optarg);
+				break;
+			case 'd':
+				args->odir_path = optarg;
+				break;
+			case 'e':
+				args->eb_split = SPLIT_RAW;
+				break;
+			case 'r':
+				i = str_to_num(optarg);
+				if (i < UBI_MAX_VOLUMES)
+					args->vols[str_to_num(optarg)] = 1;
+				else {
+					ERR_MSG("volume-id out of bounds\n");
+					return -1;
+				}
+				break;
+			case 'v':
+				if (args->vol_split != SPLIT_RAW)
+					args->vol_split = SPLIT_DATA;
+				break;
+			case 'V':
+				args->vol_split = SPLIT_RAW;
+				break;
+			case '?': /* help */
+				fprintf(stderr, "Usage: unubi [OPTION...] image-file\n");
+				fprintf(stderr, "%s", doc);
+				fprintf(stderr, "%s", optionsstr);
+				fprintf(stderr, "\nReport bugs to %s\n", CONTACT);
+				exit(0);
+				break;
+			case 'J':
+				fprintf(stderr, "%s\n", VERSION);
+				exit(0);
+				break;
+			default:
+				fprintf(stderr, "%s", usage);
+				exit(-1);
 		}
-		break;
-	case 'v':
-		if (args->vol_split != SPLIT_RAW)
-			args->vol_split = SPLIT_DATA;
-		break;
-	case 'V':
-		args->vol_split = SPLIT_RAW;
-		break;
-	case ARGP_KEY_NO_ARGS:
-		break;
-	case ARGP_KEY_ARG:
-		args->img_path = arg;
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-	case ARGP_KEY_END:
-		break;
-	default:
-		return ARGP_ERR_UNKNOWN;
 	}
 
+	if (optind < argc)
+		args->img_path = argv[optind++];
 	return 0;
 }
 
@@ -769,7 +764,7 @@ main(int argc, char *argv[])
 	memset(a.vols, 0, sizeof(*a.vols) * UBI_MAX_VOLUMES);
 
 	/* parse args and check for validity */
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &a);
+	parse_opt(argc, argv, &a);
 	if (a.img_path == NULL) {
 		ERR_MSG("no image file specified\n");
 		rc = EINVAL;
