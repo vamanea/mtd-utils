@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -42,57 +41,53 @@
 
 #define PROGRAM_VERSION  "1.2"
 
-const char *argp_program_version = PROGRAM_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
+extern char *optarg;
+extern int optind;
+
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"pfiflash - a tool for updating a controller with PFI files.\n";
 
+static const char *optionsstr =
+" Standard options:\n"
+"  -c, --copyright            Print copyright information.\n"
+"  -l, --logfile=<file>       Write a logfile to <file>.\n"
+"  -v, --verbose              Be verbose during program execution.\n"
+"\n"
+" Process options:\n"
+"  -C, --complete             Execute a complete system update. Updates both\n"
+"                             sides.\n"
+"  -p, --pdd-update=<type>    Specify the pdd-update algorithm. <type> is either\n"
+"                             'keep', 'merge' or 'overwrite'.\n"
+"  -r, --raw-flash=<dev>      Flash the raw data. Use the specified mtd device.\n"
+"  -s, --side=<seqnum>        Select the side which shall be updated.\n"
+"\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
+
+static const char *usage =
+"Usage: pfiflash.orig [-cvC?V] [-l <file>] [-p <type>] [-r <dev>] [-s <seqnum>]\n"
+"            [--copyright] [--logfile=<file>] [--verbose] [--complete]\n"
+"            [--pdd-update=<type>] [--raw-flash=<dev>] [--side=<seqnum>]\n"
+"            [--help] [--usage] [--version] [pfifile]\n";
+
 static const char copyright [] __attribute__((unused)) =
-	"FIXME: insert license type."; /* FIXME */
+	"Copyright IBM Corp 2006";
 
-static struct argp_option options[] = {
-	/* Output options */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Standard options:",
-	  group: 1 },
-
-	{ name: "copyright", key: 'c', arg: NULL, flags: 0,
-	  doc: "Print copyright information.",
-	  group: 1 },
-
-	{ name: "verbose", key: 'v', arg: NULL, flags: 0,
-	  doc: "Be verbose during program execution.",
-	  group: 1 },
-
-	{ name: "logfile", key: 'l', arg: "<file>", flags: 0,
-	  doc: "Write a logfile to <file>.",
-	  group: 1 },
-
-	/* Output options */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Process options:",
-	  group: 2 },
-
-	{ name: "complete", key: 'C', arg: NULL, flags: 0,
-	  doc: "Execute a complete system update. Updates both sides.",
-	  group: 2 },
-
-	{ name: "side", key: 's', arg: "<seqnum>", flags: 0,
-	  doc: "Select the side which shall be updated.",
-	  group: 2 },
-
-	{ name: "pdd-update", key: 'p', arg: "<type>", flags: 0,
-	  doc: "Specify the pdd-update algorithm. <type> is either "
-	  "'keep', 'merge' or 'overwrite'.",
-	  group: 2 },
-
-	{ name: "raw-flash", key: 'r', arg: "<dev>", flags: 0,
-	  doc: "Flash the raw data. Use the specified mtd device.",
-	  group: 2 },
-
-	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
+struct option long_options[] = {
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "logfile", .has_arg = 1, .flag = NULL, .val = 'l' },
+	{ .name = "verbose", .has_arg = 0, .flag = NULL, .val = 'v' },
+	{ .name = "complete", .has_arg = 0, .flag = NULL, .val = 'C' },
+	{ .name = "pdd-update", .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "raw-flash", .has_arg = 1, .flag = NULL, .val = 'r' },
+	{ .name = "side", .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
 
 typedef struct myargs {
@@ -140,79 +135,77 @@ get_update_seqnum(const char* str)
 }
 
 
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
-	int err = 0;
+	while (1) {
+		int key;
 
-	myargs *args = state->input;
+		key = getopt_long(argc, argv, "cl:vCp:r:s:?V", long_options, NULL);
+		if (key == -1)
+			break;
 
-	switch (key) {
-		/* standard options */
-	case 'c':
-		err_msg("%s\n", copyright);
-		exit(0);
-		break;
-	case 'v':
-		args->verbose = 1;
-		break;
-	case 'l':
-		args->logfile = arg;
-		break;
-		/* process options */
-	case 'C':
-		args->complete = 1;
-		break;
-	case 'p':
-		args->pdd_handling = get_pdd_handling(arg);
-		if ((int)args->pdd_handling < 0) {
-			err_quit("Unknown PDD handling: %s.\n"
-				 "Please use either 'keep', 'merge' or"
-				 "'overwrite'.\n'");
+		switch (key) {
+			/* standard options */
+			case 'c':
+				err_msg("%s\n", copyright);
+				exit(0);
+				break;
+			case 'v':
+				args->verbose = 1;
+				break;
+			case 'l':
+				args->logfile = optarg;
+				break;
+				/* process options */
+			case 'C':
+				args->complete = 1;
+				break;
+			case 'p':
+				args->pdd_handling = get_pdd_handling(optarg);
+				if ((int)args->pdd_handling < 0) {
+					err_quit("Unknown PDD handling: %s.\n"
+							"Please use either 'keep', 'merge' or"
+							"'overwrite'.\n'");
+				}
+				break;
+			case 's':
+				args->seqnum = get_update_seqnum(optarg);
+				if (args->seqnum < 0) {
+					err_quit("Unsupported side: %s.\n"
+							"Supported sides are '0' and '1'\n", optarg);
+				}
+				break;
+			case 'r':
+				args->raw_dev = optarg;
+				break;
+			case '?': /* help */
+				err_msg("Usage: pfiflash [OPTION...] [pfifile]");
+				err_msg("%s", doc);
+				err_msg("%s", optionsstr);
+				err_msg("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+			case 'V':
+				err_msg("%s", PACKAGE_VERSION);
+				exit(0);
+				break;
+			default:
+				err_msg("%s", usage);
+				exit(-1);
+
 		}
-		break;
-	case 's':
-		args->seqnum = get_update_seqnum(arg);
-		if (args->seqnum < 0) {
-			err_quit("Unsupported side: %s.\n"
-				 "Supported sides are '0' and '1'\n", arg);
-		}
-		break;
-	case 'r':
-		args->raw_dev = arg;
-		break;
-	case ARGP_KEY_ARG: /* input file */
-		args->fp_in = fopen(arg, "r");
+	}
+
+	if (optind < argc) {
+		args->fp_in = fopen(argv[optind++], "r");
 		if ((args->fp_in) == NULL) {
-			err_sys("Cannot open PFI file %s for input", arg);
+			err_sys("Cannot open PFI file %s for input", argv[optind]);
 		}
-		args->arg1 = arg;
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-	case ARGP_KEY_END:
-		if (err) {
-			err_msg("\n");
-			argp_usage(state);
-			exit(1);
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
 
 	return 0;
 }
-
-static struct argp argp = {
-	options:     options,
-	parser:      parse_opt,
-	args_doc:    "[pfifile]",
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
 
 int main (int argc, char** argv)
 {
@@ -230,7 +223,7 @@ int main (int argc, char** argv)
 		.raw_dev    = NULL,
 	};
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 	error_initlog(args.logfile);
 
 	if (!args.fp_in) {
