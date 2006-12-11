@@ -154,7 +154,7 @@ parse_opt(int argc, char **argv, struct args *args)
 				break;
 
 			case 'V':
-				fprintf(stderr, "%s\n", PACKAGE_VERSION);
+				fprintf(stderr, "%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 

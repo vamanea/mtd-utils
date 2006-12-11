@@ -18,6 +18,8 @@
  * Author: Oliver Lohmann
  *
  * Create boot-parameter/pdd data from an ASCII-text input file.
+ *
+ * 1.2 Removed argp because we want to use uClibc.
  */
 
 #include <stdio.h>
@@ -32,10 +34,12 @@
 #include "bootenv.h"
 #include "error.h"
 
+#define PROGRAM_VERSION "1.2"
+
 extern char *optarg;
 extern int optind;
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"mkbootenv - processes bootenv text files and convertes "
@@ -91,19 +95,20 @@ parse_opt(int argc, char **argv, myargs *args)
 			case 'o':
 				args->fp_out = fopen(optarg, "wb");
 				if ((args->fp_out) == NULL) {
-					fprintf(stderr,
-							"Cannot open file %s for output\n", optarg);
+					fprintf(stderr, "Cannot open file %s "
+						"for output\n", optarg);
 					exit(1);
 				}
 				break;
 			case '?': /* help */
 				printf("%s", doc);
 				printf("%s", optionsstr);
-				printf("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				printf("\nReport bugs to %s\n",
+				       PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 			case 'V':
-				printf("%s\n", PACKAGE_VERSION);
+				printf("%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 			default:
@@ -115,8 +120,8 @@ parse_opt(int argc, char **argv, myargs *args)
 	if (optind < argc) {
 		args->fp_in = fopen(argv[optind++], "rb");
 		if ((args->fp_in) == NULL) {
-			fprintf(stderr,
-					"Cannot open file %s for input\n", argv[optind]);
+			fprintf(stderr,	"Cannot open file %s for input\n",
+				argv[optind]);
 			exit(1);
 		}
 	}

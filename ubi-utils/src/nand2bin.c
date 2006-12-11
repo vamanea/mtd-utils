@@ -18,7 +18,10 @@
  * Author: Frank Haverkamp
  *
  * An utility to decompose NAND images and strip OOB off. Not yet finished ...
+ *
+ * 1.2 Removed argp because we want to use uClibc.
  */
+
 #include <config.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -35,6 +38,8 @@
 
 #include "config.h"
 #include "nandecc.h"
+
+#define PROGRAM_VERSION "1.2"
 
 #define MAXPATH		1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
@@ -60,7 +65,7 @@ static struct args myargs = {
 	.options = NULL,
 };
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\t"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nSplit data and OOB.\n";
 
@@ -147,12 +152,13 @@ parse_opt(int argc, char **argv, struct args *args)
 				printf("Usage: nand2bin [OPTION...] input.mif\n");
 				printf("%s", doc);
 				printf("%s", optionsstr);
-				printf("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				printf("\nReport bugs to %s\n",
+				       PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 
 			case 'V':
-				printf("%s\n", PACKAGE_VERSION);
+				printf("%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 

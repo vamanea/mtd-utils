@@ -20,8 +20,8 @@
  * Author: Frank Haverkamp
  */
 
-#define PACKAGE_VERSION     "1.1"
-#define PACKAGE_BUGREPORT   "haver@vnet.ibm.com, dedekind@linutronix.de, or tglx@linutronix.de"
+#define PACKAGE_BUGREPORT						\
+	"haver@vnet.ibm.com, dedekind@linutronix.de, or tglx@linutronix.de"
 
 #define __unused __attribute__((unused))
 

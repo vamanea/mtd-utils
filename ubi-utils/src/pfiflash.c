@@ -193,7 +193,7 @@ parse_opt(int argc, char **argv, myargs *args)
 				exit(0);
 				break;
 			case 'V':
-				err_msg("%s", PACKAGE_VERSION);
+				err_msg("%s", PROGRAM_VERSION);
 				exit(0);
 				break;
 			default:

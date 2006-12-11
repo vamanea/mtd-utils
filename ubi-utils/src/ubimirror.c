@@ -16,6 +16,8 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * Author: Oliver Lohmann
+ *
+ * 1.2 Removed argp because we want to use uClibc.
  */
 
 #include <stdio.h>
@@ -31,6 +33,8 @@
 #include "error.h"
 #include "example_ubi.h"
 #include "ubimirror.h"
+
+#define PROGRAM_VERSION "1.2"
 
 typedef enum action_t {
 	ACT_NORMAL = 0,
@@ -51,7 +55,7 @@ typedef enum action_t {
 extern char *optarg;
 extern int optind;
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"ubimirror - mirrors ubi volumes.\n";
@@ -122,19 +126,22 @@ parse_opt(int argc, char **argv, myargs *args)
 				args->side = get_update_side(optarg);
 				if (args->side < 0) {
 					err_msg("Unsupported seqnum: %s.\n"
-							"Supported seqnums are '0' and '1'\n", optarg);
+						"Supported seqnums are '0' "
+						"and '1'\n", optarg);
 					ERR_ARGP;
 				}
 				break;
 			case '?': /* help */
-				err_msg("Usage: ubimirror [OPTION...] <source> <destination>\n");
+				err_msg("Usage: ubimirror [OPTION...] "
+					"<source> <destination>\n");
 				err_msg("%s", doc);
 				err_msg("%s", optionsstr);
-				err_msg("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				err_msg("\nReport bugs to %s\n",
+					PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 			case 'V':
-				err_msg("%s", PACKAGE_VERSION);
+				err_msg("%s", PROGRAM_VERSION);
 				exit(0);
 				break;
 			default:

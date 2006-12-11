@@ -21,6 +21,7 @@
  *
  * 1.0 Initial version
  * 1.1 Different CRC32 start value
+ * 1.2 Removed argp because we want to use uClibc.
  */
 
 #include <stdlib.h>
@@ -34,6 +35,8 @@
 #include "ubigen.h"
 #include "config.h"
 
+#define PROGRAM_VERSION "1.2"
+
 typedef enum action_t {
 	ACT_NORMAL	     = 0x00000001,
 	ACT_BROKEN_UPDATE    = 0x00000002,
@@ -42,7 +45,7 @@ typedef enum action_t {
 extern char *optarg;
 extern int optind;
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"ubigen - a tool for adding UBI information to a binary input file.\n";
@@ -187,16 +190,16 @@ parse_opt(int argc, char **argv, myargs *args)
 			case 'o': /* output */
 				args->fp_out = fopen(optarg, "wb");
 				if ((args->fp_out) == NULL) {
-					fprintf(stderr, "Cannot open file %s for output\n",
-							optarg);
+					fprintf(stderr, "Cannot open file %s "
+						"for output\n", optarg);
 					exit(1);
 				}
 				break;
 			case 'i': /* input */
 				args->fp_in = fopen(optarg, "rb");
 				if ((args->fp_in) == NULL) {
-					fprintf(stderr, "Cannot open file %s for input\n",
-							optarg);
+					fprintf(stderr, "Cannot open file %s "
+						"for input\n", optarg);
 					exit(1);
 				}
 				break;
@@ -205,23 +208,26 @@ parse_opt(int argc, char **argv, myargs *args)
 				break;
 
 			case 'B': /* eb_size */
-				args->eb_size = (uint32_t) ustrtoul(optarg, &endp, 0);
+				args->eb_size =
+					(uint32_t)ustrtoul(optarg, &endp, 0);
 				CHECK_ENDP("B", endp);
 				break;
 			case 'E': /* erasecount */
-				args->ec = (uint64_t) strtoul(optarg, &endp, 0);
+				args->ec = (uint64_t)strtoul(optarg, &endp, 0);
 				CHECK_ENDP("E", endp);
 				break;
 			case 'I': /* id */
-				args->id = (uint16_t) strtoul(optarg, &endp, 0);
+				args->id = (uint16_t)strtoul(optarg, &endp, 0);
 				CHECK_ENDP("I", endp);
 				break;
 			case 'T': /* type */
-				args->type =  (uint16_t) strtoul(optarg, &endp, 0);
+				args->type =
+					(uint16_t)strtoul(optarg, &endp, 0);
 				CHECK_ENDP("T", endp);
 				break;
 			case 'X': /* versionnr */
-				args->version =	 (uint8_t) strtoul(optarg, &endp, 0);
+				args->version =
+					(uint8_t)strtoul(optarg, &endp, 0);
 				CHECK_ENDP("X", endp);
 				break;
 			case 'O': /* offset for volume hdr */
@@ -241,12 +247,13 @@ parse_opt(int argc, char **argv, myargs *args)
 				fprintf(stderr, "Usage: ubigen [OPTION...]\n");
 				fprintf(stderr, "%s", doc);
 				fprintf(stderr, "%s", optionsstr);
-				fprintf(stderr, "\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				fprintf(stderr, "\nReport bugs to %s\n",
+					PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 
 			case 'V':
-				fprintf(stderr, "%s\n", PACKAGE_VERSION);
+				fprintf(stderr, "%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 
@@ -260,8 +267,8 @@ parse_opt(int argc, char **argv, myargs *args)
 		if (!args->fp_in) {
 			args->fp_in = fopen(argv[optind++], "rb");
 			if ((args->fp_in) == NULL) {
-				fprintf(stderr,
-						"Cannot open file %s for input\n", argv[optind]);
+				fprintf(stderr,	"Cannot open file %s for "
+					"input\n", argv[optind]);
 				exit(1);
 			}
 		}

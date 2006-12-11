@@ -22,6 +22,8 @@
  * chips in a manufacturing step where the flashes are written before
  * being soldered onto the hardware. For NAND images another step is
  * required to add the right OOB data to the binary image.
+ *
+ * 1.3 Removed argp because we want to use uClibc.
  */
 
 #include <stdlib.h>
@@ -42,7 +44,7 @@
 #include "peb.h"
 #include "crc32.h"
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 
 #define MAX_FNAME 255
 #define DEFAULT_ERASE_COUNT  0 /* Hmmm.... Perhaps */
@@ -157,12 +159,13 @@ parse_opt(int argc, char **argv, myargs *args)
 				printf("pfi2bin [OPTION...] pfifile\n");
 				printf("%s", doc);
 				printf("%s", optionsstr);
-				printf("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				printf("\nReport bugs to %s\n",
+				       PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 
 			case 'V':
-				printf("%s\n", PACKAGE_VERSION);
+				printf("%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 

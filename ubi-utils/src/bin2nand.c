@@ -22,10 +22,11 @@
  * Create a flashable NAND image from a binary image
  *
  * History:
- *	1.0:	Initial release (tglx)
- *	1.1:	Understands hex and dec input parameters (tglx)
- *	1.2:	Generates separated OOB data, if needed. (oloh)
- *	1.3:	Padds data/oob to a given size. (oloh)
+ * 1.0 Initial release (tglx)
+ * 1.1 Understands hex and dec input parameters (tglx)
+ * 1.2 Generates separated OOB data, if needed. (oloh)
+ * 1.3 Padds data/oob to a given size. (oloh)
+ * 1.4 Removed argp because we want to use uClibc.
  */
 
 #include <unistd.h>
@@ -43,6 +44,8 @@
 #include "error.h"
 #include "config.h"
 #include "nandecc.h"
+
+#define PROGRAM_VERSION "1.4"
 
 #define CHECK_ENDP(option, endp) do {			\
 	if (*endp) {					\
@@ -65,7 +68,7 @@ typedef enum action_t {
 extern char *optarg;
 extern int optind;
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"bin2nand - a tool for adding OOB information to a "
@@ -153,11 +156,13 @@ parse_opt(int argc, char **argv, myargs *args)
 
 		switch (key) {
 			case 'p': /* pagesize */
-				args->pagesize = (size_t) ustrtoull(optarg, &endp, 0);
+				args->pagesize = (size_t)
+					ustrtoull(optarg, &endp, 0);
 				CHECK_ENDP("p", endp);
 				break;
 			case 'j': /* padding */
-				args->padding = (size_t) ustrtoull(optarg, &endp, 0);
+				args->padding = (size_t)
+					ustrtoull(optarg, &endp, 0);
 				CHECK_ENDP("j", endp);
 				break;
 			case 'o': /* output */
@@ -172,7 +177,7 @@ parse_opt(int argc, char **argv, myargs *args)
 				exit(0);
 				break;
 			case 'V':
-				printf("%s\n", PACKAGE_VERSION);
+				printf("%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 			case 'c':
@@ -187,7 +192,8 @@ parse_opt(int argc, char **argv, myargs *args)
 	if (optind < argc) {
 		args->fp_in = fopen(argv[optind++], "rb");
 		if ((args->fp_in) == NULL) {
-			err_quit("Cannot open file %s for input\n", argv[optind++]);
+			err_quit("Cannot open file %s for input\n",
+				 argv[optind++]);
 		}
 	}
 

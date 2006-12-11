@@ -23,6 +23,8 @@
  * if the system is updated and one must be able to modify them when
  * the system has booted the first time. This tool is intended to do
  * PDD modification.
+ *
+ * 1.3 Removed argp because we want to use uClibc.
  */
 
 #include <stdio.h>
@@ -40,6 +42,8 @@
 #include "example_ubi.h"
 #include "libubi.h"
 #include "ubimirror.h"
+
+#define PROGRAM_VERSION "1.3"
 
 typedef enum action_t {
 	ACT_NORMAL   = 0,
@@ -59,7 +63,7 @@ typedef enum action_t {
 extern char *optarg;
 extern int optind;
 
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"pddcustomize - customize bootenv and pdd values.\n";
@@ -160,7 +164,8 @@ parse_opt(int argc, char **argv, myargs *args)
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "clbxs:i:o:?V", long_options, NULL);
+		key = getopt_long(argc, argv, "clbxs:i:o:?V",
+				  long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -182,8 +187,9 @@ parse_opt(int argc, char **argv, myargs *args)
 				args->side = get_update_side(optarg);
 				if (args->side < 0) {
 					err_msg("Unsupported seqnum: %d.\n"
-							"Supported seqnums are '0' and '1'\n",
-							args->side, optarg);
+						"Supported seqnums are "
+						"'0' and '1'\n",
+						args->side, optarg);
 					ERR_ARGP;
 				}
 				break;
@@ -194,14 +200,16 @@ parse_opt(int argc, char **argv, myargs *args)
 				args->file_out = optarg;
 				break;
 			case '?': /* help */
-				err_msg("Usage: pddcustomize.orig [OPTION...] [key=value] [...]");
+				err_msg("Usage: pddcustomize.orig [OPTION...] "
+					"[key=value] [...]");
 				err_msg("%s", doc);
 				err_msg("%s", optionsstr);
-				err_msg("\nReport bugs to %s", PACKAGE_BUGREPORT);
+				err_msg("\nReport bugs to %s",
+					PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 			case 'V':
-				err_msg("%s", PACKAGE_VERSION);
+				err_msg("%s", PROGRAM_VERSION);
 				exit(0);
 				break;
 			default:

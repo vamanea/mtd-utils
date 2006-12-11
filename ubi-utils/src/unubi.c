@@ -19,6 +19,8 @@
 /*
  * Authors: Frank Haverkamp, haver@vnet.ibm.com
  *	    Drake Dowsett, dowsett@de.ibm.com
+ *
+ * 1.2 Removed argp because we want to use uClibc.
  */
 
 /*
@@ -51,7 +53,7 @@
 
 #define EXEC		"unubi"
 #define CONTACT		"haver@vnet.ibm.com"
-#define VERSION		"0.9"
+#define VERSION		"1.0"
 
 extern char *optarg;
 extern int optind;

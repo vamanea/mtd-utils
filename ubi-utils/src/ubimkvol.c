@@ -26,6 +26,7 @@
  * 1.1 Does not support erase blocks anymore. This is replaced by
  *     the number of bytes.
  * 1.2 Reworked the user-interface to use argp.
+ * 1.3 Removed argp because we want to use uClibc.
  */
 
 #include <stdio.h>
@@ -38,7 +39,7 @@
 #include <config.h>
 #include <libubi.h>
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 
 extern char *optarg;
 extern int optind;
@@ -179,10 +180,12 @@ parse_opt(int argc, char **argv, struct args *args)
 				break;
 			case 'n': /* --volid=<volume id> */
 				args->vol_id = strtoul(optarg, &endp, 0);
-				if (*endp != '\0' || endp == optarg ||
-						(args->vol_id < 0 && args->vol_id != UBI_DYNAMIC_VOLUME)) {
+				if (*endp != '\0' ||
+				    endp == optarg ||
+				    (args->vol_id < 0 &&
+				     args->vol_id != UBI_DYNAMIC_VOLUME)) {
 					fprintf(stderr, "Bad volume ID: "
-							"\"%s\"\n", optarg);
+						"\"%s\"\n", optarg);
 					goto out;
 				}
 				break;
@@ -199,12 +202,13 @@ parse_opt(int argc, char **argv, struct args *args)
 				fprintf(stderr, "Usage: ubimkvol [OPTION...]\n");
 				fprintf(stderr, "%s", doc);
 				fprintf(stderr, "%s", optionsstr);
-				fprintf(stderr, "\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				fprintf(stderr, "\nReport bugs to %s\n",
+					PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 
 			case 'V':
-				fprintf(stderr, "%s\n", PACKAGE_VERSION);
+				fprintf(stderr, "%s\n", PROGRAM_VERSION);
 				exit(0);
 				break;
 
