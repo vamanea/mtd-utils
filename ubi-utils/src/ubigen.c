@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <mtd/ubi-header.h>
@@ -40,16 +39,79 @@ typedef enum action_t {
 	ACT_BROKEN_UPDATE    = 0x00000002,
 } action_t;
 
+extern char *optarg;
+extern int optind;
 
-const char *argp_program_version = PACKAGE_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"ubigen - a tool for adding UBI information to a binary input file.\n";
 
+static const char *optionsstr =
+" Common settings:\n"
+"  -c, --copyright            Print copyright information.\n"
+"  -d, --debug\n"
+"  -v, --verbose              Print more progress information.\n"
+"\n"
+" UBI Settings:\n"
+"  -A, --alignment=<num>      Set the alignment size to <num> (default 1).\n"
+"                             Values can be specified as bytes, 'ki' or 'Mi'.\n"
+"  -B, --blocksize=<num>      Set the eraseblock size to <num> (default 128\n"
+"                             KiB).\n"
+"                             Values can be specified as bytes, 'ki' or 'Mi'.\n"
+"  -E, --erasecount=<num>     Set the erase count to <num> (default 0)\n"
+"  -I, --id=<num>             The UBI volume id.\n"
+"  -O, --offset=<num>         Offset from start of an erase block to the UBI\n"
+"                             volume header.\n"
+"  -T, --type=<num>           The UBI volume type:\n"
+"                             1 = dynamic, 2 = static\n"
+"  -X, --setver=<num>         Set UBI version number to <num> (default 1)\n"
+"\n"
+" Input/Output:\n"
+"  -i, --infile=<filename>    Read input from file.\n"
+"  -o, --outfile=<filename>   Write output to file (default is stdout).\n"
+"\n"
+" Special options:\n"
+"  -U, --broken-update=<leb>  Create an ubi image which simulates a broken\n"
+"                             update.\n"
+"                             <leb> specifies the logical eraseblock number to\n"
+"                             update.\n"
+"\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
+
+static const char *usage =
+"Usage: ubigen.orig [-cdv?V] [-A <num>] [-B <num>] [-E <num>] [-I <num>]\n"
+"          [-O <num>] [-T <num>] [-X <num>] [-i <filename>] [-o <filename>]\n"
+"          [-U <leb>] [--copyright] [--debug] [--verbose] [--alignment=<num>]\n"
+"          [--blocksize=<num>] [--erasecount=<num>] [--id=<num>]\n"
+"          [--offset=<num>] [--type=<num>] [--setver=<num>]\n"
+"          [--infile=<filename>] [--outfile=<filename>]\n"
+"          [--broken-update=<leb>] [--help] [--usage] [--version]\n";
+
+struct option long_options[] = {
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "debug", .has_arg = 0, .flag = NULL, .val = 'd' },
+	{ .name = "verbose", .has_arg = 0, .flag = NULL, .val = 'v' },
+	{ .name = "alignment", .has_arg = 1, .flag = NULL, .val = 'A' },
+	{ .name = "blocksize", .has_arg = 1, .flag = NULL, .val = 'B' },
+	{ .name = "erasecount", .has_arg = 1, .flag = NULL, .val = 'E' },
+	{ .name = "id", .has_arg = 1, .flag = NULL, .val = 'I' },
+	{ .name = "offset", .has_arg = 1, .flag = NULL, .val = 'O' },
+	{ .name = "type", .has_arg = 1, .flag = NULL, .val = 'T' },
+	{ .name = "setver", .has_arg = 1, .flag = NULL, .val = 'X' },
+	{ .name = "infile", .has_arg = 1, .flag = NULL, .val = 'i' },
+	{ .name = "outfile", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "broken-update", .has_arg = 1, .flag = NULL, .val = 'U' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
+};
+
 static const char copyright [] __attribute__((unused)) =
-	"FIXME: insert license type"; /* FIXME */
+	"Copyright IBM Corp 2006";
 
 #define CHECK_ENDP(option, endp) do {			\
 	if (*endp) {					\
@@ -60,86 +122,6 @@ static const char copyright [] __attribute__((unused)) =
 		exit(EXIT_FAILURE);			\
 	}						\
 } while(0)
-
-static struct argp_option options[] = {
-	/* COMMON */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Common settings:",
-	  group: 1},
-
-	{ name: "copyright", key: 'c', arg: NULL,    flags: 0,
-	  doc: "Print copyright information.",
-	  group: 1 },
-
-	{ name: "verbose", key: 'v', arg: NULL,	   flags: 0,
-	  doc: "Print more progress information.",
-	  group: 1 },
-
-	{ name: "debug", key: 'd', arg: NULL, flags: 0,
-	  group: 1 },
-
-
-	/* INPUT */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "UBI Settings:",
-	  group: 4},
-
-	{ name: "alignment", key: 'A', arg: "<num>", flags: 0,
-	  doc: "Set the alignment size to <num> (default 1).\n"
-	       "Values can be specified as bytes, 'ki' or 'Mi'.",
-	  group: 4 },
-
-	{ name: "blocksize", key: 'B', arg: "<num>", flags: 0,
-	  doc: "Set the eraseblock size to <num> (default 128 KiB).\n"
-	       "Values can be specified as bytes, 'ki' or 'Mi'.",
-	  group: 4 },
-
-	{ name: "erasecount", key: 'E', arg: "<num>", flags: 0,
-	  doc: "Set the erase count to <num> (default 0)",
-	  group: 4 },
-
-	{ name: "setver", key: 'X', arg: "<num>", flags: 0,
-	  doc: "Set UBI version number to <num> (default 1)",
-	  group: 4 },
-
-	{ name: "id", key: 'I', arg: "<num>", flags: 0,
-	  doc: "The UBI volume id.",
-	  group: 4 },
-
-
-	{ name: "offset", key: 'O', arg: "<num>", flags: 0,
-	  doc: "Offset from start of an erase block to the UBI volume header.",
-	  group: 4 },
-
-	{ name: "type", key: 'T', arg: "<num>", flags: 0,
-	  doc: "The UBI volume type:\n1 = dynamic, 2 = static",
-	  group: 4 },
-
-	/* INPUT/OUTPUT */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Input/Output:",
-	  group: 5 },
-
-	{ name: "infile", key: 'i', arg: "<filename>", flags: 0,
-	  doc: "Read input from file.",
-	  group: 5 },
-
-	{ name: "outfile", key: 'o', arg: "<filename>", flags: 0,
-	  doc: "Write output to file (default is stdout).",
-	  group: 5 },
-
-	/* Special options */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Special options:",
-	  group: 6 },
-
-	{ name: "broken-update", key: 'U', arg: "<leb>", flags: 0,
-	  doc: "Create an ubi image which simulates a broken update.\n"
-	       "<leb> specifies the logical eraseblock number to update.\n",
-	  group: 6 },
-
-	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
-};
 
 typedef struct myargs {
 	/* common settings */
@@ -183,119 +165,124 @@ static int ustrtoul(const char *cp, char **endp, unsigned int base)
 	return result;
 }
 
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
 	int err = 0;
 	char* endp;
 
-	myargs *args = state->input;
+	while (1) {
+		int key;
 
-	switch (key) {
-	case 'c':
-		fprintf(stderr, "%s\n", copyright);
-		exit(0);
-		break;
-	case 'o': /* output */
-		args->fp_out = fopen(arg, "wb");
-		if ((args->fp_out) == NULL) {
-			fprintf(stderr, "Cannot open file %s for output\n",
-					arg);
-			exit(1);
+		key = getopt_long(argc, argv, "cdvA:B:E:I:O:T:X:i:o:U:?V",
+				long_options, NULL);
+		if (key == -1)
+			break;
+
+		switch (key) {
+			case 'c':
+				fprintf(stderr, "%s\n", copyright);
+				exit(0);
+				break;
+			case 'o': /* output */
+				args->fp_out = fopen(optarg, "wb");
+				if ((args->fp_out) == NULL) {
+					fprintf(stderr, "Cannot open file %s for output\n",
+							optarg);
+					exit(1);
+				}
+				break;
+			case 'i': /* input */
+				args->fp_in = fopen(optarg, "rb");
+				if ((args->fp_in) == NULL) {
+					fprintf(stderr, "Cannot open file %s for input\n",
+							optarg);
+					exit(1);
+				}
+				break;
+			case 'v': /* verbose */
+				args->verbose = 1;
+				break;
+
+			case 'B': /* eb_size */
+				args->eb_size = (uint32_t) ustrtoul(optarg, &endp, 0);
+				CHECK_ENDP("B", endp);
+				break;
+			case 'E': /* erasecount */
+				args->ec = (uint64_t) strtoul(optarg, &endp, 0);
+				CHECK_ENDP("E", endp);
+				break;
+			case 'I': /* id */
+				args->id = (uint16_t) strtoul(optarg, &endp, 0);
+				CHECK_ENDP("I", endp);
+				break;
+			case 'T': /* type */
+				args->type =  (uint16_t) strtoul(optarg, &endp, 0);
+				CHECK_ENDP("T", endp);
+				break;
+			case 'X': /* versionnr */
+				args->version =	 (uint8_t) strtoul(optarg, &endp, 0);
+				CHECK_ENDP("X", endp);
+				break;
+			case 'O': /* offset for volume hdr */
+				args->hdr_offset =
+					(uint32_t) strtoul(optarg, &endp, 0);
+				CHECK_ENDP("O", endp);
+				break;
+
+			case 'U': /* broken update */
+				args->action = ACT_BROKEN_UPDATE;
+				args->update_block =
+					(uint32_t) strtoul(optarg, &endp, 0);
+				CHECK_ENDP("U", endp);
+				break;
+
+			case '?': /* help */
+				fprintf(stderr, "Usage: ubigen [OPTION...]\n");
+				fprintf(stderr, "%s", doc);
+				fprintf(stderr, "%s", optionsstr);
+				fprintf(stderr, "\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+
+			case 'V':
+				fprintf(stderr, "%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
+
+			default:
+				fprintf(stderr, "%s", usage);
+				exit(-1);
 		}
-		break;
-	case 'i': /* input */
-		args->fp_in = fopen(arg, "rb");
-		if ((args->fp_in) == NULL) {
-			fprintf(stderr, "Cannot open file %s for input\n",
-					arg);
-			exit(1);
-		}
-		break;
-	case 'v': /* verbose */
-		args->verbose = 1;
-		break;
+	}
 
-	case 'B': /* eb_size */
-		args->eb_size = (uint32_t) ustrtoul(arg, &endp, 0);
-		CHECK_ENDP("B", endp);
-		break;
-	case 'E': /* erasecount */
-		args->ec = (uint64_t) strtoul(arg, &endp, 0);
-		CHECK_ENDP("E", endp);
-		break;
-	case 'I': /* id */
-		args->id = (uint16_t) strtoul(arg, &endp, 0);
-		CHECK_ENDP("I", endp);
-		break;
-	case 'T': /* type */
-		args->type =  (uint16_t) strtoul(arg, &endp, 0);
-		CHECK_ENDP("T", endp);
-		break;
-	case 'X': /* versionnr */
-		args->version =	 (uint8_t) strtoul(arg, &endp, 0);
-		CHECK_ENDP("X", endp);
-		break;
-	case 'O': /* offset for volume hdr */
-		args->hdr_offset =
-			(uint32_t) strtoul(arg, &endp, 0);
-		CHECK_ENDP("O", endp);
-		break;
-
-	case 'U': /* broken update */
-		args->action = ACT_BROKEN_UPDATE;
-		args->update_block =
-			(uint32_t) strtoul(arg, &endp, 0);
-		CHECK_ENDP("U", endp);
-		break;
-
-	case ARGP_KEY_ARG:
+	if (optind < argc) {
 		if (!args->fp_in) {
-			args->fp_in = fopen(arg, "rb");
+			args->fp_in = fopen(argv[optind++], "rb");
 			if ((args->fp_in) == NULL) {
 				fprintf(stderr,
-				"Cannot open file %s for input\n", arg);
+						"Cannot open file %s for input\n", argv[optind]);
 				exit(1);
 			}
 		}
-		args->arg1 = arg;
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-	case ARGP_KEY_END:
-
-		if (args->id < 0) {
-			err = 1;
-			fprintf(stderr,
+	}
+	if (args->id < 0) {
+		err = 1;
+		fprintf(stderr,
 				"Please specify an UBI Volume ID.\n");
-		}
-		if (args->type == 0) {
-			err = 1;
-			fprintf(stderr,
+	}
+	if (args->type == 0) {
+		err = 1;
+		fprintf(stderr,
 				"Please specify an UBI Volume type.\n");
-		}
-		if (err) {
-			fprintf(stderr, "\n");
-			argp_usage(state);
-			exit(1);
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
+	}
+	if (err) {
+		fprintf(stderr, "%s", usage);
+		exit(1);
 	}
 
 	return 0;
 }
-
-static struct argp argp = {
-	options:     options,
-	parser:	     parse_opt,
-	args_doc:    0,
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
 
 
 int
@@ -329,7 +316,7 @@ main(int argc, char **argv)
 	ubigen_init(); /* Init CRC32 table in ubigen */
 
 	/* parse arguments */
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 
 	if (fstat(fileno(args.fp_in), &file_info) != 0) {
 		fprintf(stderr, "Cannot fetch file size "
