@@ -24,7 +24,6 @@
  * 1.0 Reworked the userinterface to use argp.
  */
 
-#include <argp.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -46,6 +45,9 @@
 #define MAXPATH		1024
 #define BUFSIZE		128 * 1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
+
+extern char *optarg;
+extern int optind;
 
 struct args {
 	int devn;
@@ -69,57 +71,35 @@ static struct args myargs = {
 	.options = NULL,
 };
 
-static error_t parse_opt (int key, char *arg, struct argp_state *state);
-
 static int verbose = 0;
-const char *argp_program_version = PROGRAM_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
 	"\nWrite to UBI Volume.\n";
 
-static struct argp_option options[] = {
-	{ .name = "devn",
-	  .key = 'd',
-	  .arg = "<devn>",
-	  .flags = 0,
-	  .doc = "UBI device",
-	  .group = OPTION_ARG_OPTIONAL },
+static const char *optionsstr =
+"  -B, --broken-update        broken update, this is for testing\n"
+"  -d, --devn=<devn>          UBI device\n"
+"  -n, --vol_id=<volume id>   UBI volume id\n"
+"  -t, --truncate             truncate volume\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
 
-	{ .name = "vol_id",
-	  .key = 'n',
-	  .arg = "<volume id>",
-	  .flags = 0,
-	  .doc = "UBI volume id",
-	  .group = OPTION_ARG_OPTIONAL },
+static const char *usage =
+"Usage: ubiupdatevol [-Bt?V] [-d <devn>] [-n <volume id>] [--broken-update]\n"
+"            [--devn=<devn>] [--vol_id=<volume id>] [--truncate] [--help]\n"
+"            [--usage] [--version]\n";
 
-	{ .name = "truncate",
-	  .key = 't',
-	  .arg = NULL,
-	  .flags = 0,
-	  .doc = "truncate volume",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = "broken-update",
-	  .key = 'B',
-	  .arg = NULL,
-	  .flags = 0,
-	  .doc = "broken update, this is for testing",
-	  .group = OPTION_ARG_OPTIONAL },
-
-	{ .name = NULL, .key = 0, .arg = NULL, .flags = 0,
-	  .doc = NULL, .group = 0 },
-};
-
-static struct argp argp = {
-	.options = options,
-	.parser = parse_opt,
-	.args_doc = 0,
-	.doc =	doc,
-	.children = NULL,
-	.help_filter = NULL,
-	.argp_domain = NULL,
+struct option long_options[] = {
+	{ .name = "broken-update", .has_arg = 0, .flag = NULL, .val = 'B' },
+	{ .name = "devn", .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "vol_id", .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "truncate", .has_arg = 0, .flag = NULL, .val = 't' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
 
 /*
@@ -134,65 +114,60 @@ static struct argp argp = {
  * Get the `input' argument from `argp_parse', which we know is a
  * pointer to our arguments structure.
  */
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, struct args *args)
 {
-	struct args *args = state->input;
+	while (1) {
+		int key;
 
-	switch (key) {
-	case 'v': /* --verbose=<level> */
-		verbose = strtoul(arg, (char **)NULL, 0);
-		break;
+		key = getopt_long(argc, argv, "Bd:n:t?V", long_options, NULL);
+		if (key == -1)
+			break;
 
-	case 'n': /* --vol_id=<volume id> */
-		args->vol_id = strtol(arg, (char **)NULL, 0);
-		break;
+		switch (key) {
+			case 'v': /* --verbose=<level> */
+				verbose = strtoul(optarg, (char **)NULL, 0);
+				break;
 
-	case 'd': /* --devn=<device number> */
-		args->devn = strtol(arg, (char **)NULL, 0);
-		break;
+			case 'n': /* --vol_id=<volume id> */
+				args->vol_id = strtol(optarg, (char **)NULL, 0);
+				break;
 
-	case 'b': /* --bufsize=<bufsize> */
-		args->bufsize = strtol(arg, (char **)NULL, 0);
-		if (args->bufsize <= 0)
-			args->bufsize = BUFSIZE;
-		break;
+			case 'd': /* --devn=<device number> */
+				args->devn = strtol(optarg, (char **)NULL, 0);
+				break;
 
-	case 't': /* --truncate */
-		args->truncate = 1;
-		break;
+			case 'b': /* --bufsize=<bufsize> */
+				args->bufsize = strtol(optarg, (char **)NULL, 0);
+				if (args->bufsize <= 0)
+					args->bufsize = BUFSIZE;
+				break;
 
-	case 'B': /* --broken-update */
-		args->broken_update = 1;
-		break;
+			case 't': /* --truncate */
+				args->truncate = 1;
+				break;
 
-	case ARGP_KEY_NO_ARGS:
-		/* argp_usage(state); */
-		break;
+			case 'B': /* --broken-update */
+				args->broken_update = 1;
+				break;
 
-	case ARGP_KEY_ARG:
-		args->arg1 = arg;
-		/* Now we consume all the rest of the arguments.
-                   `state->next' is the index in `state->argv' of the
-                   next argument to be parsed, which is the first STRING
-                   we're interested in, so we can just use
-                   `&state->argv[state->next]' as the value for
-                   arguments->strings.
+			case '?': /* help */
+				fprintf(stderr, "Usage: ubiupdatevol [OPTION...]\n");
+				fprintf(stderr, "%s", doc);
+				fprintf(stderr, "%s", optionsstr);
+				fprintf(stderr, "\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
 
-                   _In addition_, by setting `state->next' to the end
-                   of the arguments, we can force argp to stop parsing
-                   here and return. */
+			case 'V':
+				fprintf(stderr, "%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
 
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-
-	case ARGP_KEY_END:
-		/* argp_usage(state); */
-		break;
-
-	default:
-		return(ARGP_ERR_UNKNOWN);
+			default:
+				fprintf(stderr, "%s", usage);
+				exit(-1);
+		}
 	}
 
 	return 0;
@@ -335,7 +310,7 @@ main(int argc, char *argv[])
 {
 	int rc;
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &myargs);
+	parse_opt(argc, argv, &myargs);
 
 	if (myargs.truncate) {
 		rc = ubi_truncate_volume(&myargs, 0LL);
