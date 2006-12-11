@@ -28,9 +28,9 @@
 #include <stdint.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <argp.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include <ubigen.h>
 #include <mtd/ubi-header.h>
@@ -50,6 +50,9 @@
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
+extern char *optarg;
+extern int optind;
+
 static uint32_t crc32_table[256];
 static char err_buf[ERR_BUF_SIZE];
 
@@ -66,48 +69,40 @@ typedef enum action_t {
 static const char copyright [] __attribute__((unused)) =
 	"(c) Copyright IBM Corp 2006\n";
 
-static error_t parse_opt (int key, char *arg, struct argp_state *state);
-
-const char *argp_program_version = PROGRAM_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"pfi2bin - a tool to convert PFI files into binary images.\n";
 
-static struct argp_option options[] = {
-	/* COMMON */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Common settings:",
-	  group: OPTION_ARG_OPTIONAL},
+static const char *optionsstr =
+" Common settings:\n"
+"  -c, --copyright\n"
+"  -v, --verbose              Print more information.\n"
+"\n"
+" Input:\n"
+"  -j, --platform=pdd-file    PDD information which contains the card settings.\n"
+"\n"
+" Output:\n"
+"  -o, --output=filename      Outputfile, default: stdout.\n"
+"\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
 
-	{ name: "verbose", key: 'v', arg: NULL,	   flags: 0,
-	  doc: "Print more information.",
-	  group: OPTION_ARG_OPTIONAL },
+static const char *usage =
+"Usage: pfi2bin.orig [-cv?V] [-j pdd-file] [-o filename] [--copyright]\n"
+"            [--verbose] [--platform=pdd-file] [--output=filename] [--help]\n"
+"            [--usage] [--version] pfifile\n";
 
-	{ name: "copyright", key: 'c', arg: NULL, flags: 0,
-	  group: OPTION_ARG_OPTIONAL },
-
-
-	/* INPUT */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Input:",
-	  group: 4},
-
-	{ name: "platform", key: 'j', arg: "pdd-file", flags: 0,
-	  doc: "PDD information which contains the card settings.",
-	  group: 4 },
-
-	/* OUTPUT */
-	{ name: NULL, key: 0, arg: NULL, flags: 0,
-	  doc: "Output:",
-	  group: 5},
-
-	{ name: "output", key: 'o', arg: "filename", flags: 0,
-	  doc: "Outputfile, default: stdout.",
-	  group: 5 },
-
-	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
+struct option long_options[] = {
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "verbose", .has_arg = 0, .flag = NULL, .val = 'v' },
+	{ .name = "platform", .has_arg = 1, .flag = NULL, .val = 'j' },
+	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
 
 typedef struct io {
@@ -129,57 +124,56 @@ typedef struct myargs {
 	char **options;			/* [STRING...] */
 } myargs;
 
-static struct argp argp = {
-	options:     options,
-	parser:	     parse_opt,
-	args_doc:    "pfifile",
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
-
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
-	myargs *args = state->input;
+	while (1) {
+		int key;
 
-	switch (key) {
-		/* common settings */
-	case 'v': /* --verbose=<level> */
-		args->verbose = 1;
-		break;
+		key = getopt_long(argc, argv, "cvj:o:?V", long_options, NULL);
+		if (key == -1)
+			break;
 
-	case 'c': /* --copyright */
-		fprintf(stderr, "%s\n", copyright);
-		exit(0);
-		break;
+		switch (key) {
+			/* common settings */
+			case 'v': /* --verbose=<level> */
+				args->verbose = 1;
+				break;
 
-	case 'j': /* --platform */
-		args->f_in_pdd = arg;
-		break;
+			case 'c': /* --copyright */
+				fprintf(stderr, "%s\n", copyright);
+				exit(0);
+				break;
 
-	case 'o': /* --output */
-		args->f_out = arg;
-		break;
+			case 'j': /* --platform */
+				args->f_in_pdd = optarg;
+				break;
 
-	case ARGP_KEY_ARG:
-		args->f_in_pfi = arg;
-		/* args->arg1 = arg; */
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
+			case 'o': /* --output */
+				args->f_out = optarg;
+				break;
 
-	case ARGP_KEY_END:
-		if (args->action == ACT_NOTHING) {
-			argp_usage(state);
-			exit(1);
+			case '?': /* help */
+				printf("pfi2bin [OPTION...] pfifile\n");
+				printf("%s", doc);
+				printf("%s", optionsstr);
+				printf("\nReport bugs to %s\n", PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+
+			case 'V':
+				printf("%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
+
+			default:
+				printf("%s", usage);
+				exit(-1);
 		}
-		break;
-
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
+
+	if (optind < argc)
+		args->f_in_pfi = argv[optind++];
 
 	return 0;
 }
@@ -658,7 +652,7 @@ main(int argc, char *argv[])
 	};
 
 	/* parse arguments */
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 
 	if (strcmp(args.f_in_pfi, "") == 0) {
 		err_quit("No PFI input file specified!");
