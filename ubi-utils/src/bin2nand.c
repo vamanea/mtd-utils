@@ -35,7 +35,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -63,61 +62,46 @@ typedef enum action_t {
 #define PADDING		   0 /* 0 means, do not adjust anything */
 #define BUFSIZE		4096
 
-const char *argp_program_version = PACKAGE_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
+extern char *optarg;
+extern int optind;
+
 static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
 	"\n"
 	"bin2nand - a tool for adding OOB information to a "
 	"binary input file.\n";
 
-static const char copyright [] __attribute__((unused)) =
-	"FIXME: insert license type."; /* FIXME */
+static const char *optionsstr =
+"  -c, --copyright          Print copyright informatoin.\n"
+"  -j, --padding=<num>      Padding in Byte/Mi/ki. Default = no padding\n"
+"  -p, --pagesize=<num>     Pagesize in Byte/Mi/ki. Default = 2048\n"
+"  -o, --output=<fname>     Output filename.  Interleaved Data/OOB if\n"
+"                           output-oob not specified.\n"
+"  -q, --output-oob=<fname> Write OOB data in separate file.\n"
+"  -?, --help               Give this help list\n"
+"      --usage              Give a short usage message\n"
+"  -V, --version            Print program version\n";
 
-static struct argp_option options[] = {
-	{ .name = "copyright",
-	  .key = 'c',
-	  .arg = NULL,
-	  .flags = 0,
-	  .doc = "Print copyright information.",
-	  .group = 1 },
+static const char *usage =
+"Usage: bin2nand [-c?V] [-j <num>] [-p <num>] [-o <fname>] [-q <fname>]\n"
+"            [--copyright] [--padding=<num>] [--pagesize=<num>]\n"
+"            [--output=<fname>] [--output-oob=<fname>] [--help] [--usage]\n"
+"            [--version]\n";
 
-	{ .name = "pagesize",
-	  .key = 'p',
-	  .arg = "<num>",
-	  .flags = 0,
-	  .doc = "Pagesize in Byte/Mi/ki. Default = 2048",
-	  .group = 1 },
-
-	{ .name = "padding",
-	  .key = 'j',
-	  .arg = "<num>",
-	  .flags = 0,
-	  .doc = "Padding in Byte/Mi/ki. Default = no padding",
-	  .group = 1 },
-
-	{ .name = "output",
-	  .key = 'o',
-	  .arg = "<fname>",
-	  .flags = 0,
-	  .doc = "Output filename. Interleaved Data/OOB if output-oob not "
-	       "specified.",
-	  .group = 2 },
-
-	{ .name = "output-oob",
-	  .key = 'q',
-	  .arg = "<fname>",
-	  .flags = 0,
-	  .doc = "Write OOB data in separate file.",
-	  .group = 2 },
-
-	{ .name = NULL,
-	  .key = 0,
-	  .arg = NULL,
-	  .flags = 0,
-	  .doc = NULL,
-	  .group = 0 },
+struct option long_options[] = {
+	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
+	{ .name = "padding", .has_arg = 1, .flag = NULL, .val = 'j' },
+	{ .name = "pagesize", .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "output-oob", .has_arg = 1, .flag = NULL, .val = 'q' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0}
 };
+
+static const char copyright [] __attribute__((unused)) =
+	"Copyright IBM Corp. 2006";
 
 typedef struct myargs {
 	action_t action;
@@ -155,61 +139,60 @@ static int ustrtoull(const char *cp, char **endp, unsigned int base)
 	return res;
 }
 
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int
+parse_opt(int argc, char **argv, myargs *args)
 {
-	int err = 0;
 	char* endp;
 
-	myargs *args = state->input;
+	while (1) {
+		int key;
 
-	switch (key) {
-	case 'p': /* pagesize */
-		args->pagesize = (size_t) ustrtoull(arg, &endp, 0);
-		CHECK_ENDP("p", endp);
-		break;
-	case 'j': /* padding */
-		args->padding = (size_t) ustrtoull(arg, &endp, 0);
-		CHECK_ENDP("j", endp);
-		break;
-	case 'o': /* output */
-		args->file_out_data = arg;
-		break;
-	case 'q': /* output oob */
-		args->file_out_oob = arg;
-		break;
-	case ARGP_KEY_ARG: /* input file */
-		args->fp_in = fopen(arg, "rb");
+		key = getopt_long(argc, argv, "cj:p:o:q:?V", long_options, NULL);
+		if (key == -1)
+			break;
+
+		switch (key) {
+			case 'p': /* pagesize */
+				args->pagesize = (size_t) ustrtoull(optarg, &endp, 0);
+				CHECK_ENDP("p", endp);
+				break;
+			case 'j': /* padding */
+				args->padding = (size_t) ustrtoull(optarg, &endp, 0);
+				CHECK_ENDP("j", endp);
+				break;
+			case 'o': /* output */
+				args->file_out_data = optarg;
+				break;
+			case 'q': /* output oob */
+				args->file_out_oob = optarg;
+				break;
+			case '?': /* help */
+				printf("%s", doc);
+				printf("%s", optionsstr);
+				exit(0);
+				break;
+			case 'V':
+				printf("%s\n", PACKAGE_VERSION);
+				exit(0);
+				break;
+			case 'c':
+				printf("%s\n", copyright);
+				exit(0);
+			default:
+				printf("%s", usage);
+				exit(-1);
+		}
+	}
+
+	if (optind < argc) {
+		args->fp_in = fopen(argv[optind++], "rb");
 		if ((args->fp_in) == NULL) {
-			err_quit("Cannot open file %s for input\n", arg);
+			err_quit("Cannot open file %s for input\n", argv[optind++]);
 		}
-		args->arg1 = arg;
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-	case ARGP_KEY_END:
-		if (err) {
-			err_msg("\n");
-			argp_usage(state);
-			exit(EXIT_FAILURE);
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
 
 	return 0;
 }
-
-static struct argp argp = {
-	options:     options,
-	parser:	     parse_opt,
-	args_doc:    0,
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
 
 static int
 process_page(uint8_t* buf, size_t pagesize,
@@ -274,7 +257,7 @@ int main (int argc, char** argv)
 	FILE* fp_out_data = stdout;
 	FILE* fp_out_oob = NULL;
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	parse_opt(argc, argv, &args);
 
 	uint8_t* buf = calloc(1, BUFSIZE);
 	if (!buf) {
