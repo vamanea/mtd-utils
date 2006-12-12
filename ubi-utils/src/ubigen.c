@@ -22,6 +22,7 @@
  * 1.0 Initial version
  * 1.1 Different CRC32 start value
  * 1.2 Removed argp because we want to use uClibc.
+ * 1.3 Minor cleanups
  */
 
 #include <stdlib.h>
@@ -35,15 +36,12 @@
 #include "ubigen.h"
 #include "config.h"
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 
 typedef enum action_t {
 	ACT_NORMAL	     = 0x00000001,
 	ACT_BROKEN_UPDATE    = 0x00000002,
 } action_t;
-
-extern char *optarg;
-extern int optind;
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
@@ -85,7 +83,7 @@ static const char *optionsstr =
 "  -V, --version              Print program version\n";
 
 static const char *usage =
-"Usage: ubigen.orig [-cdv?V] [-A <num>] [-B <num>] [-E <num>] [-I <num>]\n"
+"Usage: ubigen [-cdv?V] [-A <num>] [-B <num>] [-E <num>] [-I <num>]\n"
 "          [-O <num>] [-T <num>] [-X <num>] [-i <filename>] [-o <filename>]\n"
 "          [-U <leb>] [--copyright] [--debug] [--verbose] [--alignment=<num>]\n"
 "          [--blocksize=<num>] [--erasecount=<num>] [--id=<num>]\n"

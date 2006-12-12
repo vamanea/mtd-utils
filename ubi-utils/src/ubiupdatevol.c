@@ -24,6 +24,7 @@
  *
  * 1.0 Reworked the userinterface to use argp.
  * 1.1 Removed argp parsing because we want to use uClib.
+ * 1.2 Minor cleanups
  */
 
 #include <errno.h>
@@ -42,15 +43,11 @@
 #include <config.h>
 #include <libubi.h>
 
-#define PROGRAM_VERSION "1.1"
+#define PROGRAM_VERSION "1.2"
 
 #define MAXPATH		1024
 #define BUFSIZE		128 * 1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
-
-/* FIXME is this not covered by including getopt.h? */
-extern char *optarg;
-extern int optind;
 
 struct args {
 	int devn;

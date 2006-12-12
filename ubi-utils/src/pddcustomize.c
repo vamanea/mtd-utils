@@ -25,6 +25,7 @@
  * PDD modification.
  *
  * 1.3 Removed argp because we want to use uClibc.
+ * 1.4 Minor cleanups
  */
 
 #include <stdio.h>
@@ -43,7 +44,7 @@
 #include "libubi.h"
 #include "ubimirror.h"
 
-#define PROGRAM_VERSION "1.3"
+#define PROGRAM_VERSION "1.4"
 
 typedef enum action_t {
 	ACT_NORMAL   = 0,
@@ -59,9 +60,6 @@ typedef enum action_t {
 #define ERR_ARGP do {			\
 	args->action = ACT_ARGP_ERR;	\
 } while (0)
-
-extern char *optarg;
-extern int optind;
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
@@ -81,7 +79,7 @@ static const char *optionsstr =
 "  -V, --version              Print program version\n";
 
 static const char *usage =
-"Usage: pddcustomize.orig [-bclx?V] [-i <input>] [-o <output>] [-s <seqnum>]\n"
+"Usage: pddcustomize [-bclx?V] [-i <input>] [-o <output>] [-s <seqnum>]\n"
 "           [--both] [--copyright] [--input=<input>] [--list]\n"
 "           [--output=<output>] [--side=<seqnum>] [--host] [--help] [--usage]\n"
 "           [--version] [key=value] [...]\n";
@@ -200,7 +198,7 @@ parse_opt(int argc, char **argv, myargs *args)
 				args->file_out = optarg;
 				break;
 			case '?': /* help */
-				err_msg("Usage: pddcustomize.orig [OPTION...] "
+				err_msg("Usage: pddcustomize [OPTION...] "
 					"[key=value] [...]");
 				err_msg("%s", doc);
 				err_msg("%s", optionsstr);

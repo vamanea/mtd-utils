@@ -18,6 +18,7 @@
  * Author: Oliver Lohmann
  *
  * 1.2 Removed argp because we want to use uClibc.
+ * 1.3 Minor cleanups
  */
 
 #include <stdio.h>
@@ -34,7 +35,7 @@
 #include "example_ubi.h"
 #include "ubimirror.h"
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 
 typedef enum action_t {
 	ACT_NORMAL = 0,
@@ -51,9 +52,6 @@ typedef enum action_t {
 } while (0)
 
 #define VOL_ARGS_MAX 2
-
-extern char *optarg;
-extern int optind;
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"

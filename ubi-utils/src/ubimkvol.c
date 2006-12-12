@@ -27,6 +27,7 @@
  *     the number of bytes.
  * 1.2 Reworked the user-interface to use argp.
  * 1.3 Removed argp because we want to use uClibc.
+ * 1.4 Minor cleanups
  */
 
 #include <stdio.h>
@@ -39,10 +40,7 @@
 #include <config.h>
 #include <libubi.h>
 
-#define PROGRAM_VERSION "1.3"
-
-extern char *optarg;
-extern int optind;
+#define PROGRAM_VERSION "1.4"
 
 /*
  * The variables below	are set by command line arguments.
@@ -114,14 +112,12 @@ struct option long_options[] = {
 /*
  * @brief Parse the arguments passed into the test case.
  *
- * @param key		 The parameter.
- * @param arg		 Argument passed to parameter.
- * @param state		 Location to put information on parameters.
+ * @param argc		 The number of arguments
+ * @param argv		 The list of arguments
+ * @param args		 Pointer to argument structure
  *
  * @return error
  *
- * Get the `input' argument from `argp_parse', which we know is a
- * pointer to our arguments structure.
  */
 static int
 parse_opt(int argc, char **argv, struct args *args)
@@ -142,16 +138,18 @@ parse_opt(int argc, char **argv, struct args *args)
 				else if (!strcmp(optarg, "static"))
 					args->vol_type = UBI_STATIC_VOLUME;
 				else {
-					fprintf(stderr, "Bad volume type: \"%s\"\n",
-							optarg);
+					fprintf(stderr,
+						"Bad volume type: \"%s\"\n",
+						optarg);
 					goto out;
 				}
 				break;
 			case 's':
 				args->bytes = strtoull(optarg, &endp, 0);
 				if (endp == optarg || args->bytes < 0) {
-					fprintf(stderr, "Bad volume size: \"%s\"\n",
-							optarg);
+					fprintf(stderr,
+						"Bad volume size: \"%s\"\n",
+						optarg);
 					goto out;
 				}
 				if (endp != '\0') {
@@ -172,9 +170,11 @@ parse_opt(int argc, char **argv, struct args *args)
 				break;
 			case 'd': /* --devn=<device number> */
 				args->devn = strtoul(optarg, &endp, 0);
-				if (*endp != '\0' || endp == optarg || args->devn < 0) {
-					fprintf(stderr, "Bad UBI device number: "
-							"\"%s\"\n", optarg);
+				if (*endp != '\0' || endp == optarg ||
+					args->devn < 0) {
+					fprintf(stderr,
+						"Bad UBI device number: "
+						"\"%s\"\n", optarg);
 					goto out;
 				}
 				break;
@@ -199,7 +199,8 @@ parse_opt(int argc, char **argv, struct args *args)
 				goto out;
 
 			case '?': /* help */
-				fprintf(stderr, "Usage: ubimkvol [OPTION...]\n");
+				fprintf(stderr,
+					"Usage: ubimkvol [OPTION...]\n");
 				fprintf(stderr, "%s", doc);
 				fprintf(stderr, "%s", optionsstr);
 				fprintf(stderr, "\nReport bugs to %s\n",

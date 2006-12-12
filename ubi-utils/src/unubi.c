@@ -21,6 +21,7 @@
  *	    Drake Dowsett, dowsett@de.ibm.com
  *
  * 1.2 Removed argp because we want to use uClibc.
+ * 1.3 Minor cleanups
  */
 
 /*
@@ -53,10 +54,7 @@
 
 #define EXEC		"unubi"
 #define CONTACT		"haver@vnet.ibm.com"
-#define VERSION		"1.0"
-
-extern char *optarg;
-extern int optind;
+#define VERSION		"1.3"
 
 static char doc[] = "\nVersion: " VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
@@ -177,12 +175,6 @@ str_to_num(char *str)
 	return num;
 }
 
-
-/**
- * parses the arguments passed into the program
- * get the input argument from argp_parse, which we know is a
- * pointer to our arguments structure;
- **/
 static int
 parse_opt(int argc, char **argv, struct args *args)
 {
@@ -225,10 +217,13 @@ parse_opt(int argc, char **argv, struct args *args)
 				args->vol_split = SPLIT_RAW;
 				break;
 			case '?': /* help */
-				fprintf(stderr, "Usage: unubi [OPTION...] image-file\n");
+				fprintf(stderr,
+					"Usage: unubi [OPTION...] "
+					"image-file\n");
 				fprintf(stderr, "%s", doc);
 				fprintf(stderr, "%s", optionsstr);
-				fprintf(stderr, "\nReport bugs to %s\n", CONTACT);
+				fprintf(stderr,
+					"\nReport bugs to %s\n", CONTACT);
 				exit(0);
 				break;
 			case 'J':

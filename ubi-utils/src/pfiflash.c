@@ -25,6 +25,7 @@
  * 1.1 fixed output to stderr and stdout in logfile mode.
  * 1.2 updated.
  * 1.3 removed argp parsing to be able to use uClib.
+ * 1.4 Minor cleanups
  */
 
 #include <unistd.h>
@@ -41,10 +42,7 @@
 #include "error.h"
 #include "config.h"
 
-#define PROGRAM_VERSION  "1.3"
-
-extern char *optarg;
-extern int optind;
+#define PROGRAM_VERSION  "1.4"
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
@@ -70,7 +68,7 @@ static const char *optionsstr =
 "  -V, --version              Print program version\n";
 
 static const char *usage =
-"Usage: pfiflash.orig [-cvC?V] [-l <file>] [-p <type>] [-r <dev>] [-s <seqnum>]\n"
+"Usage: pfiflash [-cvC?V] [-l <file>] [-p <type>] [-r <dev>] [-s <seqnum>]\n"
 "            [--copyright] [--logfile=<file>] [--verbose] [--complete]\n"
 "            [--pdd-update=<type>] [--raw-flash=<dev>] [--side=<seqnum>]\n"
 "            [--help] [--usage] [--version] [pfifile]\n";

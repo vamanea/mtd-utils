@@ -24,6 +24,7 @@
  * required to add the right OOB data to the binary image.
  *
  * 1.3 Removed argp because we want to use uClibc.
+ * 1.4 Minor cleanups
  */
 
 #include <stdlib.h>
@@ -44,16 +45,13 @@
 #include "peb.h"
 #include "crc32.h"
 
-#define PROGRAM_VERSION "1.3"
+#define PROGRAM_VERSION "1.4"
 
 #define MAX_FNAME 255
 #define DEFAULT_ERASE_COUNT  0 /* Hmmm.... Perhaps */
 #define ERR_BUF_SIZE 1024
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
-
-extern char *optarg;
-extern int optind;
 
 static uint32_t crc32_table[256];
 static char err_buf[ERR_BUF_SIZE];
@@ -92,7 +90,7 @@ static const char *optionsstr =
 "  -V, --version              Print program version\n";
 
 static const char *usage =
-"Usage: pfi2bin.orig [-cv?V] [-j pdd-file] [-o filename] [--copyright]\n"
+"Usage: pfi2bin [-cv?V] [-j pdd-file] [-o filename] [--copyright]\n"
 "            [--verbose] [--platform=pdd-file] [--output=filename] [--help]\n"
 "            [--usage] [--version] pfifile\n";
 

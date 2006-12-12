@@ -20,6 +20,7 @@
  * An utility to decompose NAND images and strip OOB off. Not yet finished ...
  *
  * 1.2 Removed argp because we want to use uClibc.
+ * 1.3 Minor cleanup
  */
 
 #include <config.h>
@@ -39,13 +40,10 @@
 #include "config.h"
 #include "nandecc.h"
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 
 #define MAXPATH		1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
-
-extern char *optarg;
-extern int optind;
 
 struct args {
 	const char *oob_file;
@@ -116,14 +114,12 @@ uint32_t str_to_num(char *str)
 /*
  * @brief Parse the arguments passed into the test case.
  *
- * @param key            The parameter.
- * @param arg            Argument passed to parameter.
- * @param state          Location to put information on parameters.
+ * @param argc           The number of arguments
+ * @param argv           The argument list
+ * @param args           Pointer to program args structure
  *
  * @return error
  *
- * Get the `input' argument from `argp_parse', which we know is a
- * pointer to our arguments structure.
  */
 static int
 parse_opt(int argc, char **argv, struct args *args)

@@ -27,6 +27,7 @@
  * 1.2 Generates separated OOB data, if needed. (oloh)
  * 1.3 Padds data/oob to a given size. (oloh)
  * 1.4 Removed argp because we want to use uClibc.
+ * 1.5 Minor cleanup
  */
 
 #include <unistd.h>
@@ -45,7 +46,7 @@
 #include "config.h"
 #include "nandecc.h"
 
-#define PROGRAM_VERSION "1.4"
+#define PROGRAM_VERSION "1.5"
 
 #define CHECK_ENDP(option, endp) do {			\
 	if (*endp) {					\
@@ -64,9 +65,6 @@ typedef enum action_t {
 #define PAGESIZE	2048
 #define PADDING		   0 /* 0 means, do not adjust anything */
 #define BUFSIZE		4096
-
-extern char *optarg;
-extern int optind;
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"

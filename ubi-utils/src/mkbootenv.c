@@ -20,6 +20,7 @@
  * Create boot-parameter/pdd data from an ASCII-text input file.
  *
  * 1.2 Removed argp because we want to use uClibc.
+ * 1.3 Minor cleanup
  */
 
 #include <stdio.h>
@@ -34,10 +35,7 @@
 #include "bootenv.h"
 #include "error.h"
 
-#define PROGRAM_VERSION "1.2"
-
-extern char *optarg;
-extern int optind;
+#define PROGRAM_VERSION "1.3"
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
