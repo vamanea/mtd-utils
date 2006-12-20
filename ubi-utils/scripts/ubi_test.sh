@@ -8,15 +8,16 @@
 # Author: Frank Haverkamp <haver@vnet.ibm.com>
 #
 # 1.0 Initial version
+# 1.1 Use ubiupdatevol instead of ubiwritevol
 #
 
-VERSION="1.0"
+VERSION="1.1"
 
 export PATH=$PATH:~/bin:/usr/local/bin:/home/dedekind/work/prj/ubi/tools/flashutils/bin/
 
 UBIMKVOL=ubimkvol
 UBIRMVOL=ubirmvol
-UBIWRITEVOL=ubiwritevol
+UBIUPDATEVOL=ubiupdatevol
 
 # 128 KiB 131072
 # 256 KiB 262144
@@ -97,7 +98,7 @@ delete_volume ()
     if [ -e /sys/class/ubi/$volume -o -e /sys/class/ubi/ubi0/$volume ]; then
 
 	echo -n "*** Truncate volume if it exists ... "
-	$UBIWRITEVOL -d0 -n$volume -t
+	$UBIUPDATEVOL -d0 -n$volume -t
 	if [ $? -ne "0" ] ; then
 	    exit_failure
 	fi
@@ -214,8 +215,8 @@ writevol_test ()
     echo "*** Now writing data to volume ... "
     # sleep 5
     ls -l testdata.bin
-    echo "    $UBIWRITEVOL -d0 -n$MINVOL testdata.bin"
-    $UBIWRITEVOL -d0 -n$MINVOL testdata.bin
+    echo "    $UBIUPDATEVOL -d0 -n$MINVOL testdata.bin"
+    $UBIUPDATEVOL -d0 -n$MINVOL testdata.bin
     if [ $? -ne "0" ] ; then
 	exit_failure
     fi
