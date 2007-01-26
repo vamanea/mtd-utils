@@ -89,7 +89,7 @@ static const char *optionsstr =
 static const char *usage =
 "Usage: ubiupdatevol [-Bt?V] [-d <devn>] [-n <volume id>] [--broken-update]\n"
 "            [--devn=<devn>] [--vol_id=<volume id>] [--truncate] [--help]\n"
-"            [--usage] [--version]\n";
+"            [--usage] [--version] <image file>\n";
 
 struct option long_options[] = {
 	{ .name = "broken-update", .has_arg = 0, .flag = NULL, .val = 'B' },
@@ -144,7 +144,7 @@ parse_opt(int argc, char **argv, struct args *args)
 
 			case '?': /* help */
 				fprintf(stderr,	"Usage: "
-					"ubiupdatevol [OPTION...]\n%s%s"
+					"ubiupdatevol [OPTION...] <image file>\n%s%s"
 					"\nReport bugs to %s\n",
 					doc, optionsstr, PACKAGE_BUGREPORT);
 				exit(EXIT_SUCCESS);
@@ -239,7 +239,7 @@ ubi_update_volume(struct args *args)
 	}
 
 	if (fname == NULL) {
-		fprintf(stderr, "Please specify an existing file.\n");
+		fprintf(stderr, "Please specify an existing image file.\n");
 		exit(EXIT_FAILURE);
 	}
 
