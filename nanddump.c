@@ -197,6 +197,7 @@ int main(int argc, char **argv)
 
 	/* Make sure device page sizes are valid */
 	if (!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
+			!(meminfo.oobsize == 32 && meminfo.writesize == 1024) &&
 			!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
 			!(meminfo.oobsize == 8 && meminfo.writesize == 256)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
