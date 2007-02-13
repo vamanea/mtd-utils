@@ -323,7 +323,7 @@ hashmap_dump(hashmap_t map)
 
 	for(i = 0; i < map->maxsize; i++) {
 		if (map->data[i] != NULL) {
-			printf("[%d]: ", i);
+			printf("[%zd]: ", i);
 			print_all(map->data[i]);
 		}
 	}

@@ -178,7 +178,8 @@ read_pfi_raw(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_raw_t* pfi_raw,
 	}
 
 	rc = bootenv_list_to_num_vector(raw_start_list,
-					&(res->starts_size), &(res->starts));
+					(void *) &(res->starts_size),
+					&(res->starts));
 	if (rc != 0) {
 		EBUF_PFI("Cannot create numeric value array: %s", tmp_str);
 		goto err;
@@ -246,7 +247,7 @@ read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 		goto err;
 	}
 
-	rc = bootenv_list_to_num_vector(ubi_id_list, &(res->ids_size),
+	rc = bootenv_list_to_num_vector(ubi_id_list, (void *) &(res->ids_size),
 					&(res->ids));
 	if (rc != 0) {
 		EBUF_PFI("Cannot create numeric value array: %s", tmp_str);
@@ -298,7 +299,7 @@ read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 		EBUF_PFI("Cannot translate PFI value: %s", tmp_str);
 		goto err;
 	}
-	rc = bootenv_list_to_vector(ubi_name_list, &(res->names_size),
+	rc = bootenv_list_to_vector(ubi_name_list, (void *) &(res->names_size),
 				    &(tmp_names));
 	if (rc != 0) {
 		EBUF_PFI("Cannot create string array: %s", tmp_str);

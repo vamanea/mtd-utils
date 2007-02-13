@@ -102,7 +102,7 @@ static const char *usage =
 #define FN_INVAL	"%s/eb%04u%s"			/* invalid eraseblock */
 #define FN_NSURE	"%s/eb%04u_%03u_%03u_%03x%s"	/* unsure eraseblock */
 #define FN_VALID	"%s/eb%04u_%03u_%03u_%03x%s"	/* valid eraseblock */
-#define FN_VOLSP	"%s/vol%03u_%03u_%03u_%04u"	/* split volume */
+#define FN_VOLSP	"%s/vol%03u_%03u_%03u_%04zu"	/* split volume */
 #define FN_VOLWH	"%s/volume%03u"			/* whole volume */
 
 static uint32_t crc32_table[256];

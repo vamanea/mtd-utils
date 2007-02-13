@@ -203,7 +203,7 @@ process_page(uint8_t* buf, uint8_t *oobbuf, size_t pagesize)
 	case 2048: oobsize = 64; eccpoi = 64 / 2; break;
 	case 512:  oobsize = 16; eccpoi = 16 / 2; break;
 	default:
-		fprintf(stderr, "Unsupported page size: %d\n", pagesize);
+		fprintf(stderr, "Unsupported page size: %zd\n", pagesize);
 		return -EINVAL;
 	}
 	memset(oobbuf, 0xff, oobsize);

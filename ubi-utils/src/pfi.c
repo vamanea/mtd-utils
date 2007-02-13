@@ -253,7 +253,7 @@ int pfi_header_setvalue (pfi_header head,
 {
 	int key_id = find_key_by_name(key);
 
-	if ((uint32_t)value == (uint32_t)NULL)
+	if (value == NULL)
 		return PFI_EINSUFF;
 
 	if ((key_id < 0) || (key_id >= num_keys))

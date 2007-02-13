@@ -698,8 +698,8 @@ ubi_vol_update(int vol_fd, unsigned long long bytes)
 	err = ioctl(vol_fd, UBI_IOCVOLUP, &bytes);
 	if (err) {
 		ubi_err("%s failure calling update ioctl\n"
-			"    IOCTL(%08x) err=%d errno=%d\n",
-			__func__, UBI_IOCVOLUP, err, errno);
+			"    IOCTL(%08lx) err=%d errno=%d\n",
+			__func__, (long unsigned int)UBI_IOCVOLUP, err, errno);
 	}
 	return err;
 }
