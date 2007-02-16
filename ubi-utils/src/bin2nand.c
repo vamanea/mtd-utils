@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (c) International Business Machines Corp., 2007
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
  * 1.3 Padds data/oob to a given size. (oloh)
  * 1.4 Removed argp because we want to use uClibc.
  * 1.5 Minor cleanup
+ * 1.6 written variable not initialized (-j did not work) (haver)
  */
 
 #include <unistd.h>
@@ -46,7 +47,7 @@
 #include "config.h"
 #include "nandecc.h"
 
-#define PROGRAM_VERSION "1.5"
+#define PROGRAM_VERSION "1.6"
 
 #define CHECK_ENDP(option, endp) do {			\
 	if (*endp) {					\
@@ -248,7 +249,7 @@ int main (int argc, char** argv)
 {
 	int rc = -1;
 	int res = 0;
-	size_t written, read;
+	size_t written = 0, read;
 	myargs args = {
 		.action	  = ACT_NORMAL,
 		.pagesize = PAGESIZE,
