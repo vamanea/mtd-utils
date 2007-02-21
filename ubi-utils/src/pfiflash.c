@@ -25,7 +25,8 @@
  * 1.1 fixed output to stderr and stdout in logfile mode.
  * 1.2 updated.
  * 1.3 removed argp parsing to be able to use uClib.
- * 1.4 Minor cleanups
+ * 1.4 Minor cleanups.
+ * 1.5 Forgot to delete raw block before updating it.
  */
 
 #include <unistd.h>
@@ -42,7 +43,7 @@
 #include "error.h"
 #include "config.h"
 
-#define PROGRAM_VERSION  "1.4"
+#define PROGRAM_VERSION  "1.5"
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
 	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
