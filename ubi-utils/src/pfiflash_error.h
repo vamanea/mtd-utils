@@ -41,7 +41,8 @@ enum pfiflash_err {
 	PFIFLASH_ERR_PDD_UNKNOWN,
 	PFIFLASH_ERR_MTD_OPEN,
 	PFIFLASH_ERR_MTD_CLOSE,
-	PFIFLASH_ERR_CRC_CHECK
+	PFIFLASH_ERR_CRC_CHECK,
+	PFIFLASH_ERR_MTD_ERASE
 };
 
 const char *const PFIFLASH_ERRSTR[] = {
@@ -63,7 +64,8 @@ const char *const PFIFLASH_ERRSTR[] = {
 	"unknown PDD handling algorithm",
 	"couldn't open MTD device %s",
 	"couldn't close MTD device %s",
-	"CRC check failed: given=0x%08x, calculated=0x%08x"
+	"CRC check failed: given=0x%08x, calculated=0x%08x",
+	"couldn't erase raw mtd region"
 };
 
 #endif /* __PFIFLASH_ERROR_H__ */

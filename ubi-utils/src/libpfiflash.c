@@ -34,11 +34,13 @@
 #define __USE_GNU
 #include <string.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 
 #include <libubi.h>
 #include <pfiflash.h>
 
 #include <mtd/ubi-user.h>	/* FIXME Is this ok here? */
+#include <mtd/mtd-user.h>
 
 #include "pfiflash_error.h"
 #include "ubimirror.h"
@@ -554,6 +556,45 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 	return rc;
 }
 
+static int
+erase_mtd_region(FILE* file_p, int start, int length)
+{
+	int rc, fd;
+	erase_info_t erase;
+	mtd_info_t mtdinfo;
+	loff_t offset = start;
+	loff_t end = offset + length;
+
+	fd = fileno(file_p);
+	if (fd < 0)
+		return -PFIFLASH_ERR_MTD_ERASE;
+
+	rc = ioctl(fd, MEMGETINFO, &mtdinfo);
+	if (rc)
+		return -PFIFLASH_ERR_MTD_ERASE;
+
+	/* check for bad blocks in case of NAND flash */
+	if (mtdinfo.type == MTD_NANDFLASH) {
+		while (offset < end) {
+			rc = ioctl(fd, MEMGETBADBLOCK, &offset);
+			if (rc > 0) {
+				return -PFIFLASH_ERR_MTD_ERASE;
+			}
+
+			offset += mtdinfo.erasesize;
+		}
+	}
+
+	erase.start = start;
+	erase.length = length;
+
+	rc = ioctl(fd, MEMERASE, &erase);
+	if (rc) {
+		return -PFIFLASH_ERR_MTD_ERASE;
+	}
+
+	return rc;
+}
 
 /**
  * process_raw_volumes - writes the raw sections of the PFI data
@@ -582,7 +623,7 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 	void *i;
 	uint32_t crc, crc32_table[256];
 	size_t j, k;
-	FILE* mtd;
+	FILE* mtd = NULL;
 	list_t ptr;
 
 	if (is_empty(pfi_raws))
@@ -639,6 +680,12 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 		}
 
 		for (j = 0; j < r->starts_size; j++) {
+			rc = erase_mtd_region(mtd, r->starts[j], r->data_size);
+			if (rc) {
+				EBUF(PFIFLASH_ERRSTR[-rc]);
+				goto err;
+			}
+
 			fseek(mtd, r->starts[j], SEEK_SET);
 			for (k = 0; k < r->data_size; k++) {
 				int c = fputc((int)pfi_data[k], mtd);
@@ -656,6 +703,7 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 			}
 		}
 		rc = fclose(mtd);
+		mtd = NULL;
 		if (rc != 0) {
 			rc = -PFIFLASH_ERR_MTD_CLOSE;
 			EBUF(PFIFLASH_ERRSTR[-rc], rawdev);
@@ -664,6 +712,8 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 	}
 
  err:
+	if (mtd != NULL)
+		fclose(mtd);
 	if (pfi_data != NULL)
 		free(pfi_data);
 	return rc;
