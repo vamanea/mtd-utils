@@ -138,7 +138,7 @@ static int
 get_ubi_info(ubi_lib_t desc, struct ubi_info *ubi)
 {
 	int err;
-	int n = 1;
+	int dev_count = 0;
 	char *path;
 	struct stat stat;
 
@@ -147,31 +147,31 @@ get_ubi_info(ubi_lib_t desc, struct ubi_info *ubi)
 		return -1;
 
 	/* Calculate number of UBI devices */
-	do {
+	while (!err) {
 		char dir[20];
 
-		sprintf(&dir[0], "ubi%d", n);
-		path = mkpath(desc->sysfs_root, dir);
+		sprintf(&dir[0], "ubi%d", dev_count);
+		path = mkpath(desc->ubi_root, dir);
 		if (!path)
 			return ENOMEM;
 
 		err = lstat(path, &stat);
 		if (err == 0)
-			n += 1;
+			dev_count += 1;
 		free(path);
-	} while (err == 0);
+	}
 
 	if (errno != ENOENT)
 		return -1;
 
-	if (n == 0) {
+	if (dev_count == 0) {
 		ubi_err("no UBI devices found");
 		errno = EINVAL;
 		return -1;
 	}
 
 	errno = 0;
-	ubi->dev_count = n;
+	ubi->dev_count = dev_count;
 	return 0;
 }
 
