@@ -271,9 +271,12 @@ int main(int argc, char **argv)
 	}
 
 	if (noecc)  {
-		switch (ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW)) {
-
-			case -ENOTTY:
+		ret = ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW);
+		if (ret == 0) {
+			oobinfochanged = 2;
+		} else {
+			switch (errno) {
+			case ENOTTY:
 				if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
 					perror ("MEMGETOOBSEL");
 					close (fd);
@@ -286,14 +289,11 @@ int main(int argc, char **argv)
 				}
 				oobinfochanged = 1;
 				break;
-
-			case 0:
-				oobinfochanged = 2;
-				break;
 			default:
 				perror ("MTDFILEMODE");
 				close (fd);
 				exit (1);
+			}
 		}
 	}
 
