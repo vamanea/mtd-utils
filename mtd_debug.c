@@ -3,8 +3,6 @@
  * Written by Abraham vd Merwe <abraham@2d3d.co.za>
  * All rights reserved.
  *
- * $Id: mtd_debug.c,v 1.5 2004/05/05 11:57:55 dwmw2 Exp $
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -259,14 +257,20 @@ int showinfo (int fd)
 		case MTD_ABSENT:
 			printf ("MTD_ABSENT");
 			break;
+		case MTD_RAM:
+			printf ("MTD_RAM");
+			break;
+		case MTD_ROM:
+			printf ("MTD_ROM");
+			break;
 		case MTD_NORFLASH:
 			printf ("MTD_NORFLASH");
 			break;
 		case MTD_NANDFLASH:
 			printf ("MTD_NANDFLASH");
 			break;
-		case MTD_GENERIC_TYPE:
-			printf ("MTD_GENERIC_TYPE");
+		case MTD_DATAFLASH:
+			printf ("MTD_DATAFLASH");
 			break;
 		default:
 			printf ("(unknown type - new MTD API maybe?)");
@@ -319,22 +323,6 @@ int showinfo (int fd)
 
 	printf ("\nmtd.oobsize = ");
 	printsize (mtd.oobsize);
-
-	printf ("\nmtd.ecctype = ");
-	switch (mtd.ecctype)
-	{
-		case MTD_ECC_NONE:
-			printf ("MTD_ECC_NONE");
-			break;
-		case MTD_ECC_RS_DiskOnChip:
-			printf ("MTD_ECC_RS_DiskOnChip");
-			break;
-		case MTD_ECC_SW:
-			printf ("MTD_ECC_SW");
-			break;
-		default:
-			printf ("(unknown ECC type - new MTD API maybe?)");
-	}
 
 	printf ("\n"
 			"regions = %d\n"
