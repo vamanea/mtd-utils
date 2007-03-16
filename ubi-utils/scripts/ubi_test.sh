@@ -95,7 +95,7 @@ delete_volume ()
     volume=$1
 
     ### FIXME broken sysfs!!!!
-    if [ -e /sys/class/ubi/$volume -o -e /sys/class/ubi/ubi0/$volume ]; then
+    if [ -e /sys/class/ubi/$volume -o -e /sys/class/ubi/ubi0/$volume -o -e /sys/class/ubi/ubi0_$volume ]; then
 
 	echo -n "*** Truncate volume if it exists ... "
 	$UBIUPDATEVOL -d0 -n$volume -t
