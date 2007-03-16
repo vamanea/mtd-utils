@@ -311,7 +311,7 @@ ubi_open(ubi_lib_t *desc)
 	if (err)
 		goto error;
 
-	res->vdev_path = mkpath(res->udev_path, "%d/");
+	res->vdev_path = mkpath(res->ubi_root, "ubi%d_%d/");
 	if (!res->vdev_path)
 		goto error;
 
@@ -595,6 +595,11 @@ ubi_mkvol(ubi_lib_t desc, int devn, int vol_id, int vol_type,
 	int fd;
 	int err;
 	struct ubi_mkvol_req req;
+	size_t n;
+
+	n = strlen(name);
+	if (n > UBI_MAX_VOLUME_NAME)
+		return -1;
 
 	if ((fd = ubi_cdev_open(desc, devn, O_RDWR)) == -1)
 		return -1;
@@ -603,8 +608,9 @@ ubi_mkvol(ubi_lib_t desc, int devn, int vol_id, int vol_type,
 	req.bytes = bytes;
 	req.vol_type = vol_type;
 	req.alignment = alignment;
-	req.name_len = strlen(name);
-	req.name = name;
+
+	strncpy(req.name, name, UBI_MAX_VOLUME_NAME + 1);
+	req.name_len = n;
 
 	/* printf("DBG: %s(vol_id=%d, bytes=%lld, type=%d, alig=%d, nlen=%d, "
 	       "name=%s)\n", __func__, vol_id, bytes, vol_type, alignment,
