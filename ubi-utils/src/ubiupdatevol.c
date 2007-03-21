@@ -25,6 +25,7 @@
  * 1.0 Reworked the userinterface to use argp.
  * 1.1 Removed argp parsing because we want to use uClib.
  * 1.2 Minor cleanups
+ * 1.3 Use a different libubi
  */
 
 #include <errno.h>
@@ -36,14 +37,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #include <config.h>
 #include <libubi.h>
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 
 #define MAXPATH		1024
 #define BUFSIZE		128 * 1024
@@ -174,7 +173,7 @@ parse_opt(int argc, char **argv, struct args *args)
  * some reason nothing is written. The volume is unusable after this.
  */
 static int
-ubi_truncate_volume(struct args *args, int64_t bytes)
+ubi_truncate_volume(struct args *args, int64_t bytes,libubi_t libubi)
 {
 	int rc, ofd;
 	char path[MAXPATH];
@@ -188,7 +187,7 @@ ubi_truncate_volume(struct args *args, int64_t bytes)
 		fprintf(stderr, "Cannot open volume %s\n", path);
 		exit(EXIT_FAILURE);
 	}
-	rc = ioctl(ofd, UBI_IOCVOLUP, &bytes);
+	rc = ubi_update_start(libubi, ofd, bytes);
 	old_errno = errno;
 	if (rc < 0) {
 		perror("UBI volume update ioctl");
@@ -220,7 +219,7 @@ static ssize_t ubi_write(int fd, const void *buf, size_t count)
 }
 
 static int
-ubi_update_volume(struct args *args)
+ubi_update_volume(struct args *args, libubi_t libubi)
 {
 	int rc, ofd;
 	FILE *ifp = NULL;
@@ -263,7 +262,7 @@ ubi_update_volume(struct args *args)
 		exit(EXIT_FAILURE);
 	}
 
-	rc = ioctl(ofd, UBI_IOCVOLUP, &bytes);
+	rc = ubi_update_start(libubi, ofd, bytes);
 	old_errno = errno;
 	if (rc < 0) {
 		perror("UBI volume update ioctl");
@@ -304,24 +303,35 @@ int
 main(int argc, char *argv[])
 {
 	int rc;
+	libubi_t libubi;
 
 	parse_opt(argc, argv, &myargs);
 
-	if (myargs.truncate) {
-		rc = ubi_truncate_volume(&myargs, 0LL);
-		if (rc < 0)
-			exit(EXIT_FAILURE);
-		exit(EXIT_SUCCESS);
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		perror("Cannot open libubi");
+		return -1;
 	}
-	if (myargs.broken_update) {
-		rc = ubi_truncate_volume(&myargs, 1LL);
-		if (rc < 0)
-			exit(EXIT_FAILURE);
-		exit(EXIT_SUCCESS);
-	}
-	rc = ubi_update_volume(&myargs);
-	if (rc < 0)
-		exit(EXIT_FAILURE);
 
-	exit(EXIT_SUCCESS);
+	if (myargs.truncate) {
+		rc = ubi_truncate_volume(&myargs, 0LL, libubi);
+		if (rc < 0)
+			goto out_libubi;
+	}
+	else if (myargs.broken_update) {
+		rc = ubi_truncate_volume(&myargs, 1LL, libubi);
+		if (rc < 0)
+			goto out_libubi;
+	} else {
+		rc = ubi_update_volume(&myargs, libubi);
+		if (rc < 0)
+			goto out_libubi;
+	}
+
+	libubi_close(libubi);
+	return 0;
+	
+out_libubi:
+	libubi_close(libubi);
+	return -1;
 }

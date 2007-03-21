@@ -16,11 +16,12 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) -O2 -g -Wall -Werror \
 	-Wwrite-strings -W -std=gnu99 \
         -DHOST_OS_NAME=\"$(HOST_OS_NAME)\" \
         -DHOST_VERSION_NAME=\"$(HOST_VERSION_NAME)\" \
-	-DBUILD_CPU=\"$(BUILD_CPU)\" -DBUILD_OS=\"$(BUILD_OS)\"
+	-DBUILD_CPU=\"$(BUILD_CPU)\" -DBUILD_OS=\"$(BUILD_OS)\" \
+	-DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi ubicrc32.pl
 TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
-	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin
+	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32
 
 vpath   %.c ./src
 
@@ -38,25 +39,25 @@ IGNORE=${wildcard .*.c.dep}
 clean:
 	rm -rf *.o $(TARGETS) .*.c.dep
 
-ubiupdatevol: ubiupdatevol.o error.o libubi.o libubi_sysfs.o
+ubiupdatevol: ubiupdatevol.o error.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubimkvol: ubimkvol.o error.o libubi.o libubi_sysfs.o
+ubimkvol: ubimkvol.o error.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubirmvol: ubirmvol.o error.o libubi.o libubi_sysfs.o
+ubirmvol: ubirmvol.o error.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o libubi_sysfs.o crc32.o
+		libubiold.o libubiold_sysfs.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
-		bootenv.o hashmap.o pfi.o libubi.o libubi_sysfs.o crc32.o
+		bootenv.o hashmap.o pfi.o libubiold.o libubiold_sysfs.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o libubi_sysfs.o crc32.o
+		libubiold.o libubiold_sysfs.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 nand2bin: nand2bin.o nandecc.o nandcorr.o
@@ -76,6 +77,9 @@ unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
 
 pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
 		hashmap.o reader.o pfi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubicrc32: ubicrc32.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 install: ${TARGETS}

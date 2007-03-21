@@ -22,7 +22,7 @@
 #include <memory.h>
 #include <fcntl.h>
 
-#include <libubi.h>
+#include <libubiold.h>
 #include "ubimirror.h"
 
 #define COMPARE_BUF_SIZE    (128 * 1024)
@@ -207,11 +207,11 @@ ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 			fd_out = -1;
 	}
 err:
-	if (ulib != NULL)
-		ubi_close(&ulib);
-	if (fd_in != -1)
-		ubi_vol_close(fd_in);
 	if (fd_out != -1)
 		ubi_vol_close(fd_out);
+	if (fd_in != -1)
+		ubi_vol_close(fd_in);
+	if (ulib != NULL)
+		ubi_close(&ulib);
 	return rc;
 }

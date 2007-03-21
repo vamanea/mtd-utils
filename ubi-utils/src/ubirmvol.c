@@ -25,6 +25,7 @@
  * 1.1 Reworked the userinterface to use argp.
  * 1.2 Removed argp because we want to use uClibc.
  * 1.3 Minor cleanups
+ * 1.4 Use a different libubi
  */
 
 #include <stdio.h>
@@ -37,7 +38,7 @@
 #include <config.h>
 #include <libubi.h>
 
-#define PROGRAM_VERSION "1.3"
+#define PROGRAM_VERSION "1.4"
 
 /*
  * The below variables are set by command line options.
@@ -45,6 +46,7 @@
 struct args {
 	int devn;
 	int vol_id;
+	char node[256];
 
 	/* special stuff needed to get additional arguments */
 	char *arg1;
@@ -59,7 +61,7 @@ static struct args myargs = {
 	.options = NULL,
 };
 
-static int param_sanity_check(struct args *args, ubi_lib_t lib);
+static int param_sanity_check(struct args *args, libubi_t libubi);
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
 	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
@@ -118,6 +120,7 @@ parse_opt(int argc, char **argv, struct args *args)
 						"\"%s\"\n", optarg);
 					goto out;
 				}
+				sprintf(args->node, "/dev/ubi%d", args->devn);
 				break;
 			case 'n': /* --volid=<volume id> */
 				args->vol_id = strtoul(optarg, &endp, 0);
@@ -156,7 +159,7 @@ parse_opt(int argc, char **argv, struct args *args)
 	return -1;
 }
 
-static int param_sanity_check(struct args *args, ubi_lib_t lib)
+static int param_sanity_check(struct args *args, libubi_t libubi)
 {
 	int err;
 	struct ubi_info ubi;
@@ -166,7 +169,7 @@ static int param_sanity_check(struct args *args, ubi_lib_t lib)
 		goto out;
 	}
 
-	err = ubi_get_info(lib, &ubi);
+	err = ubi_get_info(libubi, &ubi);
 	if (err)
 		return -1;
 
@@ -185,7 +188,7 @@ out:
 int main(int argc, char * const argv[])
 {
 	int err, old_errno;
-	ubi_lib_t lib;
+	libubi_t libubi;
 
 	err = parse_opt(argc, (char **)argv, &myargs);
 	if (err)
@@ -197,20 +200,20 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	err = ubi_open(&lib);
-	if (err) {
+	libubi = libubi_open();
+	if (libubi == NULL) {
 		perror("Cannot open libubi");
 		return -1;
 	}
 
-	err = param_sanity_check(&myargs, lib);
+	err = param_sanity_check(&myargs, libubi);
 	if (err) {
 		perror("Input parameters check");
 		fprintf(stderr, "Use -h option for help\n");
 		goto out_libubi;
 	}
 
-	err = ubi_rmvol(lib, myargs.devn, myargs.vol_id);
+	err = ubi_rmvol(libubi, myargs.node, myargs.vol_id);
 	old_errno = errno;
 	if (err < 0) {
 		perror("Cannot remove volume");
@@ -218,9 +221,10 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
+	libubi_close(libubi);
 	return 0;
 
 out_libubi:
-	ubi_close(&lib);
+	libubi_close(libubi);
 	return -1;
 }

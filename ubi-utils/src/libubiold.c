@@ -36,9 +36,9 @@
 #include <mtd/ubi-user.h>
 #include <mtd/ubi-header.h>
 
-#include "libubi.h"
-#include "libubi_int.h"
-#include "libubi_sysfs.h"
+#include "libubiold.h"
+#include "libubiold_int.h"
+#include "libubiold_sysfs.h"
 
 /**
  * struct ubi_lib - UBI library descriptor.

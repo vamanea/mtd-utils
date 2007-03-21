@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 
-#include <libubi.h>
+#include <libubiold.h>
 #include <pfiflash.h>
 
 #include <mtd/ubi-user.h>	/* FIXME Is this ok here? */

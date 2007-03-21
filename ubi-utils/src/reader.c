@@ -142,6 +142,7 @@ read_pfi_raw(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_raw_t* pfi_raw,
 	char tmp_str[PFI_KEYWORD_LEN];
 	bootenv_list_t raw_start_list = NULL;
 	pfi_raw_t res;
+	size_t size;
 
 	res = (pfi_raw_t) malloc(sizeof(struct pfi_raw));
 	if (!res)
@@ -178,8 +179,9 @@ read_pfi_raw(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_raw_t* pfi_raw,
 	}
 
 	rc = bootenv_list_to_num_vector(raw_start_list,
-					(void *) &(res->starts_size),
-					&(res->starts));
+					&size, &(res->starts));
+	res->starts_size = size;
+
 	if (rc != 0) {
 		EBUF_PFI("Cannot create numeric value array: %s", tmp_str);
 		goto err;
@@ -209,6 +211,7 @@ read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 	bootenv_list_t ubi_name_list = NULL;
 	pfi_ubi_t res;
 	uint32_t i;
+	size_t size;
 
 	res = (pfi_ubi_t) calloc(1, sizeof(struct pfi_ubi));
 	if (!res)
@@ -247,8 +250,9 @@ read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 		goto err;
 	}
 
-	rc = bootenv_list_to_num_vector(ubi_id_list, (void *) &(res->ids_size),
+	rc = bootenv_list_to_num_vector(ubi_id_list, &size,
 					&(res->ids));
+	res->ids_size = size;
 	if (rc != 0) {
 		EBUF_PFI("Cannot create numeric value array: %s", tmp_str);
 		goto err;
@@ -299,8 +303,9 @@ read_pfi_ubi(pfi_header pfi_hd, FILE* fp_pfi __unused, pfi_ubi_t* pfi_ubi,
 		EBUF_PFI("Cannot translate PFI value: %s", tmp_str);
 		goto err;
 	}
-	rc = bootenv_list_to_vector(ubi_name_list, (void *) &(res->names_size),
+	rc = bootenv_list_to_vector(ubi_name_list, &size,
 				    &(tmp_names));
+	res->names_size = size;
 	if (rc != 0) {
 		EBUF_PFI("Cannot create string array: %s", tmp_str);
 		goto err;

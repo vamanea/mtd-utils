@@ -33,7 +33,7 @@
 #include <stdarg.h>
 
 #include "config.h"
-#include "libubi_int.h"
+#include "libubiold_int.h"
 
 int
 sysfs_read_data(const char *file, void *buf, int len)

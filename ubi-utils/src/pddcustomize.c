@@ -41,7 +41,7 @@
 #include "bootenv.h"
 #include "error.h"
 #include "example_ubi.h"
-#include "libubi.h"
+#include "libubiold.h"
 #include "ubimirror.h"
 
 #define PROGRAM_VERSION "1.4"
