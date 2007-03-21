@@ -216,8 +216,7 @@ writevol_test ()
 
 jffs2_torture ()
 {
-    rm -f $TLOG
-    touch $TLOG
+    cat /dev/null > TLOG
 
     echo "*** Torture test ... "
 

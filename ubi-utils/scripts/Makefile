@@ -15,7 +15,7 @@ mkpfi_cfg	= test.cfg
 # on those values. If you do it wrong your card has no valid PDD data.
 #
 
-PATH := $(PATH):/opt/ppc/usr/bin
+PATH := $(PATH):/opt/ppc/usr/bin:../perl:..
 
 dd		= dd
 sed		= sed
