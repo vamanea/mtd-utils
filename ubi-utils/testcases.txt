@@ -1,0 +1,9 @@
+1. Start some large update, but write there byte-by-byte
+
+2. start update for N bytes, write N-x bytes, then write y bytes, y>x.
+   You have to see that at the last write only x bytes were written,
+   but y-x bytes were not. we may vary x a bit. good number would be
+   1, 128, 128Ki-128...
+
+3. Try to start update for x bytes, write x bytes, then try to write more.
+   Check that it is impossible to write more.

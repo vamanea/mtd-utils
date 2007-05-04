@@ -1,0 +1,123 @@
+.TH UNUBI 1 "NOVEMBER 2006" FSP "FSP Flashutils"
+.SH NAME
+unubi \- extract volumes/eraseblocks from a raw\-UBI image
+.SH SYNOPSIS
+\fBunubi [\-aevEV] [\-d \fIout\-dir\fB] [\-r \fIvolume\-id\fB]
+[\-b \fIblock\-size\fB] \fIimage\-file
+.SH DESCRIPTION
+.PP
+\fBunubi\fR reads an image file containing blocks of UBI headers and data
+(such as produced from \fBnand2bin\fR) and rebuilds the volumes within.
+The default operation (when no flags are given) is to rebuild all valid
+volumes found in the image. \fBunubi\fR can also read straight from the
+onboard MTD device (ex. /dev/mtdblock/NAND).
+.SH OPTIONS
+.IP "\-a, \-\-analyze"
+When flagged, analysis files are generated within the output directory. These
+may include tables and or graphs detailing statistics gathered from the
+eraseblock data. Files are prefixed `analysis_'.
+
+See \fBANALYSIS\fR.
+.IP "\-b, \-\-blocksize \fIblock\-size\fR"
+Specify in bytes the \fIimage\-file\fR eraseblock size. Sizes may be
+postfixed with `KiB' or `MiB' to indicate mebibytes or kibibytes
+respectively. Default is 128KiB.
+.IP "\-d, \-\-dir \fIoutput\-dir\fR"
+Specify the output directory. If no directory is specified, the default
+is `unubi_\fIimage\-file\fR' within the curent working directory. If the
+attempt to create the output directory fails,
+.B unubi
+will try to create it in /tmp before aborting.
+.IP "\-e, \-\-eb\-split"
+When flagged, images are created for each eraseblock in \fIimage\-file\fR
+regardless of its validity. Each image is the complete eraseblock, including
+headers and any space to the end of the eraseblock after where the data may
+end.
+
+Invalid images are named `ebEEEE', where EEEE is the physical index of the
+eraseblock in the image. Valid images are named `ebEEEE_VVV_NNN_RRR' where
+VVV is the known volume ID, NNN is the logical number and RRR is the version
+of the eraseblock data. Note that the version number is in hexadecimal.
+
+Invalid images may also contain this postfix, if the data in the header
+could be valid (ie. the header contains a resonable volume ID, but the
+header and/or data CRCs are not valid). If this is the case, images are named
+`ebEEEE_VVV_NNN_RRR.reason', so as to distinguish known values from
+non\-definite ones.
+
+See \fBREASON SUFFIXES\fR.
+.IP "\-r, \-\-rebuild \fIvolume\-id\fR"
+Specify a volume to rebuild. Can be used successively to specify
+several volumes to be rebuilt.
+
+Images are named `volumeVVV' where VVV is the volume ID. For each missing
+eraseblock, an error message will be printed.
+.IP "\-v, \-\-vol\-split"
+When flagged, images are created for each valid eraseblock in
+\fIimage\-file\fR. Since a vaild eraseblock will have a defined data start and
+data length, only this range will make up the image.
+
+Images are named `volVVV_NNN_RRR_EEEE', where, for the data in the eraseblock,
+VVV is the volume ID, NNN is the logical number, RRR is the version and EEEE
+is the phyisical index of the eraseblock in the image.
+.IP "\-V, \-\-vol\-split!"
+Same as above, only all images are the complete eraseblock (including headers,
+and raw data, even past the point where the data is supposed to end).
+Overrides \-v when both \-v and \-V are flagged.
+.SH ANALYSIS
+The following files will be generated during the analysis:
+.IP "analysis_ec_hdr.data"
+A space delimited table with these two columns for each eraseblock: the
+eraseblock's index or physical position in the image, and the eraseblock's
+erase count. The third column contains the erase count data sorted.
+.IP "analysis_vid_hdr.data"
+A space delimited table with these four colums for each eraseblock: the
+volume ID, the volume logical number, the leb version, and the data size.
+In addition there are a normalized column representing the volume ID and
+volume logical number, a normalized column representing the leb version, and
+a normalized column representing the data_size. These normalized columns are
+used to better draw the the gnuplot image.
+.IP "analysis_ec_hdr.plot"
+A gnuplot script for quickly viewing a sample output from the respective .data
+file.
+.IP "analysis_vid_hdr.plot"
+A gnuplot script for quickly viewing a sample output from the respective .data
+file.
+.SH REASONS SUFFIXES
+When \-\-eb\-split produces possibly invalid, though usable, eraseblocks, the
+known reason suffixes are:
+.IP ".ec_magic"
+The erase counter header did not contain a valid magic field.
+.IP ".ec_hdr_crc"
+The erase counter header did not contain a vaild header CRC field.
+.IP ".vid_magic"
+The volume ID header did not contain a valid magic field.
+.IP ".vid_hdr_crc"
+The volume ID header did not contain a valid header CRC field.
+.IP ".data_crc"
+The volume ID header did not contain a valid data CRC field.
+.SH EXAMPLES
+To extract and rebuild all valid volumes from demo.img (note the output
+directory will be /home/user/unubi_demo.img):
+.sp 1
+.RS
+.B /home/user# unubi demo.img
+.sp 1
+.RE
+To analyze demo.img as well as extract and rebuild volume 7:
+.sp 1
+.RS
+.B /home/user# unubi \-a \-r 7 demo.img
+.sp 1
+.RE
+To split demo.img into raw images for each eraseblock into the folder
+/var/eraseblocks:
+.sp 1
+.RS
+.B /home/user# unubi \-e \-d /var/eraseblocks demo.img
+.SH AUTHORS
+Frank Haverkamp <haver@vnet.ibm.com>
+.sp 0
+Drake Dowsett <dowsett@de.ibm.com>
+.SH CONTACT
+Andreas Arnez <arnez@de.ibm.com>
