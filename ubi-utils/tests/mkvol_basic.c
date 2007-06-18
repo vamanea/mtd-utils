@@ -197,11 +197,11 @@ remove:
 static int mkvol_multiple(void)
 {
 	struct ubi_mkvol_request req;
-	int i, ret;
+	int i, ret, max = dev_info.max_vol_count;
 	const char *name = TESTNAME ":mkvol_multiple()";
 
 	/* Create maximum number of volumes */
-	for (i = 0; i < dev_info.max_vol_count; i++) {
+	for (i = 0; i < max; i++) {
 		char nm[strlen(name) + 50];
 
 		req.vol_id = UBI_VOL_NUM_AUTO;
@@ -213,6 +213,10 @@ static int mkvol_multiple(void)
 		req.name = &nm[0];
 
 		if (ubi_mkvol(libubi, node, &req)) {
+			if (errno == ENFILE) {
+				max = i;
+				break;
+			}
 			failed("ubi_mkvol");
 			err_msg("vol_id %d", i);
 			goto remove;
@@ -224,7 +228,7 @@ static int mkvol_multiple(void)
 		}
 	}
 
-	for (i = 0; i < dev_info.max_vol_count; i++) {
+	for (i = 0; i < max; i++) {
 		struct ubi_vol_info vol_info;
 
 		if (ubi_rmvol(libubi, node, i)) {

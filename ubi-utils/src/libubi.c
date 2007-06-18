@@ -272,9 +272,13 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 		return -1;
 
 	ret = ioctl(fd, UBI_IOCMKVOL, &r);
-
 	if (!ret)
 		req->vol_id = r.vol_id;
+
+#if 1
+	/* This is a hack to work around udev problems */
+	system("udevsettle");
+#endif
 
 	close(fd);
 	return ret;
@@ -455,7 +459,6 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 		return -1;
 
 	info->name[ret - 1] = '\0';
-
 	return 0;
 }
 

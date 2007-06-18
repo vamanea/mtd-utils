@@ -243,7 +243,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		err_msg("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
@@ -278,7 +278,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		err_msg("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
