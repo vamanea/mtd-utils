@@ -54,10 +54,10 @@ static ssize_t fill_buffer(int fd, unsigned char *buf, ssize_t len)
 
 	do {
 		got = read(fd, buf + have, len - have);
-		if( got == -1 && errno != EINTR )
+		if (got == -1 && errno != EINTR)
 			return -1;
 		have += got;
-	} while ( got > 0 && have < len);
+	} while (got > 0 && have < len);
 	return have;
 }
 
@@ -71,10 +71,10 @@ static ssize_t flush_buffer(int fd, unsigned char *buf, ssize_t len)
 
 	do {
 		done = write(fd, buf + have, len - have);
-		if( done == -1 && errno != EINTR )
+		if (done == -1 && errno != EINTR)
 			return -1;
 		have += done;
-	} while ( done > 0 && have < len);
+	} while (done > 0 && have < len);
 	return have;
 }
 
@@ -88,8 +88,7 @@ static ssize_t flush_buffer(int fd, unsigned char *buf, ssize_t len)
  *  fd_a is source
  *  fd_b is destination
  */
-static int
-compare_files(int fd_a, int fd_b)
+static int compare_files(int fd_a, int fd_b)
 {
 	unsigned char buf_a[COMPARE_BUF_SIZE], buf_b[COMPARE_BUF_SIZE];
 	ssize_t len_a, len_b;
@@ -97,61 +96,59 @@ compare_files(int fd_a, int fd_b)
 
 	for (;;) {
 		len_a = fill_buffer(fd_a, buf_a, sizeof(buf_a));
-		if (len_a == -1){
+		if (len_a == -1) {
 			rc = compare_error;
 			break;
 		}
 		len_b = fill_buffer(fd_b, buf_b, sizeof(buf_b));
-		if (len_b == -1){
+		if (len_b == -1) {
 			rc = compare_different;
 			break;
 		}
-		if( len_a != len_b ){
+		if (len_a != len_b) {
 			rc = compare_different;
 			break;
 		}
-		if( len_a == 0 ){	/* Size on both filies equal and EOF */
+		if (len_a == 0) {	/* Size on both files equal and EOF */
 			rc = compare_equal;
 			break;
 		}
-		if( memcmp(buf_a, buf_b, len_a) != 0 ){
+		if (memcmp(buf_a, buf_b, len_a) != 0 ) {
 			rc = compare_different;
 			break;
 		}
 	}
 	/* Position both files at the beginning */
-	if( lseek(fd_a, 0, SEEK_SET) == -1 ||
-	    lseek(fd_b, 0, SEEK_SET) == -1 )
+	if (lseek(fd_a, 0, SEEK_SET) == -1 ||
+	   lseek(fd_b, 0, SEEK_SET) == -1)
 		rc = seek_error;
 	return rc;
 }
 
-static int
-copy_files(int fd_in, int fd_out)
+static int copy_files(int fd_in, int fd_out)
 {
 	unsigned char buf_a[COMPARE_BUF_SIZE];
 	ssize_t len_a, len_b;
 	unsigned long long update_size, copied;
 
-	if( ubi_vol_get_used_bytes(fd_in, &update_size) == -1 ||
-	    ubi_vol_update(fd_out, update_size) == -1 )
+	if (ubi_vol_get_used_bytes(fd_in, &update_size) == -1 ||
+	    ubi_vol_update(fd_out, update_size) == -1)
 		return update_error;
-	for( copied = 0; copied < update_size; copied += len_b ){
+	for (copied = 0; copied < update_size; copied += len_b ) {
 		len_a = fill_buffer(fd_in, buf_a, sizeof(buf_a));
 		if (len_a == -1)
 			return read_error;
 		if (len_a == 0)		/* Reach EOF */
 			return 0;
 		len_b = flush_buffer(fd_out, buf_a, len_a);
-		if( len_b != len_a )
+		if (len_b != len_a)
 			return write_error;
 	}
 	return 0;
 }
 
-int
-ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
-	  char *err_buf, size_t err_buf_size)
+int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
+		char *err_buf, size_t err_buf_size)
 {
 	int rc = 0;
 	uint32_t src_id;
@@ -173,7 +170,7 @@ ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 		return ubi_error;
 
 	fd_in = ubi_vol_open(ulib, devno, src_id, O_RDONLY);
-	if (fd_in == -1){
+	if (fd_in == -1) {
 		EBUF("open error source volume %d", ids[i]);
 		rc = open_error;
 		goto err;
@@ -190,7 +187,7 @@ ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 			goto err;
 		}
 		rc = compare_files(fd_in, fd_out);
-		if (rc < 0 ){
+		if (rc < 0) {
 			EBUF("compare error volume %d and %d", src_id, ids[i]);
 			goto err;
 		}
@@ -199,11 +196,11 @@ ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 			EBUF("mirror error volume %d to %d", src_id, ids[i]);
 			goto err;
 		}
-		if( (rc = ubi_vol_close(fd_out)) == -1 ){
+		if ((rc = ubi_vol_close(fd_out)) == -1) {
 			EBUF("close error volume %d", ids[i]);
 			rc = close_error;
 			goto err;
-		}else
+		} else
 			fd_out = -1;
 	}
 err:
