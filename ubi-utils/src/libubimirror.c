@@ -190,11 +190,13 @@ int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 		if (rc < 0) {
 			EBUF("compare error volume %d and %d", src_id, ids[i]);
 			goto err;
-		}
-		rc = copy_files(fd_in, fd_out);
-		if (rc != 0) {
-			EBUF("mirror error volume %d to %d", src_id, ids[i]);
-			goto err;
+		} else if (rc == compare_different) {
+			rc = copy_files(fd_in, fd_out);
+			if (rc != 0) {
+				EBUF("mirror error volume %d to %d", src_id,
+						ids[i]);
+				goto err;
+			}
 		}
 		if ((rc = ubi_vol_close(fd_out)) == -1) {
 			EBUF("close error volume %d", ids[i]);
