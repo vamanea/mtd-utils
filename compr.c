@@ -474,6 +474,9 @@ int jffs2_compressors_init(void)
 #ifdef CONFIG_JFFS2_RTIME
 	jffs2_rtime_init();
 #endif
+#ifdef CONFIG_JFFS2_LZO
+	jffs2_lzo_init();
+#endif
 	return 0;
 }
 
@@ -484,6 +487,9 @@ int jffs2_compressors_exit(void)
 #endif
 #ifdef CONFIG_JFFS2_ZLIB
 	jffs2_zlib_exit();
+#endif
+#ifdef CONFIG_JFFS2_LZO
+	jffs2_lzo_exit();
 #endif
 	return 0;
 }

@@ -58,8 +58,9 @@ $(BUILDDIR)/mkfs.jffs2: $(BUILDDIR)/crc32.o \
 			$(BUILDDIR)/compr_rtime.o \
 			$(BUILDDIR)/mkfs.jffs2.o \
 			$(BUILDDIR)/compr_zlib.o \
+			$(BUILDDIR)/compr_lzo.o \
 			$(BUILDDIR)/compr.o
-	$(CC) $(LDFLAGS) -o $@ $^ -lz
+	$(CC) $(LDFLAGS) -o $@ $^ -lz -llzo
 
 $(BUILDDIR)/flash_eraseall: $(BUILDDIR)/crc32.o $(BUILDDIR)/flash_eraseall.o
 	$(CC) $(LDFLAGS) -o $@ $^
