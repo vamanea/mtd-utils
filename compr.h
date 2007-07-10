@@ -32,6 +32,7 @@
 #define JFFS2_COMPR_MODE_NONE       0
 #define JFFS2_COMPR_MODE_PRIORITY   1
 #define JFFS2_COMPR_MODE_SIZE       2
+#define JFFS2_COMPR_MODE_FAVOURLZO  3
 
 #define kmalloc(a,b)                malloc(a)
 #define kfree(a)                    free(a)
