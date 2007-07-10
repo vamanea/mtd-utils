@@ -480,6 +480,54 @@ bootenv_write(FILE* fp, bootenv_t env)
 }
 
 int
+bootenv_compare(bootenv_t first, bootenv_t second)
+{
+	int rc;
+	size_t written_first, written_second;
+	char *buf_first, *buf_second;
+
+	if (first == NULL || second == NULL)
+		return -EINVAL;
+
+	buf_first = malloc(BOOTENV_MAXSIZE);
+	if (!buf_first)
+		return -ENOMEM;
+	buf_second = malloc(BOOTENV_MAXSIZE);
+	if (!buf_second) {
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	rc = fill_output_buffer(first, buf_first, BOOTENV_MAXSIZE,
+			&written_first);
+	if (rc < 0)
+		goto err;
+	rc = fill_output_buffer(second, buf_second, BOOTENV_MAXSIZE,
+			&written_second);
+	if (rc < 0)
+		goto err;
+
+	if (written_first != written_second) {
+		rc = 1;
+		goto err;
+	}
+
+	rc = memcmp(buf_first, buf_second, written_first);
+	if (rc != 0) {
+		rc = 2;
+		goto err;
+	}
+
+err:
+	if (buf_first)
+		free(buf_first);
+	if (buf_second)
+		free(buf_second);
+
+	return rc;
+}
+
+int
 bootenv_size(bootenv_t env, size_t *size)
 {
 	int rc = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright International Business Machines Corp., 2006, 2007
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,8 +55,10 @@
 
 #define __unused __attribute__((unused))
 
+#define COMPARE_BUFFER_SIZE 2048
+
 static const char copyright [] __unused =
-	"Copyright (c) International Business Machines Corp., 2006";
+	"Copyright International Business Machines Corp., 2006, 2007";
 
 /* simply clear buffer, then write into front of it */
 #define EBUF(fmt...)							\
@@ -82,6 +84,7 @@ static pdd_func_t pdd_funcs[PDD_HANDLING_NUM]  =
 typedef enum ubi_update_process_t {
 	UBI_REMOVE = 0,
 	UBI_WRITE,
+	UBI_COMPARE,
 } ubi_update_process_t;
 
 
@@ -556,6 +559,170 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 	return rc;
 }
 
+static int compare_bootenv(FILE *fp_pfi, FILE **fp_flash, uint32_t ids_size,
+		uint32_t data_size, pdd_func_t pdd_f, char *err_buf,
+		size_t err_buf_size)
+{
+	int rc, warnings = 0;
+	unsigned int i;
+	bootenv_t bootenv_pfi, bootenv_res = NULL, bootenv_flash = NULL;
+
+	rc = bootenv_create(&bootenv_pfi);
+	if (rc != 0) {
+		rc = -PFIFLASH_ERR_BOOTENV_CREATE;
+		goto err;
+	}
+
+	rc = bootenv_create(&bootenv_res);
+	if (rc != 0) {
+		rc = -PFIFLASH_ERR_BOOTENV_CREATE;
+		goto err;
+	}
+
+	rc = bootenv_read(fp_pfi, bootenv_pfi, data_size);
+	if (rc != 0) {
+		rc = -PFIFLASH_ERR_BOOTENV_READ;
+		goto err;
+	}
+
+	for (i = 0; i < ids_size; i++) {
+		rc = bootenv_create(&bootenv_flash);
+		if (rc != 0) {
+			rc = -PFIFLASH_ERR_BOOTENV_CREATE;
+			goto err;
+		}
+
+		rc = bootenv_read(fp_flash[i], bootenv_flash, BOOTENV_MAXSIZE);
+		if (rc != 0) {
+			rc = -PFIFLASH_ERR_BOOTENV_READ;
+			goto err;
+		}
+
+		rc = pdd_f(bootenv_flash, bootenv_pfi, &bootenv_res,
+				&warnings, err_buf, err_buf_size);
+		if (rc != 0) {
+			rc = -PFIFLASH_ERR_PDD_UNKNOWN;
+			goto err;
+		}
+
+		rc = bootenv_compare(bootenv_flash, bootenv_res);
+		if (rc > 0) {
+			rc = -PFIFLASH_CMP_DIFF;
+			goto err;
+		} else if (rc < 0) {
+			rc = -PFIFLASH_ERR_COMPARE;
+			goto err;
+		}
+
+		bootenv_destroy(&bootenv_flash);
+		bootenv_flash = NULL;
+	}
+
+err:
+	if (bootenv_pfi)
+		bootenv_destroy(&bootenv_pfi);
+	if (bootenv_res)
+		bootenv_destroy(&bootenv_res);
+	if (bootenv_flash)
+		bootenv_destroy(&bootenv_flash);
+
+	return rc;
+}
+
+static int compare_data(FILE *fp_pfi, FILE **fp_flash, uint32_t ids_size,
+		uint32_t bytes_left)
+{
+	unsigned int i;
+	size_t read_bytes, rc = 0;
+	char buf_pfi[COMPARE_BUFFER_SIZE];
+	char *buf_flash[ids_size];
+
+	for (i = 0; i < ids_size; i++) {
+		buf_flash[i] = malloc(COMPARE_BUFFER_SIZE);
+		if (!buf_flash[i])
+			return -PFIFLASH_ERR_COMPARE;
+	}
+
+	while (bytes_left) {
+		if (bytes_left > COMPARE_BUFFER_SIZE)
+			read_bytes = COMPARE_BUFFER_SIZE;
+		else
+			read_bytes = bytes_left;
+
+		rc = fread(buf_pfi, 1, read_bytes, fp_pfi);
+		if (rc != read_bytes) {
+			rc = -PFIFLASH_ERR_COMPARE;
+			goto err;
+		}
+
+		for (i = 0; i < ids_size; i++) {
+			rc = fread(buf_flash[i], 1, read_bytes, fp_flash[i]);
+			if (rc != read_bytes) {
+				rc = -PFIFLASH_CMP_DIFF;
+				goto err;
+			}
+
+			rc = memcmp(buf_pfi, buf_flash[i], read_bytes);
+			if (rc != 0) {
+				rc = -PFIFLASH_CMP_DIFF;
+				goto err;
+			}
+		}
+
+		bytes_left -= read_bytes;
+	}
+
+err:
+	for (i = 0; i < ids_size; i++)
+		free(buf_flash[i]);
+
+	return rc;
+}
+
+static int compare_volumes(int devno, pfi_ubi_t u, FILE *fp_pfi,
+		pdd_func_t pdd_f, char *err_buf, size_t err_buf_size)
+{
+	int rc, is_bootenv = 0;
+	unsigned int i;
+	ubi_lib_t ulib = NULL;
+	FILE *fp_flash[u->ids_size];
+
+	rc = ubi_open(&ulib);
+	if (rc != 0) {
+		rc = -PFIFLASH_ERR_UBI_OPEN;
+		goto err;
+	}
+
+	for (i = 0; i < u->ids_size; i++) {
+		if (u->ids[i] == EXAMPLE_BOOTENV_VOL_ID_1 ||
+		    u->ids[i] == EXAMPLE_BOOTENV_VOL_ID_2)
+			is_bootenv = 1;
+
+		fp_flash[i] = ubi_vol_fopen_read(ulib, devno, u->ids[i]);
+		if (fp_flash[i] == NULL) {
+			rc = -PFIFLASH_ERR_UBI_OPEN;
+			goto err;
+		}
+	}
+
+	if (is_bootenv)
+		rc = compare_bootenv(fp_pfi, fp_flash, u->ids_size,
+				u->data_size, pdd_f, err_buf, err_buf_size);
+	else
+		rc = compare_data(fp_pfi, fp_flash, u->ids_size, u->data_size);
+
+err:
+	if (rc < 0)
+		EBUF(PFIFLASH_ERRSTR[-rc]);
+
+	for (i = 0; i < u->ids_size; i++)
+		fclose(fp_flash[i]);
+	if (ulib)
+		ubi_close(&ulib);
+
+	return rc;
+}
+
 static int
 erase_mtd_region(FILE* file_p, int start, int length)
 {
@@ -865,6 +1032,15 @@ process_ubi_volumes(FILE* pfi, int seqnum, list_t pfi_ubis,
 				goto err;
 
 			break;
+		case UBI_COMPARE:
+			rc = compare_volumes(EXAMPLE_UBI_DEVICE, u, pfi, pdd_f,
+					err_buf, err_buf_size);
+			if (rc != 0) {
+				EBUF_PREPEND("compare volume");
+				goto err;
+			}
+
+			break;
 		default:
 			rc = -PFIFLASH_ERR_UBI_UNKNOWN;
 			EBUF(PFIFLASH_ERRSTR[-rc]);
@@ -949,10 +1125,11 @@ mirror_ubi_volumes(uint32_t devno, list_t pfi_ubis,
 
 
 /**
- * pfiflash_with_raw - exposed func to flash memory with a PFI file
+ * pfiflash_with_options - exposed func to flash memory with a PFI file
  * @pfi			PFI data file pointer
  * @complete		flag to erase unmapped volumes
  * @seqnum		sequence number
+ * @compare		flag to compare
  * @pdd_handling	method to handle pdd (keep, merge, overwrite...)
  *
  * Error handling:
@@ -967,7 +1144,7 @@ mirror_ubi_volumes(uint32_t devno, list_t pfi_ubis,
  *	- passes rc, prepends err_buf with contextual aid
  **/
 int
-pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
+pfiflash_with_options(FILE* pfi, int complete, int seqnum, int compare,
 		  pdd_handling_t pdd_handling, const char* rawdev,
 		  char *err_buf, size_t err_buf_size)
 {
@@ -1001,7 +1178,7 @@ pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
 		goto err;
 	}
 
-	if (rawdev == NULL)
+	if (rawdev == NULL || compare)
 		rc = skip_raw_volumes(pfi, pfi_raws, err_buf, err_buf_size);
 	else
 		rc = process_raw_volumes(pfi, pfi_raws, rawdev, err_buf,
@@ -1011,7 +1188,7 @@ pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
 		goto err;
 	}
 
-	if (complete) {
+	if (complete && !compare) {
 		rc = erase_unmapped_ubi_volumes(EXAMPLE_UBI_DEVICE, pfi_ubis,
 						err_buf, err_buf_size);
 		if (rc != 0) {
@@ -1029,25 +1206,40 @@ pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
 		goto err;
 	}
 
-	rc = process_ubi_volumes(pfi, curr_seqnum, pfi_ubis, bootenv, pdd_f,
-				 UBI_REMOVE, err_buf, err_buf_size);
-	if (rc != 0) {
-		EBUF_PREPEND("removing UBI volumes");
-		goto err;
-	}
-
-	rc = process_ubi_volumes(pfi, curr_seqnum, pfi_ubis, bootenv, pdd_f,
-				 UBI_WRITE, err_buf, err_buf_size);
-	if  (rc != 0) {
-		EBUF_PREPEND("writing UBI volumes");
-		goto err;
-	}
-
-	if (seqnum < 0) { /* mirror redundant pairs */
-		rc = mirror_ubi_volumes(EXAMPLE_UBI_DEVICE, pfi_ubis,
-					err_buf, err_buf_size);
+	if (!compare) {
+		rc = process_ubi_volumes(pfi, curr_seqnum, pfi_ubis, bootenv,
+				pdd_f, UBI_REMOVE, err_buf, err_buf_size);
 		if (rc != 0) {
-			EBUF_PREPEND("mirroring UBI volumes");
+			EBUF_PREPEND("removing UBI volumes");
+			goto err;
+		}
+
+		rc = process_ubi_volumes(pfi, curr_seqnum, pfi_ubis, bootenv,
+				pdd_f, UBI_WRITE, err_buf, err_buf_size);
+		if  (rc != 0) {
+			EBUF_PREPEND("writing UBI volumes");
+			goto err;
+		}
+
+		if (seqnum < 0) { /* mirror redundant pairs */
+			rc = mirror_ubi_volumes(EXAMPLE_UBI_DEVICE, pfi_ubis,
+					err_buf, err_buf_size);
+			if (rc != 0) {
+				EBUF_PREPEND("mirroring UBI volumes");
+				goto err;
+			}
+		}
+	} else {
+		/* only compare volumes, don't alter the content */
+		rc = process_ubi_volumes(pfi, curr_seqnum, pfi_ubis, bootenv,
+				pdd_f, UBI_COMPARE, err_buf, err_buf_size);
+
+		if (rc == -PFIFLASH_CMP_DIFF)
+			/* update is necessary, return positive value */
+			rc = 1;
+
+		if (rc < 0) {
+			EBUF_PREPEND("comparing UBI volumes");
 			goto err;
 		}
 	}
@@ -1061,7 +1253,7 @@ pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
 
 
 /**
- * pfiflash - passes to pfiflash_with_raw
+ * pfiflash - passes to pfiflash_with_options
  * @pfi			PFI data file pointer
  * @complete		flag to erase unmapped volumes
  * @seqnum		sequence number
@@ -1069,8 +1261,8 @@ pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
  **/
 int
 pfiflash(FILE* pfi, int complete, int seqnum, pdd_handling_t pdd_handling,
-	 char *err_buf, size_t err_buf_size)
+		char *err_buf, size_t err_buf_size)
 {
-	return pfiflash_with_raw(pfi, complete, seqnum, pdd_handling,
+	return pfiflash_with_options(pfi, complete, seqnum, 0, pdd_handling,
 				 NULL, err_buf, err_buf_size);
 }

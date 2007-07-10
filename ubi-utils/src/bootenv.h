@@ -268,6 +268,16 @@ int bootenv_write_crc(FILE* fp, bootenv_t env, uint32_t* ret_crc);
 int bootenv_write_txt(FILE* fp, bootenv_t env);
 
 /**
+ * @brief Compare bootenvs using memcmp().
+ * @param first	First bootenv.
+ * @param second	Second bootenv.
+ * @return 0 if bootenvs are equal
+ * @return < 0 if error
+ * @return > 0 if unequal
+ */
+int bootenv_compare(bootenv_t first, bootenv_t second);
+
+/**
  * @brief Prototype for a PDD handling funtion
  */
 

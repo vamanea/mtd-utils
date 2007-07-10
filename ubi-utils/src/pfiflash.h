@@ -48,12 +48,13 @@ typedef enum pdd_handling_t
  * @brief Flashes a PFI file to UBI Device 0.
  * @param complete	[0|1] Do a complete system update.
  * @param seqnum	Index in a redundant group.
+ * @param compare	[0|1] Compare contents.
  * @param pdd_handling	The PDD handling algorithm.
  * @param rawdev	Device to use for raw flashing
  * @param err_buf	An error buffer.
  * @param err_buf_size	Size of the error buffer.
  */
-int pfiflash_with_raw(FILE* pfi, int complete, int seqnum,
+int pfiflash_with_options(FILE* pfi, int complete, int seqnum, int compare,
 		pdd_handling_t pdd_handling, const char* rawdev,
 		char *err_buf, size_t err_buf_size);
 

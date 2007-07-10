@@ -42,7 +42,9 @@ enum pfiflash_err {
 	PFIFLASH_ERR_MTD_OPEN,
 	PFIFLASH_ERR_MTD_CLOSE,
 	PFIFLASH_ERR_CRC_CHECK,
-	PFIFLASH_ERR_MTD_ERASE
+	PFIFLASH_ERR_MTD_ERASE,
+	PFIFLASH_ERR_COMPARE,
+	PFIFLASH_CMP_DIFF
 };
 
 const char *const PFIFLASH_ERRSTR[] = {
@@ -65,7 +67,9 @@ const char *const PFIFLASH_ERRSTR[] = {
 	"couldn't open MTD device %s",
 	"couldn't close MTD device %s",
 	"CRC check failed: given=0x%08x, calculated=0x%08x",
-	"couldn't erase raw mtd region"
+	"couldn't erase raw mtd region",
+	"couldn't compare volumes",
+	"on-flash data differ from pfi data, update is neccessary"
 };
 
 #endif /* __PFIFLASH_ERROR_H__ */

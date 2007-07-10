@@ -63,6 +63,9 @@ static const char *optionsstr =
 "                             'keep', 'merge' or 'overwrite'.\n"
 "  -r, --raw-flash=<dev>      Flash the raw data. Use the specified mtd device.\n"
 "  -s, --side=<seqnum>        Select the side which shall be updated.\n"
+"  -x, --compare              Only compare on-flash and pfi data, print info if\n"
+"                             an update is neccessary and return appropriate\n"
+"                             error code.\n"
 "\n"
 "  -?, --help                 Give this help list\n"
 "      --usage                Give a short usage message\n"
@@ -72,7 +75,7 @@ static const char *usage =
 "Usage: pfiflash [-cvC?V] [-l <file>] [-p <type>] [-r <dev>] [-s <seqnum>]\n"
 "            [--copyright] [--logfile=<file>] [--verbose] [--complete]\n"
 "            [--pdd-update=<type>] [--raw-flash=<dev>] [--side=<seqnum>]\n"
-"            [--help] [--usage] [--version] [pfifile]\n";
+"            [--compare] [--help] [--usage] [--version] [pfifile]\n";
 
 static const char copyright [] __attribute__((unused)) =
 	"Copyright IBM Corp 2006";
@@ -85,6 +88,7 @@ struct option long_options[] = {
 	{ .name = "pdd-update", .has_arg = 1, .flag = NULL, .val = 'p' },
 	{ .name = "raw-flash", .has_arg = 1, .flag = NULL, .val = 'r' },
 	{ .name = "side", .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "compare", .has_arg = 0, .flag = NULL, .val = 'x' },
 	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
 	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
 	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -98,6 +102,7 @@ typedef struct myargs {
 
 	pdd_handling_t pdd_handling;
 	int seqnum;
+	int compare;
 	int complete;
 
 	FILE* fp_in;
@@ -142,7 +147,7 @@ parse_opt(int argc, char **argv, myargs *args)
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "cl:vCp:r:s:?V",
+		key = getopt_long(argc, argv, "cl:vCp:r:s:x?V",
 				  long_options, NULL);
 		if (key == -1)
 			break;
@@ -179,6 +184,9 @@ parse_opt(int argc, char **argv, myargs *args)
 						 "Supported sides are '0' "
 						 "and '1'\n", optarg);
 				}
+				break;
+			case 'x':
+				args->compare = 1;
 				break;
 			case 'r':
 				args->raw_dev = optarg;
@@ -222,6 +230,7 @@ int main (int argc, char** argv)
 	myargs args = {
 		.verbose    = 0,
 		.seqnum	    = -1,
+		.compare    = 0,
 		.complete   = 0,
 		.logfile    = NULL, /* "/tmp/pfiflash.log", */
 		.pdd_handling = PDD_KEEP,
@@ -239,17 +248,10 @@ int main (int argc, char** argv)
 		goto err;
 	}
 
-	if (!args.raw_dev) {
-		rc = pfiflash(args.fp_in, args.complete, args.seqnum,
-			      args.pdd_handling, err_buf,
-			      PFIFLASH_MAX_ERR_BUF_SIZE);
-	} else {
-		rc = pfiflash_with_raw(args.fp_in, args.complete, args.seqnum,
-			      args.pdd_handling, args.raw_dev, err_buf,
-			      PFIFLASH_MAX_ERR_BUF_SIZE);
-	}
-
-	if (rc != 0) {
+	rc = pfiflash_with_options(args.fp_in, args.complete, args.seqnum,
+			args.compare, args.pdd_handling, args.raw_dev, err_buf,
+			PFIFLASH_MAX_ERR_BUF_SIZE);
+	if (rc < 0) {
 		goto err_fp;
 	}
 
