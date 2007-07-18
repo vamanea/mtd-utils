@@ -1252,7 +1252,7 @@ static void create_test_data(void)
 			do_an_operation();
 		free = tests_get_free_space();
 		total = tests_get_total_space();
-		if ((free * 100) / total < 90)
+		if ((free * 100) / total >= 10)
 			break;
 	}
 	grow = 0;
@@ -1281,7 +1281,7 @@ static void update_test_data(void)
 			do_an_operation();
 		free = tests_get_free_space();
 		total = tests_get_total_space();
-		if ((free * 100) / total < 50)
+		if ((free * 100) / total >= 50)
 			break;
 	}
 	grow = 0;
