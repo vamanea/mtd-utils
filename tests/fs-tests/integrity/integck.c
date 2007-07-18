@@ -48,7 +48,9 @@ struct file_info /* Each file has one of these */
 {
 	char *name;
 	struct dir_info *parent; /* Parent directory */
-	struct write_info *writes; /* Record all writes to the file */
+	struct write_info *writes; /* Record accumulated writes to the file */
+	struct write_info *raw_writes;
+				/* Record in order all writes to the file */
 	struct fd_info *fds; /* All open file descriptors for this file */
 	off_t length;
 	int deleted; /* File has been deleted but is still open */
@@ -434,6 +436,21 @@ static void file_info_display(struct file_info *file)
 	}
 	fprintf(stderr, "    %u writes\n", wcnt);
 	fprintf(stderr, "    ============================================\n");
+	fprintf(stderr, "    Raw Write Info:\n");
+	wcnt = 0;
+	w = file->raw_writes;
+	while (w) {
+		fprintf(stderr, "        Offset: %u  Size: %u  Seed: %u"
+				"  R.Off: %u\n",
+				(unsigned) w->offset,
+				(unsigned) w->size,
+				(unsigned) w->random_seed,
+				(unsigned) w->random_offset);
+		wcnt += 1;
+		w = w->next;
+	}
+	fprintf(stderr, "    %u writes\n", wcnt);
+	fprintf(stderr, "    ============================================\n");
 }
 
 static struct fd_info *file_open(struct file_info *file)
@@ -509,6 +526,15 @@ static void file_write_info(struct file_info *file,
 	new_write->offset = offset;
 	new_write->size = size;
 	new_write->random_seed = seed;
+
+	w = (struct write_info *) malloc(sz);
+	CHECK(w != NULL);
+	memset(w, 0, sz);
+	w->next = file->raw_writes;
+	w->offset = offset;
+	w->size = size;
+	w->random_seed = seed;
+	file->raw_writes = w;
 
 	/* Insert it into file->writes */
 	inserted = 0;
@@ -1300,6 +1326,7 @@ void integck(void)
 
 	/* Make our top directory */
 	pid = getpid();
+	printf("pid is %u\n", (unsigned) pid);
 	tests_cat_pid(dir_name, "integck_test_dir_", pid);
 	if (chdir(dir_name) != -1) {
 		/* Remove it if it is already there */
