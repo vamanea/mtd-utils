@@ -30,9 +30,6 @@
 #include <sys/vfs.h>
 #include <sys/statvfs.h>
 #include <linux/jffs2.h>
-#if 0
-#include <linux/jffs3.h>
-#endif
 #include <libgen.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -373,25 +370,11 @@ void tests_check_test_file_system(void)
 			"TEST_FILE_SYSTEM_MOUNT_DIR\n");
 		CHECK(0);
 	}
-	if (strcmp(tests_file_system_type, "jffs2") != 0 &&
-			strcmp(tests_file_system_type, "jffs3") != 0) {
-		fprintf(stderr, "Invalid test file system type:"
-			" %s\n", tests_file_system_type);
-		fprintf(stderr,	"Must be jffs2 or jffs3\n");
-		CHECK(0);
-	}
 	if (strcmp(tests_file_system_type, "jffs2") == 0 &&
 			fs_info.f_type != JFFS2_SUPER_MAGIC) {
 		fprintf(stderr,	"File system type is not jffs2\n");
 		CHECK(0);
 	}
-#ifdef JFFS3_SUPER_MAGIC
-	if (strcmp(tests_file_system_type, "jffs3") == 0 &&
-			fs_info.f_type != JFFS3_SUPER_MAGIC) {
-		fprintf(stderr,	"File system type is not jffs3\n");
-		CHECK(0);
-	}
-#endif
 	/* Check that the test file system is not the root file system */
 	if (!rootok) {
 		CHECK(stat(tests_file_system_mount_dir, &f_info) != -1);
