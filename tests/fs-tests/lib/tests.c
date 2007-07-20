@@ -506,9 +506,9 @@ void tests_check_filled_file_fd(int fd)
 	char buf[WRITE_BUFFER_SIZE];
 
 	do {
-		sz = read(fd,buf,WRITE_BUFFER_SIZE);
+		sz = read(fd, buf, WRITE_BUFFER_SIZE);
 		CHECK(sz >= 0);
-		CHECK(memcmp(buf,write_buffer,sz) == 0);
+		CHECK(memcmp(buf, write_buffer, sz) == 0);
 	} while (sz);
 }
 
@@ -583,6 +583,26 @@ uint64_t tests_get_big_file_size(unsigned numerator, unsigned denominator)
 	if (numerator > denominator)
 		numerator = denominator;
 	return numerator * (tests_get_free_space() / denominator);
+}
+
+/* Create file "fragment_n" where n is the file_number, and unlink it */
+int tests_create_orphan(unsigned file_number)
+{
+	int fd;
+	int flags;
+	mode_t mode;
+	char file_name[256];
+
+	sprintf(file_name, "fragment_%u", file_number);
+	flags = O_CREAT | O_TRUNC | O_RDWR | tests_maybe_sync_flag();
+	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+	fd = open(file_name, flags, mode);
+	if (fd == -1 && (errno == ENOSPC || errno == EMFILE))
+		return fd; /* File system full or too many open files */
+	CHECK(fd != -1);
+	tests_sync_directory(file_name);
+	CHECK(unlink(file_name) != -1);
+	return fd;
 }
 
 /* Write size bytes at offset to the file "fragment_n" where n is the
@@ -707,6 +727,30 @@ void tests_delete_fragment_file(unsigned file_number)
 
 	sprintf(file_name, "fragment_%u", file_number);
 	tests_delete_file(file_name);
+}
+
+/* Check the random data in file "fragment_n" is what is expected */
+void tests_check_fragment_file_fd(unsigned file_number, int fd)
+{
+	ssize_t sz, i;
+	int d;
+	uint64_t u;
+	char buf[8192];
+
+	CHECK(lseek(fd, 0, SEEK_SET) == 0);
+	srand(file_number);
+	u = RAND_MAX;
+	u += 1;
+	u /= 256;
+	d = (int) u;
+	for (;;) {
+		sz = read(fd, buf, 8192);
+		if (sz == 0)
+			break;
+		CHECK(sz >= 0);
+		for (i = 0; i < sz; ++i)
+			CHECK(buf[i] == (char) (rand() / d));
+	}
 }
 
 /* Check the random data in file "fragment_n" is what is expected */

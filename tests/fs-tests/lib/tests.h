@@ -85,6 +85,17 @@ uint64_t tests_create_file(const char *file_name, uint64_t file_size);
 /* Calculate: free_space * numerator / denominator */
 uint64_t tests_get_big_file_size(unsigned numerator, unsigned denominator);
 
+/* Create file "fragment_n" where n is the file_number, and unlink it */
+int tests_create_orphan(unsigned file_number);
+
+/* Write size bytes at offset to the file "fragment_n" where n is the
+   file_number and file_number also determines the random data written
+   i.e. seed for random numbers */
+unsigned tests_write_fragment_file(unsigned file_number,
+				int fd,
+				off_t offset,
+				unsigned size);
+
 /* Write size bytes to the end of file descriptor fd using file_number
    to determine the random data written i.e. seed for random numbers */
 unsigned tests_fill_fragment_file(unsigned file_number,
@@ -107,6 +118,9 @@ unsigned tests_overwite_fragment_file(	unsigned file_number,
 
 /* Delete file "fragment_n" where n is the file_number */
 void tests_delete_fragment_file(unsigned file_number);
+
+/* Check the random data in file "fragment_n" is what is expected */
+void tests_check_fragment_file_fd(unsigned file_number, int fd);
 
 /* Check the random data in file "fragment_n" is what is expected */
 void tests_check_fragment_file(unsigned file_number);
