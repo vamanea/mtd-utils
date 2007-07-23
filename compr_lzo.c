@@ -26,7 +26,7 @@
 #include <string.h>
 #include <asm/types.h>
 #include <linux/jffs2.h>
-#include <lzo1x.h>
+#include <lzo/lzo1x.h>
 #include "compr.h"
 
 extern int page_size;
