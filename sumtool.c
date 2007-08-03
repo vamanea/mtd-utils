@@ -6,8 +6,6 @@
  *                     University of Szeged, Hungary
  *                2006 KaiGai Kohei <kaigai@ak.jp.nec.com>
  *
- * $Id: sumtool.c,v 1.9 2006/01/23 08:22:45 havasi Exp $
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2

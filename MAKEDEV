@@ -1,5 +1,4 @@
 #!/bin/bash
-# $Id: MAKEDEV,v 1.9 2005/11/29 11:47:58 sean Exp $
 
 function mkftl () {
 	mknod /dev/ftl$1 b 44 $2

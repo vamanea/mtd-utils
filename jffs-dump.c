@@ -3,8 +3,6 @@
  * Useful when it buggers up.
  */
 
-/* $Id: jffs-dump.c,v 1.3 2005/11/07 11:15:12 gleixner Exp $  */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

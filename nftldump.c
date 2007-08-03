@@ -1,9 +1,6 @@
 /*
  * nftldump.c: Dumping the content of NFTL partitions on a "Physical Disk"
  *
- *
- * $Id: nftldump.c,v 1.17 2005/11/07 11:15:13 gleixner Exp $
- *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or

@@ -8,8 +8,6 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * $Id: rfdformat.c,v 1.3 2005/11/07 11:15:14 gleixner Exp $
- *
  * This is very easy: just erase all the blocks and put the magic at
  * the beginning of each block.
  */

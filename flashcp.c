@@ -3,8 +3,6 @@
  * Written by Abraham vd Merwe <abraham@2d3d.co.za>
  * All rights reserved.
  *
- * $Id: flashcp.c,v 1.6 2005/11/07 11:15:11 gleixner Exp $
- *
  * Renamed to flashcp.c to avoid conflicts with fcp from fsh package
  *
  * Redistribution and use in source and binary forms, with or without

@@ -7,9 +7,6 @@
  *                     University of Szeged, Hungary
  *
  * For licensing information, see the file 'LICENCE' in this directory.
- *
- * $Id: summary.h,v 1.7 2006/02/15 09:42:34 havasi Exp $
- *
  */
 
 #ifndef JFFS2_SUMMARY_H

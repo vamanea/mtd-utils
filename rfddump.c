@@ -7,8 +7,6 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
- * $Id: rfddump.c,v 1.3 2005/11/07 11:15:13 gleixner Exp $
  */
 
 #define _XOPEN_SOURCE 500 /* For pread */

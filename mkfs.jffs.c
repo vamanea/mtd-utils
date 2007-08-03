@@ -7,8 +7,6 @@
  * has a different endianness than the host.
  */
 
-/* $Id: mkfs.jffs.c,v 1.15 2005/11/07 11:15:13 gleixner Exp $  */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

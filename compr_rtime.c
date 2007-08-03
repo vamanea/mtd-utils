@@ -7,9 +7,6 @@
  *
  * For licensing information, see the file 'LICENCE' in this directory.
  *
- * $Id: compr_rtime.c,v 1.4 2005/11/07 11:15:09 gleixner Exp $
- *
- *
  * Very simple lz77-ish encoder.
  *
  * Theory of operation: Both encoder and decoder have a list of "last

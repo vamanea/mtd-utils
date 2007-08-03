@@ -1,8 +1,6 @@
 
 # -*- sh -*-
 
-# $Id: Makefile,v 1.60 2005/11/07 11:15:09 gleixner Exp $
-
 SBINDIR=/usr/sbin
 MANDIR=/usr/man
 INCLUDEDIR=/usr/include

@@ -43,8 +43,6 @@
  *      *) Made it show major/minor numbers for device nodes
  *      *) Made it show symlink targets
  *  -Erik, 13 September 2001
- *
- * $Id: jffs2reader.c,v 1.6 2005/11/07 11:15:12 gleixner Exp $
  */
 
 

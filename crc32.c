@@ -37,8 +37,6 @@
  *      polynomial $edb88320
  */
 
-/* $Id: crc32.c,v 1.5 2004/02/24 17:40:51 dwmw2 Exp $ */
-
 #include <stdint.h>
 
 const uint32_t crc32_table[256] = {

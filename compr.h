@@ -6,9 +6,6 @@
  *
  * For licensing information, see the file 'LICENCE' in the
  * jffs2 directory.
- *
- * $Id: compr.h,v 1.7 2005/11/07 11:15:09 gleixner Exp $
- *
  */
 
 #ifndef __JFFS2_COMPR_H__

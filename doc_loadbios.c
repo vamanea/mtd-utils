@@ -8,7 +8,6 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 
-/* $Id: doc_loadbios.c,v 1.9 2005/11/07 11:15:10 gleixner Exp $ */
 #include <mtd/mtd-user.h>
 
 unsigned char databuf[512];
