@@ -1470,7 +1470,7 @@ static char *helptext =
 "  -V, --version           Display version information\n"
 "  -i, --incremental=FILE  Parse FILE and generate appendage output for it\n\n";
 
-static char *revtext = "$Revision: 1.50 $";
+static char *revtext = "1.60";
 
 int load_next_block() {
 
@@ -1680,8 +1680,7 @@ int main(int argc, char **argv)
 				break;
 
 			case 'V':
-				error_msg_and_die("revision %.*s\n",
-						(int) strlen(revtext) - 13, revtext + 11);
+				error_msg_and_die("revision %s\n", revtext);
 
 			case 'e': {
 						  char *next;
