@@ -85,7 +85,7 @@ static struct jffs2_compressor jffs2_lzo_comp = {
 	.compr = JFFS2_COMPR_LZO,
 	.compress = &jffs2_lzo_cmpr,
 	.decompress = &jffs2_lzo_decompress,
-	.disabled = 0,
+	.disabled = 1,
 };
 
 int jffs2_lzo_init(void)
