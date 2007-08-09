@@ -142,11 +142,11 @@ int main(int argc, char **argv)
 		
 			if (newstats.corrected > oldstats.corrected) {
 				printf("\nECC corrected at %08x\n", (unsigned) ofs);
-				newstats.corrected = oldstats.corrected;
+				oldstats.corrected = newstats.corrected;
 			}
 			if (newstats.failed > oldstats.failed) {
 				printf("\nECC failed at %08x\n", (unsigned) ofs);
-				newstats.corrected = oldstats.corrected;
+				oldstats.corrected = newstats.corrected;
 			}
 			if (len < meminfo.erasesize)
 				exit(1);
