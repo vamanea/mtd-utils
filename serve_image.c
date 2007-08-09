@@ -111,6 +111,7 @@ int main(int argc, char **argv)
 
 	nr_blocks = st.st_size / erasesize;
 
+	pktbuf.hdr.resend = 0;
 	pktbuf.hdr.totcrc = htonl(crc32(-1, image, st.st_size));
 	pktbuf.hdr.nr_blocks = htonl(nr_blocks);
 	pktbuf.hdr.blocksize = htonl(erasesize);

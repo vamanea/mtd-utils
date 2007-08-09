@@ -3,6 +3,7 @@
 #define PKT_SIZE 1400
 
 struct image_pkt_hdr {
+	uint32_t resend;
 	uint32_t totcrc;
 	uint32_t nr_blocks;
 	uint32_t blocksize;
