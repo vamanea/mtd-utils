@@ -25,6 +25,7 @@ RAWTARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	jffs2dump \
 	nftldump nftl_format docfdisk \
 	rfddump rfdformat \
+	serve_image recv_image \
 	sumtool #jffs2reader
 
 TARGETS = $(foreach target,$(RAWTARGETS),$(BUILDDIR)/$(target))
