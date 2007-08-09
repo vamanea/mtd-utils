@@ -21,7 +21,7 @@ endif
 
 RAWTARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	mkfs.jffs ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \
-	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite \
+	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite nandtest \
 	jffs2dump \
 	nftldump nftl_format docfdisk \
 	rfddump rfdformat \
@@ -70,6 +70,12 @@ $(BUILDDIR)/jffs2dump: $(BUILDDIR)/jffs2dump.o $(BUILDDIR)/crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 $(BUILDDIR)/sumtool: $(BUILDDIR)/sumtool.o $(BUILDDIR)/crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(BUILDDIR)/serve_image: $(BUILDDIR)/serve_image.o $(BUILDDIR)/crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(BUILDDIR)/recv_image: $(BUILDDIR)/recv_image.o $(BUILDDIR)/crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 install: ${TARGETS}
