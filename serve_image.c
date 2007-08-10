@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 #include "crc32.h"
 #include "mcast_image.h"
 
@@ -28,8 +29,6 @@ int main(int argc, char **argv)
 	int rfd;
 	struct stat st;
 	int writeerrors = 0;
-	long usec_per_tick = 1000000 / sysconf(_SC_CLK_TCK);
-	long delay_accum = 0;
 	uint32_t erasesize;
 	unsigned char parbuf[PKT_SIZE];
 	unsigned char *image, *blockptr;
@@ -37,6 +36,8 @@ int main(int argc, char **argv)
 	uint32_t block_ofs;
 	int nr_blocks;
 	uint32_t droppoint = -1;
+	struct timeval then, now, nextpkt;
+	long time_msecs;
 
 	if (argc == 6) {
 		tx_rate = atol(argv[5]) * 1024;
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
 			(strrchr(argv[0], '/')?:argv[0]-1)+1);
 		exit(1);
 	}
-	pkt_delay = (PKT_SIZE * 1000000) / tx_rate;
+	pkt_delay = (sizeof(pktbuf) * 1000000) / tx_rate;
 	printf("Inter-packet delay (avg): %dµs\n", pkt_delay);
 	printf("Transmit rate: %d KiB/s\n", tx_rate / 1024);
 
@@ -108,13 +109,19 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-
 	nr_blocks = st.st_size / erasesize;
+
+	printf("Checking CRC....");
 
 	pktbuf.hdr.resend = 0;
 	pktbuf.hdr.totcrc = htonl(crc32(-1, image, st.st_size));
 	pktbuf.hdr.nr_blocks = htonl(nr_blocks);
 	pktbuf.hdr.blocksize = htonl(erasesize);
+
+	printf("%08x\n", ntohl(pktbuf.hdr.totcrc));
+
+	gettimeofday(&then, NULL);
+	nextpkt = then;
 
 	blockptr = image;
 
@@ -133,7 +140,15 @@ int main(int argc, char **argv)
 				len = PKT_SIZE;
 
 			if (block_ofs == erasesize) {
-				printf("\rSending parity block: %08x", block_nr * erasesize);
+				gettimeofday(&now, NULL);
+
+				time_msecs = (now.tv_sec - then.tv_sec) * 1000;
+				time_msecs += ((int)(now.tv_usec - then.tv_usec)) / 1000;
+
+				printf("\rSending parity block: %08x     (%ld KiB/s)    ",
+				       block_nr * erasesize,
+				       (block_ofs + (block_nr * (erasesize+sizeof(pktbuf)))) / 1024 * 1000 / time_msecs);
+
 				len = PKT_SIZE;
 				memcpy(pktbuf.data, parbuf, PKT_SIZE);
 			} else {
@@ -164,7 +179,6 @@ int main(int argc, char **argv)
 				continue;
 			}
 
-
 			if (write(sock, &pktbuf, sizeof(pktbuf.hdr)+len) < 0) {
 				perror("write");
 				writeerrors++;
@@ -175,18 +189,48 @@ int main(int argc, char **argv)
 			} else
 				writeerrors = 0;
 
+			do {
+				gettimeofday(&now, NULL);
+			} while (now.tv_sec < nextpkt.tv_sec ||
+				 (now.tv_sec == nextpkt.tv_sec &&
+				  now.tv_usec < nextpkt.tv_usec));
+
+			nextpkt.tv_usec = now.tv_usec + pkt_delay;
+			if (nextpkt.tv_usec > 1000000) {
+				nextpkt.tv_sec += nextpkt.tv_usec / 1000000;
+				nextpkt.tv_usec %= 1000000;
+			}
+#if 0
 			/* Delay, if we are so far ahead of ourselves that we have at
 			   least one tick to wait. */
+
+			gettimeofday(&now, NULL);
+			nextpkt.tv_usec = now.tv_usec + 
+			/* Add to pkt_delay if necessary */
 			delay_accum += pkt_delay;
+			delay_accum -= (now.tv_usec - blkthen.tv_usec);
+			delay_accum -= 1000000 * (now.tv_sec - blkthen.tv_sec);
+			if (delay_accum < 0)
+				delay_accum = 0;
+			blkthen = now;
+			
 			if (delay_accum >= usec_per_tick) {
 				usleep(delay_accum);
+
 				delay_accum = 0;
-			}
+			} printf("delay_accum %ld\n", delay_accum);
+#endif
 		}
 	}
 	munmap(image, st.st_size);
 	close(rfd);
 	close(sock);
-	printf("\n");
+	gettimeofday(&now, NULL);
+
+	time_msecs = (now.tv_sec - then.tv_sec) * 1000;
+	time_msecs += ((int)(now.tv_usec - then.tv_usec)) / 1000;
+	printf("\n%d KiB sent in %ldms (%ld KiB/s)\n",
+	       nr_blocks * (erasesize+sizeof(pktbuf)) / 1024, time_msecs,
+	       nr_blocks * (erasesize+sizeof(pktbuf)) / 1024 * 1000 / time_msecs);
 	return 0;
 }
