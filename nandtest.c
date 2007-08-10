@@ -112,7 +112,8 @@ int main(int argc, char **argv)
 			if (len < 0) {
 				printf("\n");
 				perror("write");
-				exit(1);
+				ioctl(fd, MEMSETBADBLOCK, &ofs);
+				continue;
 			}
 			if (len < meminfo.erasesize) {
 				printf("\n");
