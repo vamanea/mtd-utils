@@ -112,6 +112,7 @@ int main(int argc, char **argv)
 	nr_blocks = st.st_size / erasesize;
 
 	printf("Checking CRC....");
+	fflush(stdout);
 
 	pktbuf.hdr.resend = 0;
 	pktbuf.hdr.totcrc = htonl(crc32(-1, image, st.st_size));
@@ -196,30 +197,18 @@ int main(int argc, char **argv)
 				  now.tv_usec < nextpkt.tv_usec));
 
 			nextpkt.tv_usec = now.tv_usec + pkt_delay;
-			if (nextpkt.tv_usec > 1000000) {
+			if (nextpkt.tv_usec >= 1000000) {
 				nextpkt.tv_sec += nextpkt.tv_usec / 1000000;
 				nextpkt.tv_usec %= 1000000;
 			}
-#if 0
-			/* Delay, if we are so far ahead of ourselves that we have at
-			   least one tick to wait. */
 
-			gettimeofday(&now, NULL);
-			nextpkt.tv_usec = now.tv_usec + 
-			/* Add to pkt_delay if necessary */
-			delay_accum += pkt_delay;
-			delay_accum -= (now.tv_usec - blkthen.tv_usec);
-			delay_accum -= 1000000 * (now.tv_sec - blkthen.tv_sec);
-			if (delay_accum < 0)
-				delay_accum = 0;
-			blkthen = now;
+			/* If the time for the next packet has already
+			   passed, then we've lost time. Adjust our expected
+			   timings accordingly. */
+			if (now.tv_usec > (now.tv_usec + 
+					   1000000 * (nextpkt.tv_sec - now.tv_sec)))
+				nextpkt = now;
 			
-			if (delay_accum >= usec_per_tick) {
-				usleep(delay_accum);
-
-				delay_accum = 0;
-			} printf("delay_accum %ld\n", delay_accum);
-#endif
 		}
 	}
 	munmap(image, st.st_size);
