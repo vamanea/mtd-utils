@@ -22,33 +22,31 @@
 
 int main(int argc, char **argv)
 {
-	struct sockaddr_storage server_addr;
-	socklen_t server_addrlen = sizeof(server_addr);
 	struct addrinfo *ai;
 	struct addrinfo hints;
 	struct addrinfo *runp;
 	int ret;
 	int sock;
-	struct image_pkt pktbuf;
 	size_t len;
 	int flfd;
 	struct mtd_info_user meminfo;
 	unsigned char *eb_buf;
 	unsigned char *blockmap = NULL;
-	unsigned char *subblockmap;
 	int nr_blocks = 0;
-	int nr_subblocks = 0;
+	int *pkt_indices;
+	unsigned char **pkts;
+	int nr_pkts = 0;
 	int pkts_per_block;
 	int block_nr = -1;
 	uint32_t image_crc;
 	uint32_t blocks_received = 0;
-	uint32_t block_ofs;
 	loff_t mtdoffset = 0;
 	int *stats;
 	int badcrcs = 0;
 	int duplicates = 0;
-	int missing = -1;
 	int file_mode = 0;
+	struct fec_parms *fec;
+	int i;
 
 	if (argc != 4) {
 		fprintf(stderr, "usage: %s <host> <port> <mtddev>\n",
@@ -84,26 +82,32 @@ int main(int argc, char **argv)
 
 	pkts_per_block = (meminfo.erasesize + PKT_SIZE - 1) / PKT_SIZE;
 
-	stats = malloc(pkts_per_block + 1);
-	if (!stats) {
-		fprintf(stderr, "No memory for statistics\n");
-		exit(1);
-	}
-	memset(stats, 0, sizeof(int) * (pkts_per_block + 1));
-
 	eb_buf = malloc(pkts_per_block * PKT_SIZE);
 	if (!eb_buf) {
 		fprintf(stderr, "No memory for eraseblock buffer\n");
 		exit(1);
 	}
-	memset(eb_buf, 0, pkts_per_block * PKT_SIZE);
 
-	subblockmap = malloc(pkts_per_block + 1);
-	if (!subblockmap) {
-		fprintf(stderr, "No memory for subblock map\n");
+	pkt_indices = malloc(sizeof(int) * pkts_per_block);
+	if (!pkt_indices) {
+		fprintf(stderr, "No memory for packet indices\n");
 		exit(1);
 	}
-	memset(subblockmap, 0, pkts_per_block + 1);
+	memset(pkt_indices, 0, sizeof(int) * pkts_per_block);
+
+	pkts = malloc(sizeof(unsigned char *) * pkts_per_block);
+	if (!pkts) {
+		fprintf(stderr, "No memory for packet pointers\n");
+		exit(1);
+	}
+	for (i=0; i<pkts_per_block; i++) {
+		pkts[i] = malloc(sizeof(struct image_pkt_hdr) + PKT_SIZE);
+		if (!pkts[i]) {
+			printf("No memory for packets\n");
+			exit(1);
+		}
+		pkts[i] += sizeof(struct image_pkt_hdr);
+	}
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_ADDRCONFIG;
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
 				close(sock);
 				continue;
 			}
-		} else printf("not multicast?\n");
+		}
 		if (bind(sock, runp->ai_addr, runp->ai_addrlen)) {
 			perror("bind");
 			close(sock);
@@ -154,56 +158,85 @@ int main(int argc, char **argv)
 	if (!runp)
 		exit(1);
 
-	while ((len = read(sock, &pktbuf, sizeof(pktbuf))) >= 0) {
-		if (len < sizeof(pktbuf.hdr)) {
-			fprintf(stderr, "Short read %d bytes\n", len);
+	while (1) {
+		struct image_pkt *thispkt;
+
+		if (nr_pkts < pkts_per_block)
+			thispkt = (void *)(pkts[nr_pkts] - sizeof(struct image_pkt_hdr));
+		else
+			thispkt = (void *)(pkts[0] - sizeof(struct image_pkt_hdr));
+
+		len = read(sock, thispkt, sizeof(*thispkt));
+
+		if (len < 0) {
+			perror("read socket");
+			break;
+		}
+		if (len < sizeof(*thispkt)) {
+			fprintf(stderr, "Wrong length %d bytes (expected %d)\n",
+				len, sizeof(*thispkt));
 			continue;
 		}
-		if (len != sizeof(pktbuf.hdr) + ntohl(pktbuf.hdr.thislen)) {
-			fprintf(stderr, "Wrong length %d bytes (expected %d+%d)\n",
-				len, sizeof(pktbuf.hdr), ntohl(pktbuf.hdr.thislen));
-			continue;
-		}
-		/* Holds _data_ length */
-		len -= sizeof(pktbuf.hdr);
-			
 		if (!blockmap) {
-			image_crc = pktbuf.hdr.totcrc;
-			if (meminfo.erasesize != ntohl(pktbuf.hdr.blocksize)) {
+			image_crc = thispkt->hdr.totcrc;
+			if (meminfo.erasesize != ntohl(thispkt->hdr.blocksize)) {
 				fprintf(stderr, "Erasesize mismatch (0x%x not 0x%x)\n",
-					ntohl(pktbuf.hdr.blocksize), meminfo.erasesize);
+					ntohl(thispkt->hdr.blocksize), meminfo.erasesize);
 				exit(1);
 			}
-			nr_blocks = ntohl(pktbuf.hdr.nr_blocks);
-			nr_subblocks = pkts_per_block + 2;
+			nr_blocks = ntohl(thispkt->hdr.nr_blocks);
+			nr_pkts = 0;
+
+			fec = fec_new(pkts_per_block, ntohs(thispkt->hdr.nr_pkts));
+
 			blockmap = malloc(nr_blocks);
 			if (!blockmap) {
 				fprintf(stderr, "No memory for block map\n");
 				exit(1);
 			}
 			memset(blockmap, 0, nr_blocks);
+			stats = malloc(sizeof(int) * (ntohs(thispkt->hdr.nr_pkts) + 1));
+			if (!stats) {
+				fprintf(stderr, "No memory for statistics\n");
+				exit(1);
+			}
+			memset(stats, 0, sizeof(int) * (ntohs(thispkt->hdr.nr_pkts) + 1));
 		}
-		if (image_crc != pktbuf.hdr.totcrc) {
+		if (image_crc != thispkt->hdr.totcrc) {
 			fprintf(stderr, "Image CRC changed from 0x%x to 0x%x. Aborting\n",
-				ntohl(image_crc), ntohl(pktbuf.hdr.totcrc));
+				ntohl(image_crc), ntohl(thispkt->hdr.totcrc));
 			exit(1);
 		}
-		if (ntohl(pktbuf.hdr.block_nr) != block_nr) {
+		if (ntohl(thispkt->hdr.block_nr) != block_nr) {
 			/* Hm, new block */
-			if (nr_subblocks < pkts_per_block &&
-			    block_nr != -1) 
-				printf("Lost image block at %08x with only %d/%d packets\n",
-				       block_nr * meminfo.erasesize, nr_subblocks,
-				       pkts_per_block + 1);
+			if (block_nr != -1) {
+				if (!blockmap[block_nr]) {
+					printf("Lost image block %08x with only %d/%d (%d) packets\n",
+					       block_nr * meminfo.erasesize, nr_pkts, pkts_per_block,
+					       ntohs(thispkt->hdr.nr_pkts));
+				}
+				if (blockmap[block_nr] < 2) {
+					stats[nr_pkts]++;
+					if (blockmap[block_nr]) {
+						if (file_mode)
+							printf(" with %d/%d (%d) packets\n",
+							       nr_pkts, pkts_per_block,
+							       ntohs(thispkt->hdr.nr_pkts));
+						blockmap[block_nr] = 2;
+					}
+				}
+			}
+			/* Put this packet first */
+			if (nr_pkts != 0 && nr_pkts < pkts_per_block) {
+				unsigned char *tmp = pkts[0];
+				pkts[0] = pkts[nr_pkts];
+				pkts[nr_pkts] = tmp;
 
+			}
+			nr_pkts = 0;
 
-			if (nr_subblocks < pkts_per_block + 2)
-				stats[nr_subblocks]++;
+			block_nr = ntohl(thispkt->hdr.block_nr);
 
-			nr_subblocks = 0;
-			missing = -1;
-			memset(subblockmap, 0, pkts_per_block + 1);
-			block_nr = ntohl(pktbuf.hdr.block_nr);
 			if (block_nr > nr_blocks) {
 				fprintf(stderr, "Erroneous block_nr %d (> %d)\n",
 					block_nr, nr_blocks);
@@ -212,84 +245,64 @@ int main(int argc, char **argv)
 			if (blockmap[block_nr]) {
 				printf("Discard chunk at 0x%08x for already-flashed eraseblock (%d to go)\n",
 				       block_nr * meminfo.erasesize, nr_blocks - blocks_received);
-				nr_subblocks = pkts_per_block + 2;
 				continue;
 			}
 		}
-		if (nr_subblocks == pkts_per_block) {
+		if (nr_pkts >= pkts_per_block) {
 			/* We have a parity block but we didn't need it */
-			nr_subblocks++;
+			nr_pkts++;
 			continue;
 		}
 		if (blockmap[block_nr])
 			continue;
 
-		block_ofs = ntohl(pktbuf.hdr.block_ofs);
-		if (block_ofs == meminfo.erasesize)
-			block_ofs = PKT_SIZE * pkts_per_block;
+		for (i=0; i < nr_pkts; i++) {
+			if (pkt_indices[i] == ntohs(thispkt->hdr.pkt_nr)) {
+				printf("Discarding duplicate packet at %08x pkt %d\n",
+				       block_nr * meminfo.erasesize, pkt_indices[i]);
+				duplicates++;
+				break;
+			}
+		} /* And if we broke out, skip the packet... */
+		if (i < nr_pkts)
+			continue;
 
-		if (len != PKT_SIZE && len + block_ofs != meminfo.erasesize) {
-			fprintf(stderr, "Bogus packet size 0x%x (expected 0x%x)\n",
-				ntohl(pktbuf.hdr.thislen),
-				min(PKT_SIZE, meminfo.erasesize - block_ofs));
-			exit(1);
-		}
-
-		if (crc32(-1, pktbuf.data, len) != ntohl(pktbuf.hdr.thiscrc)) {
-			printf("Discard chunk %08x with bad CRC (%08x not %08x)\n",
-			       block_nr * meminfo.erasesize + block_ofs,
-			       crc32(-1, pktbuf.data, pktbuf.hdr.thislen),
-			       ntohl(pktbuf.hdr.thiscrc));
+		if (crc32(-1, thispkt->data, PKT_SIZE) != ntohl(thispkt->hdr.thiscrc)) {
+			printf("Discard %08x pkt %d with bad CRC (%08x not %08x)\n",
+			       block_nr * meminfo.erasesize, ntohs(thispkt->hdr.pkt_nr),
+			       crc32(-1, thispkt->data, PKT_SIZE),
+			       ntohl(thispkt->hdr.thiscrc));
 			badcrcs++;
 			continue;
 		}
-		if (subblockmap[block_ofs / PKT_SIZE]) {
-			printf("Discarding duplicate packet at %08x\n",
-			       block_nr * meminfo.erasesize + block_ofs);
-			duplicates++;
-			continue;
-		}
-		subblockmap[block_ofs / PKT_SIZE] = 1;
-		nr_subblocks++;
-		if (block_ofs < meminfo.erasesize) {
-			/* Normal data packet */
-			memcpy(eb_buf + block_ofs, pktbuf.data, len);
-//			printf("Received data block at %08x\n", block_nr * meminfo.erasesize + block_ofs);
-		} else {
-			/* Parity block */
-			int i;
 
-			/* If we don't have enough to recover, skip */
-			if (nr_subblocks < pkts_per_block)
-				continue;
+		pkt_indices[nr_pkts] = ntohs(thispkt->hdr.pkt_nr);
+		nr_pkts++;
 
-			for (i = 0; i<pkts_per_block; i++) {
-				if (subblockmap[i]) {
-					int j;
-					for (j=0; j<PKT_SIZE; j++)
-						pktbuf.data[j] ^= eb_buf[i*PKT_SIZE + j];
-				} else
-					missing = i;
-			}
+		if (nr_pkts == pkts_per_block) {
 
-			if (missing == -1) {
-				fprintf(stderr, "dwmw2 is stupid\n");
+			if (fec_decode(fec, pkts, pkt_indices, PKT_SIZE)) {
+				/* Eep. This cannot happen */
+				printf("The world is broken. fec_decode() returned error\n");
 				exit(1);
 			}
-//			printf("Recover missing packet at %08x from parity\n",
-//			       block_nr * meminfo.erasesize + missing * PKT_SIZE);
-			memcpy(eb_buf + (missing * PKT_SIZE), pktbuf.data, PKT_SIZE);
-		}
-
-		if (nr_subblocks == pkts_per_block) {
-
 			blockmap[block_nr] = 1;
 			blocks_received++;
 
+			/* Put data into order in eb_buf */
+			for (i=0; i < pkts_per_block; i++)
+				memcpy(eb_buf + (i * PKT_SIZE), pkts[i], PKT_SIZE);
+
+			if (crc32(-1, eb_buf, meminfo.erasesize) != ntohl(thispkt->hdr.block_crc)) {
+				printf("FEC error. CRC %08x != %08x\n", 
+				       crc32(-1, eb_buf, meminfo.erasesize),
+				       ntohl(thispkt->hdr.block_crc));
+				*(int *)0 = 0;
+				exit(1);
+			}
 			if (file_mode) {
-				printf("Received image block %08x%s (%d/%d)\n",
+				printf("Received image block %08x (%d/%d)",
 				       block_nr * meminfo.erasesize,
-				       (missing==-1)?"":" (parity)",
 				       blocks_received, nr_blocks);
 				pwrite(flfd, eb_buf, meminfo.erasesize, block_nr * meminfo.erasesize);
 			} else {
@@ -325,16 +338,16 @@ int main(int argc, char **argv)
 					mtdoffset += meminfo.erasesize;
 					goto again;
 				}
-				printf("Wrote image block %08x (%d/%d) to flash offset %08x%s\n",
+				printf("Wrote image block %08x (%d/%d) to flash offset %08x\n",
 				       block_nr * meminfo.erasesize, 
 				       blocks_received, nr_blocks,
-				       (uint32_t)mtdoffset,
-				       (missing==-1)?"":" (parity)");
+				       (uint32_t)mtdoffset);
 				mtdoffset += meminfo.erasesize;
 			}
 			if (!(blocks_received%100) || blocks_received == nr_blocks) {
 				int i, printed = 0;
-				for (i=0; i <= pkts_per_block + 1; i++) {
+				printf("\n");
+				for (i=0; i <= ntohs(thispkt->hdr.nr_pkts); i++) {
 					if (printed || stats[i]) {
 						printf("Number of blocks with %d packets received: %d\n",
 						       i, stats[i]);

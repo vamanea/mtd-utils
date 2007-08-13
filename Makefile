@@ -73,11 +73,16 @@ $(BUILDDIR)/jffs2dump: $(BUILDDIR)/jffs2dump.o $(BUILDDIR)/crc32.o
 $(BUILDDIR)/sumtool: $(BUILDDIR)/sumtool.o $(BUILDDIR)/crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-$(BUILDDIR)/serve_image: $(BUILDDIR)/serve_image.o $(BUILDDIR)/crc32.o
+$(BUILDDIR)/serve_image: $(BUILDDIR)/serve_image.o $(BUILDDIR)/crc32.o $(BUILDDIR)/fec.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-$(BUILDDIR)/recv_image: $(BUILDDIR)/recv_image.o $(BUILDDIR)/crc32.o
+$(BUILDDIR)/recv_image: $(BUILDDIR)/recv_image.o $(BUILDDIR)/crc32.o $(BUILDDIR)/fec.o
 	$(CC) $(LDFLAGS) -o $@ $^
+
+$(BUILDDIR)/fectest: $(BUILDDIR)/fectest.o $(BUILDDIR)/crc32.o $(BUILDDIR)/fec.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+
 
 install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
