@@ -37,15 +37,17 @@ int main(int argc, char **argv)
 	int writeerrors = 0;
 	uint32_t erasesize;
 	unsigned char *image, *blockptr;
-	uint32_t block_nr;
+	uint32_t block_nr, pkt_nr;
 	int nr_blocks;
 	struct timeval then, now, nextpkt;
 	long time_msecs;
-	unsigned char **src_pkts;
-	unsigned char last_src_pkt[PKT_SIZE];
 	int pkts_extra = 6;
 	int pkts_per_block;
 	struct fec_parms *fec;
+	unsigned char *last_block;
+	uint32_t *block_crcs;
+	int crcs_checked = 0;
+	long tosleep;
 
 	if (argc == 7) {
 		tx_rate = atol(argv[6]) * 1024;
@@ -80,14 +82,14 @@ int main(int argc, char **argv)
 	}
 
 	pkts_per_block = (erasesize + PKT_SIZE - 1) / PKT_SIZE;
-	src_pkts = malloc(pkts_per_block * sizeof(unsigned char *));
-	if (!src_pkts) {
-		fprintf(stderr, "Failed to allocate memory for packet pointers\n");
+
+	/* We have to pad it with zeroes, so can't use it in-place */
+	last_block = malloc(pkts_per_block * PKT_SIZE);
+	if (!last_block) {
+		fprintf(stderr, "Failed to allocate last-block buffer\n");
 		exit(1);
 	}
-	/* We have to pad it with zeroes, so can't use it in-place */
-	src_pkts[pkts_per_block-1] = last_src_pkt;
-
+	
 	fec = fec_new(pkts_per_block, pkts_per_block + pkts_extra);
 	if (!fec) {
 		fprintf(stderr, "Error initialising FEC\n");
@@ -143,6 +145,15 @@ int main(int argc, char **argv)
 
 	nr_blocks = st.st_size / erasesize;
 
+	block_crcs = malloc(nr_blocks * sizeof(uint32_t));
+	if (!block_crcs) {
+		fprintf(stderr, "Failed to allocate memory for CRCs\n");
+		exit(1);
+	}
+
+	memcpy(last_block, image + (nr_blocks - 1) * erasesize, erasesize);
+	memset(last_block + erasesize, 0, (PKT_SIZE * pkts_per_block) - erasesize);
+
 	printf("Checking CRC....");
 	fflush(stdout);
 
@@ -171,29 +182,28 @@ int main(int argc, char **argv)
 	blockptr = image;
 
 	for (block_nr = 0; block_nr < nr_blocks; block_nr++) {
-		int i;
-		long tosleep;
 
-		blockptr = image + (erasesize * block_nr);
+		for (pkt_nr=0; pkt_nr < pkts_per_block + pkts_extra; pkt_nr++) {
 
-		pktbuf.hdr.block_crc = htonl(crc32(-1, blockptr, erasesize));
+			blockptr = image + (erasesize * block_nr);
+			if (block_nr == nr_blocks - 1)
+				blockptr = last_block;
 
-		for (i=0; i < pkts_per_block-1; i++)
-			src_pkts[i] = blockptr + (i*PKT_SIZE);
+			/* Calculate the block CRCs first time around */
+			if (block_nr >= crcs_checked) {
+				block_crcs[block_nr] = crc32(-1, blockptr, erasesize);
+				crcs_checked = block_nr + 1;
+			}
 
-		memcpy(last_src_pkt, blockptr + (i*PKT_SIZE),
-		       erasesize - (i * PKT_SIZE));
+			pktbuf.hdr.block_crc = htonl(block_crcs[block_nr]);
+			pktbuf.hdr.block_nr = htonl(block_nr);
 
-		pktbuf.hdr.block_nr = htonl(block_nr);
-
-		for (i=0; i < pkts_per_block + pkts_extra; i++) {
-
-			fec_encode(fec, src_pkts, pktbuf.data, i, PKT_SIZE);
+			fec_encode_linear(fec, blockptr, pktbuf.data, pkt_nr, PKT_SIZE);
 			
 			printf("\rSending data block %08x packet %3d/%d",
-			       block_nr * erasesize, i, pkts_per_block + pkts_extra);
+			       block_nr * erasesize, pkt_nr, pkts_per_block + pkts_extra);
 
-			if (block_nr && !i) {
+			if (block_nr && !pkt_nr) {
 				gettimeofday(&now, NULL);
 
 				time_msecs = (now.tv_sec - then.tv_sec) * 1000;
@@ -204,12 +214,12 @@ int main(int argc, char **argv)
 			}
 
 			fflush(stdout);
-			pktbuf.hdr.pkt_nr = htons(i);
+			pktbuf.hdr.pkt_nr = htons(pkt_nr);
 			pktbuf.hdr.thiscrc = htonl(crc32(-1, pktbuf.data, PKT_SIZE));
 
 #ifdef RANDOMDROP
 			if ((rand() % 1000) < 20) {
-				printf("\nDropping packet %d\n", i+1);
+				printf("\nDropping packet %d\n", pkt_nr+1);
 				continue;
 			}
 #endif
