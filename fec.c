@@ -742,6 +742,25 @@ fec_encode(struct fec_parms *code, gf *src[], gf *fec, int index, int sz)
 	    index, code->n - 1 );
 }
 
+void fec_encode_linear(struct fec_parms *code, gf *src, gf *fec, int index, int sz)
+{
+    int i, k = code->k ;
+    gf *p ;
+
+    if (GF_BITS > 8)
+	sz /= 2 ;
+
+    if (index < k)
+	    bcopy(src + (index * sz), fec, sz*sizeof(gf) ) ;
+    else if (index < code->n) {
+	p = &(code->enc_matrix[index*k] );
+	bzero(fec, sz*sizeof(gf));
+	for (i = 0; i < k ; i++)
+	    addmul(fec, src + (i * sz), p[i], sz ) ;
+    } else
+	fprintf(stderr, "Invalid index %d (max %d)\n",
+	    index, code->n - 1 );
+}
 /*
  * shuffle move src packets in their position
  */

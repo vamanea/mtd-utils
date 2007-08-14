@@ -9,6 +9,7 @@ struct image_pkt_hdr {
 	uint32_t blocksize;
 	uint32_t block_crc;
 	uint32_t block_nr;
+	uint32_t pkt_sequence;
 	uint16_t pkt_nr;
 	uint16_t nr_pkts;
 	uint32_t thislen;
@@ -32,9 +33,14 @@ void fec_free(struct fec_parms *p);
  * fec   - buffer for packet to be generated
  * index - index of packet to be generated (0 <= index < n)
  * sz    - data packet size
+ *
+ * _linear version just takes a pointer to the raw data; no
+ * mucking about with packet pointers.
  */
 void fec_encode(struct fec_parms *code, unsigned char *src[],
 		unsigned char *fec, int index, int sz);
+void fec_encode_linear(struct fec_parms *code, unsigned char *src,
+		       unsigned char *fec, int index, int sz);
 
 /* data  - array of (k) pointers to data packets, in arbitrary order (see i)
  * i     - indices of (data) packets

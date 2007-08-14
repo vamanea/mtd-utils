@@ -36,36 +36,26 @@ int main(int argc, char **argv)
 	struct stat st;
 	int writeerrors = 0;
 	uint32_t erasesize;
-	unsigned char *image, *blockptr;
+	unsigned char *image, *blockptr = NULL;
 	uint32_t block_nr, pkt_nr;
 	int nr_blocks;
 	struct timeval then, now, nextpkt;
 	long time_msecs;
-	int pkts_extra = 6;
 	int pkts_per_block;
 	struct fec_parms *fec;
 	unsigned char *last_block;
 	uint32_t *block_crcs;
-	int crcs_checked = 0;
 	long tosleep;
+	uint32_t sequence = 0;
 
-	if (argc == 7) {
-		tx_rate = atol(argv[6]) * 1024;
+	if (argc == 6) {
+		tx_rate = atol(argv[5]) * 1024;
 		if (tx_rate < PKT_SIZE || tx_rate > 20000000) {
 			fprintf(stderr, "Bogus TX rate %d KiB/s\n", tx_rate);
 			exit(1);
 		}
-		argc = 6;
-	}
-	if (argc == 6) {
-		pkts_extra = atol(argv[5]);
-		if (pkts_extra < 0 || pkts_extra > 200) {
-			fprintf(stderr, "Bogus redundancy %d packets\n", pkts_extra);
-			exit(1);
-		}
 		argc = 5;
 	}
-	       
 	if (argc != 5) {
 		fprintf(stderr, "usage: %s <host> <port> <image> <erasesize> [<redundancy>] [<tx_rate>]\n",
 			(strrchr(argv[0], '/')?:argv[0]-1)+1);
@@ -90,7 +80,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	
-	fec = fec_new(pkts_per_block, pkts_per_block + pkts_extra);
+	fec = fec_new(pkts_per_block, pkts_per_block * 2);
 	if (!fec) {
 		fprintf(stderr, "Error initialising FEC\n");
 		exit(1);
@@ -162,16 +152,23 @@ int main(int argc, char **argv)
 	pktbuf.hdr.nr_blocks = htonl(nr_blocks);
 	pktbuf.hdr.blocksize = htonl(erasesize);
 	pktbuf.hdr.thislen = htonl(PKT_SIZE);
-	pktbuf.hdr.nr_pkts = htons(pkts_per_block + pkts_extra);
+	pktbuf.hdr.nr_pkts = htons(pkts_per_block * 2);
 
 	printf("%08x\n", ntohl(pktbuf.hdr.totcrc));
-
- again:
-	printf("Image size %ld KiB (%08lx). %d redundant packets per block (%d total)\n"
-	       "Data to send %d KiB. Estimated transmit time: %ds\n", 
-	       (long)st.st_size / 1024, (long) st.st_size, pkts_extra, pkts_extra+pkts_per_block,
-	       nr_blocks * PKT_SIZE * (pkts_per_block+pkts_extra) / 1024,
-	       nr_blocks * (pkts_per_block+pkts_extra) * pkt_delay / 1000000);
+	printf("Checking block CRCs....");
+	fflush(stdout);
+	for (block_nr=0; block_nr < nr_blocks; block_nr++) {
+		printf("\rChecking block CRCS.... %d/%d",
+		       block_nr + 1, nr_blocks);
+		fflush(stdout);
+		block_crcs[block_nr] = crc32(-1, image + (block_nr * erasesize), erasesize);
+	}
+		
+	printf("\nImage size %ld KiB (0x%08lx). %d blocks at %d pkts/block\n"
+	       "Estimated transmit time per cycle: %ds\n", 
+	       (long)st.st_size / 1024, (long) st.st_size,
+	       nr_blocks, pkts_per_block,
+	       nr_blocks * pkts_per_block * pkt_delay / 1000000);
 	gettimeofday(&then, NULL);
 	nextpkt = then;
 
@@ -179,47 +176,69 @@ int main(int argc, char **argv)
 	srand((unsigned)then.tv_usec);
 	printf("Random seed %u\n", (unsigned)then.tv_usec);
 #endif
-	blockptr = image;
+	while (1) for (pkt_nr=0; pkt_nr < pkts_per_block * 2; pkt_nr++) {
 
-	for (block_nr = 0; block_nr < nr_blocks; block_nr++) {
+		if (blockptr && pkt_nr == 0) {
+ 			unsigned long amt_sent = pkts_per_block * nr_blocks * sizeof(pktbuf) * 2;
+			gettimeofday(&now, NULL);
 
-		for (pkt_nr=0; pkt_nr < pkts_per_block + pkts_extra; pkt_nr++) {
+			time_msecs = (now.tv_sec - then.tv_sec) * 1000;
+			time_msecs += ((int)(now.tv_usec - then.tv_usec)) / 1000;
+			printf("\n%ld KiB sent in %ldms (%ld KiB/s)\n",
+			       amt_sent / 1024, time_msecs,
+			       amt_sent / 1024 * 1000 / time_msecs);
+			then = now;
+		}
+
+		for (block_nr = 0; block_nr < nr_blocks; block_nr++) {
+
+			int actualpkt;
+
+			/* Calculating the redundant FEC blocks is expensive;
+			   the first $pkts_per_block are cheap enough though
+			   because they're just copies. So alternate between
+			   simple and complex stuff, so that we don't start
+			   to choke and fail to keep up with the expected 
+			   bitrate in the second half of the sequence */
+			if (block_nr & 1)
+				actualpkt = pkt_nr;
+			else if (pkt_nr >= pkts_per_block)
+				actualpkt = pkt_nr - pkts_per_block;
+			else
+				actualpkt = pkt_nr + pkts_per_block;
 
 			blockptr = image + (erasesize * block_nr);
 			if (block_nr == nr_blocks - 1)
 				blockptr = last_block;
 
-			/* Calculate the block CRCs first time around */
-			if (block_nr >= crcs_checked) {
-				block_crcs[block_nr] = crc32(-1, blockptr, erasesize);
-				crcs_checked = block_nr + 1;
-			}
+			fec_encode_linear(fec, blockptr, pktbuf.data, actualpkt, PKT_SIZE);
 
+			pktbuf.hdr.thiscrc = htonl(crc32(-1, pktbuf.data, PKT_SIZE));
 			pktbuf.hdr.block_crc = htonl(block_crcs[block_nr]);
 			pktbuf.hdr.block_nr = htonl(block_nr);
+			pktbuf.hdr.pkt_nr = htons(actualpkt);
+			pktbuf.hdr.pkt_sequence = htonl(sequence++);
 
-			fec_encode_linear(fec, blockptr, pktbuf.data, pkt_nr, PKT_SIZE);
-			
 			printf("\rSending data block %08x packet %3d/%d",
-			       block_nr * erasesize, pkt_nr, pkts_per_block + pkts_extra);
+			       block_nr * erasesize,
+			       pkt_nr, pkts_per_block * 2);
 
-			if (block_nr && !pkt_nr) {
+			if (pkt_nr && !block_nr) {
+				unsigned long amt_sent = pkt_nr * nr_blocks * sizeof(pktbuf);
+
 				gettimeofday(&now, NULL);
 
 				time_msecs = (now.tv_sec - then.tv_sec) * 1000;
 				time_msecs += ((int)(now.tv_usec - then.tv_usec)) / 1000;
 				printf("    (%ld KiB/s)    ",
-				       (block_nr * sizeof(pktbuf) * (pkts_per_block+pkts_extra))
-				       / 1024 * 1000 / time_msecs);
+				       amt_sent / 1024 * 1000 / time_msecs);
 			}
 
 			fflush(stdout);
-			pktbuf.hdr.pkt_nr = htons(pkt_nr);
-			pktbuf.hdr.thiscrc = htonl(crc32(-1, pktbuf.data, PKT_SIZE));
 
 #ifdef RANDOMDROP
 			if ((rand() % 1000) < 20) {
-				printf("\nDropping packet %d\n", pkt_nr+1);
+				printf("\nDropping packet %d of block %08x\n", pkt_nr+1, block_nr * erasesize);
 				continue;
 			}
 #endif
@@ -251,9 +270,10 @@ int main(int argc, char **argv)
 			}
 
 			/* If the time for the next packet has already
-			   passed, then we've lost time. Adjust our expected
-			   timings accordingly. */
-			if (now.tv_usec > (now.tv_usec + 
+			   passed (by some margin), then we've lost time
+			   Adjust our expected timings accordingly. If
+			   we're only a little way behind, don't slip yet */
+			if (now.tv_usec > (now.tv_usec + (5 * pkt_delay) +
 					   1000000 * (nextpkt.tv_sec - now.tv_sec))) { 
 				nextpkt = now;
 			}
@@ -272,14 +292,6 @@ int main(int argc, char **argv)
 			
 		}
 	}
-	gettimeofday(&now, NULL);
-
-	time_msecs = (now.tv_sec - then.tv_sec) * 1000;
-	time_msecs += ((int)(now.tv_usec - then.tv_usec)) / 1000;
-	printf("\n%d KiB sent in %ldms (%ld KiB/s)\n",
-	       nr_blocks * sizeof(pktbuf) * (pkts_per_block+pkts_extra) / 1024, time_msecs,
-	       nr_blocks * sizeof(pktbuf) * (pkts_per_block+pkts_extra) / 1024 * 1000 / time_msecs);
-
 	munmap(image, st.st_size);
 	close(rfd);
 	close(sock);
