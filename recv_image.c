@@ -21,7 +21,7 @@
 
 #define min(x,y) (  (x)>(y)?(y):(x) )
 
-#define WBUF_SIZE 2048
+#define WBUF_SIZE 4096
 struct eraseblock {
 	uint32_t flash_offset;
 	unsigned char wbuf[WBUF_SIZE];
@@ -47,6 +47,7 @@ int main(int argc, char **argv)
 	int block_nr = -1;
 	uint32_t image_crc;
 	int total_pkts = 0;
+	int ignored_pkts = 0;
 	loff_t mtdoffset = 0;
 	int badcrcs = 0;
 	int duplicates = 0;
@@ -56,7 +57,8 @@ int main(int argc, char **argv)
 	struct eraseblock *eraseblocks = NULL;
 	uint32_t start_seq;
 	struct timeval start, now;
-	unsigned long fec_time = 0, flash_time = 0, crc_time = 0, rflash_time;
+	unsigned long fec_time = 0, flash_time = 0, crc_time = 0,
+		rflash_time = 0, erase_time = 0, net_time = 0;
 
 	if (argc != 4) {
 		fprintf(stderr, "usage: %s <host> <port> <mtddev>\n",
@@ -211,14 +213,14 @@ int main(int argc, char **argv)
 			gettimeofday(&start, NULL);
 		}
 		if (image_crc != thispkt.hdr.totcrc) {
-			fprintf(stderr, "Image CRC changed from 0x%x to 0x%x. Aborting\n",
+			fprintf(stderr, "\nImage CRC changed from 0x%x to 0x%x. Aborting\n",
 				ntohl(image_crc), ntohl(thispkt.hdr.totcrc));
 			exit(1);
 		}
 
 		block_nr = ntohl(thispkt.hdr.block_nr);
 		if (block_nr >= nr_blocks) {
-			fprintf(stderr, "Erroneous block_nr %d (> %d)\n",
+			fprintf(stderr, "\nErroneous block_nr %d (> %d)\n",
 				block_nr, nr_blocks);
 			exit(1);
 		}
@@ -230,17 +232,19 @@ int main(int argc, char **argv)
 				break;
 			}
 		}
-		if (i < eraseblocks[block_nr].nr_pkts)
+		if (i < eraseblocks[block_nr].nr_pkts) {
 			continue;
+		}
 
 		if (eraseblocks[block_nr].nr_pkts >= pkts_per_block) {
 			/* We have a block which we didn't really need */
 			eraseblocks[block_nr].nr_pkts++;
+			ignored_pkts++;
 			continue;
 		}
 
 		if (crc32(-1, thispkt.data, PKT_SIZE) != ntohl(thispkt.hdr.thiscrc)) {
-			printf("Discard %08x pkt %d with bad CRC (%08x not %08x)\n",
+			printf("\nDiscard %08x pkt %d with bad CRC (%08x not %08x)\n",
 			       block_nr * meminfo.erasesize, ntohs(thispkt.hdr.pkt_nr),
 			       crc32(-1, thispkt.data, PKT_SIZE),
 			       ntohl(thispkt.hdr.thiscrc));
@@ -252,21 +256,22 @@ int main(int argc, char **argv)
 			ntohs(thispkt.hdr.pkt_nr);
 		total_pkts++;
 		if (!(total_pkts % 50) || total_pkts == pkts_per_block * nr_blocks) {
-			uint32_t pkts_sent = ntohl(thispkt.hdr.pkt_sequence) - start_seq - 1;
+			uint32_t pkts_sent = ntohl(thispkt.hdr.pkt_sequence) - start_seq + 1;
 			long time_msec;
 			gettimeofday(&now, NULL);
 
 			time_msec = ((now.tv_usec - start.tv_usec) / 1000) +
 				(now.tv_sec - start.tv_sec) * 1000;
 
-			printf("\rReceived %d/%d (%d%%) in %lds @%ldKiB/s, %d lost (%d%%), %d dups    ",
+			printf("\rReceived %d/%d (%d%%) in %lds @%ldKiB/s, %d lost (%d%%), %d dup/xs    ",
 			       total_pkts, nr_blocks * pkts_per_block,
 			       total_pkts * 100 / nr_blocks / pkts_per_block,
 			       time_msec / 1000,
 			       total_pkts * PKT_SIZE / 1024 * 1000 / time_msec,
-			       pkts_sent - total_pkts - duplicates,
-			       (pkts_sent - total_pkts - duplicates) * 100 / pkts_sent,
-			       duplicates);
+			       pkts_sent - total_pkts - duplicates - ignored_pkts,
+			       (pkts_sent - total_pkts - duplicates - ignored_pkts) * 100 / pkts_sent,
+			       duplicates + ignored_pkts);
+			fflush(stdout);
 		}
 
 		if (eraseblocks[block_nr].wbuf_ofs + PKT_SIZE < WBUF_SIZE) {
@@ -284,9 +289,9 @@ int main(int argc, char **argv)
 			
 			if (wrotelen < WBUF_SIZE) {
 				if (wrotelen < 0)
-					perror("packet write");
+					perror("\npacket write");
 				else
-					fprintf(stderr, "short write of packet wbuf\n");
+					fprintf(stderr, "\nshort write of packet wbuf\n");
 
 				if (!file_mode) {
 					struct erase_info_user erase;
@@ -329,6 +334,10 @@ int main(int argc, char **argv)
 				break;
 		}
 	}
+	printf("\n");
+	gettimeofday(&now, NULL);
+	net_time = (now.tv_usec - start.tv_usec) / 1000;
+	net_time += (now.tv_sec - start.tv_sec) * 1000;
 	close(sock);
 	for (block_nr = 0; block_nr < nr_blocks; block_nr++) {
 		ssize_t rwlen;
@@ -385,7 +394,7 @@ int main(int argc, char **argv)
 			erase.start = eraseblocks[block_nr].flash_offset;
 			erase.length = meminfo.erasesize;
 			
-			printf("Erasing block at %08x...", erase.start);
+			printf("\rErasing block at %08x...", erase.start);
 
 			if (ioctl(flfd, MEMERASE, &erase)) {
 				perror("MEMERASE");
@@ -393,14 +402,19 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Erase to clean FEC data from flash failed. Aborting\n");
 				exit(1);
 			}
+			gettimeofday(&now, NULL);
+			erase_time += (now.tv_usec - start.tv_usec) / 1000;
+			erase_time += (now.tv_sec - start.tv_sec) * 1000;
+			start = now;
 		}
+		else printf("\r");
 	write_again:
 		rwlen = pwrite(flfd, decode_buf, meminfo.erasesize, eraseblocks[block_nr].flash_offset);
 		if (rwlen < meminfo.erasesize) {
 			if (rwlen < 0) {
-				perror("decoded data write");
+				perror("\ndecoded data write");
 			} else 
-				fprintf(stderr, "short write of decoded data\n");
+				fprintf(stderr, "\nshort write of decoded data\n");
 
 			if (!file_mode) {
 				struct erase_info_user erase;
@@ -434,14 +448,17 @@ int main(int argc, char **argv)
 		flash_time += (now.tv_usec - start.tv_usec) / 1000;
 		flash_time += (now.tv_sec - start.tv_sec) * 1000;
 
-		printf("wrote image block %08x (%d pkts)\n",
+		printf("wrote image block %08x (%d pkts)    ",
 		       block_nr * meminfo.erasesize, eraseblocks[block_nr].nr_pkts);
+		fflush(stdout);
 	}
 	close(flfd);
+	printf("Net rx   %ld.%03lds\n", net_time / 1000, net_time % 1000);
 	printf("flash rd %ld.%03lds\n", rflash_time / 1000, rflash_time % 1000);
 	printf("FEC time %ld.%03lds\n", fec_time / 1000, fec_time % 1000);
 	printf("CRC time %ld.%03lds\n", crc_time / 1000, crc_time % 1000);
 	printf("flash wr %ld.%03lds\n", flash_time / 1000, flash_time % 1000);
+	printf("flash er %ld.%03lds\n", erase_time / 1000, erase_time % 1000);
 
 	return 0;
 }
