@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#define PKT_SIZE 1410
+#define PKT_SIZE 2820
 
 struct image_pkt_hdr {
 	uint32_t resend;
