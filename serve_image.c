@@ -42,6 +42,7 @@ int main(int argc, char **argv)
 	struct timeval then, now, nextpkt;
 	long time_msecs;
 	int pkts_per_block;
+	int total_pkts_per_block;
 	struct fec_parms *fec;
 	unsigned char *last_block;
 	uint32_t *block_crcs;
@@ -72,6 +73,7 @@ int main(int argc, char **argv)
 	}
 
 	pkts_per_block = (erasesize + PKT_SIZE - 1) / PKT_SIZE;
+	total_pkts_per_block = pkts_per_block * 3 / 2;
 
 	/* We have to pad it with zeroes, so can't use it in-place */
 	last_block = malloc(pkts_per_block * PKT_SIZE);
@@ -80,7 +82,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	
-	fec = fec_new(pkts_per_block, pkts_per_block * 2);
+	fec = fec_new(pkts_per_block, total_pkts_per_block);
 	if (!fec) {
 		fprintf(stderr, "Error initialising FEC\n");
 		exit(1);
@@ -152,7 +154,7 @@ int main(int argc, char **argv)
 	pktbuf.hdr.nr_blocks = htonl(nr_blocks);
 	pktbuf.hdr.blocksize = htonl(erasesize);
 	pktbuf.hdr.thislen = htonl(PKT_SIZE);
-	pktbuf.hdr.nr_pkts = htons(pkts_per_block * 2);
+	pktbuf.hdr.nr_pkts = htons(total_pkts_per_block);
 
 	printf("%08x\n", ntohl(pktbuf.hdr.totcrc));
 	printf("Checking block CRCs....");
@@ -176,10 +178,10 @@ int main(int argc, char **argv)
 	srand((unsigned)then.tv_usec);
 	printf("Random seed %u\n", (unsigned)then.tv_usec);
 #endif
-	while (1) for (pkt_nr=0; pkt_nr < pkts_per_block * 2; pkt_nr++) {
+	while (1) for (pkt_nr=0; pkt_nr < total_pkts_per_block; pkt_nr++) {
 
 		if (blockptr && pkt_nr == 0) {
- 			unsigned long amt_sent = pkts_per_block * nr_blocks * sizeof(pktbuf) * 2;
+ 			unsigned long amt_sent = total_pkts_per_block * nr_blocks * sizeof(pktbuf);
 			gettimeofday(&now, NULL);
 
 			time_msecs = (now.tv_sec - then.tv_sec) * 1000;
@@ -202,10 +204,8 @@ int main(int argc, char **argv)
 			   bitrate in the second half of the sequence */
 			if (block_nr & 1)
 				actualpkt = pkt_nr;
-			else if (pkt_nr >= pkts_per_block)
-				actualpkt = pkt_nr - pkts_per_block;
-			else
-				actualpkt = pkt_nr + pkts_per_block;
+			else 
+				actualpkt = total_pkts_per_block - 1 - pkt_nr;
 
 			blockptr = image + (erasesize * block_nr);
 			if (block_nr == nr_blocks - 1)
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 
 			printf("\rSending data block %08x packet %3d/%d",
 			       block_nr * erasesize,
-			       pkt_nr, pkts_per_block * 2);
+			       pkt_nr, total_pkts_per_block);
 
 			if (pkt_nr && !block_nr) {
 				unsigned long amt_sent = pkt_nr * nr_blocks * sizeof(pktbuf);
