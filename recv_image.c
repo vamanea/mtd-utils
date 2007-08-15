@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 	struct eraseblock *eraseblocks = NULL;
 	uint32_t start_seq;
 	struct timeval start, now;
-	unsigned long fec_time = 0, flash_time = 0, crc_time = 0;
+	unsigned long fec_time = 0, flash_time = 0, crc_time = 0, rflash_time;
 
 	if (argc != 4) {
 		fprintf(stderr, "usage: %s <host> <port> <mtddev>\n",
@@ -332,10 +332,13 @@ int main(int argc, char **argv)
 	close(sock);
 	for (block_nr = 0; block_nr < nr_blocks; block_nr++) {
 		ssize_t rwlen;
-
+		gettimeofday(&start, NULL);
 		eraseblocks[block_nr].flash_offset -= meminfo.erasesize;
 		rwlen = pread(flfd, eb_buf, meminfo.erasesize, eraseblocks[block_nr].flash_offset);
 
+		gettimeofday(&now, NULL);
+		rflash_time += (now.tv_usec - start.tv_usec) / 1000;
+		rflash_time += (now.tv_sec - start.tv_sec) * 1000;
 		if (rwlen < 0) {
 			perror("read");
 			/* Argh. Perhaps we could go back and try again, but if the flash is
@@ -435,9 +438,10 @@ int main(int argc, char **argv)
 		       block_nr * meminfo.erasesize, eraseblocks[block_nr].nr_pkts);
 	}
 	close(flfd);
+	printf("flash rd %ld.%03lds\n", rflash_time / 1000, rflash_time % 1000);
 	printf("FEC time %ld.%03lds\n", fec_time / 1000, fec_time % 1000);
 	printf("CRC time %ld.%03lds\n", crc_time / 1000, crc_time % 1000);
-	printf("flash IO %ld.%03lds\n", flash_time / 1000, flash_time % 1000);
+	printf("flash wr %ld.%03lds\n", flash_time / 1000, flash_time % 1000);
 
 	return 0;
 }
