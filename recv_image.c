@@ -282,12 +282,15 @@ int main(int argc, char **argv)
 		} else {
 			int fits = WBUF_SIZE - eraseblocks[block_nr].wbuf_ofs;
 			ssize_t wrotelen;
+			static int faked = 1;
+
 			memcpy(eraseblocks[block_nr].wbuf + eraseblocks[block_nr].wbuf_ofs,
 			       thispkt.data, fits);
 			wrotelen = pwrite(flfd, eraseblocks[block_nr].wbuf, WBUF_SIZE,
 					  eraseblocks[block_nr].flash_offset);
 			
-			if (wrotelen < WBUF_SIZE) {
+			if (wrotelen < WBUF_SIZE || (block_nr == 5 && eraseblocks[block_nr].nr_pkts == 5 && !faked)) {
+				faked = 1;
 				if (wrotelen < 0)
 					perror("\npacket write");
 				else
@@ -297,10 +300,14 @@ int main(int argc, char **argv)
 					struct erase_info_user erase;
 					/* FIXME: Perhaps we should store pkt crcs and try
 					   to recover data from the offending eraseblock */
-					erase.start = eraseblocks[block_nr].flash_offset;
-					erase.start -= eraseblocks[block_nr].nr_pkts * PKT_SIZE / WBUF_SIZE * WBUF_SIZE;
+
+					/* We have increased nr_pkts but not yet flash_offset */
+					erase.start = eraseblocks[block_nr].flash_offset &
+						~(meminfo.erasesize - 1);
 					erase.length = meminfo.erasesize;
-					
+
+					printf("Will erase at %08lx len %08lx (bad write was at %08lx)\n", 
+					       erase.start, erase.length, eraseblocks[block_nr].flash_offset);
 					if (ioctl(flfd, MEMERASE, &erase)) {
 						perror("MEMERASE");
 						exit(1);
@@ -312,10 +319,17 @@ int main(int argc, char **argv)
 					while (ioctl(flfd, MEMGETBADBLOCK, &mtdoffset) > 0) {
 						printf("Skipping flash bad block at %08x\n", (uint32_t)mtdoffset);
 						mtdoffset += meminfo.erasesize;
+						if (mtdoffset >= meminfo.size) {
+							fprintf(stderr, "Run out of space on flash\n");
+							exit(1);
+						}
 					}
 					eraseblocks[block_nr].flash_offset = mtdoffset;
+					printf("Block #%d will now be at %08lx\n", block_nr, (long)mtdoffset);
 					total_pkts -= eraseblocks[block_nr].nr_pkts;
 					eraseblocks[block_nr].nr_pkts = 0;
+					eraseblocks[block_nr].wbuf_ofs = 0;
+					mtdoffset += meminfo.erasesize;
 					goto pkt_again;
 				}
 				else /* Usually nothing we can do in file mode */
@@ -379,9 +393,10 @@ int main(int argc, char **argv)
 		/* Paranoia */
 		gettimeofday(&start, NULL);
 		if (crc32(-1, decode_buf, meminfo.erasesize) != eraseblocks[block_nr].crc) {
-			printf("CRC mismatch: want %08x got %08x\n",
-			       eraseblocks[block_nr].crc, 
+			printf("\nCRC mismatch for block #%d: want %08x got %08x\n",
+			       block_nr, eraseblocks[block_nr].crc, 
 			       crc32(-1, decode_buf, meminfo.erasesize));
+			exit(1);
 		}
 		gettimeofday(&now, NULL);
 		crc_time += (now.tv_usec - start.tv_usec) / 1000;
@@ -435,6 +450,10 @@ int main(int argc, char **argv)
 				while (ioctl(flfd, MEMGETBADBLOCK, &mtdoffset) > 0) {
 					printf("Skipping flash bad block at %08x\n", (uint32_t)mtdoffset);
 					mtdoffset += meminfo.erasesize;
+					if (mtdoffset >= meminfo.size) {
+						fprintf(stderr, "Run out of space on flash\n");
+						exit(1);
+					}
 				}
 				printf("Will try again at %08lx...", (long)mtdoffset);
 				eraseblocks[block_nr].flash_offset = mtdoffset;
