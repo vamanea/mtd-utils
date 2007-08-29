@@ -247,7 +247,7 @@ ubigen_write_broken_update(ubi_info_t u, uint32_t blk)
 }
 
 void
-dump_info(ubi_info_t u __unused)
+dump_info(ubi_info_t u ubi_unused)
 {
 #ifdef DEBUG
 	int err = 0;

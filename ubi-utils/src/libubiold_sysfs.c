@@ -129,7 +129,7 @@ sysfs_read_dev_subst(const char *patt, unsigned int *major,
 }
 
 static int
-sysfs_read_ull(const char *file __unused, unsigned long long *num __unused)
+sysfs_read_ull(const char *file ubi_unused, unsigned long long *num ubi_unused)
 {
 	return 0;
 }
@@ -148,7 +148,7 @@ sysfs_read_ull_subst(const char *patt, unsigned long long *num, int n, ...)
 }
 
 static int
-sysfs_read_uint(const char *file __unused, unsigned int *num __unused)
+sysfs_read_uint(const char *file ubi_unused, unsigned int *num ubi_unused)
 {
 	return 0;
 }

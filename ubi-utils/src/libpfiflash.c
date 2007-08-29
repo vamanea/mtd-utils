@@ -53,11 +53,11 @@
 #include <mtd/ubi-header.h>	/* FIXME Is this ok here? */
 #include "crc32.h"
 
-#define __unused __attribute__((unused))
+#define ubi_unused __attribute__((unused))
 
 #define COMPARE_BUFFER_SIZE 2048
 
-static const char copyright [] __unused =
+static const char copyright [] ubi_unused =
 	"Copyright International Business Machines Corp., 2006, 2007";
 
 /* simply clear buffer, then write into front of it */

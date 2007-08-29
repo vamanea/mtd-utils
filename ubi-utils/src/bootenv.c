@@ -33,7 +33,7 @@
 #include <mtd/ubi-header.h>
 #include "crc32.h"
 
-#define __unused __attribute__((unused))
+#define ubi_unused __attribute__((unused))
 
 #define BOOTENV_MAXLINE 512 /* max line size of a bootenv.txt file */
 
@@ -399,7 +399,7 @@ err:
 }
 
 static int
-fill_output_buffer(bootenv_t env, char *buf, size_t buf_size_max __unused,
+fill_output_buffer(bootenv_t env, char *buf, size_t buf_size_max ubi_unused,
 		size_t *written)
 {
 	int rc = 0;
@@ -586,7 +586,7 @@ err:
 }
 
 int
-bootenv_valid(bootenv_t env __unused)
+bootenv_valid(bootenv_t env ubi_unused)
 {
 	/* @FIXME No sanity check implemented. */
 	return 0;
@@ -646,8 +646,8 @@ err:
 
 int
 bootenv_pdd_keep(bootenv_t env_old, bootenv_t env_new, bootenv_t *env_res,
-		 int *warnings, char *err_buf __unused,
-		 size_t err_buf_size __unused)
+		 int *warnings, char *err_buf ubi_unused,
+		 size_t err_buf_size ubi_unused)
 {
 	bootenv_list_t l_old = NULL;
 	bootenv_list_t l_new = NULL;
@@ -756,8 +756,8 @@ err:
 
 int
 bootenv_pdd_overwrite(bootenv_t env_old, bootenv_t env_new,
-		      bootenv_t *env_res, int *warnings __unused,
-		      char *err_buf __unused, size_t err_buf_size __unused)
+		      bootenv_t *env_res, int *warnings ubi_unused,
+		      char *err_buf ubi_unused, size_t err_buf_size ubi_unused)
 {
 	if ((env_old == NULL) || (env_new == NULL) || (env_res == NULL))
 		return -EINVAL;
@@ -767,7 +767,7 @@ bootenv_pdd_overwrite(bootenv_t env_old, bootenv_t env_new,
 
 int
 bootenv_pdd_merge(bootenv_t env_old, bootenv_t env_new, bootenv_t *env_res,
-		  int *warnings __unused, char *err_buf, size_t err_buf_size)
+		  int *warnings ubi_unused, char *err_buf, size_t err_buf_size)
 {
 	if ((env_old == NULL) || (env_new == NULL) || (env_res == NULL))
 		return -EINVAL;

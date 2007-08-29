@@ -23,6 +23,6 @@
 #define PACKAGE_BUGREPORT						\
 	"haver@vnet.ibm.com, dedekind@linutronix.de, or tglx@linutronix.de"
 
-#define __unused __attribute__((unused))
+#define ubi_unused __attribute__((unused))
 
 #endif
