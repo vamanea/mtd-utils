@@ -92,3 +92,4 @@ install: ${TARGETS}
 	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
+	make -C $(BUILDDIR)/ubi-utils install

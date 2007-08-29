@@ -10,7 +10,9 @@ BUILD_OS := $(shell uname -o)
 OPTFLAGS := -O2 -g -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
-SBINDIR := bin
+SBINDIR=/usr/sbin
+MANDIR=/usr/man
+INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
 CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
