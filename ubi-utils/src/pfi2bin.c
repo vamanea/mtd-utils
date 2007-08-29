@@ -69,9 +69,7 @@ typedef enum action_t {
 static const char copyright [] __attribute__((unused)) =
 	"(c) Copyright IBM Corp 2006\n";
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"pfi2bin - a tool to convert PFI files into binary images.\n";
 
 static const char *optionsstr =

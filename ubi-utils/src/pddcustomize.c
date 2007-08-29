@@ -61,9 +61,7 @@ typedef enum action_t {
 	args->action = ACT_ARGP_ERR;	\
 } while (0)
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"pddcustomize - customize bootenv and pdd values.\n";
 
 static const char *optionsstr =

@@ -72,9 +72,8 @@ static struct args myargs = {
 
 static int verbose = 0;
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
-	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
-	"\nWrite to UBI Volume.\n";
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
+	"ubiupdatevol - write to UBI Volume.\n";
 
 static const char *optionsstr =
 "  -B, --broken-update        broken update, this is for testing\n"

@@ -67,9 +67,7 @@ typedef enum action_t {
 #define PADDING		   0 /* 0 means, do not adjust anything */
 #define BUFSIZE		4096
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"bin2nand - a tool for adding OOB information to a "
 	"binary input file.\n";
 

@@ -53,9 +53,7 @@ typedef enum action_t {
 
 #define VOL_ARGS_MAX 2
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"ubimirror - mirrors ubi volumes.\n";
 
 static const char *optionsstr =

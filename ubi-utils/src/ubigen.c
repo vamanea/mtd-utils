@@ -43,9 +43,7 @@ typedef enum action_t {
 	ACT_BROKEN_UPDATE    = 0x00000002,
 } action_t;
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"ubigen - a tool for adding UBI information to a binary input file.\n";
 
 static const char *optionsstr =

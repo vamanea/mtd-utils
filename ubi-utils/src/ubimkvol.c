@@ -75,9 +75,8 @@ static struct args myargs = {
 
 static int param_sanity_check(struct args *args, libubi_t libubi);
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
-	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
-	"\nMake UBI Volume.\n";
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
+	"ubinkvol - make UBI Volume.\n";
 
 static const char *optionsstr =
 "  -a, --alignment=<alignment>   volume alignment (default is 1)\n"

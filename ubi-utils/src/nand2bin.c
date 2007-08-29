@@ -63,9 +63,8 @@ static struct args myargs = {
 	.options = NULL,
 };
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\t"
-	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
-	"\nSplit data and OOB.\n";
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
+	"nand2bin - split data and OOB.\n";
 
 static const char *optionsstr =
 "  -o, --output=<output>      Data output file\n"

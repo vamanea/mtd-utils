@@ -37,9 +37,7 @@
 
 #define PROGRAM_VERSION "1.3"
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"mkbootenv - processes bootenv text files and convertes "
 	"them into a binary format.\n";
 

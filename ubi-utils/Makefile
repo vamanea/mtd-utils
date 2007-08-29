@@ -2,11 +2,6 @@
 # Makefile for ubi-utils
 #
 
-HOST_OS_NAME := $(shell uname -s)
-HOST_VERSION_NAME := $(shell uname -r)
-BUILD_CPU := $(shell uname -m)
-BUILD_OS := $(shell uname -o)
-
 OPTFLAGS := -O2 -g -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
@@ -16,11 +11,7 @@ INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
 CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
-	-Wwrite-strings -W -std=gnu99 \
-        -DHOST_OS_NAME=\"$(HOST_OS_NAME)\" \
-        -DHOST_VERSION_NAME=\"$(HOST_VERSION_NAME)\" \
-	-DBUILD_CPU=\"$(BUILD_CPU)\" -DBUILD_OS=\"$(BUILD_OS)\" \
-	-DPACKAGE_VERSION=\"1.0\"
+	-Wwrite-strings -W -std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi ubicrc32.pl
 TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \

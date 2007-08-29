@@ -36,9 +36,7 @@
 
 const char *argp_program_version = PACKAGE_VERSION;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PACKAGE_VERSION "\n"
 	"ubicrc32 - calculates the UBI CRC32 value and prints it to stdout.\n";
 
 static const char copyright [] __attribute__((unused)) =

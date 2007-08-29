@@ -45,9 +45,7 @@
 
 #define PROGRAM_VERSION  "1.5"
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n\tBuilt on "
-	BUILD_CPU" "BUILD_OS" at "__DATE__" "__TIME__"\n"
-	"\n"
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"pfiflash - a tool for updating a controller with PFI files.\n";
 
 static const char *optionsstr =

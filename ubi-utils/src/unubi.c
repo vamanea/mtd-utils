@@ -56,9 +56,8 @@
 #define CONTACT		"haver@vnet.ibm.com"
 #define VERSION		"1.3"
 
-static char doc[] = "\nVersion: " VERSION "\n\t"
-	BUILD_OS" "BUILD_CPU" at "__DATE__" "__TIME__"\n"
-	"\nAnalyze raw flash containing UBI data.\n";
+static char doc[] = "\nVersion: " VERSION "\n"
+	"unubi - analyze raw flash containing UBI data.\n";
 
 static const char *optionsstr =
 " OPTIONS\n"
