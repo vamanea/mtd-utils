@@ -7,12 +7,13 @@ HOST_VERSION_NAME := $(shell uname -r)
 BUILD_CPU := $(shell uname -m)
 BUILD_OS := $(shell uname -o)
 
+OPTFLAGS := -O2 -g -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
 SBINDIR := bin
 
 CC := $(CROSS)gcc
-CFLAGS := -I./inc -I./src -I$(KERNELHDR) -O2 -g -Wall -Werror \
+CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 	-Wwrite-strings -W -std=gnu99 \
         -DHOST_OS_NAME=\"$(HOST_OS_NAME)\" \
         -DHOST_VERSION_NAME=\"$(HOST_VERSION_NAME)\" \

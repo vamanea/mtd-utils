@@ -1,12 +1,13 @@
 
 # -*- sh -*-
 
+OPTFLAGS := -O2 -Wall
 SBINDIR=/usr/sbin
 MANDIR=/usr/man
 INCLUDEDIR=/usr/include
 #CROSS=arm-linux-
 CC := $(CROSS)gcc
-CFLAGS := -I./include -O2 -Wall
+CFLAGS := -I./include $(OPTFLAGS)
 
 ifeq ($(origin CROSS),undefined)
   BUILDDIR := .
