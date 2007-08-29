@@ -43,6 +43,7 @@ $(BUILDDIR)/%.o: %.c
 .SUFFIXES:
 
 all: $(TARGETS)
+	make -C $(BUILDDIR)/ubi-utils
 
 IGNORE=${wildcard $(BUILDDIR)/.*.c.dep}
 -include ${IGNORE}
@@ -50,6 +51,7 @@ IGNORE=${wildcard $(BUILDDIR)/.*.c.dep}
 clean:
 	rm -f $(BUILDDIR)/*.o $(TARGETS) $(BUILDDIR)/.*.c.dep $(SYMLINKS)
 	if [ "$(BUILDDIR)x" != ".x" ]; then rm -rf $(BUILDDIR); fi
+	make -C $(BUILDDIR)/ubi-utils clean
 
 $(SYMLINKS):
 	ln -sf ../fs/jffs2/$@ $@
