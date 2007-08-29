@@ -333,6 +333,14 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
+	/*
+	 * This is hacky, but we want to wait until udev has created device
+	 * nodes. There is probably better way do do this, though.
+	 */
+	if (system("udevsettle")) {
+		/* Well, this is to keep GCC silent */
+	}
+
 	/* printf("Created volume %d, %lld bytes, type %s, name %s\n",
 	   vol_id, bytes, vol_type == UBI_DYNAMIC_VOLUME ?
 	   "dynamic" : "static", name); */

@@ -275,11 +275,6 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 	if (!ret)
 		req->vol_id = r.vol_id;
 
-#if 1
-	/* This is a hack to work around udev problems */
-	system("udevsettle");
-#endif
-
 	close(fd);
 	return ret;
 }

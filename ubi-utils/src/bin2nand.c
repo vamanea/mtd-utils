@@ -228,14 +228,14 @@ process_page(uint8_t* buf, size_t pagesize,
 
 	/* either separate oob or interleave with data */
 	if (fp_oob) {
-		fwrite(oobbuf, 1, oobsize, fp_oob);
+		i = fwrite(oobbuf, 1, oobsize, fp_oob);
 		if (ferror(fp_oob)) {
 			err_msg("IO error\n");
 			return -EIO;
 		}
 	}
 	else {
-		fwrite(oobbuf, 1, oobsize, fp_data);
+		i = fwrite(oobbuf, 1, oobsize, fp_data);
 		if (ferror(fp_data)) {
 			err_msg("IO error\n");
 			return -EIO;

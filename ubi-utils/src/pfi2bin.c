@@ -320,11 +320,12 @@ static FILE*
 my_fmemopen (void *buf, size_t size, const char *opentype)
 {
     FILE* f;
+    size_t ret;
 
     assert(strcmp(opentype, "r") == 0);
 
     f = tmpfile();
-    fwrite(buf, 1, size, f);
+    ret = fwrite(buf, 1, size, f);
     rewind(f);
 
     return f;
