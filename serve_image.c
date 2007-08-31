@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 		argc = 5;
 	}
 	if (argc != 5) {
-		fprintf(stderr, "usage: %s <host> <port> <image> <erasesize> [<redundancy>] [<tx_rate>]\n",
+		fprintf(stderr, "usage: %s <host> <port> <image> <erasesize> [<tx_rate>]\n",
 			(strrchr(argv[0], '/')?:argv[0]-1)+1);
 		exit(1);
 	}
