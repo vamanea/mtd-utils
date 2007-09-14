@@ -505,6 +505,7 @@ void tests_check_filled_file_fd(int fd)
 	ssize_t sz;
 	char buf[WRITE_BUFFER_SIZE];
 
+	CHECK(lseek(fd, 0, SEEK_SET) == 0);
 	do {
 		sz = read(fd, buf, WRITE_BUFFER_SIZE);
 		CHECK(sz >= 0);
