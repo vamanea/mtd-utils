@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (c) International Business Machines Corp., 2006, 2007
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
  * 1.2 Removed argp because we want to use uClibc.
  * 1.3 Minor cleanup
  * 1.4 Fixed OOB output file
+ * 1.5 Added verbose output and option to set blocksize.
+ *     Added split block mode for more convenient analysis.
  */
 
 #include <config.h>
@@ -41,7 +43,7 @@
 #include "config.h"
 #include "nandecc.h"
 
-#define PROGRAM_VERSION "1.4"
+#define PROGRAM_VERSION "1.5"
 
 #define MAXPATH		1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
@@ -50,6 +52,9 @@ struct args {
 	const char *oob_file;
 	const char *output_file;
 	size_t pagesize;
+	size_t blocksize;
+	int split_blocks;
+	size_t in_len;		/* size of input file */
 
 	/* special stuff needed to get additional arguments */
 	char *arg1;
@@ -60,6 +65,9 @@ static struct args myargs = {
 	.output_file = "data.bin",
 	.oob_file = "oob.bin",
 	.pagesize = 2048,
+	.blocksize = 128 * 1024,
+	.in_len = 0,
+	.split_blocks = 0,
 	.arg1 = NULL,
 	.options = NULL,
 };
@@ -71,6 +79,9 @@ static const char *optionsstr =
 "  -o, --output=<output>      Data output file\n"
 "  -O, --oob=<oob>            OOB output file\n"
 "  -p, --pagesize=<pagesize>  NAND pagesize\n"
+"  -b, --blocksize=<blocksize> NAND blocksize\n"
+"  -s, --split-blocks         generate binaries for each block\n"
+"  -v, --verbose              verbose output\n"
 "  -?, --help                 Give this help list\n"
 "      --usage                Give a short usage message\n";
 
@@ -79,10 +90,15 @@ static const char *usage =
 "          [--output=<output>] [--oob=<oob>] [--pagesize=<pagesize>] [--help]\n"
 "          [--usage] input.mif\n";
 
+static int verbose = 0;
+
 struct option long_options[] = {
 	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
 	{ .name = "oob", .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "pagesize", .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "blocksize", .has_arg = 1, .flag = NULL, .val = 'b' },
+	{ .name = "split-blocks", .has_arg = 0, .flag = NULL, .val = 's' },
+	{ .name = "verbose", .has_arg = 0, .flag = NULL, .val = 'v' },
 	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
 	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
 	{ NULL, 0, NULL, 0}
@@ -127,13 +143,25 @@ parse_opt(int argc, char **argv, struct args *args)
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "o:O:p:?", long_options, NULL);
+		key = getopt_long(argc, argv, "b:o:O:p:sv?", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
 			case 'p': /* --pagesize<pagesize> */
 				args->pagesize = str_to_num(optarg);
+				break;
+
+			case 'b': /* --blocksize<blocksize> */
+				args->blocksize = str_to_num(optarg);
+				break;
+
+			case 'v': /* --verbose */
+				verbose++;
+				break;
+
+			case 's': /* --split-blocks */
+				args->split_blocks = 1;
 				break;
 
 			case 'o': /* --output=<output.bin> */
@@ -216,15 +244,24 @@ process_page(uint8_t* buf, uint8_t *oobbuf, size_t pagesize)
 	return 0;
 }
 
-static int decompose_image(FILE *in_fp, FILE *bin_fp, FILE *oob_fp,
-			   size_t pagesize)
+static int bad_marker_offs_in_oob(int pagesize)
+{
+	switch (pagesize) {
+	case 2048: return 0;
+	case 512:  return 5;
+	}
+	return -EINVAL;
+}
+
+static int decompose_image(struct args *args, FILE *in_fp,
+			   FILE *bin_fp, FILE *oob_fp)
 {
 	int read, rc, page = 0;
-	size_t oobsize = calc_oobsize(pagesize);
-	uint8_t *buf = malloc(pagesize);
+	size_t oobsize = calc_oobsize(args->pagesize);
+	uint8_t *buf = malloc(args->pagesize);
 	uint8_t *oob = malloc(oobsize);
 	uint8_t *calc_oob = malloc(oobsize);
-	uint8_t *calc_buf = malloc(pagesize);
+	uint8_t *calc_buf = malloc(args->pagesize);
 
 	if (!buf)
 		exit(EXIT_FAILURE);
@@ -236,12 +273,15 @@ static int decompose_image(FILE *in_fp, FILE *bin_fp, FILE *oob_fp,
 		exit(EXIT_FAILURE);
 
 	while (!feof(in_fp)) {
-		read = fread(buf, 1, pagesize, in_fp);
+		read = fread(buf, 1, args->pagesize, in_fp);
 		if (ferror(in_fp)) {
 			fprintf(stderr, "I/O Error.");
 			exit(EXIT_FAILURE);
 		}
-		rc = fwrite(buf, 1, pagesize, bin_fp);
+		if (read != (ssize_t)args->pagesize)
+			break;
+
+		rc = fwrite(buf, 1, args->pagesize, bin_fp);
 		if (ferror(bin_fp)) {
 			fprintf(stderr, "I/O Error.");
 			exit(EXIT_FAILURE);
@@ -256,13 +296,13 @@ static int decompose_image(FILE *in_fp, FILE *bin_fp, FILE *oob_fp,
 			fprintf(stderr, "I/O Error.");
 			exit(EXIT_FAILURE);
 		}
-		process_page(buf, calc_oob, pagesize);
 
-		memcpy(calc_buf, buf, pagesize);
+		process_page(buf, calc_oob, args->pagesize);
+		memcpy(calc_buf, buf, args->pagesize);
 
 		rc = nand_correct_data(calc_buf, oob);
-		if ((rc != -1) || (memcmp(buf, calc_buf, pagesize) != 0)) {
-			fprintf(stdout, "Page %d: data does not match!\n",
+		if ((rc != -1) || (memcmp(buf, calc_buf, args->pagesize) != 0)) {
+			fprintf(stdout, "possible ECC error at page %d\n",
 				page);
 		}
 		page++;
@@ -274,10 +314,74 @@ static int decompose_image(FILE *in_fp, FILE *bin_fp, FILE *oob_fp,
 	return 0;
 }
 
+static int split_blocks(struct args *args, FILE *in_fp)
+{
+	uint8_t *buf;
+	size_t oobsize = calc_oobsize(args->pagesize);
+	int pages_per_block = args->blocksize / args->pagesize;
+	int block_len = pages_per_block * (args->pagesize + oobsize);
+	int blocks = args->in_len / block_len;
+	char bname[256] = { 0, };
+	int badpos = bad_marker_offs_in_oob(args->pagesize);
+	int bad_blocks = 0, i, bad_block = 0;
+	ssize_t rc;
+	FILE *b;
+
+	buf = malloc(block_len);
+	if (!buf) {
+		perror("Not enough memory");
+		exit(EXIT_FAILURE);
+	}
+
+	for (i = 0; i < blocks; i++) {
+		rc = fread(buf, 1, block_len, in_fp);
+		if (rc != block_len) {
+			fprintf(stderr, "cannot read enough data!\n");
+			exit(EXIT_FAILURE);
+		}
+
+		/* do block analysis */
+		bad_block = 0;
+		if ((buf[args->pagesize + badpos] != 0xff) ||
+		    (buf[2 * args->pagesize + oobsize + badpos] != 0xff)) {
+			bad_blocks++;
+			bad_block = 1;
+		}
+		if ((verbose && bad_block) || (verbose > 1)) {
+			printf("-- (block %d oob of page 0 and 1)\n", i);
+			hexdump(stdout, buf + args->pagesize, oobsize);
+			printf("--\n");
+			hexdump(stdout, buf + 2 * args->pagesize +
+				oobsize, oobsize);
+		}
+
+		/* write complete block out */
+		snprintf(bname, sizeof(bname) - 1, "%s.%d", args->arg1, i);
+		b = fopen(bname, "w+");
+		if (!b) {
+			perror("Cannot open file");
+			exit(EXIT_FAILURE);
+		}
+		rc = fwrite(buf, 1, block_len, b);
+		if (rc != block_len) {
+			fprintf(stderr, "could not write all data!\n");
+			exit(EXIT_FAILURE);
+		}
+		fclose(b);
+	}
+
+	free(buf);
+	if (bad_blocks || verbose)
+		fprintf(stderr, "%d blocks, %d bad blocks\n",
+			blocks, bad_blocks);
+	return 0;
+}
+
 int
 main(int argc, char *argv[])
 {
-	FILE *in, *bin, *oob;
+	FILE *in, *bin = NULL, *oob = NULL;
+	struct stat file_info;
 
 	parse_opt(argc, argv, &myargs);
 
@@ -286,11 +390,23 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (lstat(myargs.arg1, &file_info) != 0) {
+		perror("Cannot fetch file size from input file.\n");
+		exit(EXIT_FAILURE);
+	}
+	myargs.in_len = file_info.st_size;
+
 	in = fopen(myargs.arg1, "r");
 	if (!in) {
 		perror("Cannot open file");
 		exit(EXIT_FAILURE);
 	}
+
+	if (myargs.split_blocks) {
+		split_blocks(&myargs, in);
+		goto out;
+	}
+
 	bin = fopen(myargs.output_file, "w+");
 	if (!bin) {
 		perror("Cannot open file");
@@ -301,12 +417,11 @@ main(int argc, char *argv[])
 		perror("Cannot open file");
 		exit(EXIT_FAILURE);
 	}
+	decompose_image(&myargs, in, bin, oob);
 
-	decompose_image(in, bin, oob, myargs.pagesize);
-
-	fclose(in);
-	fclose(bin);
-	fclose(oob);
-
+ out:
+	if (in)	 fclose(in);
+	if (bin) fclose(bin);
+	if (oob) fclose(oob);
 	exit(EXIT_SUCCESS);
 }
