@@ -21,6 +21,7 @@
  *
  * 1.2 Removed argp because we want to use uClibc.
  * 1.3 Minor cleanup
+ * 1.4 Fixed OOB output file
  */
 
 #include <config.h>
@@ -40,7 +41,7 @@
 #include "config.h"
 #include "nandecc.h"
 
-#define PROGRAM_VERSION "1.3"
+#define PROGRAM_VERSION "1.4"
 
 #define MAXPATH		1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
@@ -140,7 +141,7 @@ parse_opt(int argc, char **argv, struct args *args)
 				break;
 
 			case 'O': /* --oob=<oob.bin> */
-				args->output_file = optarg;
+				args->oob_file = optarg;
 				break;
 
 			case '?': /* help */
