@@ -43,15 +43,15 @@ ubirmvol: ubirmvol.o error.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubiold.o libubiold_sysfs.o crc32.o
+		libubi.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
-		bootenv.o hashmap.o pfi.o libubiold.o libubiold_sysfs.o crc32.o
+		bootenv.o hashmap.o pfi.o libubi.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubiold.o libubiold_sysfs.o crc32.o
+		libubi.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 nand2bin: nand2bin.o nandecc.o nandcorr.o

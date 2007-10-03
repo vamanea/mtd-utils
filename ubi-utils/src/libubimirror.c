@@ -20,12 +20,16 @@
 #include <errno.h>
 #include <unistd.h>
 #include <memory.h>
+#include <limits.h>
 #include <fcntl.h>
 
-#include <libubiold.h>
+#include <libubi.h>
 #include "ubimirror.h"
 
 #define COMPARE_BUF_SIZE    (128 * 1024)
+
+#define DEFAULT_DEV_PATTERN    "/dev/ubi%d"
+#define DEFAULT_VOL_PATTERN    "/dev/ubi%d_%d"
 
 #define EBUF(fmt...) do {			\
 	snprintf(err_buf, err_buf_size, fmt);	\
@@ -125,14 +129,26 @@ static int compare_files(int fd_a, int fd_b)
 	return rc;
 }
 
-static int copy_files(int fd_in, int fd_out)
+int vol_get_used_bytes(int vol_fd, unsigned long long *bytes)
+{
+	off_t res;
+
+	res = lseek(vol_fd, 0, SEEK_END);
+	if (res == (off_t)-1)
+		return -1;
+	*bytes = (unsigned long long) res;
+	res = lseek(vol_fd, 0, SEEK_SET);
+	return res == (off_t)-1 ? -1 : 0;
+}
+
+static int copy_files(libubi_t ulib, int fd_in, int fd_out)
 {
 	unsigned char buf_a[COMPARE_BUF_SIZE];
 	ssize_t len_a, len_b;
 	unsigned long long update_size, copied;
 
-	if (ubi_vol_get_used_bytes(fd_in, &update_size) == -1 ||
-	    ubi_vol_update(fd_out, update_size) == -1)
+	if (vol_get_used_bytes(fd_in, &update_size) == -1 ||
+	    ubi_update_start(ulib, fd_out, update_size) == -1)
 		return update_error;
 	for (copied = 0; copied < update_size; copied += len_b ) {
 		len_a = fill_buffer(fd_in, buf_a, sizeof(buf_a));
@@ -152,7 +168,8 @@ int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 {
 	int rc = 0;
 	uint32_t src_id;
-	ubi_lib_t ulib = NULL;
+	char path[PATH_MAX];
+	libubi_t ulib;
 	int fd_in = -1, i = 0, fd_out = -1;
 
 	if (ids_size == 0)
@@ -165,11 +182,13 @@ int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 		src_id = ids[seqnum];
 	}
 
-	rc = ubi_open(&ulib);
-	if (rc != 0)
+	ulib = libubi_open();
+	if (ulib == NULL)
 		return ubi_error;
 
-	fd_in = ubi_vol_open(ulib, devno, src_id, O_RDONLY);
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, src_id);
+
+	fd_in = open(path, O_RDONLY);
 	if (fd_in == -1) {
 		EBUF("open error source volume %d", ids[i]);
 		rc = open_error;
@@ -180,8 +199,10 @@ int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 		if (ids[i] == src_id)		/* skip self-mirror */
 			continue;
 
-		fd_out = ubi_vol_open(ulib, devno, ids[i], O_RDWR);
-		if (fd_out == -1){
+		snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, ids[i]);
+
+		fd_out = open(path, O_RDWR);
+		if (fd_out < 0){
 			EBUF("open error destination volume %d", ids[i]);
 			rc = open_error;
 			goto err;
@@ -191,14 +212,14 @@ int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 			EBUF("compare error volume %d and %d", src_id, ids[i]);
 			goto err;
 		} else if (rc == compare_different) {
-			rc = copy_files(fd_in, fd_out);
+			rc = copy_files(ulib, fd_in, fd_out);
 			if (rc != 0) {
 				EBUF("mirror error volume %d to %d", src_id,
 						ids[i]);
 				goto err;
 			}
 		}
-		if ((rc = ubi_vol_close(fd_out)) == -1) {
+		if ((rc = close(fd_out)) == -1) {
 			EBUF("close error volume %d", ids[i]);
 			rc = close_error;
 			goto err;
@@ -207,10 +228,10 @@ int ubimirror(uint32_t devno, int seqnum, uint32_t *ids, ssize_t ids_size,
 	}
 err:
 	if (fd_out != -1)
-		ubi_vol_close(fd_out);
+		close(fd_out);
 	if (fd_in != -1)
-		ubi_vol_close(fd_in);
+		close(fd_in);
 	if (ulib != NULL)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 	return rc;
 }

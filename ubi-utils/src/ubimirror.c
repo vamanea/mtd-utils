@@ -19,6 +19,7 @@
  *
  * 1.2 Removed argp because we want to use uClibc.
  * 1.3 Minor cleanups
+ * 1.4 Migrated to new libubi
  */
 
 #include <stdio.h>
@@ -35,7 +36,7 @@
 #include "example_ubi.h"
 #include "ubimirror.h"
 
-#define PROGRAM_VERSION "1.3"
+#define PROGRAM_VERSION "1.4"
 
 typedef enum action_t {
 	ACT_NORMAL = 0,

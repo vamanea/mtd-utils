@@ -26,6 +26,7 @@
  *
  * 1.3 Removed argp because we want to use uClibc.
  * 1.4 Minor cleanups
+ * 1.5 Migrated to new libubi
  */
 
 #include <stdio.h>
@@ -34,6 +35,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <limits.h>
 #include <errno.h>
 #include <mtd/ubi-header.h>
 
@@ -41,10 +43,13 @@
 #include "bootenv.h"
 #include "error.h"
 #include "example_ubi.h"
-#include "libubiold.h"
+#include "libubi.h"
 #include "ubimirror.h"
 
-#define PROGRAM_VERSION "1.4"
+#define PROGRAM_VERSION "1.5"
+
+#define DEFAULT_DEV_PATTERN    "/dev/ubi%d"
+#define DEFAULT_VOL_PATTERN    "/dev/ubi%d_%d"
 
 typedef enum action_t {
 	ACT_NORMAL   = 0,
@@ -299,17 +304,20 @@ err:
 static int
 ubi_read_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 {
-	ubi_lib_t ulib = NULL;
+	libubi_t ulib;
 	int rc = 0;
+	char path[PATH_MAX];
 	FILE* fp_in = NULL;
 
-	rc = ubi_open(&ulib);
-	if( rc ){
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		err_msg("Cannot allocate ubi structure\n");
-		return rc;
+		return -1;
 	}
 
-	fp_in = ubi_vol_fopen_read(ulib, devno, id);
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, id);
+
+	fp_in = fopen(path, "r");
 	if (fp_in == NULL) {
 		err_msg("Cannot open volume:%d number:%d\n", devno, id);
 		goto err;
@@ -322,9 +330,9 @@ ubi_read_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 	}
 
 err:
-	if( fp_in )
+	if (fp_in)
 		fclose(fp_in);
-	ubi_close(&ulib);
+	libubi_close(ulib);
 	return rc;
 }
 
@@ -357,25 +365,28 @@ err:
 static int
 ubi_write_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 {
-	ubi_lib_t ulib = NULL;
+	libubi_t ulib;
 	int rc = 0;
-	FILE* fp_out;
+	char path[PATH_MAX];
+	FILE* fp_out = NULL;
 	size_t nbytes ;
 
 	rc = bootenv_size(env, &nbytes);
-	if( rc ){
+	if (rc) {
 		err_msg("Cannot determine size of bootenv structure\n");
 		return rc;
 	}
-	rc = ubi_open(&ulib);
-	if( rc ){
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		err_msg("Cannot allocate ubi structure\n");
 		return rc;
 	}
-	fp_out = ubi_vol_fopen_update(ulib, devno, id,
-			(unsigned long long)nbytes);
+
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, id);
+
+	fp_out = fopen(path, "r+");
 	if (fp_out == NULL) {
-		err_msg("Cannot open volume:%d number:%d\n", devno, id);
+		err_msg("Cannot fopen volume:%d number:%d\n", devno, id);
 		goto err;
 	}
 
@@ -389,7 +400,7 @@ ubi_write_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 err:
 	if( fp_out )
 		fclose(fp_out);
-	ubi_close(&ulib);
+	libubi_close(ulib);
 	return rc;
 }
 

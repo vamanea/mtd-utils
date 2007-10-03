@@ -27,6 +27,7 @@
  * 1.3 removed argp parsing to be able to use uClib.
  * 1.4 Minor cleanups.
  * 1.5 Forgot to delete raw block before updating it.
+ * 1.6 Migrated to new libubi.
  */
 
 #include <unistd.h>
@@ -43,7 +44,7 @@
 #include "error.h"
 #include "config.h"
 
-#define PROGRAM_VERSION  "1.5"
+#define PROGRAM_VERSION  "1.6"
 
 static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"pfiflash - a tool for updating a controller with PFI files.\n";

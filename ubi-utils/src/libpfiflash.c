@@ -31,12 +31,14 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
 #define __USE_GNU
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <sys/ioctl.h>
 
-#include <libubiold.h>
+#include <libubi.h>
 #include <pfiflash.h>
 
 #include <mtd/ubi-user.h>	/* FIXME Is this ok here? */
@@ -56,6 +58,9 @@
 #define ubi_unused __attribute__((unused))
 
 #define COMPARE_BUFFER_SIZE 2048
+
+#define DEFAULT_DEV_PATTERN    "/dev/ubi%d"
+#define DEFAULT_VOL_PATTERN    "/dev/ubi%d_%d"
 
 static const char copyright [] ubi_unused =
 	"Copyright International Business Machines Corp., 2006, 2007";
@@ -153,7 +158,9 @@ my_ubi_mkvol(int devno, int s, pfi_ubi_t u,
 	     char *err_buf, size_t err_buf_size)
 {
 	int rc, type;
-	ubi_lib_t ulib;
+	char path[PATH_MAX];
+	libubi_t ulib;
+	struct ubi_mkvol_request req;
 
 	rc = 0;
 	ulib = NULL;
@@ -163,8 +170,8 @@ my_ubi_mkvol(int devno, int s, pfi_ubi_t u,
 		u->ids[s], u->size, u->data_size, u->type, u->alignment,
 		strnlen(u->names[s], PFI_UBI_VOL_NAME_LEN), u->names[s]);
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc]);
 		goto err;
@@ -178,8 +185,15 @@ my_ubi_mkvol(int devno, int s, pfi_ubi_t u,
 		type = UBI_DYNAMIC_VOLUME;
 	}
 
-	rc = ubi_mkvol(ulib, devno, u->ids[s], type, u->size, u->alignment,
-		       u->names[s]);
+	snprintf(path, PATH_MAX, DEFAULT_DEV_PATTERN, devno);
+
+	req.vol_id = u->ids[s];
+	req.alignment = u->alignment;
+	req.bytes = u->size;
+	req.vol_type = type;
+	req.name = u->names[s];
+
+	rc = ubi_mkvol(ulib, path, &req);
 	if (rc != 0) {
 		rc = -PFIFLASH_ERR_UBI_MKVOL;
 		EBUF(PFIFLASH_ERRSTR[-rc], u->ids[s]);
@@ -188,7 +202,7 @@ my_ubi_mkvol(int devno, int s, pfi_ubi_t u,
 
  err:
 	if (ulib != NULL)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 
 	return rc;
 }
@@ -214,34 +228,41 @@ my_ubi_rmvol(int devno, uint32_t id,
 	     char *err_buf, size_t err_buf_size)
 {
 	int rc, fd;
-	ubi_lib_t ulib;
+	char path[PATH_MAX];
+	libubi_t ulib;
 
 	rc = 0;
 	ulib = NULL;
 
 	log_msg("[ ubirmvol id=%d", id);
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
-	/* truncate whether it exist or not */
-	fd = ubi_vol_open(ulib, devno, id, O_RDWR);
-	if (fd == -1)
-		return 0;	/* not existent, return 0 */
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, id);
 
-	rc = ubi_vol_update(fd, 0);
-	ubi_vol_close(fd);
+	/* truncate whether it exist or not */
+	fd = open(path, O_RDWR);
+	if (fd < 0) {
+		libubi_close(ulib);
+		return 0;	/* not existent, return 0 */
+	}
+
+	rc = ubi_update_start(ulib, fd, 0);
+	close(fd);
 	if (rc < 0) {
 		rc = -PFIFLASH_ERR_UBI_VOL_UPDATE;
 		EBUF(PFIFLASH_ERRSTR[-rc], id);
 		goto err;	/* if EBUSY than empty device, continue */
 	}
 
-	rc = ubi_rmvol(ulib, devno, id);
+	snprintf(path, PATH_MAX, DEFAULT_DEV_PATTERN, devno);
+
+	rc = ubi_rmvol(ulib, path, id);
 	if (rc != 0) {
 #ifdef DEBUG
 		int rc_old = rc;
@@ -266,7 +287,7 @@ my_ubi_rmvol(int devno, uint32_t id,
 
  err:
 	if (ulib != NULL)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 
 	return rc;
 }
@@ -292,20 +313,23 @@ read_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 {
 	int rc;
 	FILE* fp_in;
-	ubi_lib_t ulib;
+	char path[PATH_MAX];
+	libubi_t ulib;
 
 	rc = 0;
 	fp_in = NULL;
 	ulib = NULL;
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
-	fp_in = ubi_vol_fopen_read(ulib, devno, id);
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, id);
+
+	fp_in = fopen(path, "r");
 	if (!fp_in) {
 		rc = -PFIFLASH_ERR_UBI_VOL_FOPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc], id);
@@ -326,7 +350,7 @@ read_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	if (fp_in)
 		fclose(fp_in);
 	if (ulib)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 
 	return rc;
 }
@@ -366,12 +390,13 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 		     uint32_t pfi_crc,
 		     char *err_buf, size_t err_buf_size)
 {
-	int rc, warnings;
+	int rc, warnings, fd_out;
 	uint32_t crc;
+	char path[PATH_MAX];
 	size_t update_size;
 	FILE *fp_out;
 	bootenv_t bootenv_new, bootenv_res;
-	ubi_lib_t ulib;
+	libubi_t ulib;
 
 	rc = 0;
 	warnings = 0;
@@ -393,8 +418,8 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	 * 4. Write to FILE*
 	 */
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc]);
 		goto err;
@@ -443,9 +468,23 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 		goto err;
 	}
 
-	fp_out = ubi_vol_fopen_update(ulib, devno, id, update_size);
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, id);
+
+	fd_out = open(path, O_RDWR);
+	if (fd_out < 0) {
+		rc = -PFIFLASH_ERR_UBI_VOL_FOPEN;
+		EBUF(PFIFLASH_ERRSTR[-rc], id);
+		goto err;
+	}
+	fp_out = fdopen(fd_out, "r+");
 	if (!fp_out) {
 		rc = -PFIFLASH_ERR_UBI_VOL_FOPEN;
+		EBUF(PFIFLASH_ERRSTR[-rc], id);
+		goto err;
+	}
+	rc = ubi_update_start(ulib, fd_out, update_size);
+	if (rc < 0) {
+		rc = -PFIFLASH_ERR_UBI_VOL_UPDATE;
 		EBUF(PFIFLASH_ERRSTR[-rc], id);
 		goto err;
 	}
@@ -459,7 +498,7 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 
  err:
 	if (ulib != NULL)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 	if (bootenv_new != NULL)
 		bootenv_destroy(&bootenv_new);
 	if (bootenv_res != NULL)
@@ -496,11 +535,12 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 		    uint32_t pfi_crc,
 		    char *err_buf, size_t err_buf_size)
 {
-	int rc;
+	int rc, fd_out;
 	uint32_t crc, crc32_table[256];
+	char path[PATH_MAX];
 	size_t bytes_left;
 	FILE* fp_out;
-	ubi_lib_t ulib;
+	libubi_t ulib;
 
 	rc = 0;
 	crc = UBI_CRC32_INIT;
@@ -511,16 +551,30 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 	log_msg("[ ubiupdatevol id=%d, update_size=%d fp_in=%p",
 		id, update_size, fp_in);
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
-	fp_out = ubi_vol_fopen_update(ulib, devno, id, update_size);
+	snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, id);
+
+	fd_out = open(path, O_RDWR);
+	if (fd_out < 0) {
+		rc = -PFIFLASH_ERR_UBI_VOL_FOPEN;
+		EBUF(PFIFLASH_ERRSTR[-rc], id);
+		goto err;
+	}
+	fp_out = fdopen(fd_out, "r+");
 	if (!fp_out) {
 		rc = -PFIFLASH_ERR_UBI_VOL_FOPEN;
+		EBUF(PFIFLASH_ERRSTR[-rc], id);
+		goto err;
+	}
+	rc = ubi_update_start(ulib, fd_out, update_size);
+	if (rc < 0) {
+		rc = -PFIFLASH_ERR_UBI_VOL_UPDATE;
 		EBUF(PFIFLASH_ERRSTR[-rc], id);
 		goto err;
 	}
@@ -554,7 +608,7 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 	if (fp_out)
 		fclose(fp_out);
 	if (ulib)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 
 	return rc;
 }
@@ -684,11 +738,12 @@ static int compare_volumes(int devno, pfi_ubi_t u, FILE *fp_pfi,
 {
 	int rc, is_bootenv = 0;
 	unsigned int i;
-	ubi_lib_t ulib = NULL;
+	char path[PATH_MAX];
+	libubi_t ulib = NULL;
 	FILE *fp_flash[u->ids_size];
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		goto err;
 	}
@@ -698,7 +753,9 @@ static int compare_volumes(int devno, pfi_ubi_t u, FILE *fp_pfi,
 		    u->ids[i] == EXAMPLE_BOOTENV_VOL_ID_2)
 			is_bootenv = 1;
 
-		fp_flash[i] = ubi_vol_fopen_read(ulib, devno, u->ids[i]);
+		snprintf(path, PATH_MAX, DEFAULT_VOL_PATTERN, devno, u->ids[i]);
+
+		fp_flash[i] = fopen(path, "r");
 		if (fp_flash[i] == NULL) {
 			rc = -PFIFLASH_ERR_UBI_OPEN;
 			goto err;
@@ -718,7 +775,7 @@ err:
 	for (i = 0; i < u->ids_size; i++)
 		fclose(fp_flash[i]);
 	if (ulib)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 
 	return rc;
 }
@@ -1070,15 +1127,15 @@ mirror_ubi_volumes(uint32_t devno, list_t pfi_ubis,
 	uint32_t j;
 	list_t ptr;
 	pfi_ubi_t i;
-	ubi_lib_t ulib;
+	libubi_t ulib;
 
 	rc = 0;
 	ulib = NULL;
 
 	log_msg("[ mirror ...");
 
-	rc = ubi_open(&ulib);
-	if (rc != 0) {
+	ulib = libubi_open();
+	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
 		EBUF(PFIFLASH_ERRSTR[-rc]);
 		goto err;
@@ -1118,7 +1175,7 @@ mirror_ubi_volumes(uint32_t devno, list_t pfi_ubis,
 
  err:
 	if (ulib != NULL)
-		ubi_close(&ulib);
+		libubi_close(ulib);
 
 	return rc;
 }
