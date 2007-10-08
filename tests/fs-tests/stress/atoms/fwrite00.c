@@ -56,6 +56,14 @@ void filestress00(void)
 		if (fd == -1) {
 			fd = open(file_name, O_CREAT | O_WRONLY,
 			  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+			if (fd == -1 && errno == ENOSPC) {
+				/* Break if repeat count exceeded */
+				if (tests_repeat_parameter > 0 && --repeat <= 0)
+					break;
+				/* Sleep 2 secs and try again */
+				sleep(2);
+				continue;
+			}
 			CHECK(fd != -1);
 			deleted = 0;
 			if (tests_unlink_flag) {
