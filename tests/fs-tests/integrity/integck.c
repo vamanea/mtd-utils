@@ -1211,7 +1211,7 @@ static void operate_on_open_file(struct fd_info *fdi)
 	size_t r;
 
 	r = tests_random_no(1000);
-	if (shrink && r == 0)
+	if (shrink && r < 5)
 		file_truncate(fdi->file, fdi->fd);
 	else if (r < 21)
 		file_close(fdi);
@@ -1227,6 +1227,17 @@ static void operate_on_an_open_file(void)
 	size_t r;
 	struct open_file_info *ofi;
 
+	/* When shrinking, close all open files 1 time in 128 */
+	if (shrink) {
+		static int x = 0;
+
+		x += 1;
+		x &= 127;
+		if (x == 0) {
+			close_open_files();
+			return;
+		}
+	}
 	/* Close any open files that have errored */
 	ofi = open_files;
 	while (ofi) {
