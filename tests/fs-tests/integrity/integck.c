@@ -42,6 +42,7 @@ struct write_info /* Record of random data written into a file */
 	size_t size; /* Number of bytes written */
 	unsigned random_seed; /* Seed for rand() to create random data */
 	off_t random_offset; /* Call rand() this number of times first */
+	int trunc; /* Records a truncation (raw_writes only) */
 };
 
 struct file_info /* Each file has one of these */
@@ -440,16 +441,21 @@ static void file_info_display(struct file_info *file)
 	wcnt = 0;
 	w = file->raw_writes;
 	while (w) {
-		fprintf(stderr, "        Offset: %u  Size: %u  Seed: %u"
-				"  R.Off: %u\n",
-				(unsigned) w->offset,
-				(unsigned) w->size,
-				(unsigned) w->random_seed,
-				(unsigned) w->random_offset);
+		if (w->trunc)
+			fprintf(stderr, "        Trunc from %u to %u\n",
+					(unsigned) w->offset,
+					(unsigned) w->random_offset);
+		else
+			fprintf(stderr, "        Offset: %u  Size: %u  Seed: %u"
+					"  R.Off: %u\n",
+					(unsigned) w->offset,
+					(unsigned) w->size,
+					(unsigned) w->random_seed,
+					(unsigned) w->random_offset);
 		wcnt += 1;
 		w = w->next;
 	}
-	fprintf(stderr, "    %u writes\n", wcnt);
+	fprintf(stderr, "    %u writes or truncations\n", wcnt);
 	fprintf(stderr, "    ============================================\n");
 }
 
@@ -720,6 +726,7 @@ static void file_write_file(struct file_info *file)
 static void file_truncate_info(struct file_info *file, size_t new_length)
 {
 	struct write_info *w, **prev, *tmp;
+	size_t sz;
 
 	/* Remove / truncate file->writes */
 	w = file->writes;
@@ -738,6 +745,16 @@ static void file_truncate_info(struct file_info *file, size_t new_length)
 		prev = &w->next;
 		w = w->next;
 	}
+	/* Add an entry in raw_writes for the truncation */
+	sz = sizeof(struct write_info);
+	w = (struct write_info *) malloc(sz);
+	CHECK(w != NULL);
+	memset(w, 0, sz);
+	w->next = file->raw_writes;
+	w->offset = file->length;
+	w->random_offset = new_length; /* Abuse random_offset */
+	w->trunc = 1;
+	file->raw_writes = w;
 	/* Update file length */
 	file->length = new_length;
 }
