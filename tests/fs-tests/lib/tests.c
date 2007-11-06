@@ -1002,6 +1002,48 @@ void tests_remount(void)
 	CHECK(chdir(cwd) != -1);
 }
 
+/* Un-mount or re-mount test file system */
+static void tests_mnt(int mnt)
+{
+	static struct mntent mount_info;
+	char *source;
+	char *target;
+	char *filesystemtype;
+	unsigned long mountflags;
+	void *data;
+	static char cwd[4096];
+
+	if (mnt == 0) {
+		CHECK(tests_get_mount_info(&mount_info));
+		if (strcmp(mount_info.mnt_dir,"/") == 0)
+			return;
+		CHECK(getcwd(cwd, 4096) != NULL);
+		CHECK(chdir("/") != -1);
+		CHECK(umount(tests_file_system_mount_dir) != -1);
+	} else {
+		source = mount_info.mnt_fsname;
+		target = tests_file_system_mount_dir;
+		filesystemtype = tests_file_system_type;
+		mountflags = 0;
+		data = NULL;
+		CHECK(mount(source, target, filesystemtype, mountflags, data)
+			!= -1);
+		CHECK(chdir(cwd) != -1);
+	}
+}
+
+/* Unmount test file system */
+void tests_unmount(void)
+{
+	tests_mnt(0);
+}
+
+/* Mount test file system */
+void tests_mount(void)
+{
+	tests_mnt(1);
+}
+
 /* Check whether the test file system is also the root file system */
 int tests_fs_is_rootfs(void)
 {

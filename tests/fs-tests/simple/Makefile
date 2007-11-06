@@ -10,7 +10,8 @@ LDFLAGS := $(LDFLAGS)
 TARGETS = test_1 \
 	test_2 \
 	ftrunc \
-	orph
+	orph \
+	perf
 
 all: $(TARGETS)
 
@@ -26,3 +27,4 @@ tests: all
 	./test_2 --sync
 	./ftrunc
 	./orph --sync
+	./perf

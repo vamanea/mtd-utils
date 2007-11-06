@@ -146,6 +146,12 @@ int64_t tests_remove_entry(void);
 /* Un-mount and re-mount test file system */
 void tests_remount(void);
 
+/* Un-mount test file system */
+void tests_unmount(void);
+
+/* Mount test file system */
+void tests_mount(void);
+
 /* Check whether the test file system is also the root file system */
 int tests_fs_is_rootfs(void);
 
