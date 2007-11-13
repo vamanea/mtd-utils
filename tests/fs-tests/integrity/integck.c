@@ -490,9 +490,10 @@ static size_t file_write_data(	struct file_info *file,
 	written = BUFFER_SIZE;
 	while (remains) {
 		/* Fill up buffer with random data */
-		if (written < BUFFER_SIZE)
+		if (written < BUFFER_SIZE) {
 			memmove(buf, buf + written, BUFFER_SIZE - written);
-		else
+			written = BUFFER_SIZE - written;
+		} else
 			written = 0;
 		for (; written < BUFFER_SIZE; ++written)
 			buf[written] = rand();
