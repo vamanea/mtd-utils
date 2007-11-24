@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "eb_chain.h"
+#include "crc32.h"
 
 #define COPY(dst, src)							\
 	do								\
@@ -66,9 +67,9 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 		return 0;
 	}
 
-	new_vol = ubi32_to_cpu(new->inner.vol_id);
-	new_num = ubi32_to_cpu(new->inner.lnum);
-	new_ver = ubi32_to_cpu(new->inner.leb_ver);
+	new_vol = ubi32_to_cpu(new->vid.vol_id);
+	new_num = ubi32_to_cpu(new->vid.lnum);
+	new_ver = ubi32_to_cpu(new->vid.leb_ver);
 
 	/** TRAVERSE HORIZONTALY **/
 
@@ -76,8 +77,8 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 	prev = NULL;
 
 	/* traverse until vol_id/lnum align */
-	vol = ubi32_to_cpu(cur->inner.vol_id);
-	num = ubi32_to_cpu(cur->inner.lnum);
+	vol = ubi32_to_cpu(cur->vid.vol_id);
+	num = ubi32_to_cpu(cur->vid.lnum);
 	while ((new_vol > vol) || ((new_vol == vol) && (new_num > num)))
 	{
 		/* insert new at end of chain */
@@ -91,8 +92,8 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 
 		prev = cur;
 		cur = cur->next;
-		vol = ubi32_to_cpu(cur->inner.vol_id);
-		num = ubi32_to_cpu(cur->inner.lnum);
+		vol = ubi32_to_cpu(cur->vid.vol_id);
+		num = ubi32_to_cpu(cur->vid.lnum);
 	}
 
 	if (prev == NULL)
@@ -115,7 +116,7 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 	prev = NULL;
 
 	/* traverse until versions align */
-	ver = ubi32_to_cpu(cur->inner.leb_ver);
+	ver = ubi32_to_cpu(cur->vid.leb_ver);
 	while (new_ver < ver)
 	{
 		/* insert new at bottom of history */
@@ -130,7 +131,7 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 
 		prev = hist;
 		hist = hist->older;
-		ver = ubi32_to_cpu(hist->inner.leb_ver);
+		ver = ubi32_to_cpu(hist->vid.leb_ver);
 	}
 
 	if (prev == NULL)
@@ -181,8 +182,8 @@ eb_chain_position(eb_info_t *head, uint32_t vol_id, uint32_t *lnum,
 	cur = *head;
 	while (cur != NULL)
 	{
-		vol = ubi32_to_cpu(cur->inner.vol_id);
-		num = ubi32_to_cpu(cur->inner.lnum);
+		vol = ubi32_to_cpu(cur->vid.vol_id);
+		num = ubi32_to_cpu(cur->vid.lnum);
 
 		if (vol_id == vol)
 			if ((lnum == NULL) || (*lnum == num))
@@ -227,17 +228,17 @@ eb_chain_print(FILE* stream, eb_info_t *head)
 		eb_info_t hist;
 
 		fprintf(stream, "  VOL %4u-%04u | VER 0x%8x\n",
-			ubi32_to_cpu(cur->inner.vol_id),
-			ubi32_to_cpu(cur->inner.lnum),
-			ubi32_to_cpu(cur->inner.leb_ver));
+			ubi32_to_cpu(cur->vid.vol_id),
+			ubi32_to_cpu(cur->vid.lnum),
+			ubi32_to_cpu(cur->vid.leb_ver));
 
 		hist = cur->older;
 		while (hist != NULL)
 		{
 			fprintf(stream, "+ VOL %4u-%04u | VER 0x%8x\n",
-				ubi32_to_cpu(hist->inner.vol_id),
-				ubi32_to_cpu(hist->inner.lnum),
-				ubi32_to_cpu(hist->inner.leb_ver));
+				ubi32_to_cpu(hist->vid.vol_id),
+				ubi32_to_cpu(hist->vid.lnum),
+				ubi32_to_cpu(hist->vid.leb_ver));
 
 			hist = hist->older;
 		}

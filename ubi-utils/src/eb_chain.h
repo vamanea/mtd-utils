@@ -52,8 +52,8 @@
 
 typedef struct eb_info *eb_info_t;
 struct eb_info {
-	struct ubi_ec_hdr outer;
-	struct ubi_vid_hdr inner;
+	struct ubi_ec_hdr ec;
+	struct ubi_vid_hdr vid;
 	fpos_t eb_top;
 	uint32_t linear;
 

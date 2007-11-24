@@ -113,6 +113,9 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	FILE* fpplot;
 	eb_info_t cur;
 
+	if (first == NULL)
+		return -1;
+
 	/* crc check still needed for `first' linked list */
 	init_crc32_table(crc32_table);
 
@@ -126,9 +129,12 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	memset(filename, 0, MAXPATH + 1);
 	snprintf(filename, MAXPATH, "%s/%s", path, FN_EH_PLOT);
 	fpplot = fopen(filename, "w");
-	if (fpplot == NULL)
+	if (fpplot == NULL) {
+		fclose(fpdata);
 		return -1;
+	}
 
+	/* make executable */
 	chmod(filename, 0755);
 
 	/* first run: count elements */
@@ -146,8 +152,8 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	/* second run: populate array to sort */
 	count = 0;
 	cur = first;
-	while(cur != NULL) {
-		erase_counts[count] = ubi64_to_cpu(cur->outer.ec);
+	while (cur != NULL) {
+		erase_counts[count] = ubi64_to_cpu(cur->ec.ec);
 		cur = cur->next;
 		count++;
 	}
@@ -160,24 +166,24 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	fprintf(fpdata, "# eraseblock_no actual_erase_count "
 			"sorted_erase_count\n");
 	while (cur != NULL) {
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &cur->outer,
+		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &cur->ec,
 				UBI_EC_HDR_SIZE_CRC);
 
-		if ((ubi32_to_cpu(cur->outer.magic) != UBI_EC_HDR_MAGIC) ||
-		    (crc != ubi32_to_cpu(cur->outer.hdr_crc)))
+		if ((ubi32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC) ||
+		    (crc != ubi32_to_cpu(cur->ec.hdr_crc)))
 			fprintf(fpdata, "# ");
 
-		fprintf(fpdata, "%zu %llu %llu", count,
-			(unsigned long long) ubi64_to_cpu(cur->outer.ec),
-			(unsigned long long) erase_counts[count]);
+		fprintf(fpdata, "%u %llu %llu", count,
+			ubi64_to_cpu(cur->ec.ec),
+			erase_counts[count]);
 
-		if (ubi32_to_cpu(cur->outer.magic) != UBI_EC_HDR_MAGIC)
+		if (ubi32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC)
 			fprintf(fpdata, " ## bad magic: %08x",
-				ubi32_to_cpu(cur->outer.magic));
+				ubi32_to_cpu(cur->ec.magic));
 
-		if (crc != ubi32_to_cpu(cur->outer.hdr_crc))
+		if (crc != ubi32_to_cpu(cur->ec.hdr_crc))
 			fprintf(fpdata, " ## CRC mismatch: given=%08x, "
-				"calc=%08x", ubi32_to_cpu(cur->outer.hdr_crc),
+				"calc=%08x", ubi32_to_cpu(cur->ec.hdr_crc),
 				crc);
 
 		fprintf(fpdata, "\n");
@@ -198,7 +204,7 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 		if ((count % EC_X_INT) == 0) {
 			if (count > 0)
 				fprintf(fpplot, ", ");
-			fprintf(fpplot, "%zd", count);
+			fprintf(fpplot, "%d", count);
 		}
 
 		cur = cur->next;
@@ -207,9 +213,9 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	fprintf(fpplot, ")\n");
 
 	fprintf(fpplot, "set ylabel \"erase count\"\n");
-	fprintf(fpplot, "set xrange [-1:%zu]\n", eraseblocks + 1);
+	fprintf(fpplot, "set xrange [-1:%u]\n", eraseblocks + 1);
 	fprintf(fpplot, "# set yrange [-1:%llu]\n",
-		(unsigned long long) erase_counts[eraseblocks - 1] + 1);
+		erase_counts[eraseblocks - 1] + 1);
 	fprintf(fpplot, "plot \"%s\" u 1:2 t \"unsorted: %s\" with boxes\n",
 		FN_EH_DATA, FN_EH_DATA);
 	fprintf(fpplot, "# replot \"%s\" u 1:3 t \"sorted: %s\" with lines\n",
@@ -236,26 +242,40 @@ int
 unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 {
 	char filename[MAXPATH + 1];
-	int y1, y2;
+	int rc, y1, y2;
 	size_t count, step, breadth;
 	uint32_t *leb_versions, *data_sizes;
 	FILE* fpdata;
 	FILE* fpplot;
 	eb_info_t cur;
 
+	if (head == NULL || *head == NULL)
+		return -1;
+
+	rc = 0;
+	fpdata = NULL;
+	fpplot = NULL;
+	data_sizes = NULL;
+	leb_versions = NULL;
+
 	/* prepare output files */
 	memset(filename, 0, MAXPATH + 1);
 	snprintf(filename, MAXPATH, "%s/%s", path, FN_VH_DATA);
 	fpdata = fopen(filename, "w");
-	if (fpdata == NULL)
-		return -1;
+	if (fpdata == NULL) {
+		rc = -1;
+		goto exit;
+	}
 
 	memset(filename, 0, MAXPATH + 1);
 	snprintf(filename, MAXPATH, "%s/%s", path, FN_VH_PLOT);
 	fpplot = fopen(filename, "w");
-	if (fpplot == NULL)
-		return -1;
+	if (fpplot == NULL) {
+		rc = -1;
+		goto exit;
+	}
 
+	/* make executable */
 	chmod(filename, 0755);
 
 	/* first run: count elements */
@@ -267,18 +287,26 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 	}
 	breadth = count;
 
-	leb_versions = malloc(breadth * sizeof(*leb_versions));
-	memset(leb_versions, 0, breadth * sizeof(*leb_versions));
+	leb_versions = malloc(breadth * sizeof(uint32_t));
+	if (leb_versions == NULL) {
+		rc = -1;
+		goto exit;
+	}
+	memset(leb_versions, 0, breadth * sizeof(uint32_t));
 
-	data_sizes = malloc(breadth * sizeof(*data_sizes));
+	data_sizes = malloc(breadth * sizeof(uint32_t));
+	if (data_sizes == NULL) {
+		rc = -1;
+		goto exit;
+	}
 	memset(data_sizes, 0, breadth * sizeof(*data_sizes));
 
 	/* second run: populate arrays to sort */
 	count = 0;
 	cur = *head;
 	while (cur != NULL) {
-		leb_versions[count] = ubi32_to_cpu(cur->inner.leb_ver);
-		data_sizes[count] = ubi32_to_cpu(cur->inner.data_size);
+		leb_versions[count] = ubi32_to_cpu(cur->vid.leb_ver);
+		data_sizes[count] = ubi32_to_cpu(cur->vid.data_size);
 		cur = cur->next;
 		count++;
 	}
@@ -291,26 +319,27 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 	fprintf(fpdata, "# x_axis vol_id lnum   y1_axis leb_ver   "
 		"y2_axis data_size\n");
 	while (cur != NULL) {
-		y1 = norm_index(ubi32_to_cpu(cur->inner.leb_ver), leb_versions,
+		y1 = norm_index(ubi32_to_cpu(cur->vid.leb_ver), leb_versions,
 				breadth);
-		y2 = norm_index(ubi32_to_cpu(cur->inner.data_size), data_sizes,
+		y2 = norm_index(ubi32_to_cpu(cur->vid.data_size), data_sizes,
 				breadth);
 
-		if ((y1 == -1) || (y2 == -1))
-			return -1;
+		if ((y1 == -1) || (y2 == -1)) {
+			rc = -1;
+			goto exit;
+		}
 
-		fprintf(fpdata, "%zu %u %u   %u %u   %u %u\n",
+		fprintf(fpdata, "%u %u %u   %u %u   %u %u\n",
 			count,
-			ubi32_to_cpu(cur->inner.vol_id),
-			ubi32_to_cpu(cur->inner.lnum),
+			ubi32_to_cpu(cur->vid.vol_id),
+			ubi32_to_cpu(cur->vid.lnum),
 			y1,
-			ubi32_to_cpu(cur->inner.leb_ver),
+			ubi32_to_cpu(cur->vid.leb_ver),
 			y2,
-			ubi32_to_cpu(cur->inner.data_size));
+			ubi32_to_cpu(cur->vid.data_size));
 		cur = cur->next;
 		count++;
 	}
-	fclose(fpdata);
 
 	fprintf(fpplot, "#!/usr/bin/gnuplot -persist\n");
 	fprintf(fpplot, "set xlabel \"volume\"\n");
@@ -323,13 +352,13 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 	while (cur != NULL) {
 		if (count > 0)
 			fprintf(fpplot, ", ");
-		if (step != ubi32_to_cpu(cur->inner.vol_id)) {
-			step = ubi32_to_cpu(cur->inner.vol_id);
-			fprintf(fpplot, "\"%zd\" %zd 0", step, count);
+		if (step != ubi32_to_cpu(cur->vid.vol_id)) {
+			step = ubi32_to_cpu(cur->vid.vol_id);
+			fprintf(fpplot, "\"%d\" %d 0", step, count);
 		}
 		else
-			fprintf(fpplot, "\"%d\" %zd 1",
-				ubi32_to_cpu(cur->inner.lnum), count);
+			fprintf(fpplot, "\"%d\" %d 1",
+				ubi32_to_cpu(cur->vid.lnum), count);
 		cur = cur->next;
 		count++;
 	}
@@ -341,17 +370,19 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 	cur = *head;
 	fprintf(fpplot, "set ylabel \"leb version\"\n");
 	fprintf(fpplot, "set ytics (");
-	while (cur != NULL) {
-		y1 = norm_index(ubi32_to_cpu(cur->inner.leb_ver), leb_versions,
+	while (cur->next != NULL) {
+		y1 = norm_index(ubi32_to_cpu(cur->vid.leb_ver), leb_versions,
 				breadth);
 
-		if (y1 == -1)
-			return -1;
+		if (y1 == -1) {
+			rc = -1;
+			goto exit;
+		}
 
 		if (count > 0)
 			fprintf(fpplot, ", ");
 
-		fprintf(fpplot, "\"%u\" %u", ubi32_to_cpu(cur->inner.leb_ver),
+		fprintf(fpplot, "\"%u\" %u", ubi32_to_cpu(cur->vid.leb_ver),
 			y1);
 
 		cur = cur->next;
@@ -365,16 +396,18 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 	fprintf(fpplot, "set y2label \"data size\"\n");
 	fprintf(fpplot, "set y2tics (");
 	while (cur != NULL) {
-		y2 = norm_index(ubi32_to_cpu(cur->inner.data_size),
+		y2 = norm_index(ubi32_to_cpu(cur->vid.data_size),
 				data_sizes, breadth);
 
-		if (y2 == -1)
-			return -1;
+		if (y2 == -1) {
+			rc = -1;
+			goto exit;
+		}
 
 		if (count > 0)
 			fprintf(fpplot, ", ");
 
-		fprintf(fpplot, "\"%u\" %u", ubi32_to_cpu(cur->inner.data_size),
+		fprintf(fpplot, "\"%u\" %u", ubi32_to_cpu(cur->vid.data_size),
 			y2);
 
 		cur = cur->next;
@@ -384,7 +417,7 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 
 	y1 = norm_index(leb_versions[breadth - 1], leb_versions, breadth);
 	y2 = norm_index(data_sizes[breadth - 1], data_sizes, breadth);
-	fprintf(fpplot, "set xrange [-1:%zu]\n", count + 1);
+	fprintf(fpplot, "set xrange [-1:%u]\n", count + 1);
 	fprintf(fpplot, "set yrange [-1:%u]\n", y1 + 1);
 	fprintf(fpplot, "set y2range [-1:%u]\n", y2 + 1);
 	fprintf(fpplot, "plot \"%s\" u 1:4 t \"leb version: %s\" "
@@ -393,12 +426,17 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 			"axes x1y2 with lp\n", FN_VH_DATA, FN_VH_DATA);
 	fprintf(fpplot, "pause -1 \"press ENTER\"\n");
 
-	fclose(fpplot);
+ exit:
+	if (fpdata != NULL)
+		fclose(fpdata);
+	if (fpplot != NULL)
+		fclose(fpplot);
+	if (data_sizes != NULL)
+		free(data_sizes);
+	if (leb_versions != NULL)
+		free(leb_versions);
 
-	free(data_sizes);
-	free(leb_versions);
-
-	return 0;
+	return rc;
 }
 
 
@@ -412,23 +450,14 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 int
 unubi_analyze(eb_info_t *head, eb_info_t first, const char *path)
 {
-	int rc;
+	int ec_rc, vid_rc;
 
 	if (path == NULL)
 		return -1;
 
-	if (first == NULL)
-		return -1;
-
-	if ((head == NULL) || (*head == NULL))
-		return -1;
-
-	rc = unubi_analyze_ec_hdr(first, path);
-	if (rc < 0)
-		return -1;
-
-	rc = unubi_analyze_vid_hdr(head, path);
-	if (rc < 0)
+	ec_rc = unubi_analyze_ec_hdr(first, path);
+	vid_rc = unubi_analyze_vid_hdr(head, path);
+	if (ec_rc < 0 || vid_rc < 0)
 		return -1;
 
 	return 0;
