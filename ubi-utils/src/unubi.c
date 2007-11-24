@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (c) International Business Machines Corp., 2006, 2007
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,13 @@
  */
 
 /*
- * Authors: Frank Haverkamp, haver@vnet.ibm.com
- *	    Drake Dowsett, dowsett@de.ibm.com
+ * Authors: Drake Dowsett, dowsett@de.ibm.com
+ *          Frank Haverkamp, haver@vnet.ibm.com
  *
  * 1.2 Removed argp because we want to use uClibc.
  * 1.3 Minor cleanups.
  * 1.4 Meanwhile Drake had done a lot of changes, syncing those.
+ * 1.5 Bugfixes, simplifications
  */
 
 /*
@@ -44,18 +45,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <mtd/ubi-header.h>
 
 #include "crc32.h"
-#include "eb_chain.h"
 #include "unubi_analyze.h"
 
 #define EXEC		"unubi"
 #define CONTACT		"haver@vnet.ibm.com"
-#define VERSION		"1.4"
+#define VERSION		"1.5"
 
 static char doc[] = "\nVersion: " VERSION "\n";
 static int debug = 0;
@@ -66,7 +67,7 @@ static const char *optionsstr =
 "to rebuild all valid complete UBI volumes found within the image.\n"
 "\n"
 " OPERATIONS\n"
-"  -a, --analyze              Analyze image\n"
+"  -a, --analyze              Analyze image and create gnuplot graphs\n"
 "  -i, --info-table           Extract volume information tables\n"
 "  -r, --rebuild=<volume-id>  Extract and rebuild volume\n"
 "\n"
@@ -75,8 +76,11 @@ static const char *optionsstr =
 "                             (default 128KiB)\n"
 "  -d, --dir=<output-dir>     Specify output directory\n"
 "  -D, --debug                Enable debug output\n"
-"  -s, --headersize=<header-size>   Specify size of eraseblock header in image\n"
-"                             in bytes (default 2048 Byte)\n"
+"  -s, --headersize=<header-size>   Specify size reserved for metadata in eraseblock\n"
+	"                             in bytes (default 2048 Byte)\n"
+ /* the -s option might be insufficient when using different vid
+    offset than what we used when writing this tool ... Better would
+    probably be --vid-hdr-offset or alike */
 "\n"
 " ADVANCED\n"
 "  -e, --eb-split             Generate individual eraseblock images (all\n"
@@ -138,8 +142,12 @@ struct args {
 	int analyze;
 	int itable;
 	uint32_t *vols;
-	size_t bsize;
+
+	size_t vid_hdr_offset;
+	size_t data_offset;
+	size_t bsize;		/* FIXME replace by vid_hdr/data offs? */
 	size_t hsize;
+
 	char *odir_path;
 	int eb_split;
 	int vol_split;
@@ -204,29 +212,30 @@ parse_opt(int argc, char **argv, struct args *args)
 			break;
 
 		switch (key) {
-		case 'a':
+		case 'a': /* --analyze */
 			args->analyze = 1;
 			break;
-		case 'b':
+		case 'b': /* --block-size=<block-size> */
 			args->bsize = str_to_num(optarg);
 			break;
-		case 's':
+		case 's': /* --header-size=<header-size> */
 			args->hsize = str_to_num(optarg);
 			break;
-		case 'd':
+		case 'd': /* --dir=<output-dir> */
 			args->odir_path = optarg;
 			break;
-		case 'D':	/* I wanted to use -v but that was
-				   already used ... */
+		case 'D': /* --debug */
+			/* I wanted to use -v but that was already
+			   used ... */
 			debug = 1;
 			break;
-		case 'e':
+		case 'e': /* --eb-split */
 			args->eb_split = SPLIT_RAW;
 			break;
-		case 'i':
+		case 'i': /* --info-table */
 			args->itable = 1;
 			break;
-		case 'r':
+		case 'r': /* --rebuild=<volume-id> */
 			i = str_to_num(optarg);
 			if (i < UBI_MAX_VOLUMES)
 				args->vols[str_to_num(optarg)] = 1;
@@ -235,11 +244,11 @@ parse_opt(int argc, char **argv, struct args *args)
 				return -1;
 			}
 			break;
-		case 'v':
+		case 'v': /* --vol-split */
 			if (args->vol_split != SPLIT_RAW)
 				args->vol_split = SPLIT_DATA;
 			break;
-		case 'V':
+		case 'V': /* --vol-split! */
 			args->vol_split = SPLIT_RAW;
 			break;
 		case '?': /* help */
@@ -257,6 +266,10 @@ parse_opt(int argc, char **argv, struct args *args)
 			exit(-1);
 		}
 	}
+
+	/* FIXME I suppose hsize should be replaced! */
+	args->vid_hdr_offset = args->hsize - UBI_VID_HDR_SIZE;
+	args->data_offset = args->hsize;
 
 	if (optind < argc)
 		args->img_path = argv[optind++];
@@ -306,33 +319,6 @@ collapse(uint32_t *full_array, size_t full_len,
 
 	return j;
 }
-
-
-/**
- * header_crc: calculate the crc of EITHER a eb_hdr or vid_hdr
- * one of the first two args MUST be NULL, the other is the header
- *	to caculate the crc on
- * always returns 0
- **/
-static int
-header_crc(struct ubi_ec_hdr *ebh, struct ubi_vid_hdr *vidh, uint32_t *ret_crc)
-{
-	uint32_t crc = UBI_CRC32_INIT;
-
-	if (ret_crc == NULL)
-		return 0;
-
-	if ((ebh != NULL) && (vidh == NULL))
-		crc = clc_crc32(crc32_table, crc, ebh, UBI_EC_HDR_SIZE_CRC);
-	else if ((ebh == NULL) && (vidh != NULL))
-		crc = clc_crc32(crc32_table, crc, vidh, UBI_VID_HDR_SIZE_CRC);
-	else
-		return 0;
-
-	*ret_crc = crc;
-	return 0;
-}
-
 
 /**
  * data_crc: save the FILE* position, calculate the crc over a span,
@@ -420,8 +406,8 @@ extract_data(FILE* fpin, size_t len, const char *path)
  * failure and 0 on success
  **/
 static int
-extract_itable(FILE* fpin, eb_info_t cur, size_t bsize, size_t num,
-	       const char* path)
+extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
+	       const char *path)
 {
 	char filename[MAXPATH + 1];
 	int rc;
@@ -531,14 +517,14 @@ extract_itable(FILE* fpin, eb_info_t cur, size_t bsize, size_t num,
  * the known volumes, if vol_id is NULL;
  **/
 static int
-rebuild_volume(FILE* fpin, uint32_t *vol_id, eb_info_t *head, const char* path,
-	       size_t block_size, size_t header_size)
+rebuild_volume(FILE * fpin, uint32_t *vol_id, struct eb_info **head,
+	       const char *path, size_t block_size, size_t header_size)
 {
 	char filename[MAXPATH];
 	int rc;
 	uint32_t vol, num, data_size;
 	FILE* fpout;
-	eb_info_t cur;
+	struct eb_info *cur;
 
 	rc = 0;
 
@@ -606,6 +592,7 @@ rebuild_volume(FILE* fpin, uint32_t *vol_id, eb_info_t *head, const char* path,
 		fseek(fpin, ubi32_to_cpu(cur->ec.data_offset), SEEK_CUR);
 
 		if (cur->vid.vol_type == UBI_VID_DYNAMIC)
+			/* FIXME It might be that alignment has influence */
 			data_size = block_size - header_size;
 		else
 			data_size = ubi32_to_cpu(cur->vid.data_size);
@@ -651,8 +638,8 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 	/* relations:
 	 * cur ~ head
 	 * next ~ first */
-	eb_info_t head, cur, first, next;
-	eb_info_t *next_ptr;
+	struct eb_info *head, *cur, *first, *next;
+	struct eb_info **next_ptr;
 
 	rc = 0;
 	count = 0;
@@ -672,6 +659,11 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 	while (1) {
 		const char *raw_path;
 		uint32_t crc;
+
+		cur->phys_addr = ftell(fpin);
+		cur->data_crc_ok = 0;
+		cur->ec_crc_ok   = 0;
+		cur->vid_crc_ok  = 0;
 
 		memset(filename, 0, MAXPATH + 1);
 		memset(reason, 0, MAXPATH + 1);
@@ -696,8 +688,8 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		}
 
 		/* check erasecounter header crc */
-		header_crc(&(cur->ec), NULL, &crc);
-
+		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &(cur->ec),
+				UBI_EC_HDR_SIZE_CRC);
 		if (ubi32_to_cpu(cur->ec.hdr_crc) != crc) {
 			snprintf(reason, MAXPATH, ".invalid.ec_hdr_crc");
 			goto invalid;
@@ -738,13 +730,16 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 			snprintf(reason, MAXPATH, ".invalid.vid_magic");
 			goto invalid;
 		}
+		cur->ec_crc_ok = 1;
 
 		/* check volume id header crc */
-		header_crc(NULL, &(cur->vid), &crc);
+		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &(cur->vid),
+				UBI_VID_HDR_SIZE_CRC);
 		if (ubi32_to_cpu(cur->vid.hdr_crc) != crc) {
 			snprintf(reason, MAXPATH, ".invalid.vid_hdr_crc");
 			goto invalid;
 		}
+		cur->vid_crc_ok = 1;
 
 		/* check data crc, but only for a static volume */
 		if (cur->vid.vol_type == UBI_VID_STATIC) {
@@ -756,6 +751,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 				snprintf(reason, MAXPATH, ".invalid.data_crc");
 				goto invalid;
 			}
+			cur->data_crc_ok = 1;
 		}
 
 		/* enlist this vol, it's valid */
@@ -788,9 +784,22 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 			if (rc != 0)
 				goto err;
 
+			/*
+			 * FIXME For dynamic UBI volumes we must write
+			 * the maximum available data. The
+			 * vid.data_size field is not used in this
+			 * case. The dynamic volume user is
+			 * responsible for the content.
+			 */
 			if (a->vol_split == SPLIT_DATA) {
-				/* write only data section */
-				size = ubi32_to_cpu(cur->vid.data_size);
+				/* Write only data section */
+				if (cur->vid.vol_type == UBI_VID_DYNAMIC) {
+					/* FIXME Formular is not
+					   always right ... */
+					size = a->bsize - a->hsize;
+				} else
+					size = ubi32_to_cpu(cur->vid.data_size);
+
 				fseek(fpin,
 				      ubi32_to_cpu(cur->ec.data_offset),
 				      SEEK_CUR);
@@ -883,9 +892,21 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
  err:
 	free(cur);
 
-	if (a->analyze)
+	if (a->analyze) {
+		char fname[PATH_MAX];
+		FILE *fp;
+
 		unubi_analyze(&head, first, a->odir_path);
 
+		/* prepare output files */
+		memset(fname, 0, PATH_MAX + 1);
+		snprintf(fname, PATH_MAX, "%s/%s", a->odir_path, FN_EH_STAT);
+		fp = fopen(fname, "w");
+		if (fp != NULL) {
+			eb_chain_print(fp, head);
+			fclose(fp);
+		}
+	}
 	eb_chain_destroy(&head);
 	eb_chain_destroy(&first);
 

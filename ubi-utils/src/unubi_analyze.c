@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (c) International Business Machines Corp., 2006, 2007
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,21 +32,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "eb_chain.h"
+#include "unubi_analyze.h"
 #include "crc32.h"
 
-#define MAXPATH		1024
 #define EC_X_INT	50
-
-#define FN_STATS	"analysis_stats.txt"
-#define FN_EH_DATA	"analysis_ec_hdr.data"
-#define FN_EH_PLOT	"analysis_ec_hdr.plot"
-#define FN_VH_DATA	"analysis_vid_hdr.data"
-#define FN_VH_PLOT	"analysis_vid_hdr.plot"
-
 
 /**
  * intcmp - function needed by qsort to order integers
@@ -103,15 +96,15 @@ norm_index(uint32_t item, uint32_t *array, size_t length)
  * display of the data file;
  **/
 int
-unubi_analyze_ec_hdr(eb_info_t first, const char *path)
+unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 {
-	char filename[MAXPATH + 1];
+	char filename[PATH_MAX + 1];
 	size_t count, eraseblocks;
 	uint32_t crc, crc32_table[256];
 	uint64_t *erase_counts;
 	FILE* fpdata;
 	FILE* fpplot;
-	eb_info_t cur;
+	struct eb_info *cur;
 
 	if (first == NULL)
 		return -1;
@@ -120,14 +113,14 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	init_crc32_table(crc32_table);
 
 	/* prepare output files */
-	memset(filename, 0, MAXPATH + 1);
-	snprintf(filename, MAXPATH, "%s/%s", path, FN_EH_DATA);
+	memset(filename, 0, PATH_MAX + 1);
+	snprintf(filename, PATH_MAX, "%s/%s", path, FN_EH_DATA);
 	fpdata = fopen(filename, "w");
 	if (fpdata == NULL)
 		return -1;
 
-	memset(filename, 0, MAXPATH + 1);
-	snprintf(filename, MAXPATH, "%s/%s", path, FN_EH_PLOT);
+	memset(filename, 0, PATH_MAX + 1);
+	snprintf(filename, PATH_MAX, "%s/%s", path, FN_EH_PLOT);
 	fpplot = fopen(filename, "w");
 	if (fpplot == NULL) {
 		fclose(fpdata);
@@ -147,6 +140,11 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
 	eraseblocks = count;
 
 	erase_counts = malloc(eraseblocks * sizeof(*erase_counts));
+	if (!erase_counts) {
+		perror("out of memory");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(erase_counts, 0, eraseblocks * sizeof(*erase_counts));
 
 	/* second run: populate array to sort */
@@ -239,15 +237,15 @@ unubi_analyze_ec_hdr(eb_info_t first, const char *path)
  * display of the data file;
  **/
 int
-unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
+unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 {
-	char filename[MAXPATH + 1];
+	char filename[PATH_MAX + 1];
 	int rc, y1, y2;
 	size_t count, step, breadth;
 	uint32_t *leb_versions, *data_sizes;
 	FILE* fpdata;
 	FILE* fpplot;
-	eb_info_t cur;
+	struct eb_info *cur;
 
 	if (head == NULL || *head == NULL)
 		return -1;
@@ -259,16 +257,16 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
 	leb_versions = NULL;
 
 	/* prepare output files */
-	memset(filename, 0, MAXPATH + 1);
-	snprintf(filename, MAXPATH, "%s/%s", path, FN_VH_DATA);
+	memset(filename, 0, PATH_MAX + 1);
+	snprintf(filename, PATH_MAX, "%s/%s", path, FN_VH_DATA);
 	fpdata = fopen(filename, "w");
 	if (fpdata == NULL) {
 		rc = -1;
 		goto exit;
 	}
 
-	memset(filename, 0, MAXPATH + 1);
-	snprintf(filename, MAXPATH, "%s/%s", path, FN_VH_PLOT);
+	memset(filename, 0, PATH_MAX + 1);
+	snprintf(filename, PATH_MAX, "%s/%s", path, FN_VH_PLOT);
 	fpplot = fopen(filename, "w");
 	if (fpplot == NULL) {
 		rc = -1;
@@ -448,7 +446,7 @@ unubi_analyze_vid_hdr(eb_info_t *head, const char *path)
  * returns 0 upon successful completion, or -1 otherwise
  **/
 int
-unubi_analyze(eb_info_t *head, eb_info_t first, const char *path)
+unubi_analyze(struct eb_info **head, struct eb_info *first, const char *path)
 {
 	int ec_rc, vid_rc;
 

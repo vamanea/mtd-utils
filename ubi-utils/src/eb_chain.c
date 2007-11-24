@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (c) International Business Machines Corp., 2006, 2007
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,12 +26,11 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include "eb_chain.h"
+#include "unubi_analyze.h"
 #include "crc32.h"
 
 #define COPY(dst, src)							\
-	do								\
-	{								\
+	do {								\
 		dst = malloc(sizeof(*dst));				\
 		if (dst == NULL)					\
 			return -ENOMEM;					\
@@ -50,18 +49,17 @@
  * meaning there is a bug or a case not being handled here;
  **/
 int
-eb_chain_insert(eb_info_t *head, eb_info_t new)
+eb_chain_insert(struct eb_info **head, struct eb_info *new)
 {
 	uint32_t vol, num, ver;
 	uint32_t new_vol, new_num, new_ver;
-	eb_info_t prev, cur, hist, ins;
-	eb_info_t *prev_ptr;
+	struct eb_info *prev, *cur, *hist, *ins;
+	struct eb_info **prev_ptr;
 
 	if ((head == NULL) || (new == NULL))
 		return 0;
 
-	if (*head == NULL)
-	{
+	if (*head == NULL) {
 		COPY(*head, new);
 		(*head)->next = NULL;
 		return 0;
@@ -79,11 +77,9 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 	/* traverse until vol_id/lnum align */
 	vol = ubi32_to_cpu(cur->vid.vol_id);
 	num = ubi32_to_cpu(cur->vid.lnum);
-	while ((new_vol > vol) || ((new_vol == vol) && (new_num > num)))
-	{
+	while ((new_vol > vol) || ((new_vol == vol) && (new_num > num))) {
 		/* insert new at end of chain */
-		if (cur->next == NULL)
-		{
+		if (cur->next == NULL) {
 			COPY(ins, new);
 			ins->next = NULL;
 			cur->next = ins;
@@ -102,8 +98,7 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 		prev_ptr = &(prev->next);
 
 	/* insert new into the middle of chain */
-	if ((new_vol != vol) || (new_num != num))
-	{
+	if ((new_vol != vol) || (new_num != num)) {
 		COPY(ins, new);
 		ins->next = cur;
 		*prev_ptr = ins;
@@ -117,11 +112,9 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 
 	/* traverse until versions align */
 	ver = ubi32_to_cpu(cur->vid.leb_ver);
-	while (new_ver < ver)
-	{
+	while (new_ver < ver) {
 		/* insert new at bottom of history */
-		if (hist->older == NULL)
-		{
+		if (hist->older == NULL) {
 			COPY(ins, new);
 			ins->next = NULL;
 			ins->older = NULL;
@@ -134,8 +127,7 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 		ver = ubi32_to_cpu(hist->vid.leb_ver);
 	}
 
-	if (prev == NULL)
-	{
+	if (prev == NULL) {
 		/* replace active version */
 		COPY(ins, new);
 		ins->next = hist->next;
@@ -146,18 +138,13 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
 		hist->next = NULL;
 		return 0;
 	}
-	else
-	{
-		/* insert between versions, beneath active version */
-		COPY(ins, new);
-		ins->next = NULL;
-		ins->older = prev->older;
-		prev->older = ins;
-		return 0;
-	}
 
-	/* logically impossible to reach this point... hopefully */
-	return -EAGAIN;
+	/* insert between versions, beneath active version */
+	COPY(ins, new);
+	ins->next = NULL;
+	ins->older = prev->older;
+	prev->older = ins;
+	return 0;
 }
 
 
@@ -168,11 +155,11 @@ eb_chain_insert(eb_info_t *head, eb_info_t new)
  * always returns 0;
  **/
 int
-eb_chain_position(eb_info_t *head, uint32_t vol_id, uint32_t *lnum,
-		  eb_info_t *pos)
+eb_chain_position(struct eb_info **head, uint32_t vol_id, uint32_t *lnum,
+		  struct eb_info **pos)
 {
 	uint32_t vol, num;
-	eb_info_t cur;
+	struct eb_info *cur;
 
 	if ((head == NULL) || (*head == NULL) || (pos == NULL))
 		return 0;
@@ -180,17 +167,14 @@ eb_chain_position(eb_info_t *head, uint32_t vol_id, uint32_t *lnum,
 	*pos = NULL;
 
 	cur = *head;
-	while (cur != NULL)
-	{
+	while (cur != NULL) {
 		vol = ubi32_to_cpu(cur->vid.vol_id);
 		num = ubi32_to_cpu(cur->vid.lnum);
 
-		if (vol_id == vol)
-			if ((lnum == NULL) || (*lnum == num))
-			{
-				*pos = cur;
-				return 0;
-			}
+		if ((vol_id == vol) && ((lnum == NULL) || (*lnum == num))) {
+			*pos = cur;
+			return 0;
+		}
 
 		cur = cur->next;
 	}
@@ -206,43 +190,53 @@ eb_chain_position(eb_info_t *head, uint32_t vol_id, uint32_t *lnum,
  * always returns 0;
  **/
 int
-eb_chain_print(FILE* stream, eb_info_t *head)
+eb_chain_print(FILE* stream, struct eb_info *head)
 {
-	eb_info_t cur;
-
-	if (head == NULL)
-		return 0;
+	struct eb_info *cur;
 
 	if (stream == NULL)
 		stream = stdout;
 
-	if (*head == NULL)
-	{
+	if (head == NULL) {
 		fprintf(stream, "EMPTY\n");
 		return 0;
 	}
+	/*               012345678012345678012345678012301230123 01234567 0123457 01234567*/
+	fprintf(stream, "VOL_ID   LNUM     LEB_VER  EC  VID DAT  PADDR    DSIZE   EC\n");
+	cur = head;
+	while (cur != NULL) {
+		struct eb_info *hist;
 
-	cur = *head;
-	while (cur != NULL)
-	{
-		eb_info_t hist;
-
-		fprintf(stream, "  VOL %4u-%04u | VER 0x%8x\n",
+		fprintf(stream, "%08x %-8u %-8u %-4s%-4s",
 			ubi32_to_cpu(cur->vid.vol_id),
 			ubi32_to_cpu(cur->vid.lnum),
-			ubi32_to_cpu(cur->vid.leb_ver));
+			ubi32_to_cpu(cur->vid.leb_ver),
+			cur->ec_crc_ok   ? "ok":"bad",
+			cur->vid_crc_ok  ? "ok":"bad");
+		if (cur->vid.vol_type == UBI_VID_STATIC)
+			fprintf(stream, "%-4s", cur->data_crc_ok ? "ok":"bad");
+		else	fprintf(stream, "%-4s", cur->data_crc_ok ? "ok":"ign");
+		fprintf(stream, " %08x %-8u %-8llu\n", cur->phys_addr,
+			ubi32_to_cpu(cur->vid.data_size),
+			ubi64_to_cpu(cur->ec.ec));
 
 		hist = cur->older;
-		while (hist != NULL)
-		{
-			fprintf(stream, "+ VOL %4u-%04u | VER 0x%8x\n",
+		while (hist != NULL) {
+			fprintf(stream, "%08x %-8u %-8u %-4s%-4s",
 				ubi32_to_cpu(hist->vid.vol_id),
 				ubi32_to_cpu(hist->vid.lnum),
-				ubi32_to_cpu(hist->vid.leb_ver));
+				ubi32_to_cpu(hist->vid.leb_ver),
+				hist->ec_crc_ok   ? "ok":"bad",
+				hist->vid_crc_ok  ? "ok":"bad");
+			if (hist->vid.vol_type == UBI_VID_STATIC)
+				fprintf(stream, "%-4s", hist->data_crc_ok ? "ok":"bad");
+			else	fprintf(stream, "%-4s", hist->data_crc_ok ? "ok":"ign");
+			fprintf(stream, " %08x %-8u %-8llu (*)\n", hist->phys_addr,
+				ubi32_to_cpu(hist->vid.data_size),
+				ubi64_to_cpu(hist->ec.ec));
 
 			hist = hist->older;
 		}
-
 		cur = cur->next;
 	}
 
@@ -256,33 +250,28 @@ eb_chain_print(FILE* stream, eb_info_t *head)
  * always returns 0;
  **/
 int
-eb_chain_destroy(eb_info_t *head)
+eb_chain_destroy(struct eb_info **head)
 {
 	if (head == NULL)
 		return 0;
 
-	while (*head != NULL)
-	{
-		eb_info_t cur;
-		eb_info_t hist;
+	while (*head != NULL) {
+		struct eb_info *cur;
+		struct eb_info *hist;
 
 		cur = *head;
 		*head = (*head)->next;
 
 		hist = cur->older;
-		while (hist != NULL)
-		{
-			eb_info_t temp;
+		while (hist != NULL) {
+			struct eb_info *temp;
 
 			temp = hist;
 			hist = hist->older;
-
 			free(temp);
 		}
-
 		free(cur);
 	}
-
 	return 0;
 }
 
