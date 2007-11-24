@@ -36,8 +36,15 @@ static int countbits(uint32_t byte)
 	return res;
 }
 
-int nand_correct_data(uint8_t *dat, const uint8_t *fail_ecc)
-
+/**
+ * @dat:       data which should be corrected
+ * @read_ecc:  ecc information read from flash
+ * @calc_ecc:  calculated ecc information from the data
+ * @return:    number of corrected bytes
+ *             or -1 when no correction is possible
+ */
+int nand_correct_data(uint8_t *dat, const uint8_t *read_ecc,
+		      const uint8_t *calc_ecc)
 {
 	uint8_t s0, s1, s2;
 
@@ -47,9 +54,12 @@ int nand_correct_data(uint8_t *dat, const uint8_t *fail_ecc)
 	 * Be careful, the index magic is due to a pointer to a
 	 * uint32_t.
 	 */
-	s0 = fail_ecc[1];
-	s1 = fail_ecc[2];
-	s2 = fail_ecc[3];
+	s0 = calc_ecc[0] ^ read_ecc[0];
+	s1 = calc_ecc[1] ^ read_ecc[1];
+	s2 = calc_ecc[2] ^ read_ecc[2];
+
+	if ((s0 | s1 | s2) == 0)
+		return 0;
 
 	/* Check for a single bit error */
 	if( ((s0 ^ (s0 >> 1)) & 0x55) == 0x55 &&

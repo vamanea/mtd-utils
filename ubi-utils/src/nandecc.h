@@ -22,7 +22,8 @@
 
 #include <stdint.h>
 
-extern int nand_calculate_ecc(const uint8_t *dat, uint8_t *ecc_code);
-extern int nand_correct_data(uint8_t *dat, const uint8_t *fail_ecc);
+int nand_calculate_ecc(const uint8_t *dat, uint8_t *ecc_code);
+int nand_correct_data(uint8_t *dat, const uint8_t *read_ecc,
+		      const uint8_t *calc_ecc);
 
 #endif
