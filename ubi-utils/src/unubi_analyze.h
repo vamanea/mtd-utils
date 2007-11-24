@@ -66,6 +66,7 @@ struct eb_info {
 	int vid_crc_ok;
 	int data_crc_ok;
 	uint32_t phys_addr;
+	int phys_block;
 
 	struct eb_info *next;
 	struct eb_info *older;

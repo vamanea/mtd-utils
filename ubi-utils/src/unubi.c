@@ -661,6 +661,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		uint32_t crc;
 
 		cur->phys_addr = ftell(fpin);
+		cur->phys_block = cur->phys_addr / a->bsize;
 		cur->data_crc_ok = 0;
 		cur->ec_crc_ok   = 0;
 		cur->vid_crc_ok  = 0;

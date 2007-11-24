@@ -188,6 +188,8 @@ eb_chain_position(struct eb_info **head, uint32_t vol_id, uint32_t *lnum,
  * chain, starting at head;
  * this is intended for debuging purposes;
  * always returns 0;
+ *
+ * FIXME I do not like the double list traversion ...
  **/
 int
 eb_chain_print(FILE* stream, struct eb_info *head)
@@ -201,13 +203,13 @@ eb_chain_print(FILE* stream, struct eb_info *head)
 		fprintf(stream, "EMPTY\n");
 		return 0;
 	}
-	/*               012345678012345678012345678012301230123 01234567 0123457 01234567*/
-	fprintf(stream, "VOL_ID   LNUM     LEB_VER  EC  VID DAT  PADDR    DSIZE   EC\n");
+	/*               012345678012345678012345678012301230123 0123 01234567 0123457 01234567*/
+	fprintf(stream, "VOL_ID   LNUM     LEB_VER  EC  VID DAT  PBLK PADDR    DSIZE   EC\n");
 	cur = head;
 	while (cur != NULL) {
 		struct eb_info *hist;
 
-		fprintf(stream, "%08x %-8u %-8u %-4s%-4s",
+		fprintf(stream, "%08x %-8u %08x %-4s%-4s",
 			ubi32_to_cpu(cur->vid.vol_id),
 			ubi32_to_cpu(cur->vid.lnum),
 			ubi32_to_cpu(cur->vid.leb_ver),
@@ -216,13 +218,13 @@ eb_chain_print(FILE* stream, struct eb_info *head)
 		if (cur->vid.vol_type == UBI_VID_STATIC)
 			fprintf(stream, "%-4s", cur->data_crc_ok ? "ok":"bad");
 		else	fprintf(stream, "%-4s", cur->data_crc_ok ? "ok":"ign");
-		fprintf(stream, " %08x %-8u %-8llu\n", cur->phys_addr,
-			ubi32_to_cpu(cur->vid.data_size),
+		fprintf(stream, " %-4d %08x %-8u %-8llu\n", cur->phys_block,
+			cur->phys_addr, ubi32_to_cpu(cur->vid.data_size),
 			ubi64_to_cpu(cur->ec.ec));
 
 		hist = cur->older;
 		while (hist != NULL) {
-			fprintf(stream, "%08x %-8u %-8u %-4s%-4s",
+			fprintf(stream, "%08x %-8u %08x %-4s%-4s",
 				ubi32_to_cpu(hist->vid.vol_id),
 				ubi32_to_cpu(hist->vid.lnum),
 				ubi32_to_cpu(hist->vid.leb_ver),
@@ -231,7 +233,8 @@ eb_chain_print(FILE* stream, struct eb_info *head)
 			if (hist->vid.vol_type == UBI_VID_STATIC)
 				fprintf(stream, "%-4s", hist->data_crc_ok ? "ok":"bad");
 			else	fprintf(stream, "%-4s", hist->data_crc_ok ? "ok":"ign");
-			fprintf(stream, " %08x %-8u %-8llu (*)\n", hist->phys_addr,
+			fprintf(stream, " %-4d %08x %-8u %-8llu (*)\n",
+				hist->phys_block, hist->phys_addr,
 				ubi32_to_cpu(hist->vid.data_size),
 				ubi64_to_cpu(hist->ec.ec));
 
