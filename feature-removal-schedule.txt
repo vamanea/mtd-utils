@@ -6,9 +6,4 @@ be removed from this file.
 
 ---------------------------
 
-What:   mkfs.jffs.c
-When:   Shortly after kernel 2.6.21 is released
-Why:    Support for the JFFS filesystem is being removed from the kernel
-Who:    Josh Boyer <jwboyer@gmail.com>
-
 ---------------------------
