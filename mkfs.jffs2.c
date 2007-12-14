@@ -89,6 +89,7 @@ struct filesystem_entry {
 	char *path;					/* Path of this directory (think dirname) */
 	char *fullname;				/* Full name of this directory (i.e. path+name) */
 	char *hostname;				/* Full path to this file on the host filesystem */
+	uint32_t ino;				/* Inode number of this file in JFFS2 */
 	struct stat sb;				/* Stores directory permissions and whatnot */
 	char *link;					/* Target a symlink points to. */
 	struct filesystem_entry *parent;	/* Parent directory */
@@ -96,7 +97,6 @@ struct filesystem_entry {
 	struct filesystem_entry *next;	/* Only relevant to non-directories */
 	struct filesystem_entry *files;	/* Only relevant to directories */
 };
-
 
 static int out_fd = -1;
 static int in_fd = -1;
@@ -760,9 +760,9 @@ static void write_dirent(struct filesystem_entry *e)
 	rd.totlen = cpu_to_je32(sizeof(rd) + strlen(name));
 	rd.hdr_crc = cpu_to_je32(crc32(0, &rd,
 				sizeof(struct jffs2_unknown_node) - 4));
-	rd.pino = cpu_to_je32((e->parent) ? e->parent->sb.st_ino : 1);
+	rd.pino = cpu_to_je32((e->parent) ? e->parent->ino : 1);
 	rd.version = cpu_to_je32(version++);
-	rd.ino = cpu_to_je32(statbuf->st_ino);
+	rd.ino = cpu_to_je32(e->ino);
 	rd.mctime = cpu_to_je32(statbuf->st_mtime);
 	rd.nsize = strlen(name);
 	rd.type = IFTODT(statbuf->st_mode);
@@ -797,10 +797,10 @@ static unsigned int write_regular_file(struct filesystem_entry *e)
 		perror_msg_and_die("%s: open file", e->hostname);
 	}
 
-	statbuf->st_ino = ++ino;
+	e->ino = ++ino;
 	mkfs_debug_msg("writing file '%s'  ino=%lu  parent_ino=%lu",
-			e->name, (unsigned long) statbuf->st_ino,
-			(unsigned long) e->parent->sb.st_ino);
+			e->name, (unsigned long) e->ino,
+			(unsigned long) e->parent->ino);
 	write_dirent(e);
 
 	buf = xmalloc(page_size);
@@ -813,7 +813,7 @@ static unsigned int write_regular_file(struct filesystem_entry *e)
 	ri.magic = cpu_to_je16(JFFS2_MAGIC_BITMASK);
 	ri.nodetype = cpu_to_je16(JFFS2_NODETYPE_INODE);
 
-	ri.ino = cpu_to_je32(statbuf->st_ino);
+	ri.ino = cpu_to_je32(e->ino);
 	ri.mode = cpu_to_jemode(statbuf->st_mode);
 	ri.uid = cpu_to_je16(statbuf->st_uid);
 	ri.gid = cpu_to_je16(statbuf->st_gid);
@@ -909,10 +909,10 @@ static void write_symlink(struct filesystem_entry *e)
 	struct jffs2_raw_inode ri;
 
 	statbuf = &(e->sb);
-	statbuf->st_ino = ++ino;
+	e->ino = ++ino;
 	mkfs_debug_msg("writing symlink '%s'  ino=%lu  parent_ino=%lu",
-			e->name, (unsigned long) statbuf->st_ino,
-			(unsigned long) e->parent->sb.st_ino);
+			e->name, (unsigned long) e->ino,
+			(unsigned long) e->parent->ino);
 	write_dirent(e);
 
 	len = strlen(e->link);
@@ -930,7 +930,7 @@ static void write_symlink(struct filesystem_entry *e)
 	ri.hdr_crc = cpu_to_je32(crc32(0,
 				&ri, sizeof(struct jffs2_unknown_node) - 4));
 
-	ri.ino = cpu_to_je32(statbuf->st_ino);
+	ri.ino = cpu_to_je32(e->ino);
 	ri.mode = cpu_to_jemode(statbuf->st_mode);
 	ri.uid = cpu_to_je16(statbuf->st_uid);
 	ri.gid = cpu_to_je16(statbuf->st_gid);
@@ -956,11 +956,11 @@ static void write_pipe(struct filesystem_entry *e)
 	struct jffs2_raw_inode ri;
 
 	statbuf = &(e->sb);
-	statbuf->st_ino = ++ino;
+	e->ino = ++ino;
 	if (S_ISDIR(statbuf->st_mode)) {
 		mkfs_debug_msg("writing dir '%s'  ino=%lu  parent_ino=%lu",
-				e->name, (unsigned long) statbuf->st_ino,
-				(unsigned long) (e->parent) ? e->parent->sb.  st_ino : 1);
+				e->name, (unsigned long) e->ino,
+				(unsigned long) (e->parent) ? e->parent->ino : 1);
 	}
 	write_dirent(e);
 
@@ -972,7 +972,7 @@ static void write_pipe(struct filesystem_entry *e)
 	ri.hdr_crc = cpu_to_je32(crc32(0,
 				&ri, sizeof(struct jffs2_unknown_node) - 4));
 
-	ri.ino = cpu_to_je32(statbuf->st_ino);
+	ri.ino = cpu_to_je32(e->ino);
 	ri.mode = cpu_to_jemode(statbuf->st_mode);
 	ri.uid = cpu_to_je16(statbuf->st_uid);
 	ri.gid = cpu_to_je16(statbuf->st_gid);
@@ -998,7 +998,7 @@ static void write_special_file(struct filesystem_entry *e)
 	struct jffs2_raw_inode ri;
 
 	statbuf = &(e->sb);
-	statbuf->st_ino = ++ino;
+	e->ino = ++ino;
 	write_dirent(e);
 
 	kdev = cpu_to_je16((major(statbuf->st_rdev) << 8) +
@@ -1012,7 +1012,7 @@ static void write_special_file(struct filesystem_entry *e)
 	ri.hdr_crc = cpu_to_je32(crc32(0,
 				&ri, sizeof(struct jffs2_unknown_node) - 4));
 
-	ri.ino = cpu_to_je32(statbuf->st_ino);
+	ri.ino = cpu_to_je32(e->ino);
 	ri.mode = cpu_to_jemode(statbuf->st_mode);
 	ri.uid = cpu_to_je16(statbuf->st_uid);
 	ri.gid = cpu_to_je16(statbuf->st_gid);
@@ -1251,7 +1251,7 @@ static void write_xattr_entry(struct filesystem_entry *e)
 		ref.nodetype = cpu_to_je16(JFFS2_NODETYPE_XREF);
 		ref.totlen = cpu_to_je32(sizeof(ref));
 		ref.hdr_crc = cpu_to_je32(crc32(0, &ref, sizeof(struct jffs2_unknown_node) - 4));
-		ref.ino = cpu_to_je32(e->sb.st_ino);
+		ref.ino = cpu_to_je32(e->ino);
 		ref.xid = cpu_to_je32(xe->xid);
 		ref.xseqno = cpu_to_je32(highest_xseqno += 2);
 		ref.node_crc = cpu_to_je32(crc32(0, &ref, sizeof(ref) - 4));
@@ -1378,7 +1378,7 @@ static void create_target_filesystem(struct filesystem_entry *root)
 	if (ino == 0)
 		ino = 1;
 
-	root->sb.st_ino = 1;
+	root->ino = 1;
 	recursive_populate_directory(root);
 
 	if (pad_fs_size == -1) {
