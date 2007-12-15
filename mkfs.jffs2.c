@@ -73,8 +73,9 @@
 #include <zlib.h>
 #undef crc32
 #include "crc32.h"
+#include "rbtree.h"
 
-/* Do not use the wierd XPG version of basename */
+/* Do not use the weird XPG version of basename */
 #undef basename
 
 //#define DMALLOC
@@ -96,10 +97,10 @@ struct filesystem_entry {
 	struct filesystem_entry *prev;	/* Only relevant to non-directories */
 	struct filesystem_entry *next;	/* Only relevant to non-directories */
 	struct filesystem_entry *files;	/* Only relevant to directories */
-	struct filesystem_entry *hardlink_next;
+	struct rb_node hardlink_rb;
 };
 
-struct filesystem_entry *hardlinks = NULL;
+struct rb_root hardlinks;
 static int out_fd = -1;
 static int in_fd = -1;
 static char default_rootdir[] = ".";
@@ -115,18 +116,27 @@ static const char *const memory_exhausted = "memory exhausted";
 uint32_t find_hardlink(struct filesystem_entry *e)
 {
 	struct filesystem_entry *f;
+	struct rb_node **n = &hardlinks.rb_node;
+	struct rb_node *parent = NULL;
 
-	for (f = hardlinks; f; f = f->hardlink_next) {
-		if (f->sb.st_dev == e->sb.st_dev &&
-		    f->sb.st_ino == e->sb.st_ino) {
+	while (*n) {
+		parent = *n;
+		f = rb_entry(parent, struct filesystem_entry, hardlink_rb);
+
+		if ((f->sb.st_dev < e->sb.st_dev) ||
+		    (f->sb.st_dev == e->sb.st_dev && 
+		     f->sb.st_ino < e->sb.st_ino))
+			n = &parent->rb_left;
+		else if ((f->sb.st_dev > e->sb.st_dev) ||
+			 (f->sb.st_dev == e->sb.st_dev && 
+			  f->sb.st_ino > e->sb.st_ino)) {
+			n = &parent->rb_right;
+		} else
 			return f->ino;
-		}
 	}
 
-	/* Add it to the list for later */
-	e->hardlink_next = hardlinks;
-	hardlinks = e;
-
+	rb_link_node(&e->hardlink_rb, parent, n);
+	rb_insert_color(&e->hardlink_rb, &hardlinks);
 	return 0;
 }
 
