@@ -4,7 +4,7 @@ tests fail because of this. The symptom is error messages like
 "cannot open /dev/ubi0_0".
 
 One possible solution of this problem is to pre-create UBI device and volume
-nodes. there is even a script which may be used for this in ubi-utils/scripts/.
+nodes. There is even a script which may be used for this in ubi-utils/scripts/.
 But this is not enough because udev will still remove and re-create the nodes
 and tests will still fail. So you need to stop removing device nodes using
 the following udev rule:

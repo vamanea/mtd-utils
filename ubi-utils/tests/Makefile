@@ -5,7 +5,7 @@ LIB=.
 
 CC := $(CROSS)gcc
 
-ALL_FILES=libubi.a io_update
+ALL_FILES=libubi io_update 
 ALL_FILES+=io_paral io_read io_basic mkvol_basic mkvol_bad mkvol_paral rsvol
 ALL_FILES+=integ
 
@@ -13,7 +13,7 @@ CFLAGS += -Wall -I$(INCLUDE1) -I$(INCLUDE2) -L$(LIB) -ggdb
 
 all: $(ALL_FILES)
 
-libubi.a: ../src/libubi.c  ../inc/libubi.h  ../src/libubi_int.h
+libubi: ../src/libubi.c  ../inc/libubi.h  ../src/libubi_int.h
 	$(CC) $(CFLAGS) -c ../src/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
