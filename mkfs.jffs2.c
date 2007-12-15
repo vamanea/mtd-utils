@@ -96,8 +96,10 @@ struct filesystem_entry {
 	struct filesystem_entry *prev;	/* Only relevant to non-directories */
 	struct filesystem_entry *next;	/* Only relevant to non-directories */
 	struct filesystem_entry *files;	/* Only relevant to directories */
+	struct filesystem_entry *hardlink_next;
 };
 
+struct filesystem_entry *hardlinks = NULL;
 static int out_fd = -1;
 static int in_fd = -1;
 static char default_rootdir[] = ".";
@@ -109,6 +111,24 @@ static int fake_times = 0;
 int target_endian = __BYTE_ORDER;
 static const char *const app_name = "mkfs.jffs2";
 static const char *const memory_exhausted = "memory exhausted";
+
+uint32_t find_hardlink(struct filesystem_entry *e)
+{
+	struct filesystem_entry *f;
+
+	for (f = hardlinks; f; f = f->hardlink_next) {
+		if (f->sb.st_dev == e->sb.st_dev &&
+		    f->sb.st_ino == e->sb.st_ino) {
+			return f->ino;
+		}
+	}
+
+	/* Add it to the list for later */
+	e->hardlink_next = hardlinks;
+	hardlinks = e;
+
+	return 0;
+}
 
 static void verror_msg(const char *s, va_list p)
 {
@@ -331,6 +351,10 @@ static struct filesystem_entry *add_host_filesystem_entry(
 	tmp = xstrdup(name);
 	entry->path = xstrdup(dirname(tmp));
 	free(tmp);
+	
+	entry->sb.st_ino = sb.st_ino;
+	entry->sb.st_dev = sb.st_dev;
+	entry->sb.st_nlink = sb.st_nlink;
 
 	entry->sb.st_uid = uid;
 	entry->sb.st_gid = gid;
@@ -1278,8 +1302,17 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 
 	e = dir->files;
 	while (e) {
+		if (e->sb.st_nlink >= 1 &&
+		    (e->ino = find_hardlink(e))) {
 
-		switch (e->sb.st_mode & S_IFMT) {
+			write_dirent(e);
+			if (verbose) {
+				printf("\tL %04o %9lu             %5d:%-3d %s\n",
+				       e->sb.st_mode & ~S_IFMT, (unsigned long) e->ino,
+				       (int) (e->sb.st_uid), (int) (e->sb.st_gid),
+				       e->name);
+			}
+		} else switch (e->sb.st_mode & S_IFMT) {
 			case S_IFDIR:
 				if (verbose) {
 					printf("\td %04o %9lu             %5d:%-3d %s\n",
