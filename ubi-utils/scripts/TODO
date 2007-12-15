@@ -1,5 +1,0 @@
-TODO
-====
-
- * Range checking is broken, reserving 2M and offering 3M binary data
-   ... works!? No!

@@ -1,0 +1,10 @@
+TODO
+====
+
+ * Range checking is broken, reserving 2M and offering 3M binary data
+   ... works!? No!
+ * Remove the above misterious statement or make it understandable
+ * doc/ directory contains a file which refers images from /home/frank/
+   - please fix this or remove the whole doc/ altogether.
+ * the scripts/ directory should live in mit-utils/tests/ubi-tests/scripts
+   and it would be nice to have a short description of the tests
