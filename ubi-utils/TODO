@@ -6,5 +6,9 @@ TODO
  * Remove the above misterious statement or make it understandable
  * doc/ directory contains a file which refers images from /home/frank/
    - please fix this or remove the whole doc/ altogether.
- * the scripts/ directory should live in mit-utils/tests/ubi-tests/scripts
-   and it would be nice to have a short description of the tests
+ * the tests from the scripts/ directory should live in
+   mit-utils/tests/ubi-tests/ and it would be nice to have a short
+   description of the tests
+ * the stuff from the perl/ directory should go to the scripts/
+ * May we pleas split UBI-related stuff and pure NAND-related stuff and
+   not to keep this all in one.

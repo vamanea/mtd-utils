@@ -276,6 +276,12 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 		req->vol_id = r.vol_id;
 
 	close(fd);
+
+#ifdef UDEV_SETTLE_HACK
+	if (system("udevsettle") == -1)
+		return -1;
+#endif
+
 	return ret;
 }
 
@@ -290,6 +296,12 @@ int ubi_rmvol(libubi_t desc, const char *node, int vol_id)
 
 	ret = ioctl(fd, UBI_IOCRMVOL, &vol_id);
 	close(fd);
+
+#ifdef UDEV_SETTLE_HACK
+	if (system("udevsettle") == -1)
+		return -1;
+#endif
+
 	return ret;
 }
 
