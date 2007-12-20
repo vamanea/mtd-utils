@@ -19,17 +19,8 @@
 /*
  * An utility to create UBI volumes.
  *
- * Author: Artem B. Bityutskiy <dedekind@linutronix.de>
- *         Frank Haverkamp <haver@vnet.ibm.com>
- *
- * 1.0 Initial release
- * 1.1 Does not support erase blocks anymore. This is replaced by
- *     the number of bytes.
- * 1.2 Reworked the user-interface to use argp.
- * 1.3 Removed argp because we want to use uClibc.
- * 1.4 Minor cleanups
- * 1.5 Use a different libubi
- * 1.6 Various fixes
+ * Authors: Artem B. Bityutskiy <dedekind@infradead.org>
+ *          Frank Haverkamp <haver@vnet.ibm.com>
  */
 
 #include <stdio.h>
@@ -46,9 +37,6 @@
 #define PROGRAM_VERSION "1.6"
 #define PROGRAM_NAME    "ubimkvol"
 
-/* Maximum device node name length */
-#define MAX_NODE_LEN 255
-
 /*
  * The variables below	are set by command line arguments.
  */
@@ -57,6 +45,7 @@ struct args {
 	int vol_id;
 	int vol_type;
 	long long bytes;
+	int lebs;
 	int alignment;
 	char *name;
 	int nlen;
@@ -67,7 +56,8 @@ struct args {
 static struct args myargs = {
 	.vol_type = UBI_DYNAMIC_VOLUME,
 	.devn = -1,
-	.bytes = 0,
+	.bytes = -1,
+	.lebs = -1,
 	.alignment = 1,
 	.vol_id = UBI_VOL_NUM_AUTO,
 	.name = NULL,
@@ -75,30 +65,31 @@ static struct args myargs = {
 	.maxavs = 0,
 };
 
-static int param_sanity_check(struct args *args, libubi_t libubi);
-
-static char doc[] = "Version " PROGRAM_VERSION "\n"
-PROGRAM_NAME " - a tool to create UBI volumes.";
+static const char *doc = "Version " PROGRAM_VERSION "\n"
+	PROGRAM_NAME " - a tool to create UBI volumes.";
 
 static const char *optionsstr =
 "-a, --alignment=<alignment>   volume alignment (default is 1)\n"
-"-d, --devn=<devn>             UBI device number (depricated, do not use)"
-"-n, --vol_id=<volume id>      UBI volume ID, if not specified, the volume ID\n"
+"-n, --vol_id=<volume ID>      UBI volume ID, if not specified, the volume ID\n"
 "                              will be assigned automatically\n"
 "-N, --name=<name>             volume name\n"
 "-s, --size=<bytes>            volume size volume size in bytes, kilobytes (KiB)\n"
 "                              or megabytes (MiB)\n"
+"-S, --lebs=<LEBs count>       alternative way to give volume size in logical\n"
+"                              eraseblocks\n"
 "-m, --maxavsize               set volume size to maximum available size\n"
 "-t, --type=<static|dynamic>   volume type (dynamic, static), default is dynamic\n"
 "-h, --help                    help message\n"
 "-V, --version                 print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " <device name> [-h] [-a <alignment>] [-d <devn>] [-n <volume id>]\n"
-"\t\t\t[-N <name>] [-s <bytes>] [-t <static|dynamic>] [-V] [-m]\n"
-"\t\t\t[--alignment=<alignment>] [--devn=<devn>] [--vol_id=<volume id>]\n"
-"\t\t\t[--name=<name>] [--size=<bytes>] [--type=<static|dynamic>]\n"
-"\t\t\t[--help] [--version] [--maxavsize]";
+"Usage: " PROGRAM_NAME " <UBI device node file name> [-h] [-a <alignment>] [-n <volume ID>] [-N <name>]\n"
+"\t\t\t[-s <bytes>] [-S <LEBs>] [-t <static|dynamic>] [-V] [-m]\n"
+"\t\t\t[--alignment=<alignment>] [--devn=<devn>] [--vol_id=<volume ID>]\n"
+"\t\t\t[--name=<name>] [--size=<bytes>] [--lebs=<LEBs>]\n"
+"\t\t\t[--type=<static|dynamic>] [--help] [--version] [--maxavsize]\n\n"
+"Example: " PROGRAM_NAME "/dev/ubi0 -s 20MiB -N config_data - create a 20 Megabytes volume\n"
+"         named \"config_data\" on UBI device /dev/ubi0.";
 
 struct option long_options[] = {
 	{ .name = "alignment", .has_arg = 1, .flag = NULL, .val = 'a' },
@@ -106,6 +97,7 @@ struct option long_options[] = {
 	{ .name = "vol_id",    .has_arg = 1, .flag = NULL, .val = 'n' },
 	{ .name = "name",      .has_arg = 1, .flag = NULL, .val = 'N' },
 	{ .name = "size",      .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "lebs",      .has_arg = 1, .flag = NULL, .val = 'S' },
 	{ .name = "type",      .has_arg = 1, .flag = NULL, .val = 't' },
 	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -120,7 +112,7 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 	while (1) {
 		int key;
 
-		key = getopt_long(argc - 1, &argv[1], "a:d:n:N:s:t:hVm",
+		key = getopt_long(argc, argv, "a:d:n:N:s:S:t:hVm",
 				  long_options, NULL);
 		if (key == -1)
 			break;
@@ -139,7 +131,7 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 
 		case 's':
 			args->bytes = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args->bytes < 0) {
+			if (endp == optarg || args->bytes <= 0) {
 				errmsg("bad volume size: \"%s\"", optarg);
 				return -1;
 			}
@@ -152,6 +144,14 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 					return -1;
 				}
 				args->bytes *= mult;
+			}
+			break;
+
+		case 'S':
+			args->lebs = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args->lebs <= 0 || *endp != '\0') {
+				errmsg("bad volume size: \"%s\"", optarg);
+				return -1;
 			}
 			break;
 
@@ -170,8 +170,8 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 				return -1;
 			}
 
-			warnmsg("-d and --devn options are depricated and will be removed"
-				"soon, pass UBI device node name instead\n"
+			warnmsg("'-d' and '--devn' options are depricated and will be "
+				"removed. Specify UBI device node name instead!\n"
 				"Example: " PROGRAM_NAME " /dev/ubi0, instead of "
 				PROGRAM_NAME " -d 0");
 			sprintf(args->node, "/dev/ubi%d", args->devn);
@@ -222,8 +222,15 @@ static int param_sanity_check(struct args *args, libubi_t libubi)
 	int err, len;
 	struct ubi_info ubi;
 
-	if (args->bytes == 0 && !args->maxavs) {
+	if (args->bytes == -1 && !args->maxavs && !args->lebs) {
 		errmsg("volume size was not specified (use -h for help)");
+		return -1;
+	}
+
+	if ((args->bytes != -1 && (args->maxavs || args->lebs != -1)) ||
+	    (args->lebs != -1 && (args->maxavs || args->bytes != -1)) ||
+	    (args->maxavs && (args->bytes != -1 || args->lebs != -1))) {
+		errmsg("size specified with more then one option");
 		return -1;
 	}
 
@@ -308,6 +315,12 @@ int main(int argc, char * const argv[])
 		printf("Set volume size to %lld\n", req.bytes);
 	}
 
+	if (myargs.lebs != -1) {
+		myargs.bytes = dev_info.eb_size;
+		myargs.bytes -= dev_info.eb_size % myargs.alignment;
+		myargs.bytes *= myargs.lebs;
+	}
+
 	req.vol_id = myargs.vol_id;
 	req.alignment = myargs.alignment;
 	req.bytes = myargs.bytes;
@@ -342,10 +355,10 @@ int main(int argc, char * const argv[])
 	else
 		printf("%.1f KiB)", (double)vol_info.rsvd_bytes / 1024);
 
-	printf(" LEB size is %d bytes (%.1f KiB), %s volume, name \"%s\"\n",
-	       vol_info.eb_size, ((double) vol_info.eb_size) / 1024,
+	printf(" LEB size is %d bytes (%.1f KiB), %s volume, name \"%s\", alignment %d\n",
+	       vol_info.eb_size, (double)vol_info.eb_size / 1024,
 	       req.vol_type == UBI_DYNAMIC_VOLUME ? "dynamic" : "static",
-	       vol_info.name);
+	       vol_info.name, vol_info.alignment);
 
 	libubi_close(libubi);
 	return 0;

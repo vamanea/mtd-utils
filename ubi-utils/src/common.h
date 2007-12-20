@@ -19,6 +19,9 @@
 #ifndef __UBI_UTILS_COMMON_H__
 #define __UBI_UTILS_COMMON_H__
 
+/* Maximum device node name length */
+#define MAX_NODE_LEN 255
+
 /* Error messages */
 #define errmsg(fmt, ...) do {                               \
         fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__); \
