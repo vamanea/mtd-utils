@@ -706,9 +706,9 @@ static unsigned char ffbuf[16] =
 	0xff, 0xff, 0xff, 0xff, 0xff
 };
 
-/* We default to 4096, per x86.  When building a fs for
- * 64-bit arches and whatnot, use the --pagesize=SIZE option */
-int page_size = 4096;
+/* We set this at start of main() using sysconf(), -1 means we don't know */
+/* When building an fs for non-native systems, use --pagesize=SIZE option */
+int page_size = -1;
 
 #include "compr.h"
 
@@ -1660,8 +1660,15 @@ int main(int argc, char **argv)
 	struct filesystem_entry *root;
 	char *compr_name = NULL;
 	int compr_prior  = -1;
+	int warn_page_size = 0;
 
 	jffs2_compressors_init();
+
+	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size < 0) /* System doesn't know so ... */
+		page_size = 4096; /* ... we make an educated guess */
+	if (page_size != 4096)
+		warn_page_size = 1; /* warn user if page size not 4096 */
 
 	while ((opt = getopt_long(argc, argv,
 					"D:d:r:s:o:qUPfh?vVe:lbp::nc:m:x:X:Lty:i:", long_options, &c)) >= 0)
@@ -1685,6 +1692,7 @@ int main(int argc, char **argv)
 
 			case 's':
 				page_size = strtol(optarg, NULL, 0);
+				warn_page_size = 0; /* set by user, so don't need to warn */
 				break;
 
 			case 'o':
@@ -1842,6 +1850,10 @@ int main(int argc, char **argv)
 					  break;
 #endif
 		}
+	}
+	if (warn_page_size) {
+		error_msg("Page size for this system is by default %d", page_size);
+		error_msg("Use the --pagesize=SIZE option if this is not what you want");
 	}
 	if (out_fd == -1) {
 		if (isatty(1)) {
