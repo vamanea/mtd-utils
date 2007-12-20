@@ -1,5 +1,5 @@
-
-INCLUDE1=../inc
+UBIUTILS=../../ubi-utils
+INCLUDE1=$(UBIUTILS)/inc
 INCLUDE2=../../include
 LIB=.
 
@@ -12,8 +12,8 @@ CFLAGS += -Wall -I$(INCLUDE1) -I$(INCLUDE2) -L$(LIB) -ggdb
 
 all: $(ALL_FILES)
 
-libubi: ../src/libubi.c  ../inc/libubi.h  ../src/libubi_int.h
-	$(CC) $(CFLAGS) -DUDEV_SETTLE_HACK -c ../src/libubi.c -o libubi.o
+libubi: $(UBIUTILS)/src/libubi.c  $(UBIUTILS)/inc/libubi.h  $(UBIUTILS)/src/libubi_int.h
+	$(CC) $(CFLAGS) -DUDEV_SETTLE_HACK -c $(UBIUTILS)/src/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
 io_paral: io_paral.c common.c
