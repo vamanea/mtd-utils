@@ -5,16 +5,15 @@ LIB=.
 
 CC := $(CROSS)gcc
 
-ALL_FILES=libubi io_update 
+ALL_FILES=libubi io_update rmvol integ
 ALL_FILES+=io_paral io_read io_basic mkvol_basic mkvol_bad mkvol_paral rsvol
-ALL_FILES+=integ
 
 CFLAGS += -Wall -I$(INCLUDE1) -I$(INCLUDE2) -L$(LIB) -ggdb
 
 all: $(ALL_FILES)
 
 libubi: ../src/libubi.c  ../inc/libubi.h  ../src/libubi_int.h
-	$(CC) $(CFLAGS) -c ../src/libubi.c -o libubi.o
+	$(CC) $(CFLAGS) -DUDEV_SETTLE_HACK -c ../src/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
 io_paral: io_paral.c common.c
@@ -32,6 +31,8 @@ mkvol_bad: mkvol_bad.c common.c
 mkvol_paral: mkvol_paral.c common.c
 	$(CC) $(CFLAGS) $^ -lubi -lpthread -o $@
 rsvol: rsvol.c common.c
+	$(CC) $(CFLAGS) $^ -lubi -o $@
+rmvol: rmvol.c common.c
 	$(CC) $(CFLAGS) $^ -lubi -o $@
 integ: integ.c
 	$(CC) $(CFLAGS) $^ -lubi -o $@

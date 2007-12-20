@@ -1,10 +1,10 @@
 #!/bin/sh
 
 ubidev="$1"
-ubiloadcmd="$2"
-tests="mkvol_basic mkvol_bad mkvol_paral rsvol io_basic io_read io_update io_paral"
+tests="mkvol_basic mkvol_bad mkvol_paral rsvol io_basic io_read io_update
+io_paral rmvol"
 
-if test -z "$ubidev" || test -z "$ubiloadcmd";
+if test -z "$ubidev";
 then
 	echo "Usage:"
 	echo "$0 <UBI device> <ubi module load command>"
@@ -33,8 +33,6 @@ do
 	echo "Running $t $ubidev"
 	"./$t" "$ubidev" || exit 1
 done
-
-./integ "$ubiloadcmd" || exit 1
 
 echo SUCCESS
 

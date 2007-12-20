@@ -34,7 +34,7 @@
 #include "common.h"
 
 #define THREADS_NUM 3
-#define ITERATIONS  100
+#define ITERATIONS  10
 
 static libubi_t libubi;
 static struct ubi_dev_info dev_info;
