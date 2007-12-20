@@ -36,7 +36,7 @@ clean:
 ubiupdatevol: ubiupdatevol.o error.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubimkvol: ubimkvol.o error.o libubi.o
+ubimkvol: ubimkvol.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 ubirmvol: ubirmvol.o error.o libubi.o

@@ -29,6 +29,7 @@
  * 1.3 Removed argp because we want to use uClibc.
  * 1.4 Minor cleanups
  * 1.5 Use a different libubi
+ * 1.6 Various fixes
  */
 
 #include <stdio.h>
@@ -40,8 +41,13 @@
 
 #include <config.h>
 #include <libubi.h>
+#include "common.h"
 
-#define PROGRAM_VERSION "1.5"
+#define PROGRAM_VERSION "1.6"
+#define PROGRAM_NAME    "ubimkvol"
+
+/* Maximum device node name length */
+#define MAX_NODE_LEN 255
 
 /*
  * The variables below	are set by command line arguments.
@@ -54,12 +60,8 @@ struct args {
 	int alignment;
 	char *name;
 	int nlen;
-	char node[256];
+	char node[MAX_NODE_LEN + 1];
 	int maxavs;
-
-	/* special stuff needed to get additional arguments */
-	char *arg1;
-	char **options;		/* [STRING...] */
 };
 
 static struct args myargs = {
@@ -75,163 +77,144 @@ static struct args myargs = {
 
 static int param_sanity_check(struct args *args, libubi_t libubi);
 
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
-	"ubinkvol - make UBI Volume.\n";
+static char doc[] = "Version " PROGRAM_VERSION "\n"
+PROGRAM_NAME " - a tool to create UBI volumes.";
 
 static const char *optionsstr =
-"  -a, --alignment=<alignment>   volume alignment (default is 1)\n"
-"  -d, --devn=<devn>          UBI device\n"
-"  -n, --vol_id=<volume id>   UBI volume id, if not specified, the volume ID\n"
-"                             will be assigned automatically\n"
-"  -N, --name=<name>          volume name\n"
-"  -s, --size=<bytes>         volume size volume size in bytes, kilobytes (KiB)\n"
-"                             or megabytes (MiB)\n"
-"  -m, --maxavsize            set volume size to maximum available size\n"
-"  -t, --type=<static|dynamic>   volume type (dynamic, static), default is\n"
-"                             dynamic\n"
-"  -?, --help                 Give this help list\n"
-"      --usage                Give a short usage message\n"
-"  -V, --version              Print program version\n";
+"-a, --alignment=<alignment>   volume alignment (default is 1)\n"
+"-d, --devn=<devn>             UBI device number (depricated, do not use)"
+"-n, --vol_id=<volume id>      UBI volume ID, if not specified, the volume ID\n"
+"                              will be assigned automatically\n"
+"-N, --name=<name>             volume name\n"
+"-s, --size=<bytes>            volume size volume size in bytes, kilobytes (KiB)\n"
+"                              or megabytes (MiB)\n"
+"-m, --maxavsize               set volume size to maximum available size\n"
+"-t, --type=<static|dynamic>   volume type (dynamic, static), default is dynamic\n"
+"-h, --help                    help message\n"
+"-V, --version                 print program version";
 
 static const char *usage =
-"Usage: ubimkvol [-?V] [-a <alignment>] [-d <devn>] [-n <volume id>]\n"
-"            [-N <name>] [-s <bytes>] [-t <static|dynamic>] [-m]\n"
-"            [--alignment=<alignment>] [--devn=<devn>] [--vol_id=<volume id>]\n"
-"            [--name=<name>] [--size=<bytes>] [--type=<static|dynamic>] [--help]\n"
-"            [--usage] [--version] [--maxavsize]\n";
+"Usage: " PROGRAM_NAME " <device name> [-h] [-a <alignment>] [-d <devn>] [-n <volume id>]\n"
+"\t\t\t[-N <name>] [-s <bytes>] [-t <static|dynamic>] [-V] [-m]\n"
+"\t\t\t[--alignment=<alignment>] [--devn=<devn>] [--vol_id=<volume id>]\n"
+"\t\t\t[--name=<name>] [--size=<bytes>] [--type=<static|dynamic>]\n"
+"\t\t\t[--help] [--version] [--maxavsize]";
 
 struct option long_options[] = {
 	{ .name = "alignment", .has_arg = 1, .flag = NULL, .val = 'a' },
-	{ .name = "devn", .has_arg = 1, .flag = NULL, .val = 'd' },
-	{ .name = "vol_id", .has_arg = 1, .flag = NULL, .val = 'n' },
-	{ .name = "name", .has_arg = 1, .flag = NULL, .val = 'N' },
-	{ .name = "size", .has_arg = 1, .flag = NULL, .val = 's' },
-	{ .name = "type", .has_arg = 1, .flag = NULL, .val = 't' },
-	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
-	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
-	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ .name = "devn",      .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "vol_id",    .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "name",      .has_arg = 1, .flag = NULL, .val = 'N' },
+	{ .name = "size",      .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "type",      .has_arg = 1, .flag = NULL, .val = 't' },
+	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
+	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ .name = "maxavsize", .has_arg = 0, .flag = NULL, .val = 'm' },
 	{ NULL, 0, NULL, 0}
 };
 
-/*
- * @brief Parse the arguments passed into the test case.
- *
- * @param argc		 The number of arguments
- * @param argv		 The list of arguments
- * @param args		 Pointer to argument structure
- *
- * @return error
- *
- */
-static int
-parse_opt(int argc, char **argv, struct args *args)
+static int parse_opt(int argc, char * const argv[], struct args *args)
 {
 	char *endp;
 
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "a:d:n:N:s:t:?Vm", long_options, NULL);
+		key = getopt_long(argc - 1, &argv[1], "a:d:n:N:s:t:hVm",
+				  long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
-			case 't':
-				if (!strcmp(optarg, "dynamic"))
-					args->vol_type = UBI_DYNAMIC_VOLUME;
-				else if (!strcmp(optarg, "static"))
-					args->vol_type = UBI_STATIC_VOLUME;
-				else {
-					fprintf(stderr,
-						"Bad volume type: \"%s\"\n",
-						optarg);
-					goto out;
-				}
-				break;
-			case 's':
-				args->bytes = strtoull(optarg, &endp, 0);
-				if (endp == optarg || args->bytes < 0) {
-					fprintf(stderr,
-						"Bad volume size: \"%s\"\n",
-						optarg);
-					goto out;
-				}
-				if (endp != '\0') {
-					if (strcmp(endp, "KiB") == 0)
-						args->bytes *= 1024;
-					else if (strcmp(endp, "MiB") == 0)
-						args->bytes *= 1024*1024;
-				}
-				break;
-			case 'a':
-				args->alignment = strtoul(optarg, &endp, 0);
-				if (*endp != '\0' || endp == optarg ||
-						args->alignment <= 0) {
-					fprintf(stderr, "Bad volume alignment: "
-							"\"%s\"\n", optarg);
-					goto out;
-				}
-				break;
-			case 'd': /* --devn=<device number> */
-				args->devn = strtoul(optarg, &endp, 0);
-				if (*endp != '\0' || endp == optarg ||
-					args->devn < 0) {
-					fprintf(stderr,
-						"Bad UBI device number: "
-						"\"%s\"\n", optarg);
-					goto out;
-				}
-				sprintf(args->node, "/dev/ubi%d", args->devn);
-				break;
-			case 'n': /* --volid=<volume id> */
-				args->vol_id = strtoul(optarg, &endp, 0);
-				if (*endp != '\0' ||
-				    endp == optarg ||
-				    (args->vol_id < 0 &&
-				     args->vol_id != UBI_DYNAMIC_VOLUME)) {
-					fprintf(stderr, "Bad volume ID: "
-						"\"%s\"\n", optarg);
-					goto out;
-				}
-				break;
-			case 'N':
-				args->name = optarg;
-				args->nlen = strlen(args->name);
-				break;
+		case 't':
+			if (!strcmp(optarg, "dynamic"))
+				args->vol_type = UBI_DYNAMIC_VOLUME;
+			else if (!strcmp(optarg, "static"))
+				args->vol_type = UBI_STATIC_VOLUME;
+			else {
+				errmsg("bad volume type: \"%s\"", optarg);
+				return -1;
+			}
+			break;
 
-			case ':':
-				fprintf(stderr, "Parameter is missing\n");
-				goto out;
+		case 's':
+			args->bytes = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args->bytes < 0) {
+				errmsg("bad volume size: \"%s\"", optarg);
+				return -1;
+			}
+			if (*endp != '\0') {
+				int mult = ubiutils_get_multiplier(endp);
 
-			case '?': /* help */
-				fprintf(stderr,
-					"Usage: ubimkvol [OPTION...]\n");
-				fprintf(stderr, "%s", doc);
-				fprintf(stderr, "%s", optionsstr);
-				fprintf(stderr, "\nReport bugs to %s\n",
-					PACKAGE_BUGREPORT);
-				exit(0);
-				break;
+				if (mult == -1) {
+					errmsg("bad size specifier: \"%s\" - "
+					       "should be 'KiB', 'MiB' or 'GiB'", endp);
+					return -1;
+				}
+				args->bytes *= mult;
+			}
+			break;
 
-			case 'V':
-				fprintf(stderr, "%s\n", PROGRAM_VERSION);
-				exit(0);
-				break;
+		case 'a':
+			args->alignment = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args->alignment <= 0) {
+				errmsg("bad volume alignment: \"%s\"", optarg);
+				return -1;
+			}
+			break;
 
-			case 'm':
-				args->maxavs = 1;
-				break;
+		case 'd':
+			args->devn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args->devn < 0) {
+				errmsg("bad UBI device number: \"%s\"", optarg);
+				return -1;
+			}
 
-			default:
-				fprintf(stderr, "%s", usage);
-				exit(-1);
+			warnmsg("-d and --devn options are depricated and will be removed"
+				"soon, pass UBI device node name instead\n"
+				"Example: " PROGRAM_NAME " /dev/ubi0, instead of "
+				PROGRAM_NAME " -d 0");
+			sprintf(args->node, "/dev/ubi%d", args->devn);
+			break;
+
+		case 'n':
+			args->vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args->vol_id < 0) {
+				errmsg("bad volume ID: " "\"%s\"", optarg);
+				return -1;
+			}
+			break;
+
+		case 'N':
+			args->name = optarg;
+			args->nlen = strlen(args->name);
+			break;
+
+		case 'h':
+			fprintf(stderr, "%s\n\n", doc);
+			fprintf(stderr, "%s\n\n", usage);
+			fprintf(stderr, "%s\n", optionsstr);
+			exit(0);
+
+		case ':':
+			errmsg("parameter is missing");
+			return -1;
+
+		case 'V':
+			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			exit(0);
+
+		case 'm':
+			args->maxavs = 1;
+			break;
+
+		default:
+			fprintf(stderr, "Use -h for help");
+			exit(-1);
 		}
 	}
 
 	return 0;
- out:
-	return -1;
 }
 
 static int param_sanity_check(struct args *args, libubi_t libubi)
@@ -240,111 +223,130 @@ static int param_sanity_check(struct args *args, libubi_t libubi)
 	struct ubi_info ubi;
 
 	if (args->bytes == 0 && !args->maxavs) {
-		fprintf(stderr, "Volume size was not specified\n");
-		goto out;
+		errmsg("volume size was not specified (use -h for help)");
+		return -1;
 	}
 
 	if (args->name == NULL) {
-		fprintf(stderr, "Volume name was not specified\n");
-		goto out;
+		errmsg("volume name was not specified (use -h for help)");
+		return -1;
 	}
 
 	err = ubi_get_info(libubi, &ubi);
-	if (err)
+	if (err) {
+		errmsg("cannot get UBI information");
+		perror("ubi_get_info");
 		return -1;
+	}
 
 	if (args->devn >= (int)ubi.dev_count) {
-		fprintf(stderr, "Device %d does not exist\n", args->devn);
-		goto out;
+		errmsg("UBI device %d does not exist", args->devn);
+		return -1;
 	}
 
 	len = strlen(args->name);
 	if (len > UBI_MAX_VOLUME_NAME) {
-		fprintf(stderr, "Too long name (%d symbols), max is %d\n",
+		errmsg("too long name (%d symbols), max is %d",
 			len, UBI_MAX_VOLUME_NAME);
-		goto out;
+		return -1;
 	}
 
 	return 0;
-out:
-	errno = EINVAL;
-	return -1;
 }
 
 int main(int argc, char * const argv[])
 {
 	int err;
 	libubi_t libubi;
+	struct ubi_dev_info dev_info;
+	struct ubi_vol_info vol_info;
 	struct ubi_mkvol_request req;
 
-	err = parse_opt(argc, (char **)argv, &myargs);
-	if (err) {
-		fprintf(stderr, "Wrong options ...\n");
-		return err == 1 ? 0 : -1;
-	}
-
-	if (myargs.devn == -1) {
-		fprintf(stderr, "Device number was not specified\n");
-		fprintf(stderr, "Use -h option for help\n");
+	if (argc < 2) {
+		errmsg("UBI device name was not specified (use -h for help)");
 		return -1;
 	}
 
+	if (argc < 3) {
+		errmsg("too few arguments (use -h for help)");
+		return -1;
+	}
+
+	if (strlen(argv[1]) > MAX_NODE_LEN) {
+		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
+		       argv[1], strlen(argv[1]), MAX_NODE_LEN);
+		return -1;
+	}
+
+	strcpy(myargs.node, argv[1]);
+
+	err = parse_opt(argc, (char **)argv, &myargs);
+	if (err)
+		return err;
+
 	libubi = libubi_open();
 	if (libubi == NULL) {
-		perror("Cannot open libubi");
+		errmsg("cannot open libubi");
+		perror("libubi_open");
 		return -1;
 	}
 
 	err = param_sanity_check(&myargs, libubi);
-	if (err) {
-		perror("Input parameters check");
-		fprintf(stderr, "Use -h option for help\n");
+	if (err)
 		goto out_libubi;
+
+	err = ubi_get_dev_info(libubi, myargs.node, &dev_info);
+	if (err) {
+		errmsg("cannot get information about UBI device number %d (%s)",
+		       myargs.devn, myargs.node);
+		perror("ubi_get_dev_info");
+		goto out_libubi;
+	}
+
+	if (myargs.maxavs) {
+		myargs.bytes = dev_info.avail_bytes;
+		printf("Set volume size to %lld\n", req.bytes);
 	}
 
 	req.vol_id = myargs.vol_id;
 	req.alignment = myargs.alignment;
-
-	if (myargs.maxavs) {
-		struct ubi_dev_info ubi_dev;
-
-		err = ubi_get_dev_info1(libubi, myargs.devn, &ubi_dev);
-		if (err) {
-			perror("Can't get UBI device info");
-			goto out_libubi;
-		}
-		req.bytes = ubi_dev.avail_bytes;
-		if (!req.bytes) {
-			fprintf(stderr, "There is no available free space on device!\n");
-			goto out_libubi;
-		}
-		printf("Setting the volume size to %lld\n", req.bytes);
-	} else
-		req.bytes = myargs.bytes;
-
+	req.bytes = myargs.bytes;
 	req.vol_type = myargs.vol_type;
 	req.name = myargs.name;
 
 	err = ubi_mkvol(libubi, myargs.node, &req);
 	if (err < 0) {
-		perror("Cannot create volume");
-		fprintf(stderr, "  err=%d\n", err);
+		errmsg("cannot UBI create volume");
+		perror("ubi_mkvol");
 		goto out_libubi;
 	}
 
-	/*
-	 * This is hacky, but we want to wait until udev has created device
-	 * nodes. There is probably better way do do this, though.
-	 */
-	if (system("udevsettle")) {
-		/* Well, this is to keep GCC silent */
+	myargs.vol_id = req.vol_id;
+
+	/* Print information about the created device */
+	err = ubi_get_vol_info1(libubi, dev_info.dev_num, myargs.vol_id, &vol_info);
+	if (err) {
+		errmsg("cannot get information about newly created UBI volume");
+		perror("ubi_get_vol_info1");
+		goto out_libubi;
 	}
 
-	/* printf("Created volume %d, %lld bytes, type %s, name %s\n",
-	   vol_id, bytes, vol_type == UBI_DYNAMIC_VOLUME ?
-	   "dynamic" : "static", name); */
+	printf("Volume ID is %d, size %lld LEBs (%lld bytes, ",
+	       vol_info.vol_id, vol_info.rsvd_bytes / vol_info.eb_size,
+	       vol_info.rsvd_bytes);
 
-	myargs.vol_id = err;
+	if (vol_info.rsvd_bytes > 1024 * 1024 * 1024)
+		printf("%.1f GiB)", (double)vol_info.rsvd_bytes / (1024 * 1024 * 1024));
+	else if (vol_info.rsvd_bytes > 1024 * 1024)
+		printf("%.1f MiB)", (double)vol_info.rsvd_bytes / (1024 * 1024));
+	else
+		printf("%.1f KiB)", (double)vol_info.rsvd_bytes / 1024);
+
+	printf(" LEB size is %d bytes (%.1f KiB), %s volume, name \"%s\"\n",
+	       vol_info.eb_size, ((double) vol_info.eb_size) / 1024,
+	       req.vol_type == UBI_DYNAMIC_VOLUME ? "dynamic" : "static",
+	       vol_info.name);
+
 	libubi_close(libubi);
 	return 0;
 
