@@ -39,7 +39,7 @@ ubiupdatevol: ubiupdatevol.o error.o libubi.o
 ubimkvol: ubimkvol.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubirmvol: ubirmvol.o error.o libubi.o
+ubirmvol: ubirmvol.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \

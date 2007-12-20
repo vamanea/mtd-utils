@@ -37,9 +37,7 @@
 #define PROGRAM_VERSION "1.6"
 #define PROGRAM_NAME    "ubimkvol"
 
-/*
- * The variables below	are set by command line arguments.
- */
+/* The variables below is set by command line arguments */
 struct args {
 	int devn;
 	int vol_id;
@@ -79,7 +77,7 @@ static const char *optionsstr =
 "                              eraseblocks\n"
 "-m, --maxavsize               set volume size to maximum available size\n"
 "-t, --type=<static|dynamic>   volume type (dynamic, static), default is dynamic\n"
-"-h, --help                    help message\n"
+"-h, --help                    print help message\n"
 "-V, --version                 print program version";
 
 static const char *usage =
@@ -91,7 +89,7 @@ static const char *usage =
 "Example: " PROGRAM_NAME "/dev/ubi0 -s 20MiB -N config_data - create a 20 Megabytes volume\n"
 "         named \"config_data\" on UBI device /dev/ubi0.";
 
-struct option long_options[] = {
+static const struct option long_options[] = {
 	{ .name = "alignment", .has_arg = 1, .flag = NULL, .val = 'a' },
 	{ .name = "devn",      .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ .name = "vol_id",    .has_arg = 1, .flag = NULL, .val = 'n' },
@@ -102,7 +100,7 @@ struct option long_options[] = {
 	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ .name = "maxavsize", .has_arg = 0, .flag = NULL, .val = 'm' },
-	{ NULL, 0, NULL, 0}
+	{ NULL, 0, NULL, 0},
 };
 
 static int parse_opt(int argc, char * const argv[], struct args *args)
@@ -170,7 +168,7 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 				return -1;
 			}
 
-			warnmsg("'-d' and '--devn' options are depricated and will be "
+			warnmsg("'-d' and '--devn' options are deprecated and will be "
 				"removed. Specify UBI device node name instead!\n"
 				"Example: " PROGRAM_NAME " /dev/ubi0, instead of "
 				PROGRAM_NAME " -d 0");
@@ -196,10 +194,6 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(0);
 
-		case ':':
-			errmsg("parameter is missing");
-			return -1;
-
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
 			exit(0);
@@ -208,8 +202,12 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 			args->maxavs = 1;
 			break;
 
+		case ':':
+			errmsg("parameter is missing");
+			return -1;
+
 		default:
-			fprintf(stderr, "Use -h for help");
+			fprintf(stderr, "Use -h for help\n");
 			exit(-1);
 		}
 	}
@@ -219,8 +217,13 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 
 static int param_sanity_check(struct args *args, libubi_t libubi)
 {
-	int err, len;
-	struct ubi_info ubi;
+	int len;
+
+	if (strlen(args->node) > MAX_NODE_LEN) {
+		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
+		       args->node, strlen(args->node), MAX_NODE_LEN);
+		return -1;
+	}
 
 	if (args->bytes == -1 && !args->maxavs && !args->lebs) {
 		errmsg("volume size was not specified (use -h for help)");
@@ -239,16 +242,21 @@ static int param_sanity_check(struct args *args, libubi_t libubi)
 		return -1;
 	}
 
-	err = ubi_get_info(libubi, &ubi);
-	if (err) {
-		errmsg("cannot get UBI information");
-		perror("ubi_get_info");
-		return -1;
-	}
+	if (args->devn != -1) {
+		int err;
+		struct ubi_info ubi;
 
-	if (args->devn >= (int)ubi.dev_count) {
-		errmsg("UBI device %d does not exist", args->devn);
-		return -1;
+		err = ubi_get_info(libubi, &ubi);
+		if (err) {
+			errmsg("cannot get UBI information");
+			perror("ubi_get_info");
+			return -1;
+		}
+
+		if (args->devn >= ubi.dev_count) {
+			errmsg("UBI device %d does not exist", args->devn);
+			return -1;
+		}
 	}
 
 	len = strlen(args->name);
@@ -279,13 +287,7 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	if (strlen(argv[1]) > MAX_NODE_LEN) {
-		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
-		       argv[1], strlen(argv[1]), MAX_NODE_LEN);
-		return -1;
-	}
-
-	strcpy(myargs.node, argv[1]);
+	strncpy(myargs.node, argv[1], MAX_NODE_LEN);
 
 	err = parse_opt(argc, (char **)argv, &myargs);
 	if (err)
