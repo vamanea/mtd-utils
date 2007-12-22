@@ -14,7 +14,7 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 	-Wwrite-strings -W -std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi ubicrc32.pl
-TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
+TARGETS = ubiupdate ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
 	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32 ubinfo
 
 vpath   %.c ./src
@@ -36,7 +36,7 @@ clean:
 ubinfo: ubinfo.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubiupdatevol: ubiupdatevol.o error.o libubi.o
+ubiupdate: ubiupdate.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 ubimkvol: ubimkvol.o common.o libubi.o
