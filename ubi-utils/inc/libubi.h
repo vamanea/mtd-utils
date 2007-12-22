@@ -82,13 +82,13 @@ struct ubi_info
  * @highest_vol_num: highest volume number
  * @major: major number of corresponding character device
  * @minor: minor number of corresponding character device
- * @total_ebs: total number of logical eraseblocks on this UBI device
- * @avail_ebs: how many logical eraseblocks are not used and available for new
+ * @total_lebs: total number of logical eraseblocks on this UBI device
+ * @avail_lebs: how many logical eraseblocks are not used and available for new
  *             volumes
- * @total_bytes: @total_ebs * @eb_size
- * @avail_bytes: @avail_ebs * @eb_size
+ * @total_bytes: @total_lebs * @leb_size
+ * @avail_bytes: @avail_lebs * @leb_size
  * @bad_count: count of bad physical eraseblocks
- * @eb_size: logical eraseblock size
+ * @leb_size: logical eraseblock size
  * @max_ec: current highest erase counter value
  * @bad_rsvd: how many physical eraseblocks of the underlying flash device are
  *            reserved for bad eraseblocks handling
@@ -103,12 +103,12 @@ struct ubi_dev_info
 	int highest_vol_num;
 	int major;
 	int minor;
-	int total_ebs;
-	int avail_ebs;
+	int total_lebs;
+	int avail_lebs;
 	long long total_bytes;
 	long long avail_bytes;
 	int bad_count;
-	int eb_size;
+	int leb_size;
 	long long max_ec;
 	int bad_rsvd;
 	int max_vol_count;
@@ -128,8 +128,8 @@ struct ubi_dev_info
  * @data_bytes: how many data bytes are stored on this volume (equivalent to
  *              @rsvd_bytes for dynamic volumes)
  * @rsvd_bytes: how many bytes are reserved for this volume
- * @rsvd_ebs: how many logical eraseblocks are reserved for this volume
- * @eb_size: logical eraseblock size of this volume (may be less then
+ * @rsvd_lebs: how many logical eraseblocks are reserved for this volume
+ * @leb_size: logical eraseblock size of this volume (may be less then
  *           device's logical eraseblock size due to alignment)
  * @corrupted: non-zero if the volume is corrupted
  * @name: volume name (null-terminated)
@@ -146,8 +146,8 @@ struct ubi_vol_info
 	int alignment;
 	long long data_bytes;
 	long long rsvd_bytes;
-	int rsvd_ebs;
-	int eb_size;
+	int rsvd_lebs;
+	int leb_size;
 	int corrupted;
 	char name[UBI_VOL_NAME_MAX + 1];
 };

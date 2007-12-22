@@ -36,7 +36,7 @@ peb_cmp(peb_t eb_1, peb_t eb_2)
 }
 
 int
-peb_new(uint32_t eb_num, uint32_t eb_size, peb_t *peb)
+peb_new(uint32_t eb_num, uint32_t peb_size, peb_t *peb)
 {
 	int rc = 0;
 
@@ -47,7 +47,7 @@ peb_new(uint32_t eb_num, uint32_t eb_size, peb_t *peb)
 	}
 
 	res->num  = eb_num;
-	res->size = eb_size;
+	res->size = peb_size;
 	res->data = (uint8_t*) malloc(res->size * sizeof(uint8_t));
 	if (!res->data) {
 		rc = -ENOMEM;

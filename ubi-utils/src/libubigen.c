@@ -44,7 +44,7 @@ struct ubi_info {
 	FILE* fp_in;		/* Input Stream */
 	FILE* fp_out;		/* Output stream */
 
-	size_t eb_size;		/* Physical EB size in bytes */
+	size_t peb_size;	/* Physical EB size in bytes */
 	size_t leb_size;	/* Size of a logical EB in a physical EB */
 	size_t leb_total;	/* Total input size in logical EB */
 	size_t alignment;	/* Block alignment */
@@ -63,11 +63,11 @@ struct ubi_info {
 
 
 static uint32_t
-byte_to_blk(uint64_t byte, uint32_t eb_size)
+byte_to_blk(uint64_t byte, uint32_t peb_size)
 {
-	return (byte % eb_size) == 0
-		? (byte / eb_size)
-		: (byte / eb_size) + 1;
+	return (byte % peb_size) == 0
+		? (byte / peb_size)
+		: (byte / peb_size) + 1;
 }
 
 static int
@@ -111,7 +111,7 @@ skip_blks(ubi_info_t u, uint32_t blks)
 static void
 clear_buf(ubi_info_t u)
 {
-	memset(u->buf, 0xff, u->eb_size);
+	memset(u->buf, 0xff, u->peb_size);
 }
 
 static void
@@ -173,8 +173,8 @@ write_to_output_stream(ubi_info_t u)
 {
 	size_t written;
 
-	written = fwrite(u->buf, 1, u->eb_size, u->fp_out);
-	if (written != u->eb_size) {
+	written = fwrite(u->buf, 1, u->peb_size, u->fp_out);
+	if (written != u->peb_size) {
 		return -EIO;
 	}
 	return 0;
@@ -273,7 +273,7 @@ dump_info(ubi_info_t u ubi_unused)
 		"static" : "dynamic");
 	fprintf(stderr, "used_ebs     :	  %8d\n",
 		ubi32_to_cpu(u->v->used_ebs));
-	fprintf(stderr, "eb_size      : 0x%08x\n", u->eb_size);
+	fprintf(stderr, "peb_size     : 0x%08x\n", u->peb_size);
 	fprintf(stderr, "leb_size     : 0x%08x\n", u->leb_size);
 	fprintf(stderr, "data_pad     : 0x%08x\n",
 		ubi32_to_cpu(u->v->data_pad));
@@ -318,7 +318,7 @@ ubigen_init(void)
 
 int
 ubigen_create(ubi_info_t* u, uint32_t vol_id, uint8_t vol_type,
-	      uint32_t eb_size, uint64_t ec, uint32_t alignment,
+	      uint32_t peb_size, uint64_t ec, uint32_t alignment,
 	      uint8_t version, uint32_t vid_hdr_offset, uint8_t compat_flag,
 	      size_t data_size, FILE* fp_in, FILE* fp_out)
 {
@@ -358,13 +358,13 @@ ubigen_create(ubi_info_t* u, uint32_t vol_id, uint8_t vol_type,
 	vid_hdr_offset = vid_hdr_offset ? vid_hdr_offset : DEFAULT_VID_OFFSET;
 	data_offset = vid_hdr_offset + UBI_VID_HDR_SIZE;
 	res->bytes_total = data_size;
-	res->eb_size = eb_size ? eb_size : DEFAULT_BLOCKSIZE;
-	res->data_pad = (res->eb_size - data_offset) % alignment;
-	res->leb_size = res->eb_size - data_offset - res->data_pad;
+	res->peb_size = peb_size ? peb_size : DEFAULT_BLOCKSIZE;
+	res->data_pad = (res->peb_size - data_offset) % alignment;
+	res->leb_size = res->peb_size - data_offset - res->data_pad;
 	res->leb_total = byte_to_blk(data_size, res->leb_size);
 	res->alignment = alignment;
 
-	if ((res->eb_size < (vid_hdr_offset + UBI_VID_HDR_SIZE))) {
+	if ((res->peb_size < (vid_hdr_offset + UBI_VID_HDR_SIZE))) {
 		rc = EUBIGEN_TOO_SMALL_EB;
 		goto ubigen_create_err;
 	}
@@ -399,7 +399,7 @@ ubigen_create(ubi_info_t* u, uint32_t vol_id, uint8_t vol_type,
 	res->ec->hdr_crc = cpu_to_ubi32(crc);
 
 	/* prepare a read buffer */
-	res->buf = (uint8_t*) malloc (res->eb_size * sizeof(uint8_t));
+	res->buf = (uint8_t*) malloc (res->peb_size * sizeof(uint8_t));
 	if (res->buf == NULL) {
 		rc = -ENOMEM;
 		goto ubigen_create_err;

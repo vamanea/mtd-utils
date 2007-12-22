@@ -215,7 +215,7 @@ static int print_vol_info(libubi_t libubi, int dev_num, int vol_id)
 	       vol_info.type == UBI_DYNAMIC_VOLUME ?  "dynamic" : "static");
 	printf("Alignment:   %d\n", vol_info.alignment);
 
-	printf("Size:        %d LEBs (", vol_info.rsvd_ebs);
+	printf("Size:        %d LEBs (", vol_info.rsvd_lebs);
 	ubiutils_print_bytes(vol_info.rsvd_bytes, 0);
 	printf(")\n");
 
@@ -246,13 +246,13 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 
 	printf("ubi%d:\n", dev_info.dev_num);
 	printf("Volumes count:                           %d\n", dev_info.vol_count);
-	printf("Logical eraseblock size:                 %d\n", dev_info.eb_size);
+	printf("Logical eraseblock size:                 %d\n", dev_info.leb_size);
 
-	printf("Total amount of logical eraseblocks:     %d (", dev_info.total_ebs);
+	printf("Total amount of logical eraseblocks:     %d (", dev_info.total_lebs);
 	ubiutils_print_bytes(dev_info.total_bytes, 0);
 	printf(")\n");
 
-	printf("Amount of available logical eraseblocks: %d", dev_info.avail_ebs);
+	printf("Amount of available logical eraseblocks: %d", dev_info.avail_lebs);
 	ubiutils_print_bytes(dev_info.avail_bytes, 0);
 	printf(")\n");
 

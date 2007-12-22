@@ -291,8 +291,8 @@ int main(int argc, char * const argv[])
 	}
 
 	if (myargs.lebs != -1) {
-		myargs.bytes = dev_info.eb_size;
-		myargs.bytes -= dev_info.eb_size % myargs.alignment;
+		myargs.bytes = dev_info.leb_size;
+		myargs.bytes -= dev_info.leb_size % myargs.alignment;
 		myargs.bytes *= myargs.lebs;
 	}
 
@@ -319,10 +319,10 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
-	printf("Volume ID %d, size %d LEBs (", vol_info.vol_id, vol_info.rsvd_ebs);
+	printf("Volume ID %d, size %d LEBs (", vol_info.vol_id, vol_info.rsvd_lebs);
 	ubiutils_print_bytes(vol_info.rsvd_bytes, 0);
 	printf("), LEB size ");
-	ubiutils_print_bytes(vol_info.eb_size, 1);
+	ubiutils_print_bytes(vol_info.leb_size, 1);
 	printf(", %s volume, name \"%s\", alignment %d\n",
 	       req.vol_type == UBI_DYNAMIC_VOLUME ? "dynamic" : "static",
 	       vol_info.name, vol_info.alignment);

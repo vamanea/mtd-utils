@@ -171,9 +171,9 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	struct stat st;
 	char *buf;
 
-	buf = malloc(vol_info->eb_size);
+	buf = malloc(vol_info->leb_size);
 	if (!buf) {
-		errmsg("cannot allocate %d bytes of memory", vol_info->eb_size);
+		errmsg("cannot allocate %d bytes of memory", vol_info->leb_size);
 		return -1;
 	}
 
@@ -212,7 +212,7 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	}
 
 	while (bytes) {
-		int tocopy = vol_info->eb_size;
+		int tocopy = vol_info->leb_size;
 
 		if (tocopy > bytes)
 			tocopy = bytes;

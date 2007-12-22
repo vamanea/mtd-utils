@@ -940,13 +940,13 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	if (dev_get_major(lib, dev_num, &info->major, &info->minor))
 		return -1;
 
-	if (dev_read_int(lib->dev_avail_ebs, dev_num, &info->avail_ebs))
+	if (dev_read_int(lib->dev_avail_ebs, dev_num, &info->avail_lebs))
 		return -1;
-	if (dev_read_int(lib->dev_total_ebs, dev_num, &info->total_ebs))
+	if (dev_read_int(lib->dev_total_ebs, dev_num, &info->total_lebs))
 		return -1;
 	if (dev_read_int(lib->dev_bad_count, dev_num, &info->bad_count))
 		return -1;
-	if (dev_read_int(lib->dev_eb_size, dev_num, &info->eb_size))
+	if (dev_read_int(lib->dev_eb_size, dev_num, &info->leb_size))
 		return -1;
 	if (dev_read_int(lib->dev_bad_rsvd, dev_num, &info->bad_rsvd))
 		return -1;
@@ -957,8 +957,8 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	if (dev_read_int(lib->dev_min_io_size, dev_num, &info->min_io_size))
 		return -1;
 
-	info->avail_bytes = info->avail_ebs * info->eb_size;
-	info->total_bytes = info->total_ebs * info->eb_size;
+	info->avail_bytes = info->avail_lebs * info->leb_size;
+	info->total_bytes = info->total_lebs * info->leb_size;
 
 	return 0;
 
@@ -1016,17 +1016,17 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 			  &info->data_bytes);
 	if (ret)
 		return -1;
-	ret = vol_read_int(lib->vol_rsvd_ebs, dev_num, vol_id, &info->rsvd_ebs);
+	ret = vol_read_int(lib->vol_rsvd_ebs, dev_num, vol_id, &info->rsvd_lebs);
 	if (ret)
 		return -1;
-	ret = vol_read_int(lib->vol_eb_size, dev_num, vol_id, &info->eb_size);
+	ret = vol_read_int(lib->vol_eb_size, dev_num, vol_id, &info->leb_size);
 	if (ret)
 		return -1;
 	ret = vol_read_int(lib->vol_corrupted, dev_num, vol_id,
 			   &info->corrupted);
 	if (ret)
 		return -1;
-	info->rsvd_bytes = info->eb_size * info->rsvd_ebs;
+	info->rsvd_bytes = info->leb_size * info->rsvd_lebs;
 
 	ret = vol_read_data(lib->vol_name, dev_num, vol_id, &info->name,
 			    UBI_VOL_NAME_MAX + 2);
