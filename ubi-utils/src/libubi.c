@@ -412,7 +412,7 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
 
 	if (minor == 0) {
 		errmsg("\"%s\" is not a volume character device", node);
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -479,7 +479,7 @@ static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 
 	if (minor != 0) {
 		errmsg("\"%s\" is not an UBI character device", node);
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 

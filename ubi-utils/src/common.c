@@ -18,6 +18,8 @@
 
 /*
  * This file contains various common stuff used by UBI utilities.
+ *
+ * Author: Artem Bityutskiy
  */
 
 #include <stdio.h>

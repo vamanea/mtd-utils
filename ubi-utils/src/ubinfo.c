@@ -13,13 +13,14 @@
  * You should have received a copy of the GNU General Public License along with
  * this program; if not, write to the Free Software Foundation, Inc., 51
  * Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
- *
- * Author: Artem Bityutskiy
  */
 
 /*
  * An utility to get UBI information.
+ *
+ * Author: Artem Bityutskiy
  */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -50,7 +51,7 @@ static struct args myargs = {
 };
 
 static const char *doc = "Version " PROGRAM_VERSION "\n"
-	PROGRAM_NAME " - a tool to UBI information.";
+	PROGRAM_NAME " - a tool to print UBI information.";
 
 static const char *optionsstr =
 "-d, --devn=<UBI device number>  UBI device number to get information about\n"
@@ -84,10 +85,9 @@ static const struct option long_options[] = {
 
 static int parse_opt(int argc, char * const argv[], struct args *args)
 {
-	char *endp;
-
 	while (1) {
 		int key;
+		char *endp;
 
 		key = getopt_long(argc, argv, "an:d:hV", long_options, NULL);
 		if (key == -1)

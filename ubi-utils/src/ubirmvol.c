@@ -19,7 +19,7 @@
 /*
  * An utility to remove UBI volumes.
  *
- * Authors: Artem B. Bityutskiy <dedekind@infradead.org>
+ * Authors: Artem Bityutskiy <dedekind@infradead.org>
  *          Frank Haverkamp <haver@vnet.ibm.com>
  */
 
@@ -68,10 +68,9 @@ static const struct option long_options[] = {
 
 static int parse_opt(int argc, char * const argv[], struct args *args)
 {
-	char *endp;
-
 	while (1) {
 		int key;
+		char *endp;
 
 		key = getopt_long(argc, argv, "n:hV", long_options, NULL);
 		if (key == -1)

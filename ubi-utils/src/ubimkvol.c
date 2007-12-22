@@ -19,7 +19,7 @@
 /*
  * An utility to create UBI volumes.
  *
- * Authors: Artem B. Bityutskiy <dedekind@infradead.org>
+ * Authors: Artem Bityutskiy <dedekind@infradead.org>
  *          Frank Haverkamp <haver@vnet.ibm.com>
  */
 
@@ -43,7 +43,7 @@ struct args {
 	long long bytes;
 	int lebs;
 	int alignment;
-	char *name;
+	const char *name;
 	int nlen;
 	char node[MAX_NODE_LEN + 2];
 	int maxavs;
@@ -101,10 +101,9 @@ static const struct option long_options[] = {
 
 static int parse_opt(int argc, char * const argv[], struct args *args)
 {
-	char *endp;
-
 	while (1) {
 		int key;
+		char *endp;
 
 		key = getopt_long(argc, argv, "a:n:N:s:S:t:hVm", long_options, NULL);
 		if (key == -1)
@@ -280,7 +279,7 @@ int main(int argc, char * const argv[])
 
 	err = ubi_get_dev_info(libubi, myargs.node, &dev_info);
 	if (err) {
-		errmsg("cannot get information about UBI device number %s",
+		errmsg("cannot get information about UBI device \"%s\"",
 		       myargs.node);
 		perror("ubi_get_dev_info");
 		goto out_libubi;
