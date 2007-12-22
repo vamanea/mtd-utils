@@ -30,7 +30,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <config.h>
 #include <libubi.h>
 #include "common.h"
 
@@ -39,17 +38,13 @@
 
 /* The variables below is set by command line arguments */
 struct args {
-	int devn;
 	int vol_id;
-	char node[MAX_NODE_LEN + 1];
+	char node[MAX_NODE_LEN + 2];
 };
 
 static struct args myargs = {
-	.devn = -1,
 	.vol_id = -1,
 };
-
-static int param_sanity_check(struct args *args, libubi_t libubi);
 
 static const char *doc = "Version: " PROGRAM_VERSION "\n"
 	PROGRAM_NAME " - a tool to remove UBI volumes.";
@@ -65,7 +60,6 @@ static const char *usage =
 "         to the node file /dev/ubi0.";
 
 static const struct option long_options[] = {
-	{ .name = "devn",    .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ .name = "vol_id",  .has_arg = 1, .flag = NULL, .val = 'n' },
 	{ .name = "help",    .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -79,25 +73,11 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "d:n:hV", long_options, NULL);
+		key = getopt_long(argc, argv, "n:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
-
-		case 'd':
-			args->devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args->devn < 0) {
-				errmsg("bad UBI device number: \"%s\"", optarg);
-				return -1;
-			}
-
-			warnmsg("'-d' and '--devn' options are deprecated and will be "
-				"removed. Specify UBI device node name instead!\n"
-				"Example: " PROGRAM_NAME " /dev/ubi0, instead of "
-				PROGRAM_NAME " -d 0");
-			sprintf(args->node, "/dev/ubi%d", args->devn);
-			break;
 
 		case 'n':
 			args->vol_id = strtoul(optarg, &endp, 0);
@@ -132,10 +112,8 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 	return -1;
 }
 
-static int param_sanity_check(struct args *args, libubi_t libubi)
+static int param_sanity_check(struct args *args)
 {
-	int err;
-
 	if (strlen(args->node) > MAX_NODE_LEN) {
 		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
 		       args->node, strlen(args->node), MAX_NODE_LEN);
@@ -147,22 +125,6 @@ static int param_sanity_check(struct args *args, libubi_t libubi)
 		return -1;
 	}
 
-	if (args->devn != -1) {
-		struct ubi_info ubi;
-
-		err = ubi_get_info(libubi, &ubi);
-		if (err) {
-			errmsg("cannot get UBI information");
-			perror("ubi_get_info");
-			return -1;
-		}
-
-		if (args->devn >= ubi.dev_count) {
-			errmsg("UBI device %d does not exist", args->devn);
-			return -1;
-		}
-	}
-
 	return 0;
 }
 
@@ -171,11 +133,7 @@ int main(int argc, char * const argv[])
 	int err;
 	libubi_t libubi;
 
-	strncpy(myargs.node, argv[1], MAX_NODE_LEN);
-
-	err = parse_opt(argc, argv, &myargs);
-	if (err)
-		return -1;
+	strncpy(myargs.node, argv[1], MAX_NODE_LEN + 1);
 
 	if (argc < 2) {
 		errmsg("UBI device name was not specified (use -h for help)");
@@ -187,6 +145,20 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
+	if (argv[1][0] == '-') {
+		errmsg("UBI device was not specified (use -h for help)");
+		return -1;
+	}
+
+	if (argv[2][0] != '-') {
+		errmsg("incorrect arguments, use -h for help");
+		return -1;
+	}
+
+	err = parse_opt(argc, argv, &myargs);
+	if (err)
+		return -1;
+
 	libubi = libubi_open();
 	if (libubi == NULL) {
 		errmsg("cannot open libubi");
@@ -194,7 +166,7 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	err = param_sanity_check(&myargs, libubi);
+	err = param_sanity_check(&myargs);
 	if (err)
 		goto out_libubi;
 

@@ -20,6 +20,7 @@
  * This file contains various common stuff used by UBI utilities.
  */
 
+#include <stdio.h>
 #include <string.h>
 
 /**
@@ -49,4 +50,38 @@ int ubiutils_get_multiplier(const char *str)
 		return 1024 * 1024 * 1024;
 
 	return -1;
+}
+
+/**
+ * ubiutils_print_bytes - print bytes.
+ * @bytes: variable to print
+ * @bracket: whether brackets have to be put or not
+ *
+ * This is a helper function which prints amount of bytes in a human-readable
+ * form, i.e., it prints the exact amount of bytes following by the approximate
+ * amount of Kilobytes, Megabytes, or Gigabytes, depending on how big @bytes
+ * is.
+ */
+void ubiutils_print_bytes(long long bytes, int bracket)
+{
+	const char *p;
+
+	if (bracket)
+		p = " (";
+	else
+		p = ", ";
+
+	printf("%lld bytes", bytes);
+
+	if (bytes > 1024 * 1024 * 1024)
+		printf("%s%.1f GiB", p, (double)bytes / (1024 * 1024 * 1024));
+	else if (bytes > 1024 * 1024)
+		printf("%s%.1f MiB", p, (double)bytes / (1024 * 1024));
+	else if (bytes > 1024)
+		printf("%s%.1f KiB", p, (double)bytes / 1024);
+	else
+		return;
+
+	if (bracket)
+		printf(")");
 }

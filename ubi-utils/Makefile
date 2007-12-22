@@ -2,7 +2,7 @@
 # Makefile for ubi-utils
 #
 
-OPTFLAGS := -O2 -g -Wall
+OPTFLAGS := -O2 -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
 SBINDIR=/usr/sbin
@@ -15,7 +15,7 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 
 PERLPROGS = mkpfi ubicrc32.pl
 TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
-	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32
+	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32 ubinfo
 
 vpath   %.c ./src
 
@@ -32,6 +32,9 @@ IGNORE=${wildcard .*.c.dep}
 
 clean:
 	rm -rf *.o $(TARGETS) .*.c.dep
+
+ubinfo: ubinfo.o common.o libubi.o
+	$(CC) $(LDFLAGS) -o $@ $^
 
 ubiupdatevol: ubiupdatevol.o error.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^

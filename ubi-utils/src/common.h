@@ -19,19 +19,28 @@
 #ifndef __UBI_UTILS_COMMON_H__
 #define __UBI_UTILS_COMMON_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Maximum device node name length */
 #define MAX_NODE_LEN 255
 
 /* Error messages */
-#define errmsg(fmt, ...) do {                               \
-        fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__); \
+#define errmsg(fmt, ...) do {                                             \
+        fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \
 } while(0)
 
 /* Warnings */
-#define warnmsg(fmt, ...) do {                              \
-        fprintf(stderr, "Warning: " fmt "\n", ##__VA_ARGS__); \
+#define warnmsg(fmt, ...) do {                                              \
+        fprintf(stderr, PROGRAM_NAME " warning: " fmt "\n", ##__VA_ARGS__); \
 } while(0)
 
 int ubiutils_get_multiplier(const char *str);
+void ubiutils_print_bytes(long long bytes, int bracket);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !__UBI_UTILS_COMMON_H__ */

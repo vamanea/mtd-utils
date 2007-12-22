@@ -34,6 +34,484 @@
 #include "libubi.h"
 #include "libubi_int.h"
 
+/**
+ * mkpath - compose full path from 2 given components.
+ * @path: the first component
+ * @name: the second component
+ *
+ * This function returns the resulting path in case of success and %NULL in
+ * case of failure.
+ */
+static char *mkpath(const char *path, const char *name)
+{
+	char *n;
+	int len1 = strlen(path);
+	int len2 = strlen(name);
+
+	n = malloc(len1 + len2 + 2);
+	if (!n) {
+		errmsg("cannot allocate %d bytes", len1 + len2 + 2);
+		perror("malloc");
+		return NULL;
+	}
+
+	memcpy(n, path, len1);
+	if (n[len1 - 1] != '/')
+		n[len1++] = '/';
+
+	memcpy(n + len1, name, len2 + 1);
+	return n;
+}
+
+/**
+ * read_positive_ll - read a positive 'long long' value from a file.
+ * @file: the file to read from
+ * @value: the result is stored here
+ *
+ * This function reads file @file and interprets its contents as a positive
+ * 'long long' integer. If this is not true, it fails with %EINVAL error code.
+ * Returns %0 in case of success and %-1 in case of failure.
+ */
+static int read_positive_ll(const char *file, long long *value)
+{
+	int fd, rd;
+	char buf[50];
+
+	fd = open(file, O_RDONLY);
+	if (fd == -1)
+		return -1;
+
+	rd = read(fd, buf, 50);
+	if (rd == -1) {
+		errmsg("cannot read \"%s\"", file);
+		perror("read");
+		goto out_error;
+	}
+	if (rd == 50) {
+		errmsg("contents of \"%s\" is too long", file);
+		errno = EINVAL;
+		goto out_error;
+	}
+
+	if (sscanf(buf, "%lld\n", value) != 1) {
+		/* This must be a UBI bug */
+		errmsg("cannot read integer from \"%s\"\n", file);
+		errno = EINVAL;
+		goto out_error;
+	}
+
+	if (*value < 0) {
+		errmsg("negative value %lld in \"%s\"", *value, file);
+		errno = EINVAL;
+		goto out_error;
+	}
+
+	if (close(fd)) {
+		errmsg("close failed on \"%s\"", file);
+		perror("close");
+		return -1;
+	}
+
+	return 0;
+
+out_error:
+	close(fd);
+	return -1;
+}
+
+/**
+ * read_positive_int - read a positive 'int' value from a file.
+ * @file: the file to read from
+ * @value: the result is stored here
+ *
+ * This function is the same as 'read_positive_ll()', but it reads an 'int'
+ * value, not 'long long'.
+ */
+static int read_positive_int(const char *file, int *value)
+{
+	long long res;
+
+	if (read_positive_ll(file, &res))
+		return -1;
+
+	/* Make sure the value is not too big */
+	if (res > INT_MAX) {
+		errmsg("value %lld read from file \"%s\" is out of range",
+		       res, file);
+		errno = EINVAL;
+		return -1;
+	}
+
+	*value = res;
+	return 0;
+}
+
+/**
+ * read_data - read data from a file.
+ * @file: the file to read from
+ * @buf: the buffer to read to
+ * @buf_len: buffer length
+ *
+ * This function returns number of read bytes in case of success and %-1 in
+ * case of failure. Note, if the file contains more then @buf_len bytes of
+ * date, this function fails with %EINVAL error code.
+ */
+static int read_data(const char *file, void *buf, int buf_len)
+{
+	int fd, rd, tmp, tmp1;
+
+	fd = open(file, O_RDONLY);
+	if (fd == -1)
+		return -1;
+
+	rd = read(fd, buf, buf_len);
+	if (rd == -1) {
+		errmsg("cannot read \"%s\"", file);
+		perror("read");
+		goto out_error;
+	}
+
+	/* Make sure all data is read */
+	tmp1 = read(fd, &tmp, 1);
+	if (tmp1 == 1) {
+		errmsg("cannot read \"%s\"", file);
+		perror("read");
+		goto out_error;
+	}
+	if (tmp1) {
+		errmsg("file \"%s\" contains too much data (> %d bytes)",
+		       file, buf_len);
+		errno = EINVAL;
+		goto out_error;
+	}
+
+	if (close(fd)) {
+		errmsg("close failed on \"%s\"", file);
+		perror("close");
+		return -1;
+	}
+
+	return rd;
+
+out_error:
+	close(fd);
+	return -1;
+}
+
+/**
+ * read_major - read major and minor numbers from a file.
+ * @file: name of the file to read from
+ * @major: major number is returned here
+ * @minor: minor number is returned here
+ *
+ * This function returns % in case of succes, and %-1 in case of failure.
+ */
+static int read_major(const char *file, int *major, int *minor)
+{
+	int ret;
+	char buf[50];
+
+	ret = read_data(file, buf, 50);
+	if (ret < 0)
+		return ret;
+
+	ret = sscanf(buf, "%d:%d\n", major, minor);
+	if (ret != 2) {
+		errmsg("\"%s\" does not have major:minor format", file);
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (*major < 0 || *minor < 0) {
+		errmsg("bad major:minor %d:%d in \"%s\"",
+		       *major, *minor, file);
+		errno = EINVAL;
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * dev_read_int - read a positive 'int' value from an UBI device sysfs file.
+ * @patt: file pattern to read from
+ * @dev_num:  UBI device number
+ * @value: the result is stored here
+ *
+ * This function returns %0 in case of success and %-1 in case of failure.
+ */
+static int dev_read_int(const char *patt, int dev_num, int *value)
+{
+	char file[strlen(patt) + 50];
+
+	sprintf(file, patt, dev_num);
+	return read_positive_int(file, value);
+}
+
+/**
+ * vol_read_int - read a positive 'int' value from an UBI volume sysfs file.
+ * @patt: file pattern to read from
+ * @dev_num: UBI device number
+ * @vol_id: volume ID
+ * @value: the result is stored here
+ *
+ * This function returns %0 in case of success and %-1 in case of failure.
+ */
+static int vol_read_int(const char *patt, int dev_num, int vol_id, int *value)
+{
+	char file[strlen(patt) + 100];
+
+	sprintf(file, patt, dev_num, vol_id);
+	return read_positive_int(file, value);
+}
+
+/**
+ * dev_read_ll - read a positive 'long long' value from an UBI device sysfs file.
+ * @patt: file pattern to read from
+ * @dev_num: UBI device number
+ * @value: the result is stored here
+ *
+ * This function returns %0 in case of success and %-1 in case of failure.
+ */
+static int dev_read_ll(const char *patt, int dev_num, long long *value)
+{
+	char file[strlen(patt) + 50];
+
+	sprintf(file, patt, dev_num);
+	return read_positive_ll(file, value);
+}
+
+/**
+ * vol_read_ll - read a positive 'long long' value from an UBI volume sysfs file.
+ * @patt: file pattern to read from
+ * @dev_num: UBI device number
+ * @vol_id: volume ID
+ * @value: the result is stored here
+ *
+ * This function returns %0 in case of success and %-1 in case of failure.
+ */
+static int vol_read_ll(const char *patt, int dev_num, int vol_id,
+		       long long *value)
+{
+	char file[strlen(patt) + 100];
+
+	sprintf(file, patt, dev_num, vol_id);
+	return read_positive_ll(file, value);
+}
+
+/**
+ * vol_read_data - read data from an UBI volume's sysfs file.
+ * @patt: file pattern to read from
+ * @dev_num: UBI device number
+ * @vol_id: volume ID
+ * @buf: buffer to read to
+ * @buf_len: buffer length
+ *
+ * This function returns number of read bytes in case of success and %-1 in
+ * case of failure.
+ */
+static int vol_read_data(const char *patt, int dev_num, int vol_id, void *buf,
+			 int buf_len)
+{
+	char file[strlen(patt) + 100];
+
+	sprintf(file, patt, dev_num, vol_id);
+	return read_data(file, buf, buf_len);
+}
+
+/**
+ * dent_is_dir - check if a file is a directory.
+ * @dir: the base directory path of the file
+ * @name: file name
+ *
+ * This function returns %1 if file @name in directory @dir is a directoru, and
+ * %0 if not.
+ */
+static int dent_is_dir(const char *dir, const char *name)
+{
+	int ret;
+	struct stat st;
+	char full_path[strlen(dir) + strlen(name) + 2];
+
+	sprintf(full_path, "%s/%s", dir, name);
+	ret = lstat(full_path, &st);
+	if (ret) {
+		errmsg("lstat failed on \"%s\"", full_path);
+		perror("lstat");
+		return -1;
+	}
+
+	return !!S_ISDIR(st.st_mode);
+}
+
+/**
+ * dev_get_major - get major and minor numbers of an UBI device.
+ * @lib: libubi descriptor
+ * @dev_num: UBI device number
+ * @major: major number is returned here
+ * @minor: minor number is returned here
+ *
+ * This function returns zero in case of succes and %-1 in case of failure.
+ */
+static int dev_get_major(struct libubi *lib, int dev_num, int *major, int *minor)
+{
+	char file[strlen(lib->dev_dev) + 50];
+
+	sprintf(file, lib->dev_dev, dev_num);
+	return read_major(file, major, minor);
+}
+
+/**
+ * vol_get_major - get major and minor numbers of an UBI volume.
+ * @lib: libubi descriptor
+ * @dev_num: UBI device number
+ * @vol_id: volume ID
+ * @major: major number is returned here
+ * @minor: minor number is returned here
+ *
+ * This function returns zero in case of succes and %-1 in case of failure.
+ */
+static int vol_get_major(struct libubi *lib, int dev_num, int vol_id,
+			 int *major, int *minor)
+{
+	char file[strlen(lib->vol_dev) + 100];
+
+	sprintf(file, lib->vol_dev, dev_num, vol_id);
+	return read_major(file, major, minor);
+}
+
+/**
+ * vol_node2nums - find UBI device number and volume ID by volume device node
+ *                 file.
+ * @lib: UBI library descriptor
+ * @node: UBI character device node name
+ * @dev_num: UBI device number is returned here
+ * @vol_id: volume ID is returned hers
+ *
+ * This function returns zero in case of succes and %-1 in case of failure.
+ */
+static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
+			 int *vol_id)
+{
+	struct stat st;
+	struct ubi_info info;
+	int i, fd, major, minor;
+	char file[strlen(lib->ubi_vol) + 100];
+
+	if (lstat(node, &st))
+		return -1;
+
+	if (!S_ISCHR(st.st_mode)) {
+		errmsg("\"%s\" is not a character device", node);
+		errno = EINVAL;
+		return -1;
+	}
+
+	major = major(st.st_rdev);
+	minor = minor(st.st_rdev);
+
+	if (minor == 0) {
+		errmsg("\"%s\" is not a volume character device", node);
+		errno = -EINVAL;
+		return -1;
+	}
+
+	if (ubi_get_info((libubi_t *)lib, &info))
+		return -1;
+
+	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
+		int major1, minor1, ret;
+
+		ret = dev_get_major(lib, i, &major1, &minor1);
+		if (ret) {
+			if (errno == ENOENT)
+				continue;
+			return -1;
+		}
+
+		if (major1 == major)
+			break;
+	}
+
+	if (i > info.highest_dev_num) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	/* Make sure this UBI volume exists */
+	sprintf(file, lib->ubi_vol, i, minor - 1);
+	fd = open(file, O_RDONLY);
+	if (fd == -1) {
+		errno = ENOENT;
+		return -1;
+	}
+
+	*dev_num = i;
+	*vol_id = minor - 1;
+	return 0;
+}
+
+/**
+ * dev_node2num - find UBI device number by its character device node.
+ * @lib: UBI library descriptor
+ * @node: UBI character device node name
+ *
+ * This function returns positive UBI device number in case of success and %-1
+ * in case of failure.
+ */
+static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
+{
+	struct stat stat;
+	struct ubi_info info;
+	int i, major, minor;
+
+	if (lstat(node, &stat))
+		return -1;
+
+	if (!S_ISCHR(stat.st_mode)) {
+		errmsg("\"%s\" is not a character device", node);
+		errno = EINVAL;
+		return -1;
+	}
+
+	major = major(stat.st_rdev);
+	minor = minor(stat.st_rdev);
+
+	if (minor != 0) {
+		errmsg("\"%s\" is not an UBI character device", node);
+		errno = -EINVAL;
+		return -1;
+	}
+
+	if (ubi_get_info((libubi_t *)lib, &info))
+		return -1;
+
+	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
+		int major1, minor1, ret;
+
+		ret = dev_get_major(lib, i, &major1, &minor1);
+		if (ret) {
+			if (errno == ENOENT)
+				continue;
+			return -1;
+		}
+
+		if (major1 == major) {
+			if (minor1 != 0) {
+				errmsg("UBI character device minor number is "
+				       "%d, but must be 0", minor1);
+				errno = EINVAL;
+				return -1;
+			}
+			*dev_num = i;
+			return 0;
+		}
+	}
+
+	errno = ENOENT;
+	return -1;
+}
+
 libubi_t libubi_open(void)
 {
 	int fd, version;
@@ -46,132 +524,127 @@ libubi_t libubi_open(void)
 	/* TODO: this must be discovered instead */
 	lib->sysfs = strdup("/sys");
 	if (!lib->sysfs)
-		goto error;
+		goto out_error;
+
+	lib->sysfs_ctrl = mkpath(lib->sysfs, SYSFS_CTRL);
+	if (!lib->sysfs_ctrl)
+		goto out_error;
+
+	lib->ctrl_dev = mkpath(lib->sysfs_ctrl, CTRL_DEV);
+	if (!lib->ctrl_dev)
+		goto out_error;
 
 	lib->sysfs_ubi = mkpath(lib->sysfs, SYSFS_UBI);
 	if (!lib->sysfs_ubi)
-		goto error;
+		goto out_error;
 
 	/* Make sure UBI is present */
 	fd = open(lib->sysfs_ubi, O_RDONLY);
-	if (fd == -1)
-		goto error;
-	close(fd);
+	if (fd == -1) {
+		errmsg("cannot open \"%s\", UBI does not seem to exist in system",
+		       lib->sysfs_ubi);
+		goto out_error;
+	}
+
+	if (close(fd)) {
+		errmsg("close failed on \"%s\"", lib->sysfs_ubi);
+		perror("close");
+		goto out_error;
+	}
 
 	lib->ubi_dev = mkpath(lib->sysfs_ubi, UBI_DEV_NAME_PATT);
 	if (!lib->ubi_dev)
-		goto error;
+		goto out_error;
 
 	lib->ubi_version = mkpath(lib->sysfs_ubi, UBI_VER);
 	if (!lib->ubi_version)
-		goto error;
+		goto out_error;
 
 	lib->dev_dev = mkpath(lib->ubi_dev, DEV_DEV);
 	if (!lib->dev_dev)
-		goto error;
+		goto out_error;
 
 	lib->dev_avail_ebs = mkpath(lib->ubi_dev, DEV_AVAIL_EBS);
 	if (!lib->dev_avail_ebs)
-		goto error;
+		goto out_error;
 
 	lib->dev_total_ebs = mkpath(lib->ubi_dev, DEV_TOTAL_EBS);
 	if (!lib->dev_total_ebs)
-		goto error;
+		goto out_error;
 
 	lib->dev_bad_count = mkpath(lib->ubi_dev, DEV_BAD_COUNT);
 	if (!lib->dev_bad_count)
-		goto error;
+		goto out_error;
 
 	lib->dev_eb_size = mkpath(lib->ubi_dev, DEV_EB_SIZE);
 	if (!lib->dev_eb_size)
-		goto error;
+		goto out_error;
 
 	lib->dev_max_ec = mkpath(lib->ubi_dev, DEV_MAX_EC);
 	if (!lib->dev_max_ec)
-		goto error;
+		goto out_error;
 
 	lib->dev_bad_rsvd = mkpath(lib->ubi_dev, DEV_MAX_RSVD);
 	if (!lib->dev_bad_rsvd)
-		goto error;
+		goto out_error;
 
 	lib->dev_max_vols = mkpath(lib->ubi_dev, DEV_MAX_VOLS);
 	if (!lib->dev_max_vols)
-		goto error;
+		goto out_error;
 
 	lib->dev_min_io_size = mkpath(lib->ubi_dev, DEV_MIN_IO_SIZE);
 	if (!lib->dev_min_io_size)
-		goto error;
+		goto out_error;
 
 	lib->ubi_vol = mkpath(lib->sysfs_ubi, UBI_VOL_NAME_PATT);
 	if (!lib->ubi_vol)
-		goto error;
+		goto out_error;
 
 	lib->vol_type = mkpath(lib->ubi_vol, VOL_TYPE);
 	if (!lib->vol_type)
-		goto error;
+		goto out_error;
 
 	lib->vol_dev = mkpath(lib->ubi_vol, VOL_DEV);
 	if (!lib->vol_dev)
-		goto error;
+		goto out_error;
 
 	lib->vol_alignment = mkpath(lib->ubi_vol, VOL_ALIGNMENT);
 	if (!lib->vol_alignment)
-		goto error;
+		goto out_error;
 
 	lib->vol_data_bytes = mkpath(lib->ubi_vol, VOL_DATA_BYTES);
 	if (!lib->vol_data_bytes)
-		goto error;
+		goto out_error;
 
 	lib->vol_rsvd_ebs = mkpath(lib->ubi_vol, VOL_RSVD_EBS);
 	if (!lib->vol_rsvd_ebs)
-		goto error;
+		goto out_error;
 
 	lib->vol_eb_size = mkpath(lib->ubi_vol, VOL_EB_SIZE);
 	if (!lib->vol_eb_size)
-		goto error;
+		goto out_error;
 
 	lib->vol_corrupted = mkpath(lib->ubi_vol, VOL_CORRUPTED);
 	if (!lib->vol_corrupted)
-		goto error;
+		goto out_error;
 
 	lib->vol_name = mkpath(lib->ubi_vol, VOL_NAME);
 	if (!lib->vol_name)
-		goto error;
+		goto out_error;
 
-	if (read_int(lib->ubi_version, &version))
-		goto error;
+	if (read_positive_int(lib->ubi_version, &version))
+		goto out_error;
 	if (version != LIBUBI_UBI_VERSION) {
 		fprintf(stderr, "LIBUBI: this library was made for UBI version "
 				"%d, but UBI version %d is detected\n",
 			LIBUBI_UBI_VERSION, version);
-		goto error;
+		goto out_error;
 	}
 
 	return lib;
 
-error:
-	free(lib->vol_corrupted);
-	free(lib->vol_eb_size);
-	free(lib->vol_rsvd_ebs);
-	free(lib->vol_data_bytes);
-	free(lib->vol_alignment);
-	free(lib->vol_dev);
-	free(lib->vol_type);
-	free(lib->ubi_vol);
-	free(lib->dev_min_io_size);
-	free(lib->dev_max_vols);
-	free(lib->dev_bad_rsvd);
-	free(lib->dev_max_ec);
-	free(lib->dev_eb_size);
-	free(lib->dev_bad_count);
-	free(lib->dev_total_ebs);
-	free(lib->dev_avail_ebs);
-	free(lib->dev_dev);
-	free(lib->ubi_version);
-	free(lib->ubi_dev);
-	free(lib->sysfs_ubi);
-	free(lib->sysfs);
-	free(lib);
+out_error:
+	libubi_close((libubi_t)lib);
 	return NULL;
 }
 
@@ -200,8 +673,72 @@ void libubi_close(libubi_t desc)
 	free(lib->ubi_version);
 	free(lib->ubi_dev);
 	free(lib->sysfs_ubi);
+	free(lib->ctrl_dev);
+	free(lib->sysfs_ctrl);
 	free(lib->sysfs);
 	free(lib);
+}
+
+int ubi_node_type(libubi_t desc, const char *node)
+{
+	struct stat st;
+	struct ubi_info info;
+	int i, fd, major, minor;
+	struct libubi *lib = (struct libubi *)desc;
+	char file[strlen(lib->ubi_vol) + 100];
+
+	if (lstat(node, &st))
+		return -1;
+
+	if (!S_ISCHR(st.st_mode)) {
+		errmsg("\"%s\" is not a character device", node);
+		errno = EINVAL;
+		return -1;
+	}
+
+	major = major(st.st_rdev);
+	minor = minor(st.st_rdev);
+
+	if (ubi_get_info((libubi_t *)lib, &info))
+		return -1;
+
+	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
+		int major1, minor1, ret;
+
+		ret = dev_get_major(lib, i, &major1, &minor1);
+		if (ret) {
+			if (errno == ENOENT)
+				continue;
+			return -1;
+		}
+
+		if (major1 == major)
+			break;
+	}
+
+	if (i > info.highest_dev_num) {
+		/*
+		 * The character device node does not correspond to any
+		 * existing UBI device or volume, but we do not want to return
+		 * any error number in this case, to indicate the fact that it
+		 * could be a UBI device/volume, but it doesn't.
+		 */
+		errno = 0;
+		return -1;
+	}
+
+	if (minor == 0)
+		return 1;
+
+	/* This is supposdely an UBI volume device node */
+	sprintf(file, lib->ubi_vol, i, minor - 1);
+	fd = open(file, O_RDONLY);
+	if (fd == -1) {
+		errno = 0;
+		return -1;
+	}
+
+	return 2;
 }
 
 int ubi_get_info(libubi_t desc, struct ubi_info *info)
@@ -212,20 +749,33 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 
 	memset(info, '\0', sizeof(struct ubi_info));
 
+	if (read_major(lib->ctrl_dev, &info->ctrl_major, &info->ctrl_minor))
+		return -1;
+
 	/*
 	 * We have to scan the UBI sysfs directory to identify how many UBI
 	 * devices are present.
 	 */
 	sysfs_ubi = opendir(lib->sysfs_ubi);
-	if (!sysfs_ubi)
+	if (!sysfs_ubi) {
+		errmsg("cannot open %s", lib->sysfs_ubi);
+		perror("opendir");
 		return -1;
+	}
 
 	info->lowest_dev_num = INT_MAX;
 	while ((dirent = readdir(sysfs_ubi))) {
-		char *name = &dirent->d_name[0];
 		int dev_num, ret;
 
-		ret = sscanf(name, UBI_DEV_NAME_PATT, &dev_num);
+		/*
+		 * Make sure this direntry is a directory and not a symlink -
+		 * Linux puts symlinks to UBI volumes on this UBI device to the
+		 * same sysfs directory.
+		 */
+		if (!dent_is_dir(lib->sysfs_ubi, dirent->d_name))
+			continue;
+
+		ret = sscanf(dirent->d_name, UBI_DEV_NAME_PATT, &dev_num);
 		if (ret == 1) {
 			info->dev_count += 1;
 			if (dev_num > info->highest_dev_num)
@@ -235,15 +785,27 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 		}
 	}
 
+	if (!dirent && errno) {
+		errmsg("readdir failed on \"%s\"", lib->sysfs_ubi);
+		perror("readdir");
+		goto out_close;
+	}
+
+	if (closedir(sysfs_ubi)) {
+		errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
+		perror("closedir");
+		return -1;
+	}
+
 	if (info->lowest_dev_num == INT_MAX)
 		info->lowest_dev_num = 0;
 
-	if (read_int(lib->ubi_version, &info->version))
-		goto close;
+	if (read_positive_int(lib->ubi_version, &info->version))
+		return -1;
 
-	return closedir(sysfs_ubi);
+	return 0;
 
-close:
+out_close:
 	closedir(sysfs_ubi);
 	return -1;
 }
@@ -253,6 +815,8 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 	int fd, ret;
 	struct ubi_mkvol_req r;
 	size_t n;
+
+	memset(&r, sizeof(struct ubi_mkvol_req), '\0');
 
 	desc = desc;
 	r.vol_id = req->vol_id;
@@ -272,7 +836,7 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 		return -1;
 
 	ret = ioctl(fd, UBI_IOCMKVOL, &r);
-	if (!ret)
+	if (ret == 0)
 		req->vol_id = r.vol_id;
 
 	close(fd);
@@ -310,7 +874,7 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
 	int fd, ret;
 	struct ubi_rsvol_req req;
 
-	desc = desc;
+		desc = desc;
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return -1;
@@ -331,18 +895,6 @@ int ubi_update_start(libubi_t desc, int fd, long long bytes)
 	return 0;
 }
 
-int ubi_get_dev_info(libubi_t desc, const char *node, struct ubi_dev_info *info)
-{
-	int dev_num;
-	struct libubi *lib = (struct libubi *)desc;
-
-	dev_num = find_dev_num(lib, node);
-	if (dev_num == -1)
-		return -1;
-
-	return ubi_get_dev_info1(desc, dev_num, info);
-}
-
 int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 {
 	DIR *sysfs_ubi;
@@ -358,10 +910,9 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 
 	info->lowest_vol_num = INT_MAX;
 	while ((dirent = readdir(sysfs_ubi))) {
-		char *name = &dirent->d_name[0];
 		int vol_id, ret, devno;
 
-		ret = sscanf(name, UBI_VOL_NAME_PATT, &devno, &vol_id);
+		ret = sscanf(dirent->d_name, UBI_VOL_NAME_PATT, &devno, &vol_id);
 		if (ret == 2 && devno == dev_num) {
 			info->vol_count += 1;
 			if (vol_id > info->highest_vol_num)
@@ -371,10 +922,23 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 		}
 	}
 
-	closedir(sysfs_ubi);
+	if (!dirent && errno) {
+		errmsg("readdir failed on \"%s\"", lib->sysfs_ubi);
+		perror("readdir");
+		goto out_close;
+	}
+
+	if (closedir(sysfs_ubi)) {
+		errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
+		perror("closedir");
+		return -1;
+	}
 
 	if (info->lowest_vol_num == INT_MAX)
 		info->lowest_vol_num = 0;
+
+	if (dev_get_major(lib, dev_num, &info->major, &info->minor))
+		return -1;
 
 	if (dev_read_int(lib->dev_avail_ebs, dev_num, &info->avail_ebs))
 		return -1;
@@ -397,22 +961,21 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	info->total_bytes = info->total_ebs * info->eb_size;
 
 	return 0;
+
+out_close:
+	closedir(sysfs_ubi);
+	return -1;
 }
 
-int ubi_get_vol_info(libubi_t desc, const char *node, struct ubi_vol_info *info)
+int ubi_get_dev_info(libubi_t desc, const char *node, struct ubi_dev_info *info)
 {
-	int vol_id, dev_num;
+	int dev_num;
 	struct libubi *lib = (struct libubi *)desc;
 
-	dev_num = find_dev_num_vol(lib, node);
-	if (dev_num == -1)
+	if (dev_node2num(lib, node, &dev_num))
 		return -1;
 
-	vol_id = find_vol_num(lib, dev_num, node);
-	if (vol_id == -1)
-		return -1;
-
-	return ubi_get_vol_info1(desc, dev_num, vol_id, info);
+	return ubi_get_dev_info1(desc, dev_num, info);
 }
 
 int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
@@ -426,16 +989,21 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 	info->dev_num = dev_num;
 	info->vol_id = vol_id;
 
-	ret = vol_read_data(lib->vol_type, dev_num, vol_id, &buf[0], 50);
+	if (dev_get_major(lib, dev_num, &info->dev_major, &info->dev_minor))
+		return -1;
+	if (vol_get_major(lib, dev_num, vol_id, &info->major, &info->minor))
+		return -1;
+
+	ret = vol_read_data(lib->vol_type, dev_num, vol_id, buf, 50);
 	if (ret < 0)
 		return -1;
 
-	if (strncmp(&buf[0], "static\n", ret) == 0)
+	if (strncmp(buf, "static\n", ret) == 0)
 		info->type = UBI_STATIC_VOLUME;
-	else if (strncmp(&buf[0], "dynamic\n", ret) == 0)
+	else if (strncmp(buf, "dynamic\n", ret) == 0)
 		info->type = UBI_DYNAMIC_VOLUME;
 	else {
-		fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
+		errmsg("bad value at \"%s\"", buf);
 		errno = EINVAL;
 		return -1;
 	}
@@ -469,459 +1037,13 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 	return 0;
 }
 
-/**
- * read_int - read an 'int' value from a file.
- *
- * @file   the file to read from
- * @value  the result is stored here
- *
- * This function returns %0 in case of success and %-1 in case of failure.
- */
-static int read_int(const char *file, int *value)
+int ubi_get_vol_info(libubi_t desc, const char *node, struct ubi_vol_info *info)
 {
-	int fd, rd;
-	char buf[50];
+	int vol_id, dev_num;
+	struct libubi *lib = (struct libubi *)desc;
 
-	fd = open(file, O_RDONLY);
-	if (fd == -1)
+	if (vol_node2nums(lib, node, &dev_num, &vol_id))
 		return -1;
 
-	rd = read(fd, &buf[0], 50);
-	if (rd == -1)
-		goto error;
-
-	if (sscanf(&buf[0], "%d\n", value) != 1) {
-		/* This must be a UBI bug */
-		fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-		errno = EINVAL;
-		goto error;
-	}
-
-	close(fd);
-	return 0;
-
-error:
-	close(fd);
-	return -1;
-}
-
-/**
- * dev_read_int - read an 'int' value from an UBI device's sysfs file.
- *
- * @patt     the file pattern to read from
- * @dev_num  UBI device number
- * @value    the result is stored here
- *
- * This function returns %0 in case of success and %-1 in case of failure.
- */
-static int dev_read_int(const char *patt, int dev_num, int *value)
-{
-	int fd, rd;
-	char buf[50];
-	char file[strlen(patt) + 50];
-
-	sprintf(&file[0], patt, dev_num);
-	fd = open(&file[0], O_RDONLY);
-	if (fd == -1)
-		return -1;
-
-	rd = read(fd, &buf[0], 50);
-	if (rd == -1)
-		goto error;
-
-	if (sscanf(&buf[0], "%d\n", value) != 1) {
-		/* This must be a UBI bug */
-		fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-		errno = EINVAL;
-		goto error;
-	}
-
-	close(fd);
-	return 0;
-
-error:
-	close(fd);
-	return -1;
-}
-
-/**
- * dev_read_ll - read a 'long long' value from an UBI device's sysfs file.
- *
- * @patt     the file pattern to read from
- * @dev_num  UBI device number
- * @value    the result is stored here
- *
- * This function returns %0 in case of success and %-1 in case of failure.
- */
-static int dev_read_ll(const char *patt, int dev_num, long long *value)
-{
-	int fd, rd;
-	char buf[50];
-	char file[strlen(patt) + 50];
-
-	sprintf(&file[0], patt, dev_num);
-	fd = open(&file[0], O_RDONLY);
-	if (fd == -1)
-		return -1;
-
-	rd = read(fd, &buf[0], 50);
-	if (rd == -1)
-		goto error;
-
-	if (sscanf(&buf[0], "%lld\n", value) != 1) {
-		/* This must be a UBI bug */
-		fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-		errno = EINVAL;
-		goto error;
-	}
-
-	close(fd);
-	return 0;
-
-error:
-	close(fd);
-	return -1;
-}
-
-/**
- * dev_read_data - read data from an UBI device's sysfs file.
- *
- * @patt     the file pattern to read from
- * @dev_num  UBI device number
- * @buf      buffer to read data to
- * @buf_len  buffer length
- *
- * This function returns number of read bytes in case of success and %-1 in
- * case of failure.
- */
-static int dev_read_data(const char *patt, int dev_num, void *buf, int buf_len)
-{
-	int fd, rd;
-	char file[strlen(patt) + 50];
-
-	sprintf(&file[0], patt, dev_num);
-	fd = open(&file[0], O_RDONLY);
-	if (fd == -1)
-		return -1;
-
-	rd = read(fd, buf, buf_len);
-	if (rd == -1) {
-		close(fd);
-		return -1;
-	}
-
-	close(fd);
-	return rd;
-}
-
-/**
- * vol_read_int - read an 'int' value from an UBI volume's sysfs file.
- *
- * @patt     the file pattern to read from
- * @dev_num  UBI device number
- * @vol_id   volume identifier
- * @value    the result is stored here
- *
- * This function returns %0 in case of success and %-1 in case of failure.
- */
-static int vol_read_int(const char *patt, int dev_num, int vol_id, int *value)
-{
-	int fd, rd;
-	char buf[50];
-	char file[strlen(patt) + 100];
-
-	sprintf(&file[0], patt, dev_num, vol_id);
-	fd = open(&file[0], O_RDONLY);
-	if (fd == -1)
-		return -1;
-
-	rd = read(fd, &buf[0], 50);
-	if (rd == -1)
-		goto error;
-
-	if (sscanf(&buf[0], "%d\n", value) != 1) {
-		/* This must be a UBI bug */
-		fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-		errno = EINVAL;
-		goto error;
-	}
-
-	close(fd);
-	return 0;
-
-error:
-	close(fd);
-	return -1;
-}
-
-/**
- * vol_read_ll - read a 'long long' value from an UBI volume's sysfs file.
- *
- * @patt     the file pattern to read from
- * @dev_num  UBI device number
- * @vol_id   volume identifier
- * @value    the result is stored here
- *
- * This function returns %0 in case of success and %-1 in case of failure.
- */
-static int vol_read_ll(const char *patt, int dev_num, int vol_id,
-		       long long *value)
-{
-	int fd, rd;
-	char buf[50];
-	char file[strlen(patt) + 100];
-
-	sprintf(&file[0], patt, dev_num, vol_id);
-	fd = open(&file[0], O_RDONLY);
-	if (fd == -1)
-		return -1;
-
-	rd = read(fd, &buf[0], 50);
-	if (rd == -1)
-		goto error;
-
-	if (sscanf(&buf[0], "%lld\n", value) != 1) {
-		/* This must be a UBI bug */
-		fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-		errno = EINVAL;
-		goto error;
-	}
-
-	close(fd);
-	return 0;
-
-error:
-	close(fd);
-	return -1;
-}
-
-/**
- * vol_read_data - read data from an UBI volume's sysfs file.
- *
- * @patt     the file pattern to read from
- * @dev_num  UBI device number
- * @vol_id   volume identifier
- * @buf      buffer to read to
- * @buf_len  buffer length
- *
- * This function returns number of read bytes in case of success and %-1 in
- * case of failure.
- */
-static int vol_read_data(const char *patt, int dev_num, int vol_id, void *buf,
-			 int buf_len)
-{
-	int fd, rd;
-	char file[strlen(patt) + 100];
-
-	sprintf(&file[0], patt, dev_num, vol_id);
-	fd = open(&file[0], O_RDONLY);
-	if (fd == -1)
-		return -1;
-
-	rd = read(fd, buf, buf_len);
-	if (rd == -1) {
-		close(fd);
-		return -1;
-	}
-
-	close(fd);
-	return rd;
-}
-
-/**
- * mkpath - compose full path from 2 given components.
- *
- * @path  first component
- * @name  second component
- *
- * This function returns the resulting path in case of success and %NULL in
- * case of failure.
- */
-static char *mkpath(const char *path, const char *name)
-{
-	char *n;
-	int len1 = strlen(path);
-	int len2 = strlen(name);
-
-	n = malloc(len1 + len2 + 2);
-	if (!n)
-		return NULL;
-
-	memcpy(n, path, len1);
-	if (n[len1 - 1] != '/')
-		n[len1++] = '/';
-
-	memcpy(n + len1, name, len2 + 1);
-	return n;
-}
-
-/**
- * find_dev_num - find UBI device number by its character device node.
- *
- * @lib   UBI library descriptor
- * @node  UBI character device node name
- *
- * This function returns positive UBI device number in case of success and %-1
- * in case of failure.
- */
-static int find_dev_num(struct libubi *lib, const char *node)
-{
-	struct stat stat;
-	struct ubi_info info;
-	int i, major, minor;
-
-	if (lstat(node, &stat))
-		return -1;
-
-	if (!S_ISCHR(stat.st_mode)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	major = major(stat.st_rdev);
-	minor = minor(stat.st_rdev);
-
-	if (minor != 0) {
-		errno = -EINVAL;
-		return -1;
-	}
-
-	if (ubi_get_info((libubi_t *)lib, &info))
-		return -1;
-
-	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
-		int major1, minor1, ret;
-		char buf[50];
-
-		ret = dev_read_data(lib->dev_dev, i, &buf[0], 50);
-		if (ret < 0)
-			return -1;
-
-		ret = sscanf(&buf[0], "%d:%d\n", &major1, &minor1);
-		if (ret != 2) {
-			fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-			errno = EINVAL;
-			return -1;
-		}
-
-		if (minor1 == minor && major1 == major)
-			return i;
-	}
-
-	errno = ENOENT;
-	return -1;
-}
-
-/**
- * find_dev_num_vol - find UBI device number by volume character device node.
- *
- * @lib   UBI library descriptor
- * @node  UBI character device node name
- *
- * This function returns positive UBI device number in case of success and %-1
- * in case of failure.
- */
-static int find_dev_num_vol(struct libubi *lib, const char *node)
-{
-	struct stat stat;
-	struct ubi_info info;
-	int i, major;
-
-	if (lstat(node, &stat))
-		return -1;
-
-	if (!S_ISCHR(stat.st_mode)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	major = major(stat.st_rdev);
-
-	if (minor(stat.st_rdev) == 0) {
-		errno = -EINVAL;
-		return -1;
-	}
-
-	if (ubi_get_info((libubi_t *)lib, &info))
-		return -1;
-
-	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
-		int major1, minor1, ret;
-		char buf[50];
-
-		ret = dev_read_data(lib->dev_dev, i, &buf[0], 50);
-		if (ret < 0)
-			return -1;
-
-		ret = sscanf(&buf[0], "%d:%d\n", &major1, &minor1);
-		if (ret != 2) {
-			fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-			errno = EINVAL;
-			return -1;
-		}
-
-		if (major1 == major)
-			return i;
-	}
-
-	errno = ENOENT;
-	return -1;
-}
-
-/**
- * find_vol_num - find UBI volume number by its character device node.
- *
- * @lib      UBI library descriptor
- * @dev_num  UBI device number
- * @node     UBI volume character device node name
- *
- * This function returns positive UBI volume number in case of success and %-1
- * in case of failure.
- */
-static int find_vol_num(struct libubi *lib, int dev_num, const char *node)
-{
-	struct stat stat;
-	struct ubi_dev_info info;
-	int i, major, minor;
-
-	if (lstat(node, &stat))
-		return -1;
-
-	if (!S_ISCHR(stat.st_mode)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	major = major(stat.st_rdev);
-	minor = minor(stat.st_rdev);
-
-	if (minor == 0) {
-		errno = -EINVAL;
-		return -1;
-	}
-
-	if (ubi_get_dev_info1((libubi_t *)lib, dev_num, &info))
-		return -1;
-
-	for (i = info.lowest_vol_num; i <= info.highest_vol_num; i++) {
-		int major1, minor1, ret;
-		char buf[50];
-
-		ret = vol_read_data(lib->vol_dev,  dev_num, i, &buf[0], 50);
-		if (ret < 0)
-			return -1;
-
-		ret = sscanf(&buf[0], "%d:%d\n", &major1, &minor1);
-		if (ret != 2) {
-			fprintf(stderr, "LIBUBI: bad value at sysfs file\n");
-			errno = EINVAL;
-			return -1;
-		}
-
-		if (minor1 == minor && major1 == major)
-			return i;
-	}
-
-	errno = ENOENT;
-	return -1;
+	return ubi_get_vol_info1(desc, dev_num, vol_id, info);
 }

@@ -27,16 +27,29 @@
 extern "C" {
 #endif
 
+/* Error messages */
+#define errmsg(fmt, ...) do {                                      \
+        fprintf(stderr, "libubi error: " fmt "\n", ##__VA_ARGS__); \
+} while(0)
+
 /*
- * UBI heavily makes use of the sysfs file system to interact with users-pace.
  * The below are pre-define UBI file and directory names.
+ *
+ * Note, older kernels put 'ubiX_Y' directories straight to '/sys/class/ubi/'.
+ * New kernels puts 'ubiX_Y' directories to '/sys/class/ubi/ubiX/', which is
+ * saner. And for compatibility reasons it also puts symlinks to 'ubiX_Y'
+ * directories to '/sys/class/ubi/'. For now libubi assumes old layout.
  */
 
 #define SYSFS_UBI         "class/ubi"
-#define UBI_DEV_NAME_PATT "ubi%d"
+#define SYSFS_CTRL        "class/misc/ubi_ctrl/"
+
+#define CTRL_DEV          "dev"
+
 #define UBI_VER           "version"
+#define UBI_DEV_NAME_PATT "ubi%d"
+
 #define DEV_DEV           "dev"
-#define UBI_VOL_NAME_PATT "ubi%d_%d"
 #define DEV_AVAIL_EBS     "avail_eraseblocks"
 #define DEV_TOTAL_EBS     "total_eraseblocks"
 #define DEV_BAD_COUNT     "bad_peb_count"
@@ -45,6 +58,8 @@ extern "C" {
 #define DEV_MAX_RSVD      "reserved_for_bad"
 #define DEV_MAX_VOLS      "max_vol_count"
 #define DEV_MIN_IO_SIZE   "min_io_size"
+
+#define UBI_VOL_NAME_PATT "ubi%d_%d"
 #define VOL_TYPE          "type"
 #define VOL_DEV           "dev"
 #define VOL_ALIGNMENT     "alignment"
@@ -56,34 +71,37 @@ extern "C" {
 
 /**
  * libubi - UBI library description data structure.
- *
- * @sysfs            sysfs file system path
- * @sysfs_ubi        UBI directory in sysfs
- * @ubi_dev          UBI device sysfs directory pattern
- * @ubi_version      UBI version file sysfs path
- * @dev_dev          UBI device's major/minor numbers file pattern
- * @dev_avail_ebs    count of available eraseblocks sysfs path pattern
- * @dev_total_ebs    total eraseblocks count sysfs path pattern
- * @dev_bad_count    count of bad eraseblocks sysfs path pattern
- * @dev_eb_size      size of UBI device's eraseblocks sysfs path pattern
- * @dev_max_ec       maximum erase counter sysfs path pattern
- * @dev_bad_rsvd     count of physical eraseblock reserved for bad eraseblocks
- *                   handling
- * @dev_max_vols     maximum volumes number count sysfs path pattern
- * @dev_min_io_size  minimum I/O unit size sysfs path pattern
- * @ubi_vol          UBI volume sysfs directory pattern
- * @vol_type         volume type sysfs path pattern
- * @vol_dev          volume's major/minor numbers file pattern
- * @vol_alignment    volume alignment sysfs path pattern
- * @vol_data_bytes   volume data size sysfs path pattern
- * @vol_rsvd_ebs     volume reserved size sysfs path pattern
- * @vol_eb_size      volume eraseblock size sysfs path pattern
- * @vol_corrupted    volume corruption flag sysfs path pattern
- * @vol_name         volume name sysfs path pattern
+ * @sysfs: sysfs file system path
+ * @sysfs_ctrl: UBI control device directory in sysfs
+ * @ctrl_dev: UBI control device major/minor numbers sysfs file
+ * @sysfs_ubi: UBI directory in sysfs
+ * @ubi_dev: UBI device sysfs directory pattern
+ * @ubi_version: UBI version file sysfs path
+ * @dev_dev: UBI device major/minor numbers file pattern
+ * @dev_avail_ebs: count of available eraseblocks sysfs path pattern
+ * @dev_total_ebs: total eraseblocks count sysfs path pattern
+ * @dev_bad_count: count of bad eraseblocks sysfs path pattern
+ * @dev_eb_size: size of UBI device's eraseblocks sysfs path pattern
+ * @dev_max_ec: maximum erase counter sysfs path pattern
+ * @dev_bad_rsvd: count of physical eraseblock reserved for bad eraseblocks
+ *                handling
+ * @dev_max_vols: maximum volumes number count sysfs path pattern
+ * @dev_min_io_size: minimum I/O unit size sysfs path pattern
+ * @ubi_vol: UBI volume sysfs directory pattern
+ * @vol_type: volume type sysfs path pattern
+ * @vol_dev: volume major/minor numbers file pattern
+ * @vol_alignment: volume alignment sysfs path pattern
+ * @vol_data_bytes: volume data size sysfs path pattern
+ * @vol_rsvd_ebs: volume reserved size sysfs path pattern
+ * @vol_eb_size: volume eraseblock size sysfs path pattern
+ * @vol_corrupted: volume corruption flag sysfs path pattern
+ * @vol_name: volume name sysfs path pattern
  */
 struct libubi
 {
 	char *sysfs;
+	char *sysfs_ctrl;
+	char *ctrl_dev;
 	char *sysfs_ubi;
 	char *ubi_dev;
 	char *ubi_version;
@@ -107,20 +125,6 @@ struct libubi
 	char *vol_name;
 	char *vol_max_count;
 };
-
-static int read_int(const char *file, int *value);
-static int dev_read_int(const char *patt, int dev_num, int *value);
-static int dev_read_ll(const char *patt, int dev_num, long long *value);
-static int dev_read_data(const char *patt, int dev_num, void *buf, int buf_len);
-static int vol_read_int(const char *patt, int dev_num, int vol_id, int *value);
-static int vol_read_ll(const char *patt, int dev_num, int vol_id,
-		       long long *value);
-static int vol_read_data(const char *patt, int dev_num, int vol_id, void *buf,
-			 int buf_len);
-static char *mkpath(const char *path, const char *name);
-static int find_dev_num(struct libubi *lib, const char *node);
-static int find_dev_num_vol(struct libubi *lib, const char *node);
-static int find_vol_num(struct libubi *lib, int dev_num, const char *node);
 
 #ifdef __cplusplus
 }
