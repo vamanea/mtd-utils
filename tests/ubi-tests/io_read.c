@@ -184,13 +184,13 @@ static int test_read1(struct ubi_vol_info *vol_info);
 static int test_read(int type)
 {
 	const char *name = TESTNAME ":test_read()";
-	int alignments[] = ALIGNMENTS(dev_info.eb_size);
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	struct ubi_mkvol_request req;
 	int i;
 
 	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
-		int eb_size;
+		int leb_size;
 		struct ubi_vol_info vol_info;
 
 		req.vol_id = UBI_VOL_NUM_AUTO;
@@ -202,8 +202,8 @@ static int test_read(int type)
 		if (req.alignment == 0)
 			req.alignment = dev_info.min_io_size;
 
-		eb_size = dev_info.eb_size - dev_info.eb_size % req.alignment;
-		req.bytes =  MIN_AVAIL_EBS * eb_size;
+		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
+		req.bytes =  MIN_AVAIL_EBS * leb_size;
 
 		if (ubi_mkvol(libubi, node, &req)) {
 			failed("ubi_mkvol");
@@ -254,7 +254,7 @@ static int test_read1(struct ubi_vol_info *vol_info)
 {
 	int i, written = 0;
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	int lengthes[] = LENGTHES(dev_info.min_io_size, vol_info->eb_size);
+	int lengthes[] = LENGTHES(dev_info.min_io_size, vol_info->leb_size);
 
 	sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num,
 		vol_info->vol_id);
@@ -336,7 +336,7 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off);
 static int test_read2(const struct ubi_vol_info *vol_info, int len)
 {
 	int i;
-	off_t offsets[] = OFFSETS(dev_info.min_io_size, vol_info->eb_size,
+	off_t offsets[] = OFFSETS(dev_info.min_io_size, vol_info->leb_size,
 				  vol_info->data_bytes);
 
 	for (i = 0; i < sizeof(offsets)/sizeof(off_t); i++) {

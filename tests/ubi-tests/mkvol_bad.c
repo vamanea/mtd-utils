@@ -108,7 +108,7 @@ static int test_mkvol(void)
 			 req.alignment))
 		return -1;
 
-	req.alignment = dev_info.eb_size + 1;
+	req.alignment = dev_info.leb_size + 1;
 	ret = ubi_mkvol(libubi, node, &req);
 	if (check_failed(ret, EINVAL, "ubi_mkvol", "alignment = %d",
 			 req.alignment))
@@ -139,16 +139,16 @@ static int test_mkvol(void)
 	if (check_failed(ret, ENOSPC, "ubi_mkvol", "bytes = %lld", req.bytes))
 		return -1;
 
-	req.alignment = dev_info.eb_size - dev_info.min_io_size;
-	req.bytes = (dev_info.eb_size - dev_info.eb_size % req.alignment) *
-		    dev_info.avail_ebs + 1;
+	req.alignment = dev_info.leb_size - dev_info.min_io_size;
+	req.bytes = (dev_info.leb_size - dev_info.leb_size % req.alignment) *
+		    dev_info.avail_lebs + 1;
 	ret = ubi_mkvol(libubi, node, &req);
 	if (check_failed(ret, ENOSPC, "ubi_mkvol", "bytes = %lld", req.bytes))
 		return -1;
 
 	/* Bad vol_type */
 	req.alignment = 1;
-	req.bytes = dev_info.eb_size;
+	req.bytes = dev_info.leb_size;
 	req.vol_type = UBI_DYNAMIC_VOLUME + UBI_STATIC_VOLUME;
 	ret = ubi_mkvol(libubi, node, &req);
 	if (check_failed(ret, EINVAL, "ubi_mkvol", "vol_type = %d",

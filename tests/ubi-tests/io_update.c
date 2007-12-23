@@ -85,13 +85,13 @@ static int test_update(int type)
 {
 	struct ubi_mkvol_request req;
 	const char *name = TESTNAME ":io_update()";
-	int alignments[] = ALIGNMENTS(dev_info.eb_size);
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	struct ubi_vol_info vol_info;
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	int i;
 
 	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
-		int eb_size;
+		int leb_size;
 
 		req.vol_id = UBI_VOL_NUM_AUTO;
 		req.vol_type = type;
@@ -102,8 +102,8 @@ static int test_update(int type)
 		if (req.alignment == 0)
 			req.alignment = dev_info.min_io_size;
 
-		eb_size = dev_info.eb_size - dev_info.eb_size % req.alignment;
-		req.bytes =  MIN_AVAIL_EBS * eb_size;
+		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
+		req.bytes =  MIN_AVAIL_EBS * leb_size;
 
 		if (ubi_mkvol(libubi, node, &req)) {
 			failed("ubi_mkvol");
@@ -166,7 +166,7 @@ remove:
 static int test_update1(struct ubi_vol_info *vol_info)
 {
 	int sequences[SEQ_SZ][3] = SEQUENCES(dev_info.min_io_size,
-					     vol_info->eb_size);
+					     vol_info->leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	unsigned char buf[vol_info->rsvd_bytes];
 	int fd, i, j;
@@ -265,7 +265,7 @@ static int test_update_ff(void)
 	struct ubi_vol_info vol_info;
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	int i, fd, ret, types[2];
-	int upd_len = MIN_AVAIL_EBS * dev_info.eb_size;
+	int upd_len = MIN_AVAIL_EBS * dev_info.leb_size;
 	char buf[upd_len], buf1[upd_len];
 
 	for(i = 0; i < MIN_AVAIL_EBS; i++) {

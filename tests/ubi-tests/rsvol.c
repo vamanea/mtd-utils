@@ -88,7 +88,7 @@ static int test_basic(int type)
 
 	req.vol_id = UBI_VOL_NUM_AUTO;
 	req.alignment = 1;
-	req.bytes = MIN_AVAIL_EBS * dev_info.eb_size;
+	req.bytes = MIN_AVAIL_EBS * dev_info.leb_size;
 	req.vol_type = type;
 	req.name = name;
 
@@ -97,7 +97,7 @@ static int test_basic(int type)
 		return -1;
 	}
 
-	req.bytes = dev_info.eb_size;
+	req.bytes = dev_info.leb_size;
 	if (ubi_rsvol(libubi, node, req.vol_id, req.bytes)) {
 		failed("ubi_rsvol");
 		goto remove;
@@ -106,7 +106,7 @@ static int test_basic(int type)
 	if (check_volume(req.vol_id, &req))
 		goto remove;
 
-	req.bytes = (MIN_AVAIL_EBS + 1) * dev_info.eb_size;
+	req.bytes = (MIN_AVAIL_EBS + 1) * dev_info.leb_size;
 	if (ubi_rsvol(libubi, node, req.vol_id, req.bytes)) {
 		failed("ubi_rsvol");
 		goto remove;
@@ -148,13 +148,13 @@ static int test_rsvol1(struct ubi_vol_info *vol_info);
 static int test_rsvol(int type)
 {
 	const char *name = TESTNAME "test_rsvol:()";
-	int alignments[] = ALIGNMENTS(dev_info.eb_size);
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	struct ubi_mkvol_request req;
 	int i;
 
 	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
-		int eb_size;
+		int leb_size;
 		struct ubi_vol_info vol_info;
 
 		req.vol_id = UBI_VOL_NUM_AUTO;
@@ -166,8 +166,8 @@ static int test_rsvol(int type)
 		if (req.alignment == 0)
 			req.alignment = dev_info.min_io_size;
 
-		eb_size = dev_info.eb_size - dev_info.eb_size % req.alignment;
-		req.bytes =  MIN_AVAIL_EBS * eb_size;
+		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
+		req.bytes =  MIN_AVAIL_EBS * leb_size;
 
 		if (ubi_mkvol(libubi, node, &req)) {
 			failed("ubi_mkvol");
@@ -212,7 +212,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	int fd, i, ret;
 
 	/* Make the volume smaller and check basic volume I/O */
-	bytes = vol_info->rsvd_bytes - vol_info->eb_size;
+	bytes = vol_info->rsvd_bytes - vol_info->leb_size;
 	if (ubi_rsvol(libubi, node, vol_info->vol_id, bytes - 1)) {
 		failed("ubi_rsvol");
 		return -1;
@@ -230,9 +230,9 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 		return -1;
 	}
 
-	if (vol_info1.rsvd_ebs != vol_info->rsvd_ebs - 1) {
-		err_msg("rsvd_ebs %d, must be %d",
-			vol_info1.rsvd_ebs, vol_info->rsvd_ebs - 1);
+	if (vol_info1.rsvd_lebs != vol_info->rsvd_lebs - 1) {
+		err_msg("rsvd_lebs %d, must be %d",
+			vol_info1.rsvd_lebs, vol_info->rsvd_lebs - 1);
 		return -1;
 	}
 
@@ -247,7 +247,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 		return -1;
 	}
 
-	bytes = vol_info->rsvd_bytes - vol_info->eb_size - 1;
+	bytes = vol_info->rsvd_bytes - vol_info->leb_size - 1;
 	if (ubi_update_start(libubi, fd, bytes)) {
 		failed("ubi_update_start");
 		goto close;
@@ -270,7 +270,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	}
 
 	if (ubi_rsvol(libubi, node, vol_info->vol_id,
-		      vol_info->eb_size * dev_info.avail_ebs)) {
+		      vol_info->leb_size * dev_info.avail_lebs)) {
 		failed("ubi_rsvol");
 		return -1;
 	}

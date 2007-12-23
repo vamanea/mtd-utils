@@ -135,7 +135,7 @@ static int test_aligned(int type)
 	struct ubi_mkvol_request req;
 	const char *name = TESTNAME ":test_aligned()";
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	int alignments[] = ALIGNMENTS(dev_info.eb_size);
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 
 	req.vol_type = type;
 	req.name = name;
@@ -148,7 +148,7 @@ static int test_aligned(int type)
 		if (req.alignment == 0)
 			req.alignment = dev_info.min_io_size;
 
-		ebsz = dev_info.eb_size - dev_info.eb_size % req.alignment;
+		ebsz = dev_info.leb_size - dev_info.leb_size % req.alignment;
 		req.bytes = MIN_AVAIL_EBS * ebsz;
 
 		if (ubi_mkvol(libubi, node, &req)) {

@@ -33,7 +33,7 @@
 #define TESTNAME "rmvol"
 #include "common.h"
 
-#define SYSFS_FILE "/sys/class/ubi/ubi%d_%d/usable_eb_size"
+#define SYSFS_FILE "/sys/class/ubi/ubi%d_%d/usable_leb_size"
 
 int main(int argc, char * const argv[])
 {
@@ -64,7 +64,7 @@ int main(int argc, char * const argv[])
 	/* Create a small dynamic volume */
 	req.vol_id = UBI_VOL_NUM_AUTO;
 	req.alignment = dev_info.min_io_size;
-	req.bytes = dev_info.eb_size;
+	req.bytes = dev_info.leb_size;
 	req.vol_type = UBI_DYNAMIC_VOLUME;
 	req.name = "rmvol";
 
@@ -134,7 +134,7 @@ static int mkvol_alignment(void)
 	struct ubi_mkvol_request req;
 	int i, vol_id, ebsz;
 	const char *name = TESTNAME ":mkvol_alignment()";
-	int alignments[] = ALIGNMENTS(dev_info.eb_size);
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 
 	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
 		req.vol_id = UBI_VOL_NUM_AUTO;
@@ -146,8 +146,8 @@ static int mkvol_alignment(void)
 			req.alignment = dev_info.min_io_size;
 
 		/* Bear in mind alignment reduces EB size */
-		ebsz = dev_info.eb_size - dev_info.eb_size % req.alignment;
-		req.bytes = dev_info.avail_ebs * ebsz;
+		ebsz = dev_info.leb_size - dev_info.leb_size % req.alignment;
+		req.bytes = dev_info.avail_lebs * ebsz;
 
 		req.vol_type = UBI_DYNAMIC_VOLUME;
 		req.name = name;

@@ -228,11 +228,11 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 {
 	struct write_info *w;
 	off64_t gap_end;
-	int eb_size = erase_block->volume->info.eb_size;
+	int leb_size = erase_block->volume->info.leb_size;
 	ssize_t bytes_read;
 
 	w = erase_block->writes;
-	gap_end = erase_block->offset + eb_size;
+	gap_end = erase_block->offset + leb_size;
 	while (w) {
 		if (w->offset + w->size < gap_end) {
 			/* There is a gap. Check all 0xff */
@@ -294,7 +294,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 static int write_to_erase_block(struct erase_block_info *erase_block, int fd)
 {
 	int page_size = erase_block->volume->ubi_device->info.min_io_size;
-	int eb_size = erase_block->volume->info.eb_size;
+	int leb_size = erase_block->volume->info.leb_size;
 	int next_offset = 0;
 	int space, size;
 	off64_t offset;
@@ -303,14 +303,14 @@ static int write_to_erase_block(struct erase_block_info *erase_block, int fd)
 
 	if (erase_block->writes)
 		next_offset = erase_block->writes->offset_within_block + erase_block->writes->size;
-	space = eb_size - next_offset;
+	space = leb_size - next_offset;
 	if (space <= 0)
 		return 0; /* No space */
 	if (!get_random_number(10)) {
 		/* 1 time in 10 leave a gap */
 		next_offset += get_random_number(space);
 		next_offset = (next_offset / page_size) * page_size;
-		space = eb_size - next_offset;
+		space = leb_size - next_offset;
 	}
 	if (get_random_number(2))
 		size = 1 * page_size;
@@ -329,7 +329,7 @@ static int write_to_erase_block(struct erase_block_info *erase_block, int fd)
 	}
 	if (size == 0 || size > space)
 		size = page_size;
-	if (next_offset + size > eb_size)
+	if (next_offset + size > leb_size)
 		error_exit("internal error");
 	offset = erase_block->offset + next_offset;
 	if (offset < erase_block->top_of_data)
@@ -420,7 +420,7 @@ static void operate_on_open_volume(struct volume_fd *vol_fd)
 		close_volume(vol_fd);
 	else {
 		/* Pick an erase block at random */
-		int eb_no = get_random_number(vol_fd->volume->info.rsvd_ebs);
+		int eb_no = get_random_number(vol_fd->volume->info.rsvd_lebs);
 		operate_on_erase_block(&vol_fd->volume->erase_blocks[eb_no], vol_fd->fd);
 	}
 }
@@ -471,7 +471,7 @@ static void operate_on_ubi_device(struct ubi_device_info *ubi_device)
 
 		req.vol_id = UBI_VOL_NUM_AUTO;
 		req.alignment = 1; /* TODO: What is this? */
-		req.bytes = ubi_device->info.eb_size * max_ebs_per_vol;
+		req.bytes = ubi_device->info.leb_size * max_ebs_per_vol;
 		if (req.bytes == 0 || req.bytes > ubi_device->info.avail_bytes)
 			req.bytes = ubi_device->info.avail_bytes;
 		req.vol_type = UBI_DYNAMIC_VOLUME;
@@ -482,12 +482,12 @@ static void operate_on_ubi_device(struct ubi_device_info *ubi_device)
 		s->ubi_device = ubi_device;
 		if (ubi_get_vol_info1(libubi, ubi_device->info.dev_num, req.vol_id, &s->info))
 			error_exit("ubi_get_vol_info failed");
-		n = s->info.rsvd_ebs;
+		n = s->info.rsvd_lebs;
 		s->erase_blocks = allocate(sizeof(struct erase_block_info) * n);
 		for (i = 0; i < n; ++i) {
 			s->erase_blocks[i].volume = s;
 			s->erase_blocks[i].block_number = i;
-			s->erase_blocks[i].offset = i * (off64_t) s->info.eb_size;
+			s->erase_blocks[i].offset = i * (off64_t) s->info.leb_size;
 			s->erase_blocks[i].top_of_data = s->erase_blocks[i].offset;
 		}
 		/* FIXME: Correctly get device file name */
@@ -551,10 +551,10 @@ static void get_ubi_devices_info(void)
 		/* FIXME: Correctly get device file name */
 		sprintf(dev_name, "/dev/ubi%d", i);
 		s->device_file_name = strdup(dev_name);
-		if (buf_size < s->info.eb_size)
-			buf_size = s->info.eb_size;
-		if (max_ebs_per_vol && s->info.eb_size * max_ebs_per_vol < s->info.avail_bytes)
-			total_space += s->info.eb_size * max_ebs_per_vol;
+		if (buf_size < s->info.leb_size)
+			buf_size = s->info.leb_size;
+		if (max_ebs_per_vol && s->info.leb_size * max_ebs_per_vol < s->info.avail_bytes)
+			total_space += s->info.leb_size * max_ebs_per_vol;
 		else
 			total_space += s->info.avail_bytes;
 	}
@@ -603,7 +603,7 @@ static void check_volume(struct volume_info *vol)
 	fd = open(vol->device_file_name, O_RDWR | O_LARGEFILE);
 	if (fd == -1)
 		error_exit("Failed to open volume device file");
-	for (pos = 0; pos < vol->info.rsvd_ebs; ++pos)
+	for (pos = 0; pos < vol->info.rsvd_lebs; ++pos)
 		check_erase_block(eb++, fd);
 	if (close(fd) == -1)
 		error_exit("Failed to close volume device file");

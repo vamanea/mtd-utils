@@ -84,12 +84,12 @@ int main(int argc, char * const argv[])
 	mem_limit = memory_limit();
 	if (mem_limit && mem_limit < dev_info.avail_bytes)
 		total_bytes = req.bytes =
-				(mem_limit / dev_info.eb_size / THREADS_NUM)
-				* dev_info.eb_size;
+				(mem_limit / dev_info.leb_size / THREADS_NUM)
+				* dev_info.leb_size;
 	else
 		total_bytes = req.bytes =
-				((dev_info.avail_ebs - 3) / THREADS_NUM)
-				* dev_info.eb_size;
+				((dev_info.avail_lebs - 3) / THREADS_NUM)
+				* dev_info.leb_size;
 	for (i = 0; i < THREADS_NUM; i++) {
 		char name[100];
 
@@ -108,7 +108,7 @@ int main(int argc, char * const argv[])
 	req.vol_id = THREADS_NUM;
 	req.name = TESTNAME ":static";
 	req.vol_type = UBI_DYNAMIC_VOLUME;
-	req.bytes = 3*dev_info.eb_size;
+	req.bytes = 3*dev_info.leb_size;
 	if (ubi_mkvol(libubi, node, &req)) {
 		failed("ubi_mkvol");
 		goto remove;

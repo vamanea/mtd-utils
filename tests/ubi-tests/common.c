@@ -68,11 +68,11 @@ int __initial_check(const char *test, int argc, char * const argv[])
 		goto close;
 	}
 
-	if (dev_info.avail_ebs < MIN_AVAIL_EBS) {
+	if (dev_info.avail_lebs < MIN_AVAIL_EBS) {
 		__err_msg(test, __FUNCTION__, __LINE__,
 			  "insufficient available eraseblocks %d on UBI "
 			  "device, required %d",
-			  dev_info.avail_ebs, MIN_AVAIL_EBS);
+			  dev_info.avail_lebs, MIN_AVAIL_EBS);
 		goto close;
 	}
 
@@ -146,7 +146,7 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 {
 	int ret;
 	struct ubi_vol_info vol_info;
-	int eb_size;
+	int leb_size;
 	long long rsvd_bytes;
 
 	ret = ubi_get_vol_info1(libubi, dev_info->dev_num, vol_id, &vol_info);
@@ -178,17 +178,17 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 		return -1;
 	}
 
-	eb_size = dev_info->eb_size - (dev_info->eb_size % req->alignment);
-	if (eb_size != vol_info.eb_size) {
+	leb_size = dev_info->leb_size - (dev_info->leb_size % req->alignment);
+	if (leb_size != vol_info.leb_size) {
 		__err_msg(test, func, line,
 			  "bad usable LEB size %d, should be %d",
-			  vol_info.eb_size, eb_size);
+			  vol_info.leb_size, leb_size);
 		return -1;
 	}
 
 	rsvd_bytes = req->bytes;
-	if (rsvd_bytes % eb_size)
-		rsvd_bytes += eb_size - (rsvd_bytes % eb_size);
+	if (rsvd_bytes % leb_size)
+		rsvd_bytes += leb_size - (rsvd_bytes % leb_size);
 
 	if (rsvd_bytes != vol_info.rsvd_bytes) {
 		__err_msg(test, func, line,
