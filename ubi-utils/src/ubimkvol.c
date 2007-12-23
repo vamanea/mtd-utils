@@ -262,7 +262,7 @@ int main(int argc, char * const argv[])
 
 	strncpy(myargs.node, argv[1], MAX_NODE_LEN + 1);
 
-	err = parse_opt(argc, (char **)argv, &myargs);
+	err = parse_opt(argc, argv, &myargs);
 	if (err)
 		return err;
 

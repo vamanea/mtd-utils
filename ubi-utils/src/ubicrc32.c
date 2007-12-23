@@ -14,10 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+/*
+ * Calculate CRC32 with UBI start value (0xFFFFFFFF) for a given binary image.
  *
  * Author: Oliver Lohmann
- *
- * Calculate CRC32 with UBI start value for a given binary image.
  */
 
 #include <stdio.h>
@@ -29,113 +31,104 @@
 #include <errno.h>
 #include <mtd/ubi-header.h>
 
-#include "config.h"
 #include "crc32.h"
+#include "common.h"
 
 #define BUFSIZE 4096
 
-const char *argp_program_version = PACKAGE_VERSION;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
-static char doc[] = "\nVersion: " PACKAGE_VERSION "\n"
-	"ubicrc32 - calculates the UBI CRC32 value and prints it to stdout.\n";
+#define PROGRAM_VERSION "1.2"
+#define PROGRAM_NAME    "ubicrc32"
 
-static const char copyright [] __attribute__((unused)) =
-	"FIXME: insert license type"; /* FIXME */
+static const char *doc = "Version " PROGRAM_VERSION "\n"
+	PROGRAM_NAME " - a tool to calculate CRC32 with UBI start value (0xFFFFFFFF)";
 
+static const char *optionsstr =
+"-h, --help                    print help message\n"
+"-V, --version                 print program version";
 
-static struct argp_option options[] = {
-	{ name: "copyright", key: 'c', arg: NULL,    flags: 0,
-	  doc: "Print copyright information.",
-	  group: 1 },
+static const char *usage =
+"Usage: " PROGRAM_NAME " <file to calculate CRC32 for> [-h] [--help]";
 
-	{ name: NULL, key: 0, arg: NULL, flags: 0, doc: NULL, group: 0 },
+static const struct option long_options[] = {
+	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
+	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ NULL, 0, NULL, 0},
 };
 
-typedef struct myargs {
-	FILE* fp_in;
-
-	char *arg1;
-	char **options;			/* [STRING...] */
-} myargs;
-
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state)
+static int parse_opt(int argc, char * const argv[])
 {
-	int err = 0;
+	while (1) {
+		int key;
 
-	myargs *args = state->input;
+		key = getopt_long(argc, argv, "hV", long_options, NULL);
+		if (key == -1)
+			break;
 
-	switch (key) {
-	case 'c':
-		fprintf(stderr, "%s\n", copyright);
-		exit(0);
-		break;
-	case ARGP_KEY_ARG:
-		args->fp_in = fopen(arg, "rb");
-		if ((args->fp_in) == NULL) {
-			fprintf(stderr,
-			"Cannot open file %s for input\n", arg);
-			exit(1);
+		switch (key) {
+		case 'h':
+			fprintf(stderr, "%s\n\n", doc);
+			fprintf(stderr, "%s\n\n", usage);
+			fprintf(stderr, "%s\n", optionsstr);
+			exit(0);
+
+		case 'V':
+			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			exit(0);
+
+		case ':':
+			errmsg("parameter is missing");
+			return -1;
+
+		default:
+			fprintf(stderr, "Use -h for help\n");
+			exit(-1);
 		}
-		args->arg1 = arg;
-		args->options = &state->argv[state->next];
-		state->next = state->argc;
-		break;
-	case ARGP_KEY_END:
-		if (err) {
-			fprintf(stderr, "\n");
-			argp_usage(state);
-			exit(1);
-		}
-		break;
-	default:
-		return(ARGP_ERR_UNKNOWN);
 	}
 
 	return 0;
 }
 
-static struct argp argp = {
-	options:     options,
-	parser:	     parse_opt,
-	args_doc:    "[file]",
-	doc:	     doc,
-	children:    NULL,
-	help_filter: NULL,
-	argp_domain: NULL,
-};
-
-int
-main(int argc, char **argv) {
-	int rc = 0;
+int main(int argc, char * const argv[])
+{
+	int err = 0;
 	uint32_t crc32_table[256];
-	uint8_t buf[BUFSIZE];
-	size_t read;
-	uint32_t crc32;
+	uint32_t crc32 = UBI_CRC32_INIT;
+	char buf[BUFSIZE];
+	FILE *fp;
 
-	myargs args = {
-		.fp_in = stdin,
-		.arg1 = NULL,
-		.options = NULL,
-	};
+	if (argc > 1) {
+		fp = fopen(argv[1], "r");
+		if (!fp) {
+			errmsg("cannot open \"%s\"", argv[1]);
+			perror("fopen");
+			return -1;
+		}
+	} else
+		fp = stdin;
 
-	argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &args);
+	err = parse_opt(argc, argv);
+	if (err)
+		return err;
 
 	init_crc32_table(crc32_table);
-	crc32 = UBI_CRC32_INIT;
-	while (!feof(args.fp_in)) {
-		read = fread(buf, 1, BUFSIZE, args.fp_in);
-		if (ferror(args.fp_in)) {
-			fprintf(stderr, "I/O Error.");
-			exit(EXIT_FAILURE);
+
+	while (!feof(fp)) {
+		size_t read;
+
+		read = fread(buf, 1, BUFSIZE, fp);
+		if (ferror(fp)) {
+			errmsg("cannot read input file");
+			perror("fread");
+			err = -1;
+			goto out_close;
 		}
 		crc32 = clc_crc32(crc32_table, crc32, buf, read);
 	}
 
-	if (args.fp_in != stdin) {
-		fclose(args.fp_in);
-	}
+	printf("0x%08x\n", crc32);
 
-	fprintf(stdout, "0x%08x\n", crc32);
-	return rc;
+out_close:
+	if (fp != stdin)
+		fclose(fp);
+	return err;
 }
