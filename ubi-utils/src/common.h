@@ -23,9 +23,6 @@
 extern "C" {
 #endif
 
-/* Maximum device node name length */
-#define MAX_NODE_LEN 255
-
 /* Error messages */
 #define errmsg(fmt, ...) do {                                             \
         fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \

@@ -39,11 +39,12 @@
 /* The variables below is set by command line arguments */
 struct args {
 	int vol_id;
-	char node[MAX_NODE_LEN + 2];
+	const char *node;
 };
 
 static struct args myargs = {
 	.vol_id = -1,
+	.node = NULL,
 };
 
 static const char *doc = "Version: " PROGRAM_VERSION "\n"
@@ -66,7 +67,17 @@ static const struct option long_options[] = {
 	{ NULL, 0, NULL, 0},
 };
 
-static int parse_opt(int argc, char * const argv[], struct args *args)
+static int param_sanity_check(void)
+{
+	if (myargs.vol_id == -1) {
+		errmsg("volume ID is was not specified");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
 		int key;
@@ -79,8 +90,8 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 		switch (key) {
 
 		case 'n':
-			args->vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args->vol_id < 0) {
+			myargs.vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || myargs.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
@@ -98,7 +109,7 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 
 		case ':':
 			errmsg("parameter is missing");
-			goto out;
+			return -1;
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
@@ -106,23 +117,18 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 		}
 	}
 
-	return 0;
- out:
-	return -1;
-}
-
-static int param_sanity_check(struct args *args)
-{
-	if (strlen(args->node) > MAX_NODE_LEN) {
-		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
-		       args->node, strlen(args->node), MAX_NODE_LEN);
+	if (optind == argc) {
+		errmsg("UBI device name was not specified (use -h for help)");
+		return -1;
+	} else if (optind != argc - 1) {
+		errmsg("more then one UBI devices specified (use -h for help)");
 		return -1;
 	}
 
-	if (args->vol_id == -1) {
-		errmsg("volume ID is was not specified");
+	myargs.node = argv[optind];
+
+	if (param_sanity_check())
 		return -1;
-	}
 
 	return 0;
 }
@@ -132,29 +138,7 @@ int main(int argc, char * const argv[])
 	int err;
 	libubi_t libubi;
 
-	strncpy(myargs.node, argv[1], MAX_NODE_LEN + 1);
-
-	if (argc < 2) {
-		errmsg("UBI device name was not specified (use -h for help)");
-		return -1;
-	}
-
-	if (argc < 3) {
-		errmsg("too few arguments (use -h for help)");
-		return -1;
-	}
-
-	if (argv[1][0] == '-') {
-		errmsg("UBI device was not specified (use -h for help)");
-		return -1;
-	}
-
-	if (argv[2][0] != '-') {
-		errmsg("incorrect arguments, use -h for help");
-		return -1;
-	}
-
-	err = parse_opt(argc, argv, &myargs);
+	err = parse_opt(argc, argv);
 	if (err)
 		return -1;
 
@@ -165,9 +149,15 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	err = param_sanity_check(&myargs);
-	if (err)
+	err = ubi_node_type(libubi, myargs.node);
+	if (err == 2) {
+		errmsg("\"%s\" is an UBI volume node, not an UBI device node",
+		       myargs.node);
 		goto out_libubi;
+	} else if (err < 0) {
+		errmsg("\"%s\" is not an UBI device node", myargs.node);
+		goto out_libubi;
+	}
 
 	err = ubi_rmvol(libubi, myargs.node, myargs.vol_id);
 	if (err) {

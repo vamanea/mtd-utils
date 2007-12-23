@@ -49,6 +49,7 @@ struct args {
 
 static struct args myargs = {
 	.truncate = 0,
+	.node = NULL,
 	.img = NULL,
 };
 
@@ -74,7 +75,7 @@ struct option long_options[] = {
 	{ NULL, 0, NULL, 0}
 };
 
-static int parse_opt(int argc, char * const argv[], struct args *args)
+static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
 		int key;
@@ -85,7 +86,7 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 
 		switch (key) {
 		case 't':
-			args->truncate = 1;
+			myargs.truncate = 1;
 			break;
 
 		case 'h':
@@ -107,6 +108,18 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 			exit(-1);
 		}
 	}
+
+	if (optind == argc) {
+		errmsg("UBI device name was not specified (use -h for help)");
+		return -1;
+	} else if (optind != argc - 2) {
+		errmsg("specify UBI device name and image file name as first 2 "
+		       "parameters (use -h for help)");
+		return -1;
+	}
+
+	myargs.node = argv[optind];
+	myargs.img  = argv[optind + 1];
 
 	return 0;
 }
@@ -256,28 +269,28 @@ int main(int argc, char * const argv[])
 	libubi_t libubi;
 	struct ubi_vol_info vol_info;
 
-	if (argc < 2 || argv[1][0] == '-') {
-		errmsg("UBI device name was not specified (use -h for help)");
+	err = parse_opt(argc, argv);
+	if (err)
 		return -1;
-	}
-
-	if (argc < 3) {
-		errmsg("too few arguments (use -h for help)");
-		return -1;
-	}
-
-	myargs.img = argv[argc - 1];
-	myargs.node = argv[1];
-
-	parse_opt(argc, argv, &myargs);
 
 	if (!myargs.img && !myargs.truncate) {
 		errmsg("incorrect arguments, use -h for help");
+		return -1;
 	}
 
 	libubi = libubi_open();
 	if (libubi == NULL) {
 		perror("Cannot open libubi");
+		goto out_libubi;
+	}
+
+	err = ubi_node_type(libubi, myargs.node);
+	if (err == 1) {
+		errmsg("\"%s\" is an UBI device node, not an UBI volume node",
+		       myargs.node);
+		goto out_libubi;
+	} else if (err < 0) {
+		errmsg("\"%s\" is not an UBI volume node", myargs.node);
 		goto out_libubi;
 	}
 

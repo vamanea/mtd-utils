@@ -691,7 +691,6 @@ int ubi_node_type(libubi_t desc, const char *node)
 		return -1;
 
 	if (!S_ISCHR(st.st_mode)) {
-		errmsg("\"%s\" is not a character device", node);
 		errno = EINVAL;
 		return -1;
 	}

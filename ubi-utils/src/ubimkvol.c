@@ -45,7 +45,7 @@ struct args {
 	int alignment;
 	const char *name;
 	int nlen;
-	char node[MAX_NODE_LEN + 2];
+	const char *node;
 	int maxavs;
 };
 
@@ -57,6 +57,7 @@ static struct args myargs = {
 	.vol_id = UBI_VOL_NUM_AUTO,
 	.name = NULL,
 	.nlen = 0,
+	.node = NULL,
 	.maxavs = 0,
 };
 
@@ -99,7 +100,38 @@ static const struct option long_options[] = {
 	{ NULL, 0, NULL, 0},
 };
 
-static int parse_opt(int argc, char * const argv[], struct args *args)
+static int param_sanity_check(void)
+{
+	int len;
+
+	if (myargs.bytes == -1 && !myargs.maxavs && myargs.lebs == -1) {
+		errmsg("volume size was not specified (use -h for help)");
+		return -1;
+	}
+
+	if ((myargs.bytes != -1 && (myargs.maxavs || myargs.lebs != -1))  ||
+	    (myargs.lebs != -1  && (myargs.maxavs || myargs.bytes != -1)) ||
+	    (myargs.maxavs && (myargs.bytes != -1 || myargs.lebs != -1))) {
+		errmsg("size specified with more then one option");
+		return -1;
+	}
+
+	if (myargs.name == NULL) {
+		errmsg("volume name was not specified (use -h for help)");
+		return -1;
+	}
+
+	len = strlen(myargs.name);
+	if (len > UBI_MAX_VOLUME_NAME) {
+		errmsg("too long name (%d symbols), max is %d",
+			len, UBI_MAX_VOLUME_NAME);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
 		int key;
@@ -112,9 +144,9 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 		switch (key) {
 		case 't':
 			if (!strcmp(optarg, "dynamic"))
-				args->vol_type = UBI_DYNAMIC_VOLUME;
+				myargs.vol_type = UBI_DYNAMIC_VOLUME;
 			else if (!strcmp(optarg, "static"))
-				args->vol_type = UBI_STATIC_VOLUME;
+				myargs.vol_type = UBI_STATIC_VOLUME;
 			else {
 				errmsg("bad volume type: \"%s\"", optarg);
 				return -1;
@@ -122,8 +154,8 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 			break;
 
 		case 's':
-			args->bytes = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args->bytes <= 0) {
+			myargs.bytes = strtoull(optarg, &endp, 0);
+			if (endp == optarg || myargs.bytes <= 0) {
 				errmsg("bad volume size: \"%s\"", optarg);
 				return -1;
 			}
@@ -135,37 +167,37 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 					       "should be 'KiB', 'MiB' or 'GiB'", endp);
 					return -1;
 				}
-				args->bytes *= mult;
+				myargs.bytes *= mult;
 			}
 			break;
 
 		case 'S':
-			args->lebs = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args->lebs <= 0 || *endp != '\0') {
+			myargs.lebs = strtoull(optarg, &endp, 0);
+			if (endp == optarg || myargs.lebs <= 0 || *endp != '\0') {
 				errmsg("bad volume size: \"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'a':
-			args->alignment = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args->alignment <= 0) {
+			myargs.alignment = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || myargs.alignment <= 0) {
 				errmsg("bad volume alignment: \"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'n':
-			args->vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args->vol_id < 0) {
+			myargs.vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || myargs.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'N':
-			args->name = optarg;
-			args->nlen = strlen(args->name);
+			myargs.name = optarg;
+			myargs.nlen = strlen(myargs.name);
 			break;
 
 		case 'h':
@@ -179,7 +211,7 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 			exit(0);
 
 		case 'm':
-			args->maxavs = 1;
+			myargs.maxavs = 1;
 			break;
 
 		case ':':
@@ -192,42 +224,18 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 		}
 	}
 
-	return 0;
-}
-
-static int param_sanity_check(struct args *args)
-{
-	int len;
-
-	if (strlen(args->node) > MAX_NODE_LEN) {
-		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
-		       args->node, strlen(args->node), MAX_NODE_LEN);
+	if (optind == argc) {
+		errmsg("UBI device name was not specified (use -h for help)");
+		return -1;
+	} else if (optind != argc - 1) {
+		errmsg("more then one UBI devices specified (use -h for help)");
 		return -1;
 	}
 
-	if (args->bytes == -1 && !args->maxavs && args->lebs == -1) {
-		errmsg("volume size was not specified (use -h for help)");
-		return -1;
-	}
+	myargs.node = argv[optind];
 
-	if ((args->bytes != -1 && (args->maxavs || args->lebs != -1)) ||
-	    (args->lebs != -1 && (args->maxavs || args->bytes != -1)) ||
-	    (args->maxavs && (args->bytes != -1 || args->lebs != -1))) {
-		errmsg("size specified with more then one option");
+	if (param_sanity_check())
 		return -1;
-	}
-
-	if (args->name == NULL) {
-		errmsg("volume name was not specified (use -h for help)");
-		return -1;
-	}
-
-	len = strlen(args->name);
-	if (len > UBI_MAX_VOLUME_NAME) {
-		errmsg("too long name (%d symbols), max is %d",
-			len, UBI_MAX_VOLUME_NAME);
-		return -1;
-	}
 
 	return 0;
 }
@@ -240,29 +248,7 @@ int main(int argc, char * const argv[])
 	struct ubi_vol_info vol_info;
 	struct ubi_mkvol_request req;
 
-	if (argc < 2) {
-		errmsg("UBI device name was not specified (use -h for help)");
-		return -1;
-	}
-
-	if (argc < 3) {
-		errmsg("too few arguments (use -h for help)");
-		return -1;
-	}
-
-	if (argv[1][0] == '-') {
-		errmsg("UBI device was not specified (use -h for help)");
-		return -1;
-	}
-
-	if (argv[2][0] != '-') {
-		errmsg("incorrect arguments, use -h for help");
-		return -1;
-	}
-
-	strncpy(myargs.node, argv[1], MAX_NODE_LEN + 1);
-
-	err = parse_opt(argc, argv, &myargs);
+	err = parse_opt(argc, argv);
 	if (err)
 		return err;
 
@@ -273,9 +259,15 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	err = param_sanity_check(&myargs);
-	if (err)
+	err = ubi_node_type(libubi, myargs.node);
+	if (err == 2) {
+		errmsg("\"%s\" is an UBI volume node, not an UBI device node",
+		       myargs.node);
 		goto out_libubi;
+	} else if (err < 0) {
+		errmsg("\"%s\" is not an UBI device node", myargs.node);
+		goto out_libubi;
+	}
 
 	err = ubi_get_dev_info(libubi, myargs.node, &dev_info);
 	if (err) {

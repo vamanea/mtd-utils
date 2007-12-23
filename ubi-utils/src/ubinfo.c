@@ -39,15 +39,14 @@ struct args {
 	int devn;
 	int vol_id;
 	int all;
-	char node[MAX_NODE_LEN + 2];
-	int node_given;
+	const char *node;
 };
 
 static struct args myargs = {
 	.vol_id = -1,
 	.devn = -1,
 	.all = 0,
-	.node_given = 0,
+	.node = NULL,
 };
 
 static const char *doc = "Version " PROGRAM_VERSION "\n"
@@ -83,7 +82,7 @@ static const struct option long_options[] = {
 	{ NULL, 0, NULL, 0},
 };
 
-static int parse_opt(int argc, char * const argv[], struct args *args)
+static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
 		int key;
@@ -95,20 +94,20 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 
 		switch (key) {
 		case 'a':
-			args->all = 1;
+			myargs.all = 1;
 			break;
 
 		case 'n':
-			args->vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args->vol_id < 0) {
+			myargs.vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || myargs.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'd':
-			args->devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args->devn < 0) {
+			myargs.devn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || myargs.devn < 0) {
 				errmsg("bad UBI device number: \"%s\"", optarg);
 				return -1;
 			}
@@ -135,6 +134,13 @@ static int parse_opt(int argc, char * const argv[], struct args *args)
 		}
 	}
 
+	if (optind == argc - 1) {
+		myargs.node = argv[optind];
+	} else if (optind < argc) {
+		errmsg("more then one UBI devices specified (use -h for help)");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -142,17 +148,10 @@ static int translate_dev(libubi_t libubi, const char *node)
 {
 	int err;
 
-	if (strlen(node) > MAX_NODE_LEN) {
-		errmsg("too long device node name: \"%s\" (%d characters), max. is %d",
-		       node, strlen(node), MAX_NODE_LEN);
-		return -1;
-	}
-
 	err = ubi_node_type(libubi, node);
 	if (err == -1) {
 		if (errno) {
 			errmsg("unrecognized device node \"%s\"", node);
-			perror("ubi_node_type");
 			return -1;
 		}
 		errmsg("\"%s\" does not correspond to any UBI device or volume",
@@ -399,21 +398,11 @@ int main(int argc, char * const argv[])
 	int err;
 	libubi_t libubi;
 
-	if (argc > 1 && argv[1][0] != '-') {
-		strncpy(myargs.node, argv[1], MAX_NODE_LEN + 1);
-		myargs.node_given = 1;
-	}
-
-	if (argc > 2 && argv[2][0] != '-') {
-		errmsg("incorrect arguments, use -h for help");
-		return -1;
-	}
-
-	err = parse_opt(argc, argv, &myargs);
+	err = parse_opt(argc, argv);
 	if (err)
 		return -1;
 
-	if (argc > 1 && !myargs.node_given && myargs.devn != -1) {
+	if (!myargs.node && myargs.devn != -1) {
 		errmsg("specify either device number or node file (use -h for help)");
 		return -1;
 	}
@@ -425,7 +414,7 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	if (myargs.node_given) {
+	if (myargs.node) {
 		/*
 		 * A character device was specified, translate this into UBI
 		 * device number and volume ID.
