@@ -749,8 +749,15 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 
 	memset(info, '\0', sizeof(struct ubi_info));
 
-	if (read_major(lib->ctrl_dev, &info->ctrl_major, &info->ctrl_minor))
-		return -1;
+	if (read_major(lib->ctrl_dev, &info->ctrl_major, &info->ctrl_minor)) {
+		/*
+		 * Older UBI versions did not have control device, so we do not
+		 * panic here for compatibility reasons. May be few years later
+		 * we could return -1 here, but for now just set major:minor to
+		 * -1.
+		 */
+		info->ctrl_major = info->ctrl_minor = -1;
+	}
 
 	/*
 	 * We have to scan the UBI sysfs directory to identify how many UBI

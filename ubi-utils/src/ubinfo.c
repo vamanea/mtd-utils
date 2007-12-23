@@ -335,8 +335,11 @@ static int print_general_info(libubi_t libubi, int all)
 
 	printf("UBI version:                    %d\n", ubi_info.version);
 	printf("Count of UBI devices:           %d\n", ubi_info.dev_count);
-	printf("UBI control device major/minor: %d:%d\n",
-	       ubi_info.ctrl_major, ubi_info.ctrl_minor);
+	if (ubi_info.ctrl_major != -1)
+		printf("UBI control device major/minor: %d:%d\n",
+		       ubi_info.ctrl_major, ubi_info.ctrl_minor);
+	else
+		printf("UBI control device is not supported by this kernel\n");
 
 	if (ubi_info.dev_count == 0)
 		return 0;
