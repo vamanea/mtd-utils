@@ -39,7 +39,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include <config.h>
 #include <libubi.h>
 
 #define PROGRAM_VERSION "1.3"
@@ -142,9 +141,8 @@ parse_opt(int argc, char **argv, struct args *args)
 
 			case '?': /* help */
 				fprintf(stderr,	"Usage: "
-					"ubiupdatevol [OPTION...] <image file>\n%s%s"
-					"\nReport bugs to %s\n",
-					doc, optionsstr, PACKAGE_BUGREPORT);
+					"ubiupdatevol [OPTION...] <image file>\n%s%s\n",
+					doc, optionsstr);
 				exit(EXIT_SUCCESS);
 				break;
 
@@ -184,6 +182,7 @@ ubi_truncate_volume(struct args *args, int64_t bytes,libubi_t libubi)
 	ofd = open(path, O_RDWR);
 	if (ofd < 0) {
 		fprintf(stderr, "Cannot open volume %s\n", path);
+		perror("open");
 		exit(EXIT_FAILURE);
 	}
 	rc = ubi_update_start(libubi, ofd, bytes);

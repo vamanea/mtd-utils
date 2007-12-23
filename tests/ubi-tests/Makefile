@@ -1,41 +1,47 @@
-UBIUTILS=../../ubi-utils
-INCLUDE1=$(UBIUTILS)/inc
-INCLUDE2=../../include
-LIB=.
+LIBUBI_PATH=../../ubi-utils/
+LIBUBI_SRC_PATH=../../ubi-utils/src
+LIBUBI_HEADER_PATH=../../ubi-utils/inc
+UBIUTILS_PATH=../../ubi-utils/
 
 CC := $(CROSS)gcc
 
-ALL_FILES=libubi io_update rmvol integ
-ALL_FILES+=io_paral io_read io_basic mkvol_basic mkvol_bad mkvol_paral rsvol
+TESTS=io_update rmvol integ io_paral io_read io_basic \
+          mkvol_basic mkvol_bad mkvol_paral rsvol
 
-CFLAGS += -Wall -I$(INCLUDE1) -I$(INCLUDE2) -L$(LIB) -ggdb
+HELPER_NAMES=ubiupdatevol
+HELPERS=$(addprefix helpers/, $(HELPER_NAMES))
 
-all: $(ALL_FILES)
+# Because of implicite rules we use make treats .o files as intermediate, thus
+# it removes the. If you want to prevent the removal, uncomment the below
+#.SECONDARY: $(addsuffix .o, $(TESTS)) $(addsuffix .o, $(HELPERS))
 
-libubi: $(UBIUTILS)/src/libubi.c  $(UBIUTILS)/inc/libubi.h  $(UBIUTILS)/src/libubi_int.h
-	$(CC) $(CFLAGS) -DUDEV_SETTLE_HACK -c $(UBIUTILS)/src/libubi.c -o libubi.o
+CFLAGS += -Wall -I$(LIBUBI_HEADER_PATH) -L $(LIBUBI_PATH) -O0 -ggdb
+
+all: ubi-utils libubi $(TESTS) $(HELPERS)
+
+# Compile ubilib with the udevsettle hack
+libubi: $(LIBUBI_SRC_PATH)/libubi.c  $(LIBUBI_HEADER_PATH)/libubi.h  $(LIBUBI_SRC_PATH)/libubi_int.h
+	$(CC) $(CFLAGS) -I $(LIBUBI_SRC_PATH) -DUDEV_SETTLE_HACK -c $(LIBUBI_SRC_PATH)/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
-io_paral: io_paral.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -lpthread -o $@
-io_update: io_update.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-io_read: io_read.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-io_basic: io_basic.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-mkvol_basic: mkvol_basic.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-mkvol_bad: mkvol_bad.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-mkvol_paral: mkvol_paral.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -lpthread -o $@
-rsvol: rsvol.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-rmvol: rmvol.c common.c
-	$(CC) $(CFLAGS) $^ -lubi -o $@
-integ: integ.c
+# The below cancels existing implicite rule to make programs from .c files,
+# in order to force make using our rule defined below
+%: %.c
+
+# The below is the rule to get an .o file from a .c file
+%.o: %.c
+	$(CC) $(CFLAGS) $< -c -o $@
+
+# And the below is the rule to get final test executable from its .o and common.o
+%: %.o common.o
 	$(CC) $(CFLAGS) $^ -lubi -o $@
 
+# *paral tests require libpthread, thus the below rule for them
+%paral: %paral.o common.o
+	$(CC) $(CFLAGS) $^ -lubi -lpthread -o $@
+
+ubi-utils:
+	make -C $(UBIUTILS_PATH)
+
 clean:
-	rm -rf $(ALL_FILES) $(addsuffix .o, $(ALL_FILES))
+	rm -f $(TESTS) $(addsuffix .o, $(TESTS)) libubi.* $(HELPERS) $(addsuffix .o, $(HELPERS))

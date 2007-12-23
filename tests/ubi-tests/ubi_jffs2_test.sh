@@ -14,16 +14,17 @@
 #     Tue Oct 31 14:14:54 CET 2006
 #
 
+# Make sure we have UBI utilities in the PATH
+export PATH=../../ubi-utils:$PATH
+
 VERSION="1.1"
-
-export PATH=$PATH:/bin:~/bin:/usr/local/bin:/home/dedekind/work/prj/ubi/tools/flashutils/bin/
-
 ITERATIONS=250
 ALIGNMENT=2048
 
-UBIMKVOL="ubimkvol -a $ALIGNMENT"
-UBIRMVOL=ubirmvol
-UBIUPDATEVOL=ubiupdatevol
+UBIMKVOL="ubimkvol"
+UBIRMVOL="ubirmvol"
+# This test script uses special program to update volumes
+UBIUPDATEVOL="helpers/ubiupdatevol"
 
 SIZE_512K=524288
 SIZE_1M=1310720
@@ -90,23 +91,11 @@ fix_sysfs_issue ()
 }
 
 #
-# FIXME Udev needs some time until the device nodes are created.
-#       This will cause trouble if after ubimkvol an update attempt
-#       is started immediately, since the device node is not yet
-#       available. We should either fix the tools with inotify or
-#       other ideas or figure out a different way to solve the problem
-#       e.g. to use ubi0 and make the volume device nodes obsolete...
+# Wait for while udev creates device nodes
 #
 udev_wait ()
 {
-    echo -n "FIXME Waiting for udev to create/delete device node "
-    grep 2\.6\.5 /proc/version > /dev/null
-    if [ $? -eq "0" ]; then
-	for i in `seq 0 5`; do
-	    sleep 1; echo -n ".";
-	done
-	echo " ok"
-    fi
+	udevsettle || sleep 2;
 }
 
 # delete_volume - Delete a volume. If it does not exist, do not try
@@ -131,7 +120,7 @@ delete_volume ()
 	passed
 
 	echo -n "*** Delete volume if it exists ... "
-	$UBIRMVOL -d0 -n$volume
+	$UBIRMVOL $UBI_DEVICE -n$volume
 	if [ $? -ne "0" ] ; then
 	    exit_failure
 	fi
@@ -159,8 +148,8 @@ writevol_test ()
     delete_volume $volume
 
     echo "*** Try to create volume"
-    echo "    $UBIMKVOL -d0 -n$volume -t$type -NNEW$volume -s $size ... "
-    $UBIMKVOL -d0 -n$volume -t$type -N"NEW$volume" -s $size
+    echo "    $UBIMKVOL $UBI_DEVICE -a $ALIGNMENT -n$volume -t$type -NNEW$volume -s $size ... "
+    $UBIMKVOL $UBI_DEVICE -n$volume -t$type -N"NEW$volume" -s $size
     if [ $? -ne "0" ] ; then
 	exit_failure
     fi
@@ -169,7 +158,7 @@ writevol_test ()
 
 ### Try to create same volume again
     echo -n "*** Try to create some volume again, this must fail ... "
-    $UBIMKVOL -d0 -n$volume -t$type -N"NEW$volume" -s $size
+    $UBIMKVOL $UBI_DEVICE -a $ALIGNMENT -n$volume -t$type -N"NEW$volume" -s $size
     if [ $? -eq "0" ] ; then
 	exit_failure
     fi
@@ -383,6 +372,13 @@ if [ $? -ne "0" ]; then
     echo "No UBI found in /proc/devices! I am broken!"
     exit_failure
 fi
+
+if [ "x$1" == "x" ]; then
+	echo "Please, specify ubi device to test, e.g., $0 /dev/ubi0";
+	exit_failure;
+fi
+
+UBI_DEVICE=$1
 
 # Set to zero if not running on example hardware
 grep 1142 /proc/cpuinfo > /dev/null

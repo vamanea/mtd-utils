@@ -185,7 +185,7 @@ static int test_update1(struct ubi_vol_info *vol_info)
 	}
 
 	for (i = 0; i < SEQ_SZ; i++) {
-		int ret, stop = 0, len;
+		int ret, stop = 0, len = 0;
 		off_t off = 0;
 		unsigned char buf1[vol_info->rsvd_bytes];
 
