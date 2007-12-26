@@ -5,7 +5,7 @@ UBIUTILS_PATH=../../ubi-utils/
 
 CC := $(CROSS)gcc
 
-TESTS=io_update rmvol integ io_paral io_read io_basic \
+TESTS=io_update volrefcnt integ io_paral io_read io_basic \
           mkvol_basic mkvol_bad mkvol_paral rsvol
 
 HELPER_NAMES=ubiupdatevol
@@ -15,13 +15,13 @@ HELPERS=$(addprefix helpers/, $(HELPER_NAMES))
 # it removes the. If you want to prevent the removal, uncomment the below
 #.SECONDARY: $(addsuffix .o, $(TESTS)) $(addsuffix .o, $(HELPERS))
 
-CFLAGS += -Wall -I$(LIBUBI_HEADER_PATH) -L $(LIBUBI_PATH) -O0 -ggdb
+CFLAGS += -Wall -I$(LIBUBI_HEADER_PATH) -L. -O2
 
 all: ubi-utils libubi $(TESTS) $(HELPERS)
 
 # Compile ubilib with the udevsettle hack
 libubi: $(LIBUBI_SRC_PATH)/libubi.c  $(LIBUBI_HEADER_PATH)/libubi.h  $(LIBUBI_SRC_PATH)/libubi_int.h
-	$(CC) $(CFLAGS) -I $(LIBUBI_SRC_PATH) -DUDEV_SETTLE_HACK -c $(LIBUBI_SRC_PATH)/libubi.c -o libubi.o
+	$(CC) $(CFLAGS) -I $(LIBUBI_SRC_PATH) -I../../include -DUDEV_SETTLE_HACK -c $(LIBUBI_SRC_PATH)/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
 # The below cancels existing implicite rule to make programs from .c files,

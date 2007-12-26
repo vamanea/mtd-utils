@@ -39,6 +39,22 @@ extern "C" {
 typedef void * libubi_t;
 
 /**
+ * struct ubi_attach_request - MTD device attachement request.
+ * @dev_num: number to assigne to the newly created UBI device
+ *           (%UBI_DEV_NUM_AUTO should be used to automatically assign the
+ *           number)
+ * @mtd_num: MTD device number to attach
+ * @vid_hdr_offset: VID header offset (%0 means default offset and this is what
+ *                  most of the users want)
+ */
+struct ubi_attach_request
+{
+	int dev_num;
+	int mtd_num;
+	int vid_hdr_offset;
+};
+
+/**
  * struct ubi_mkvol_request - volume creation request.
  * @vol_id: ID to assign to the new volume (%UBI_VOL_NUM_AUTO should be used to
  *          automatically assign ID)
@@ -167,13 +183,49 @@ void libubi_close(libubi_t desc);
 
 /**
  * ubi_get_info - get general UBI information.
- * @info: pointer to the &struct ubi_info object to fill
  * @desc: UBI library descriptor
+ * @info: pointer to the &struct ubi_info object to fill
  *
  * This function fills the passed @info object with general UBI information and
  * returns %0 in case of success and %-1 in case of failure.
  */
 int ubi_get_info(libubi_t desc, struct ubi_info *info);
+
+/**
+ * ubi_attach_mtd - attach MTD device to UBI.
+ * @desc: UBI library descriptor
+ * @node: name of the UBI control character device node
+ * @req: MTD attach request.
+ *
+ * This function creates a new UBI device by attaching an MTD device as
+ * described by @req. Returns %0 in case of success and %-1 in case of failure.
+ * The newly created UBI device number is returned in @req->dev_num.
+ */
+int ubi_attach_mtd(libubi_t desc, const char *node,
+		   struct ubi_attach_request *req);
+
+/**
+ * ubi_detach_mtd - detach an MTD device.
+ * @desc: UBI library descriptor
+ * @node: name of the UBI control character device node
+ * @mtd_num: MTD device number to detach
+ *
+ * This function detaches MTD device number @mtd_num from UBI, which means the
+ * corresponding UBI device is removed. Returns zero in case of success and %-1
+ * in case of failure.
+ */
+int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num);
+
+/**
+ * ubi_remove_dev - remove an UBI device.
+ * @desc: UBI library descriptor
+ * @node: name of the UBI control character device node
+ * @ubi_dev: UBI device number to remove
+ *
+ * This function removes UBI device number @ubi_dev and returns zero in case of
+ * success and %-1 in case of failure.
+ */
+int ubi_remove_dev(libubi_t desc, const char *node, int ubi_dev);
 
 /**
  * ubi_mkvol - create an UBI volume.

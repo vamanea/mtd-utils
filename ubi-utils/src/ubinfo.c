@@ -34,7 +34,7 @@
 #define PROGRAM_VERSION "1.0"
 #define PROGRAM_NAME    "ubinfo"
 
-/* The variables below is set by command line arguments */
+/* The variables below are set by command line arguments */
 struct args {
 	int devn;
 	int vol_id;
@@ -49,8 +49,8 @@ static struct args myargs = {
 	.node = NULL,
 };
 
-static const char *doc = "Version " PROGRAM_VERSION "\n"
-	PROGRAM_NAME " - a tool to print UBI information.";
+static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+			 " - a tool to print UBI information.";
 
 static const char *optionsstr =
 "-d, --devn=<UBI device number>  UBI device number to get information about\n"

@@ -58,6 +58,7 @@ extern "C" {
 #define DEV_MAX_RSVD      "reserved_for_bad"
 #define DEV_MAX_VOLS      "max_vol_count"
 #define DEV_MIN_IO_SIZE   "min_io_size"
+#define DEV_MTD_NUM       "mtd_num"
 
 #define UBI_VOL_NAME_PATT "ubi%d_%d"
 #define VOL_TYPE          "type"
@@ -114,6 +115,7 @@ struct libubi
 	char *dev_bad_rsvd;
 	char *dev_max_vols;
 	char *dev_min_io_size;
+	char *dev_mtd_num;
 	char *ubi_vol;
 	char *vol_type;
 	char *vol_dev;

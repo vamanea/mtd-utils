@@ -36,7 +36,7 @@
 #define PROGRAM_VERSION "1.6"
 #define PROGRAM_NAME    "ubimkvol"
 
-/* The variables below is set by command line arguments */
+/* The variables below are set by command line arguments */
 struct args {
 	int vol_id;
 	int vol_type;
@@ -61,8 +61,8 @@ static struct args myargs = {
 	.maxavs = 0,
 };
 
-static const char *doc = "Version " PROGRAM_VERSION "\n"
-	PROGRAM_NAME " - a tool to create UBI volumes.";
+static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+			 " - a tool to create UBI volumes.";
 
 static const char *optionsstr =
 "-a, --alignment=<alignment>   volume alignment (default is 1)\n"
@@ -228,7 +228,7 @@ static int parse_opt(int argc, char * const argv[])
 		errmsg("UBI device name was not specified (use -h for help)");
 		return -1;
 	} else if (optind != argc - 1) {
-		errmsg("more then one UBI devices specified (use -h for help)");
+		errmsg("more then one UBI device specified (use -h for help)");
 		return -1;
 	}
 

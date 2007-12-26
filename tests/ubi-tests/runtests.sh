@@ -2,7 +2,7 @@
 
 ubidev="$1"
 tests="mkvol_basic mkvol_bad mkvol_paral rsvol io_basic io_read io_update
-io_paral rmvol"
+io_paral volrefcnt"
 
 if test -z "$ubidev";
 then

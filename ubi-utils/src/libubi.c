@@ -434,7 +434,7 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
 	}
 
 	if (i > info.highest_dev_num) {
-		errno = ENOENT;
+		errno = ENODEV;
 		return -1;
 	}
 
@@ -442,12 +442,13 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
 	sprintf(file, lib->ubi_vol, i, minor - 1);
 	fd = open(file, O_RDONLY);
 	if (fd == -1) {
-		errno = ENOENT;
+		errno = ENODEV;
 		return -1;
 	}
 
 	*dev_num = i;
 	*vol_id = minor - 1;
+	errno = 0;
 	return 0;
 }
 
@@ -503,12 +504,40 @@ static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 				errno = EINVAL;
 				return -1;
 			}
+			errno = 0;
 			*dev_num = i;
 			return 0;
 		}
 	}
 
-	errno = ENOENT;
+	errno = ENODEV;
+	return -1;
+}
+
+static int mtd_num2ubi_dev(struct libubi *lib, int mtd_num, int *dev_num)
+{
+	struct ubi_info info;
+	int i, ret, mtd_num1;
+
+	if (ubi_get_info((libubi_t *)lib, &info))
+		return -1;
+
+	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
+		ret = dev_read_int(lib->dev_mtd_num, i, &mtd_num1);
+		if (ret) {
+			if (errno == ENOENT)
+				continue;
+			return -1;
+		}
+
+		if (mtd_num1 == mtd_num) {
+			errno = 0;
+			*dev_num = i;
+			return 0;
+		}
+	}
+
+	errno = ENODEV;
 	return -1;
 }
 
@@ -596,6 +625,10 @@ libubi_t libubi_open(void)
 	if (!lib->dev_min_io_size)
 		goto out_error;
 
+	lib->dev_mtd_num = mkpath(lib->ubi_dev, DEV_MTD_NUM);
+	if (!lib->dev_mtd_num)
+		goto out_error;
+
 	lib->ubi_vol = mkpath(lib->sysfs_ubi, UBI_VOL_NAME_PATT);
 	if (!lib->ubi_vol)
 		goto out_error;
@@ -661,6 +694,7 @@ void libubi_close(libubi_t desc)
 	free(lib->vol_dev);
 	free(lib->vol_type);
 	free(lib->ubi_vol);
+	free(lib->dev_mtd_num);
 	free(lib->dev_min_io_size);
 	free(lib->dev_max_vols);
 	free(lib->dev_bad_rsvd);
@@ -677,6 +711,74 @@ void libubi_close(libubi_t desc)
 	free(lib->sysfs_ctrl);
 	free(lib->sysfs);
 	free(lib);
+}
+
+int ubi_attach_mtd(libubi_t desc, const char *node,
+		   struct ubi_attach_request *req)
+{
+	int fd, ret;
+	struct ubi_attach_req r;
+
+	memset(&r, sizeof(struct ubi_attach_req), '\0');
+
+	desc = desc;
+	r.ubi_num = req->dev_num;
+	r.mtd_num = req->mtd_num;
+	r.vid_hdr_offset = req->vid_hdr_offset;
+
+	fd = open(node, O_RDONLY);
+	if (fd == -1)
+		return -1;
+
+	ret = ioctl(fd, UBI_IOCATT, &r);
+	close(fd);
+	if (ret == -1)
+		return -1;
+
+	req->dev_num = r.ubi_num;
+
+#ifdef UDEV_SETTLE_HACK
+	if (system("udevsettle") == -1)
+		return -1;
+	if (system("udevsettle") == -1)
+		return -1;
+#endif
+
+	return ret;
+}
+
+int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num)
+{
+	int ret, ubi_dev;
+
+	ret = mtd_num2ubi_dev(desc, mtd_num, &ubi_dev);
+	if (ret == -1)
+		return ret;
+
+	return ubi_remove_dev(desc, node, ubi_dev);
+}
+
+int ubi_remove_dev(libubi_t desc, const char *node, int ubi_dev)
+{
+	int fd, ret;
+
+	desc = desc;
+
+	fd = open(node, O_RDONLY);
+	if (fd == -1)
+		return -1;
+	ret = ioctl(fd, UBI_IOCDET, &ubi_dev);
+	if (ret == -1)
+		goto out_close;
+
+#ifdef UDEV_SETTLE_HACK
+	if (system("udevsettle") == -1)
+		return -1;
+#endif
+
+out_close:
+	close(fd);
+	return ret;
 }
 
 int ubi_node_type(libubi_t desc, const char *node)
@@ -842,16 +944,18 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 		return -1;
 
 	ret = ioctl(fd, UBI_IOCMKVOL, &r);
-	if (ret == 0)
-		req->vol_id = r.vol_id;
+	if (ret == -1)
+		goto out_close;
 
-	close(fd);
+	req->vol_id = r.vol_id;
 
 #ifdef UDEV_SETTLE_HACK
 	if (system("udevsettle") == -1)
 		return -1;
 #endif
 
+out_close:
+	close(fd);
 	return ret;
 }
 
@@ -865,13 +969,16 @@ int ubi_rmvol(libubi_t desc, const char *node, int vol_id)
 		return -1;
 
 	ret = ioctl(fd, UBI_IOCRMVOL, &vol_id);
-	close(fd);
+	if (ret == -1)
+		goto out_close;
 
 #ifdef UDEV_SETTLE_HACK
 	if (system("udevsettle") == -1)
 		return -1;
 #endif
 
+out_close:
+	close(fd);
 	return ret;
 }
 
@@ -880,7 +987,7 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
 	int fd, ret;
 	struct ubi_rsvol_req req;
 
-		desc = desc;
+	desc = desc;
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return -1;

@@ -15,7 +15,8 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 
 PERLPROGS = mkpfi ubicrc32.pl
 TARGETS = ubiupdate ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
-	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32 ubinfo
+	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32 ubinfo \
+	ubiattach ubidetach
 
 vpath   %.c ./src
 
@@ -31,10 +32,16 @@ IGNORE=${wildcard .*.c.dep}
 -include ${IGNORE}
 
 clean:
-	rm -rf *.o $(TARGETS) .*.c.dep
+	rm -rf *.o $(TARGETS) .*.c.dep libubi.a
 
 libubi: libubi.o
 	ar cr libubi.a libubi.o
+
+ubidetach: ubidetach.o common.o libubi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubiattach: ubiattach.o common.o libubi.o
+	$(CC) $(LDFLAGS) -o $@ $^
 
 ubinfo: ubinfo.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^

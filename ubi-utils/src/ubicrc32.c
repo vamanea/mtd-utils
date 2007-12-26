@@ -39,8 +39,8 @@
 #define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubicrc32"
 
-static const char *doc = "Version " PROGRAM_VERSION "\n"
-	PROGRAM_NAME " - a tool to calculate CRC32 with UBI start value (0xFFFFFFFF)";
+static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+			 " - a tool to calculate CRC32 with UBI start value (0xFFFFFFFF)";
 
 static const char *optionsstr =
 "-h, --help                    print help message\n"
