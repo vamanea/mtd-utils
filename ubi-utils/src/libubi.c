@@ -872,9 +872,13 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 	}
 
 	info->lowest_dev_num = INT_MAX;
-	while ((dirent = readdir(sysfs_ubi))) {
+	while (1) {
 		int dev_num, ret;
 
+		errno = 0;
+		dirent = readdir(sysfs_ubi);
+		if (!dirent)
+			break;
 		/*
 		 * Make sure this direntry is a directory and not a symlink -
 		 * Linux puts symlinks to UBI volumes on this UBI device to the
@@ -1022,9 +1026,14 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 		return -1;
 
 	info->lowest_vol_num = INT_MAX;
-	while ((dirent = readdir(sysfs_ubi))) {
+
+	while (1) {
 		int vol_id, ret, devno;
 
+		errno = 0;
+		dirent = readdir(sysfs_ubi);
+		if (!dirent)
+			break;
 		ret = sscanf(dirent->d_name, UBI_VOL_NAME_PATT, &devno, &vol_id);
 		if (ret == 2 && devno == dev_num) {
 			info->vol_count += 1;
