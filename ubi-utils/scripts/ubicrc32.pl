@@ -62,7 +62,7 @@ sub crc32_on_file
 	    my $file;
 	    open $file, "<", $path
 		or die "Error opening '$path'.\n";
-	    
+
 	    &crc32_on_file($file)
 		or die "Error reading from '$path'.\n";
 	    close $file;

@@ -3,5 +3,3 @@ This directory contains various stuff that has to be cleaned up and sorted out.
 * jffs2_test.sh: this has nothing to do to UBI. And the test is quite trivial,
   so it is questionable if it should not be deleted. Anyway, if we want this,
   it has to be moved to mtd-utils.git/tests/fs-tests.
-* doc: contains references to non-existing files. it is unclear how to build
-  it

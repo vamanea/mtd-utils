@@ -10,7 +10,7 @@
 #    bin -> bin2nand -> mif -> nand2bin -> img
 #
 
-inject_biterror=./scripts/inject_biterror.pl
+inject_biterror=./inject_biterror.pl
 pagesize=2048
 oobsize=64
 
@@ -214,4 +214,3 @@ for offs in `seq 0 $oobsize` ; do
 	echo "ok"
     fi
 done
-

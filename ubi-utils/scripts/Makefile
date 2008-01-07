@@ -39,7 +39,23 @@ compl_img	?= $(compl).img
 compl_nand2048_mif=$(compl).$(flashtype)$(pagesize).mif
 compl_nand2048_img=$(compl).$(flashtype)$(pagesize).img
 
-all: $(compl_pfi) $(compl_nand2048_mif)
+all: help
+
+help:
+	@echo "Testcases for the UBI/NAND manufacturing tool-chain"
+	@echo "---------------------------------------------------------------"
+	@echo "  make mif_test          - Generate a mif (manufacturing "
+	@echo "                           image file)."
+	@echo "  make bin2nand2bin_test - Create binary with ECC information"
+	@echo "                           in the OOB area. Test ECC generation"
+	@echo "                           and correction."
+
+mif_test: $(compl_pfi) $(compl_nand2048_mif)
+
+bin2nand2bin_test:
+	chmod a+x ./bin2nand2bin_test.sh
+	chmod a+x ./inject_biterror.pl
+	./bin2nand2bin_test.sh
 
 $(compl_pfi): $(vmlinux_bin) $(rootfs_bin) $(spl_bin)
 	$(mkpfi) -c $(mkpfi_cfg)
@@ -69,7 +85,7 @@ $(vmlinux_bin) $(rootfs_bin) $(spl_bin):
 	$(dd) if=/dev/urandom of=$@ bs=1M count=1
 
 clean:
-	$(RM) *.pfi *~
+	$(RM) *.pfi *~ testblock* oob.bin
 
 distclean: clean
 	$(RM) *.bin *.mif *.oob *.img
