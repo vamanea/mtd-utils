@@ -28,7 +28,8 @@
  * 1.3 Padds data/oob to a given size. (oloh)
  * 1.4 Removed argp because we want to use uClibc.
  * 1.5 Minor cleanup
- * 1.6 written variable not initialized (-j did not work) (haver)
+ * 1.6 Written variable not initialized (-j did not work) (haver)
+ * 1.7 Made NAND ECC layout configurable (haver)
  */
 
 #include <unistd.h>
@@ -46,8 +47,11 @@
 #include "error.h"
 #include "config.h"
 #include "nandecc.h"
+#include "ecclayouts.h"
 
-#define PROGRAM_VERSION "1.6"
+#define PROGRAM_VERSION "1.7"
+
+#define ARRAY_SIZE(a)    (sizeof(a) / sizeof((a)[0]))
 
 #define CHECK_ENDP(option, endp) do {			\
 	if (*endp) {					\
@@ -74,8 +78,9 @@ static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 static const char *optionsstr =
 "  -c, --copyright          Print copyright informatoin.\n"
 "  -j, --padding=<num>      Padding in Byte/Mi/ki. Default = no padding\n"
+"  -l, --ecc-placement=<MTD,IBM> OOB placement scheme (default is IBM).\n"
 "  -p, --pagesize=<num>     Pagesize in Byte/Mi/ki. Default = 2048\n"
-"  -o, --output=<fname>     Output filename.  Interleaved Data/OOB if\n"
+"  -o, --output=<fname>     Output filename. Interleaved Data/OOB if\n"
 "                           output-oob not specified.\n"
 "  -q, --output-oob=<fname> Write OOB data in separate file.\n"
 "  -?, --help               Give this help list\n"
@@ -94,30 +99,33 @@ struct option long_options[] = {
 	{ .name = "pagesize", .has_arg = 1, .flag = NULL, .val = 'p' },
 	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
 	{ .name = "output-oob", .has_arg = 1, .flag = NULL, .val = 'q' },
+	{ .name = "ecc-layout", .has_arg = 1, .flag = NULL, .val = 'l' },
 	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
 	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
 	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0}
 };
 
-static const char copyright [] __attribute__((unused)) =
-	"Copyright IBM Corp. 2006";
+#define __unused __attribute__((unused))
+static const char copyright [] __unused = "Copyright IBM Corp. 2007";
 
-typedef struct myargs {
+struct args {
 	action_t action;
 
 	size_t pagesize;
+	size_t oobsize;
 	size_t padding;
 
 	FILE* fp_in;
-	char *file_out_data; /* Either: Data and OOB interleaved
-				or plain data */
-	char *file_out_oob; /* OOB Data only. */
+	const char *file_out_data; /* Either: Data and OOB interleaved
+				      or plain data */
+	const char *file_out_oob; /* OOB Data only. */
+	struct nand_ecclayout *nand_oob;
 
 	/* special stuff needed to get additional arguments */
 	char *arg1;
 	char **options;			/* [STRING...] */
-} myargs;
+};
 
 
 static int ustrtoull(const char *cp, char **endp, unsigned int base)
@@ -140,49 +148,53 @@ static int ustrtoull(const char *cp, char **endp, unsigned int base)
 }
 
 static int
-parse_opt(int argc, char **argv, myargs *args)
+parse_opt(int argc, char **argv, struct args *args)
 {
+	const char *ecc_layout = NULL;
+	unsigned int i, oob_idx = 0;
 	char* endp;
 
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "cj:p:o:q:?V", long_options, NULL);
+		key = getopt_long(argc, argv, "cj:l:p:o:q:?V", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
-			case 'p': /* pagesize */
-				args->pagesize = (size_t)
-					ustrtoull(optarg, &endp, 0);
-				CHECK_ENDP("p", endp);
-				break;
-			case 'j': /* padding */
-				args->padding = (size_t)
-					ustrtoull(optarg, &endp, 0);
-				CHECK_ENDP("j", endp);
-				break;
-			case 'o': /* output */
-				args->file_out_data = optarg;
-				break;
-			case 'q': /* output oob */
-				args->file_out_oob = optarg;
-				break;
-			case '?': /* help */
-				printf("%s", doc);
-				printf("%s", optionsstr);
-				exit(0);
-				break;
-			case 'V':
-				printf("%s\n", PROGRAM_VERSION);
-				exit(0);
-				break;
-			case 'c':
-				printf("%s\n", copyright);
-				exit(0);
-			default:
-				printf("%s", usage);
-				exit(-1);
+		case 'p': /* pagesize */
+			args->pagesize = (size_t)
+				ustrtoull(optarg, &endp, 0);
+			CHECK_ENDP("p", endp);
+			break;
+		case 'j': /* padding */
+			args->padding = (size_t)
+				ustrtoull(optarg, &endp, 0);
+			CHECK_ENDP("j", endp);
+			break;
+		case 'o': /* output */
+			args->file_out_data = optarg;
+			break;
+		case 'q': /* output oob */
+			args->file_out_oob = optarg;
+			break;
+		case 'l': /* --ecc-layout=<...> */
+			ecc_layout = optarg;
+			break;
+		case '?': /* help */
+			printf("%s%s", doc, optionsstr);
+			exit(0);
+			break;
+		case 'V':
+			printf("%s\n", PROGRAM_VERSION);
+			exit(0);
+			break;
+		case 'c':
+			printf("%s\n", copyright);
+			exit(0);
+		default:
+			printf("%s", usage);
+			exit(-1);
 		}
 	}
 
@@ -194,46 +206,55 @@ parse_opt(int argc, char **argv, myargs *args)
 		}
 	}
 
+	switch (args->pagesize) {
+	case 512:  args->oobsize = 16; oob_idx = 0; break;
+	case 2048: args->oobsize = 64; oob_idx = 1; break;
+	default:
+		err_msg("Unsupported page size: %d\n", args->pagesize);
+		return -EINVAL;
+	}
+
+	/* Figure out correct oob layout if it differs from default */
+	if (ecc_layout) {
+		for (i = 0; i < ARRAY_SIZE(oob_placement); i++)
+			if (strcmp(ecc_layout, oob_placement[i].name) == 0)
+				args->nand_oob =
+					oob_placement[i].nand_oob[oob_idx];
+	}
 	return 0;
 }
 
 static int
-process_page(uint8_t* buf, size_t pagesize,
-	FILE *fp_data, FILE* fp_oob, size_t* written)
+process_page(struct args *args, uint8_t *buf, FILE *fp_data, FILE *fp_oob,
+	     size_t *written)
 {
-	int eccpoi, oobsize;
+	int eccpoi;
 	size_t i;
 	uint8_t oobbuf[64];
+	uint8_t ecc_code[3] = { 0, }; /* temp */
 
+	/* Calculate ECC for each subpage of 256 bytes */
 	memset(oobbuf, 0xff, sizeof(oobbuf));
-
-	switch(pagesize) {
-	case 2048: oobsize = 64; eccpoi = 64 / 2; break;
-	case 512:  oobsize = 16; eccpoi = 16 / 2; break;
-	default:
-		err_msg("Unsupported page size: %d\n", pagesize);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < pagesize; i += 256, eccpoi += 3) {
-		oobbuf[eccpoi++] = 0x0;
-		/* Calculate ECC */
-		nand_calculate_ecc(&buf[i], &oobbuf[eccpoi]);
+	for (eccpoi = 0, i = 0; i < args->pagesize; i += 256, eccpoi += 3) {
+		int j;
+		nand_calculate_ecc(&buf[i], ecc_code);
+		for (j = 0; j < 3; j++)
+			oobbuf[args->nand_oob->eccpos[eccpoi + j]] = ecc_code[j];
 	}
 
 	/* write data */
-	*written += fwrite(buf, 1, pagesize, fp_data);
+	*written += fwrite(buf, 1, args->pagesize, fp_data);
 
 	/* either separate oob or interleave with data */
 	if (fp_oob) {
-		i = fwrite(oobbuf, 1, oobsize, fp_oob);
+		i = fwrite(oobbuf, 1, args->oobsize, fp_oob);
 		if (ferror(fp_oob)) {
 			err_msg("IO error\n");
 			return -EIO;
 		}
 	}
 	else {
-		i = fwrite(oobbuf, 1, oobsize, fp_data);
+		i = fwrite(oobbuf, 1, args->oobsize, fp_data);
 		if (ferror(fp_data)) {
 			err_msg("IO error\n");
 			return -EIO;
@@ -248,13 +269,14 @@ int main (int argc, char** argv)
 	int rc = -1;
 	int res = 0;
 	size_t written = 0, read;
-	myargs args = {
+	struct args args = {
 		.action	  = ACT_NORMAL,
 		.pagesize = PAGESIZE,
 		.padding  = PADDING,
 		.fp_in	  = NULL,
 		.file_out_data = NULL,
 		.file_out_oob = NULL,
+		.nand_oob = &ibm_nand_oob_64,
 	};
 
 	FILE* fp_out_data = stdout;
@@ -306,16 +328,16 @@ int main (int argc, char** argv)
 			goto err;
 		}
 
-		res = process_page(buf, args.pagesize, fp_out_data,
-				fp_out_oob, &written);
+		res = process_page(&args, buf, fp_out_data, fp_out_oob,
+				   &written);
 		if (res != 0)
 			goto err;
 	}
 
 	while (written < args.padding) {
 		memset(buf, 0xff, args.pagesize);
-		res = process_page(buf, args.pagesize, fp_out_data,
-				fp_out_oob, &written);
+		res = process_page(&args, buf, fp_out_data, fp_out_oob,
+				   &written);
 		if (res != 0)
 			goto err;
 	}

@@ -1,5 +1,8 @@
 #!/bin/sh
 #
+# Version: 1.1
+# Author:  Frank Haverkamp <haver@vnet.ibm.com>
+#
 # Testcase for nand2bin and bin2nand. Generate testdata and inject
 # biterrors. Convert data back and compare with original data.
 #
@@ -8,14 +11,44 @@
 #
 
 inject_biterror=./scripts/inject_biterror.pl
-
 pagesize=2048
 oobsize=64
 
 # Create test data
 dd if=/dev/urandom of=testblock.bin bs=131072 count=1
 
-echo "Test conversion without bitflips ..."
+for layout in IBM MTD ; do
+    echo "*** Simple test with $layout layout ..."
+
+    echo -n "Convert bin to mif ... "
+    bin2nand -l$layout --pagesize=${pagesize} -o testblock.mif testblock.bin
+    if [ $? -ne "0" ]; then
+	echo "failed!"
+	exit 1
+    else
+	echo "ok"
+    fi
+
+    echo -n "Convert mif to bin ... "
+    nand2bin -l$layout --pagesize=${pagesize} -o testblock.img testblock.mif
+    if [ $? -ne "0" ]; then
+	echo "failed!"
+	exit 1
+    else
+	echo "ok"
+    fi
+
+    echo -n "Comparing data ... "
+    diff testblock.bin testblock.img
+    if [ $? -ne "0" ]; then
+	echo "failed!"
+	exit 1
+    else
+	echo "ok"
+    fi
+done
+
+echo "*** Test conversion without bitflips ..."
 
 echo -n "Convert bin to mif ... "
 bin2nand --pagesize=${pagesize} -o testblock.mif testblock.bin
@@ -44,7 +77,7 @@ else
     echo "ok"
 fi
 
-echo "Test conversion with uncorrectable ECC erors ..."
+echo "*** Test conversion with uncorrectable ECC erors ..."
 echo -n "Inject biterror at offset $ioffs ... "
 ${inject_biterror} --offset=0 --bitmask=0x81 \
     --input=testblock.mif \
@@ -76,7 +109,7 @@ else
     exit 1
 fi
 
-echo "Test bitflips in data ... "
+echo "*** Test bitflips in data ... "
 for offs in `seq 0 255` ; do
 
     cp testblock.mif testblock_bitflip.mif
@@ -142,7 +175,7 @@ for offs in `seq 0 255` ; do
     fi
 done
 
-echo "Test bitflips in OOB data ... "
+echo "*** Test bitflips in OOB data ... "
 for offs in `seq 0 $oobsize` ; do
 
     let ioffs=$pagesize+$offs

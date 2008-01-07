@@ -25,6 +25,9 @@
  * 1.5 Added verbose output and option to set blocksize.
  *     Added split block mode for more convenient analysis.
  * 1.6 Fixed ECC error detection and correction.
+ * 1.7 Made NAND ECC layout configurable, the holes which were previously
+ *     filled with 0x00 are untouched now and will be 0xff just like MTD
+ *     behaves when writing the oob (haver)
  */
 
 #include <config.h>
@@ -43,9 +46,11 @@
 
 #include "config.h"
 #include "nandecc.h"
+#include "ecclayouts.h"
 
-#define PROGRAM_VERSION "1.6"
+#define PROGRAM_VERSION "1.7"
 
+#define ARRAY_SIZE(a)    (sizeof(a) / sizeof((a)[0]))
 #define MAXPATH		1024
 #define MIN(x,y)	((x)<(y)?(x):(y))
 
@@ -53,10 +58,13 @@ struct args {
 	const char *oob_file;
 	const char *output_file;
 	size_t pagesize;
+	size_t oobsize;
+	int bad_marker_offs_in_oob;
 	size_t blocksize;
 	int split_blocks;
 	size_t in_len;		/* size of input file */
 	int correct_ecc;
+	struct nand_ecclayout *nand_oob;
 
 	/* special stuff needed to get additional arguments */
 	char *arg1;
@@ -68,6 +76,7 @@ static struct args myargs = {
 	.oob_file = "oob.bin",
 	.pagesize = 2048,
 	.blocksize = 128 * 1024,
+	.nand_oob = &ibm_nand_oob_64,
 	.in_len = 0,
 	.split_blocks = 0,
 	.correct_ecc = 0,
@@ -79,6 +88,7 @@ static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
 	"nand2bin - split data and OOB.\n";
 
 static const char *optionsstr =
+"  -l, --ecc-placement=<MTD,IBM> OOB placement scheme (default is IBM).\n"
 "  -o, --output=<output>      Data output file\n"
 "  -O, --oob=<oob>            OOB output file\n"
 "  -p, --pagesize=<pagesize>  NAND pagesize\n"
@@ -97,6 +107,7 @@ static const char *usage =
 static int verbose = 0;
 
 static struct option long_options[] = {
+	{ .name = "ecc-layout", .has_arg = 1, .flag = NULL, .val = 'l' },
 	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
 	{ .name = "oob", .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "pagesize", .has_arg = 1, .flag = NULL, .val = 'p' },
@@ -144,56 +155,52 @@ static uint32_t str_to_num(char *str)
  */
 static int parse_opt(int argc, char **argv, struct args *args)
 {
+	unsigned int i, oob_idx = 0;
+	const char *ecc_layout = NULL;
+
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "b:eo:O:p:sv?", long_options, NULL);
+		key = getopt_long(argc, argv, "b:el:o:O:p:sv?", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
-		case 'p': /* --pagesize<pagesize> */
-			args->pagesize = str_to_num(optarg);
-			break;
-
 		case 'b': /* --blocksize<blocksize> */
 			args->blocksize = str_to_num(optarg);
 			break;
-
-		case 'v': /* --verbose */
-			verbose++;
-			break;
-
-		case 's': /* --split-blocks */
-			args->split_blocks = 1;
-			break;
-
 		case 'e': /* --correct-ecc */
 			args->correct_ecc = 1;
 			break;
-
+		case 'l': /* --ecc-layout=<...> */
+			ecc_layout = optarg;
+			break;
 		case 'o': /* --output=<output.bin> */
 			args->output_file = optarg;
 			break;
-
 		case 'O': /* --oob=<oob.bin> */
 			args->oob_file = optarg;
 			break;
-
-		case '?': /* help */
-			printf("Usage: nand2bin [OPTION...] input.mif\n");
-			printf("%s", doc);
-			printf("%s", optionsstr);
-			printf("\nReport bugs to %s\n",
-			       PACKAGE_BUGREPORT);
-			exit(0);
+		case 'p': /* --pagesize<pagesize> */
+			args->pagesize = str_to_num(optarg);
 			break;
-
+		case 's': /* --split-blocks */
+			args->split_blocks = 1;
+			break;
+		case 'v': /* --verbose */
+			verbose++;
+			break;
 		case 'V':
 			printf("%s\n", PROGRAM_VERSION);
 			exit(0);
 			break;
-
+		case '?': /* help */
+			printf("Usage: nand2bin [OPTION...] input.mif\n");
+			printf("%s%s", doc, optionsstr);
+			printf("\nReport bugs to %s\n",
+			       PACKAGE_BUGREPORT);
+			exit(0);
+			break;
 		default:
 			printf("%s", usage);
 			exit(-1);
@@ -203,17 +210,44 @@ static int parse_opt(int argc, char **argv, struct args *args)
 	if (optind < argc)
 		args->arg1 = argv[optind++];
 
+	switch (args->pagesize) {
+	case 512:
+		args->oobsize = 16;
+		args->bad_marker_offs_in_oob = 5;
+		oob_idx = 0;
+		break;
+	case 2048:
+		args->oobsize = 64;
+		args->bad_marker_offs_in_oob = 0;
+		oob_idx = 1;
+		break;
+	default:
+		fprintf(stderr, "Unsupported page size: %d\n", args->pagesize);
+		return -EINVAL;
+	}
+
+	/* Figure out correct oob layout if it differs from default */
+	if (ecc_layout) {
+		for (i = 0; i < ARRAY_SIZE(oob_placement); i++)
+			if (strcmp(ecc_layout, oob_placement[i].name) == 0)
+				args->nand_oob =
+					oob_placement[i].nand_oob[oob_idx];
+	}
 	return 0;
 }
 
-static int calc_oobsize(size_t pagesize)
+/*
+ * We must only compare the relevant bytes in the OOB area. All other
+ * bytes can be ignored. The information we need to do this is in
+ * nand_oob.
+ */
+static int oob_cmp(struct nand_ecclayout *nand_oob, uint8_t *oob,
+		   uint8_t *calc_oob)
 {
-	switch (pagesize) {
-	case 512:  return 16;
-	case 2048: return 64;
-	default:
-		exit(EXIT_FAILURE);
-	}
+	unsigned int i;
+	for (i = 0; i < nand_oob->eccbytes; i++)
+		if (oob[nand_oob->eccpos[i]] != calc_oob[nand_oob->eccpos[i]])
+			return 1;
 	return 0;
 }
 
@@ -228,65 +262,38 @@ static inline void hexdump(FILE *fp, const uint8_t *buf, ssize_t size)
 	}
 }
 
-static int process_page(uint8_t* buf, uint8_t *oobbuf, size_t pagesize)
+static int process_page(struct args *args, uint8_t *buf, uint8_t *oobbuf)
 {
-	int eccpoi, oobsize;
-	size_t i;
+	size_t i, j;
+	int eccpoi;
+	uint8_t ecc_code[3] = { 0, }; /* temp */
 
-	switch (pagesize) {
-	case 2048: oobsize = 64; eccpoi = 64 / 2; break;
-	case 512:  oobsize = 16; eccpoi = 16 / 2; break;
-	default:
-		fprintf(stderr, "Unsupported page size: %zd\n", pagesize);
-		return -EINVAL;
-	}
-	memset(oobbuf, 0xff, oobsize);
-
-	for (i = 0; i < pagesize; i += 256, eccpoi += 3) {
-		oobbuf[eccpoi++] = 0x0;
-		/* Calculate ECC */
-		nand_calculate_ecc(&buf[i], &oobbuf[eccpoi]);
+	/* Calculate ECC */
+	memset(oobbuf, 0xff, args->oobsize);
+	for (eccpoi = 0, i = 0; i < args->pagesize; i += 256, eccpoi += 3) {
+		nand_calculate_ecc(&buf[i], ecc_code);
+		for (j = 0; j < 3; j++)
+			oobbuf[args->nand_oob->eccpos[eccpoi + j]] = ecc_code[j];
 	}
 	return 0;
-}
-
-static int bad_marker_offs_in_oob(int pagesize)
-{
-	switch (pagesize) {
-	case 2048: return 0;
-	case 512:  return 5;
-	}
-	return -EINVAL;
 }
 
 static int decompose_image(struct args *args, FILE *in_fp,
 			   FILE *bin_fp, FILE *oob_fp)
 {
+	unsigned int i, eccpoi;
 	int read, rc, page = 0;
-	size_t oobsize = calc_oobsize(args->pagesize);
 	uint8_t *buf = malloc(args->pagesize);
-	uint8_t *oob = malloc(oobsize);
-	uint8_t *calc_oob = malloc(oobsize);
+	uint8_t *oob = malloc(args->oobsize);
+	uint8_t *calc_oob = malloc(args->oobsize);
 	uint8_t *calc_buf = malloc(args->pagesize);
 	uint8_t *page_buf;
 	int pages_per_block = args->blocksize / args->pagesize;
-	int eccpoi = 0, eccpoi_start;
-	unsigned int i;
-	int badpos = bad_marker_offs_in_oob(args->pagesize);
+	int badpos = args->bad_marker_offs_in_oob;
+	uint8_t ecc_code[3] = { 0, }; /* temp */
+	uint8_t calc_ecc_code[3] = { 0, }; /* temp */
 
-	switch (args->pagesize) {
-	case 2048: eccpoi_start = 64 / 2; break;
-	case 512:  eccpoi_start = 16 / 2; break;
-	default:   exit(EXIT_FAILURE);
-	}
-
-	if (!buf)
-		exit(EXIT_FAILURE);
-	if (!oob)
-		exit(EXIT_FAILURE);
-	if (!calc_oob)
-		exit(EXIT_FAILURE);
-	if (!calc_buf)
+	if (!buf || !oob || !calc_oob || !calc_buf)
 		exit(EXIT_FAILURE);
 
 	while (!feof(in_fp)) {
@@ -299,7 +306,7 @@ static int decompose_image(struct args *args, FILE *in_fp,
 		if (read != (ssize_t)args->pagesize)
 			break;
 
-		read = fread(oob, 1, oobsize, in_fp);
+		read = fread(oob, 1, args->oobsize, in_fp);
 		if (ferror(in_fp)) {
 			fprintf(stderr, "I/O Error.");
 			exit(EXIT_FAILURE);
@@ -316,37 +323,31 @@ static int decompose_image(struct args *args, FILE *in_fp,
 		if (args->correct_ecc)
 			page_buf = calc_buf;
 
-		process_page(buf, calc_oob, args->pagesize);
+		process_page(args, buf, calc_oob);
 		memcpy(calc_buf, buf, args->pagesize);
 
-		/*
-		 * Our oob format uses only the last 3 bytes out of 4.
-		 * The first byte is 0x00 when the ECC is generated by
-		 * our toolset and 0xff when generated by Linux. This
-		 * is to be fixed when we want nand2bin work for other
-		 * ECC layouts too.
-		 */
-		for (i = 0, eccpoi = eccpoi_start; i < args->pagesize;
-		     i += 256, eccpoi += 4)
-			oob[eccpoi] = calc_oob[eccpoi] = 0xff;
-
-		if (verbose && memcmp(oob, calc_oob, oobsize) != 0) {
+		if (verbose && oob_cmp(args->nand_oob, oob, calc_oob) != 0) {
 			printf("\nECC compare mismatch found at block %d page %d!\n",
 			       page / pages_per_block, page % pages_per_block);
 
 			printf("Read out OOB Data:\n");
-			hexdump(stdout, oob, oobsize);
+			hexdump(stdout, oob, args->oobsize);
 
 			printf("Calculated OOB Data:\n");
-			hexdump(stdout, calc_oob, oobsize);
+			hexdump(stdout, calc_oob, args->oobsize);
 		}
 
 		/* Do correction on subpage base */
-		for (i = 0, eccpoi = eccpoi_start; i < args->pagesize;
-		     i += 256, eccpoi += 4) {
-			rc = nand_correct_data(calc_buf + i, &oob[eccpoi + 1],
-					       &calc_oob[eccpoi + 1]);
+		for (i = 0, eccpoi = 0; i < args->pagesize; i += 256, eccpoi += 3) {
+			int j;
 
+			for (j = 0; j < 3; j++) {
+				ecc_code[j] = oob[args->nand_oob->eccpos[eccpoi + j]];
+				calc_ecc_code[j] =
+					calc_oob[args->nand_oob->eccpos[eccpoi + j]];
+			}
+			rc = nand_correct_data(calc_buf + i, ecc_code,
+					       calc_ecc_code);
 			if (rc == -1)
 				fprintf(stdout, "Uncorrectable ECC error at "
 					"block %d page %d/%d\n",
@@ -365,7 +366,7 @@ static int decompose_image(struct args *args, FILE *in_fp,
 			fprintf(stderr, "I/O Error.");
 			exit(EXIT_FAILURE);
 		}
-		rc = fwrite(oob, 1, oobsize, oob_fp);
+		rc = fwrite(oob, 1, args->oobsize, oob_fp);
 		if (ferror(bin_fp)) {
 			fprintf(stderr, "I/O Error.");
 			exit(EXIT_FAILURE);
@@ -383,12 +384,11 @@ static int decompose_image(struct args *args, FILE *in_fp,
 static int split_blocks(struct args *args, FILE *in_fp)
 {
 	uint8_t *buf;
-	size_t oobsize = calc_oobsize(args->pagesize);
 	int pages_per_block = args->blocksize / args->pagesize;
-	int block_len = pages_per_block * (args->pagesize + oobsize);
+	int block_len = pages_per_block * (args->pagesize + args->oobsize);
 	int blocks = args->in_len / block_len;
 	char bname[256] = { 0, };
-	int badpos = bad_marker_offs_in_oob(args->pagesize);
+	int badpos = args->bad_marker_offs_in_oob;
 	int bad_blocks = 0, i, bad_block = 0;
 	ssize_t rc;
 	FILE *b;
@@ -409,16 +409,16 @@ static int split_blocks(struct args *args, FILE *in_fp)
 		/* do block analysis */
 		bad_block = 0;
 		if ((buf[args->pagesize + badpos] != 0xff) ||
-		    (buf[2 * args->pagesize + oobsize + badpos] != 0xff)) {
+		    (buf[2 * args->pagesize + args->oobsize + badpos] != 0xff)) {
 			bad_blocks++;
 			bad_block = 1;
 		}
 		if ((verbose && bad_block) || (verbose > 1)) {
 			printf("-- (block %d oob of page 0 and 1)\n", i);
-			hexdump(stdout, buf + args->pagesize, oobsize);
+			hexdump(stdout, buf + args->pagesize, args->oobsize);
 			printf("--\n");
 			hexdump(stdout, buf + 2 * args->pagesize +
-				oobsize, oobsize);
+				args->oobsize, args->oobsize);
 		}
 
 		/* write complete block out */

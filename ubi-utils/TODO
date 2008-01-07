@@ -3,12 +3,15 @@ TODO
 
  * Range checking is broken, reserving 2M and offering 3M binary data
    ... works!? No!
- * Remove the above misterious statement or make it understandable
+ * Remove the above mysterious statement or make it understandable
  * doc/ directory contains a file which refers images from /home/frank/
    - please fix this or remove the whole doc/ altogether.
  * the tests from the scripts/ directory should live in
-   mit-utils/tests/ubi-tests/ and it would be nice to have a short
+   mtd-utils/tests/ubi-tests/ and it would be nice to have a short
    description of the tests
  * the stuff from the perl/ directory should go to the scripts/
  * May we pleas split UBI-related stuff and pure NAND-related stuff and
    not to keep this all in one.
+
+ * nand2bin and bin2nand need more flexibility to influence the ECC
+   data placement.
