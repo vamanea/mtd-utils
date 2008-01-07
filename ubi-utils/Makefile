@@ -26,7 +26,7 @@ vpath   %.c ./src
 %.o: %.c
 	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
 
-all: $(TARGETS) libubi
+all: $(TARGETS) libubi.a
 
 IGNORE=${wildcard .*.c.dep}
 -include ${IGNORE}
@@ -34,8 +34,8 @@ IGNORE=${wildcard .*.c.dep}
 clean:
 	rm -rf *.o $(TARGETS) .*.c.dep libubi.a
 
-libubi: libubi.o
-	ar cr libubi.a libubi.o
+libubi.a: libubi.o
+	ar cr $@ $^
 
 ubidetach: ubidetach.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
