@@ -79,7 +79,7 @@ void ubiutils_print_bytes(long long bytes, int bracket)
 		printf("%s%.1f GiB", p, (double)bytes / (1024 * 1024 * 1024));
 	else if (bytes > 1024 * 1024)
 		printf("%s%.1f MiB", p, (double)bytes / (1024 * 1024));
-	else if (bytes > 1024)
+	else if (bytes > 1024 && bytes != 0)
 		printf("%s%.1f KiB", p, (double)bytes / 1024);
 	else
 		return;

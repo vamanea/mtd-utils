@@ -251,7 +251,7 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 	ubiutils_print_bytes(dev_info.total_bytes, 0);
 	printf(")\n");
 
-	printf("Amount of available logical eraseblocks: %d", dev_info.avail_lebs);
+	printf("Amount of available logical eraseblocks: %d (", dev_info.avail_lebs);
 	ubiutils_print_bytes(dev_info.avail_bytes, 0);
 	printf(")\n");
 
