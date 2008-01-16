@@ -58,7 +58,7 @@ static const char *optionsstr =
 "                                specified\n"
 "-m, --mtdn=<MTD device number>  MTD device number to attach\n"
 "-o, --vid-hdr-offset            VID header offset (do not specify this unless you\n"
-"                                really know what you do and the optimal defaults wukk\n"
+"                                really know what you do and the optimal defaults will\n"
 "                                be used)\n"
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
