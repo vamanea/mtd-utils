@@ -414,7 +414,7 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 	size_t i, max;
 	fpos_t temp;
 	FILE* fpout = NULL;
-	struct ubi_vol_tbl_record rec;
+	struct ubi_vtbl_record rec;
 
 	if (fpin == NULL || cur == NULL || path == NULL)
 		return -2;
@@ -428,10 +428,10 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 	fsetpos(fpin, &cur->eb_top);
 	if (rc < 0)
 		return -1;
-	fseek(fpin, ubi32_to_cpu(cur->ec.data_offset), SEEK_CUR);
+	fseek(fpin, __be32_to_cpu(cur->ec.data_offset), SEEK_CUR);
 
 	/* prepare output file */
-	if (ubi32_to_cpu(cur->vid.vol_id) != UBI_LAYOUT_VOL_ID)
+	if (__be32_to_cpu(cur->vid.vol_id) != UBI_LAYOUT_VOL_ID)
 		return -2;
 	memset(filename, 0, MAXPATH + 1);
 	snprintf(filename, MAXPATH, FN_VITBL, path, num);
@@ -442,7 +442,7 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 	/* loop through entries */
 	fprintf(fpout,
 		"index\trpebs\talign\ttype\tcrc\t\tname\n");
-	max = bsize - ubi32_to_cpu(cur->ec.data_offset);
+	max = bsize - __be32_to_cpu(cur->ec.data_offset);
 	for (i = 0; i < (max / sizeof(rec)); i++) {
 		int blank = 1;
 		char *ptr, *base;
@@ -464,7 +464,7 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 		/* check crc */
 		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &rec,
 				UBI_VTBL_RECORD_SIZE_CRC);
-		if (crc != ubi32_to_cpu(rec.crc))
+		if (crc != __be32_to_cpu(rec.crc))
 			continue;
 
 		/* check for empty */
@@ -487,16 +487,16 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 			type = "static\0";
 
 		/* prep name string */
-		rec.name[ubi16_to_cpu(rec.name_len)] = '\0';
+		rec.name[__be16_to_cpu(rec.name_len)] = '\0';
 		sprintf(name, "%s", rec.name);
 
 		/* print record line to fpout */
 		fprintf(fpout, "%u\t%u\t%u\t%s\t0x%08x\t%s\n",
 			i,
-			ubi32_to_cpu(rec.reserved_pebs),
-			ubi32_to_cpu(rec.alignment),
+			__be32_to_cpu(rec.reserved_pebs),
+			__be32_to_cpu(rec.alignment),
 			type,
-			ubi32_to_cpu(rec.crc),
+			__be32_to_cpu(rec.crc),
 			name);
 	}
 
@@ -534,7 +534,7 @@ rebuild_volume(FILE * fpin, uint32_t *vol_id, struct eb_info **head,
 	/* when vol_id is null, then do all  */
 	if (vol_id == NULL) {
 		cur = *head;
-		vol = ubi32_to_cpu(cur->vid.vol_id);
+		vol = __be32_to_cpu(cur->vid.vol_id);
 	} else {
 		vol = *vol_id;
 		eb_chain_position(head, vol, NULL, &cur);
@@ -556,7 +556,7 @@ rebuild_volume(FILE * fpin, uint32_t *vol_id, struct eb_info **head,
 	while (cur != NULL) {
 		size_t i;
 
-		if (ubi32_to_cpu(cur->vid.vol_id) != vol) {
+		if (__be32_to_cpu(cur->vid.vol_id) != vol) {
 			/* close out file */
 			fclose(fpout);
 
@@ -565,7 +565,7 @@ rebuild_volume(FILE * fpin, uint32_t *vol_id, struct eb_info **head,
 				goto out;
 
 			/* begin with next */
-			vol = ubi32_to_cpu(cur->vid.vol_id);
+			vol = __be32_to_cpu(cur->vid.vol_id);
 			num = 0;
 			snprintf(filename, MAXPATH, FN_VOLWH, path, vol);
 			fpout = fopen(filename, "wb");
@@ -576,7 +576,7 @@ rebuild_volume(FILE * fpin, uint32_t *vol_id, struct eb_info **head,
 			}
 		}
 
-		while (num < ubi32_to_cpu(cur->vid.lnum)) {
+		while (num < __be32_to_cpu(cur->vid.lnum)) {
 			/* FIXME haver: I hope an empty block is
 			   written out so that the binary has no holes
 			   ... */
@@ -589,13 +589,13 @@ rebuild_volume(FILE * fpin, uint32_t *vol_id, struct eb_info **head,
 		rc = fsetpos(fpin, &(cur->eb_top));
 		if (rc < 0)
 			goto out;
-		fseek(fpin, ubi32_to_cpu(cur->ec.data_offset), SEEK_CUR);
+		fseek(fpin, __be32_to_cpu(cur->ec.data_offset), SEEK_CUR);
 
 		if (cur->vid.vol_type == UBI_VID_DYNAMIC)
 			/* FIXME It might be that alignment has influence */
 			data_size = block_size - header_size;
 		else
-			data_size = ubi32_to_cpu(cur->vid.data_size);
+			data_size = __be32_to_cpu(cur->vid.data_size);
 
 		for (i = 0; i < data_size; i++) {
 			int c = fgetc(fpin);
@@ -683,7 +683,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		}
 
 		/* check erasecounter header magic */
-		if (ubi32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC) {
+		if (__be32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC) {
 			snprintf(reason, MAXPATH, ".invalid.ec_magic");
 			goto invalid;
 		}
@@ -691,7 +691,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		/* check erasecounter header crc */
 		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &(cur->ec),
 				UBI_EC_HDR_SIZE_CRC);
-		if (ubi32_to_cpu(cur->ec.hdr_crc) != crc) {
+		if (__be32_to_cpu(cur->ec.hdr_crc) != crc) {
 			snprintf(reason, MAXPATH, ".invalid.ec_hdr_crc");
 			goto invalid;
 		}
@@ -700,7 +700,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		rc = fsetpos(fpin, &(cur->eb_top));
 		if (rc != 0)
 			goto err;
-		fseek(fpin, ubi32_to_cpu(cur->ec.vid_hdr_offset), SEEK_CUR);
+		fseek(fpin, __be32_to_cpu(cur->ec.vid_hdr_offset), SEEK_CUR);
 		rc = fread(&cur->vid, 1, sizeof(cur->vid), fpin);
 		if (rc == 0)
 			goto out; /* EOF */
@@ -712,14 +712,14 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 
 		/* if the magic number is 0xFFFFFFFF, then it's very likely
 		 * that the volume is empty */
-		if (ubi32_to_cpu(cur->vid.magic) == 0xffffffff) {
+		if (__be32_to_cpu(cur->vid.magic) == 0xffffffff) {
 			snprintf(reason, MAXPATH, ".empty");
 			goto invalid;
 		}
 
 		/* vol_id should be in bounds */
-		if ((ubi32_to_cpu(cur->vid.vol_id) >= UBI_MAX_VOLUMES) &&
-		    (ubi32_to_cpu(cur->vid.vol_id) <
+		if ((__be32_to_cpu(cur->vid.vol_id) >= UBI_MAX_VOLUMES) &&
+		    (__be32_to_cpu(cur->vid.vol_id) <
 		     UBI_INTERNAL_VOL_START)) {
 			snprintf(reason, MAXPATH, ".invalid");
 			goto invalid;
@@ -727,7 +727,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 			raw_path = FN_NSURE;
 
 		/* check volume id header magic */
-		if (ubi32_to_cpu(cur->vid.magic) != UBI_VID_HDR_MAGIC) {
+		if (__be32_to_cpu(cur->vid.magic) != UBI_VID_HDR_MAGIC) {
 			snprintf(reason, MAXPATH, ".invalid.vid_magic");
 			goto invalid;
 		}
@@ -736,7 +736,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		/* check volume id header crc */
 		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &(cur->vid),
 				UBI_VID_HDR_SIZE_CRC);
-		if (ubi32_to_cpu(cur->vid.hdr_crc) != crc) {
+		if (__be32_to_cpu(cur->vid.hdr_crc) != crc) {
 			snprintf(reason, MAXPATH, ".invalid.vid_hdr_crc");
 			goto invalid;
 		}
@@ -744,11 +744,11 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 
 		/* check data crc, but only for a static volume */
 		if (cur->vid.vol_type == UBI_VID_STATIC) {
-			rc = data_crc(fpin, ubi32_to_cpu(cur->vid.data_size),
+			rc = data_crc(fpin, __be32_to_cpu(cur->vid.data_size),
 				      &crc);
 			if (rc < 0)
 				goto err;
-			if (ubi32_to_cpu(cur->vid.data_crc) != crc) {
+			if (__be32_to_cpu(cur->vid.data_crc) != crc) {
 				snprintf(reason, MAXPATH, ".invalid.data_crc");
 				goto invalid;
 			}
@@ -771,7 +771,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 
 		/* extract info-table */
 		if (a->itable &&
-		    (ubi32_to_cpu(cur->vid.vol_id) == UBI_LAYOUT_VOL_ID)) {
+		    (__be32_to_cpu(cur->vid.vol_id) == UBI_LAYOUT_VOL_ID)) {
 			extract_itable(fpin, cur, a->bsize,
 				       itable_num, a->odir_path);
 			itable_num++;
@@ -799,10 +799,10 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 					   always right ... */
 					size = a->bsize - a->hsize;
 				} else
-					size = ubi32_to_cpu(cur->vid.data_size);
+					size = __be32_to_cpu(cur->vid.data_size);
 
 				fseek(fpin,
-				      ubi32_to_cpu(cur->ec.data_offset),
+				      __be32_to_cpu(cur->ec.data_offset),
 				      SEEK_CUR);
 			}
 			else if (a->vol_split == SPLIT_RAW)
@@ -811,9 +811,9 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 
 			snprintf(filename, MAXPATH, FN_VOLSP,
 				 a->odir_path,
-				 ubi32_to_cpu(cur->vid.vol_id),
-				 ubi32_to_cpu(cur->vid.lnum),
-				 ubi32_to_cpu(cur->vid.leb_ver), count);
+				 __be32_to_cpu(cur->vid.vol_id),
+				 __be32_to_cpu(cur->vid.lnum),
+				 __be32_to_cpu(cur->vid.leb_ver), count);
 			rc = extract_data(fpin, size, filename);
 			if (rc < 0)
 				goto err;
@@ -834,9 +834,9 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 				snprintf(filename, MAXPATH, raw_path,
 					 a->odir_path,
 					 count,
-					 ubi32_to_cpu(cur->vid.vol_id),
-					 ubi32_to_cpu(cur->vid.lnum),
-					 ubi32_to_cpu(cur->vid.leb_ver),
+					 __be32_to_cpu(cur->vid.vol_id),
+					 __be32_to_cpu(cur->vid.lnum),
+					 __be32_to_cpu(cur->vid.leb_ver),
 					 reason);
 
 			rc = extract_data(fpin, a->bsize, filename);

@@ -151,7 +151,7 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 	count = 0;
 	cur = first;
 	while (cur != NULL) {
-		erase_counts[count] = ubi64_to_cpu(cur->ec.ec);
+		erase_counts[count] = __be64_to_cpu(cur->ec.ec);
 		cur = cur->next;
 		count++;
 	}
@@ -167,21 +167,21 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &cur->ec,
 				UBI_EC_HDR_SIZE_CRC);
 
-		if ((ubi32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC) ||
-		    (crc != ubi32_to_cpu(cur->ec.hdr_crc)))
+		if ((__be32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC) ||
+		    (crc != __be32_to_cpu(cur->ec.hdr_crc)))
 			fprintf(fpdata, "# ");
 
 		fprintf(fpdata, "%u %llu %llu", count,
-			ubi64_to_cpu(cur->ec.ec),
+			__be64_to_cpu(cur->ec.ec),
 			erase_counts[count]);
 
-		if (ubi32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC)
+		if (__be32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC)
 			fprintf(fpdata, " ## bad magic: %08x",
-				ubi32_to_cpu(cur->ec.magic));
+				__be32_to_cpu(cur->ec.magic));
 
-		if (crc != ubi32_to_cpu(cur->ec.hdr_crc))
+		if (crc != __be32_to_cpu(cur->ec.hdr_crc))
 			fprintf(fpdata, " ## CRC mismatch: given=%08x, "
-				"calc=%08x", ubi32_to_cpu(cur->ec.hdr_crc),
+				"calc=%08x", __be32_to_cpu(cur->ec.hdr_crc),
 				crc);
 
 		fprintf(fpdata, "\n");
@@ -303,8 +303,8 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 	count = 0;
 	cur = *head;
 	while (cur != NULL) {
-		leb_versions[count] = ubi32_to_cpu(cur->vid.leb_ver);
-		data_sizes[count] = ubi32_to_cpu(cur->vid.data_size);
+		leb_versions[count] = __be32_to_cpu(cur->vid.leb_ver);
+		data_sizes[count] = __be32_to_cpu(cur->vid.data_size);
 		cur = cur->next;
 		count++;
 	}
@@ -317,9 +317,9 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 	fprintf(fpdata, "# x_axis vol_id lnum   y1_axis leb_ver   "
 		"y2_axis data_size\n");
 	while (cur != NULL) {
-		y1 = norm_index(ubi32_to_cpu(cur->vid.leb_ver), leb_versions,
+		y1 = norm_index(__be32_to_cpu(cur->vid.leb_ver), leb_versions,
 				breadth);
-		y2 = norm_index(ubi32_to_cpu(cur->vid.data_size), data_sizes,
+		y2 = norm_index(__be32_to_cpu(cur->vid.data_size), data_sizes,
 				breadth);
 
 		if ((y1 == -1) || (y2 == -1)) {
@@ -329,12 +329,12 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 
 		fprintf(fpdata, "%u %u %u   %u %u   %u %u\n",
 			count,
-			ubi32_to_cpu(cur->vid.vol_id),
-			ubi32_to_cpu(cur->vid.lnum),
+			__be32_to_cpu(cur->vid.vol_id),
+			__be32_to_cpu(cur->vid.lnum),
 			y1,
-			ubi32_to_cpu(cur->vid.leb_ver),
+			__be32_to_cpu(cur->vid.leb_ver),
 			y2,
-			ubi32_to_cpu(cur->vid.data_size));
+			__be32_to_cpu(cur->vid.data_size));
 		cur = cur->next;
 		count++;
 	}
@@ -350,13 +350,13 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 	while (cur != NULL) {
 		if (count > 0)
 			fprintf(fpplot, ", ");
-		if (step != ubi32_to_cpu(cur->vid.vol_id)) {
-			step = ubi32_to_cpu(cur->vid.vol_id);
+		if (step != __be32_to_cpu(cur->vid.vol_id)) {
+			step = __be32_to_cpu(cur->vid.vol_id);
 			fprintf(fpplot, "\"%d\" %d 0", step, count);
 		}
 		else
 			fprintf(fpplot, "\"%d\" %d 1",
-				ubi32_to_cpu(cur->vid.lnum), count);
+				__be32_to_cpu(cur->vid.lnum), count);
 		cur = cur->next;
 		count++;
 	}
@@ -369,7 +369,7 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 	fprintf(fpplot, "set ylabel \"leb version\"\n");
 	fprintf(fpplot, "set ytics (");
 	while (cur->next != NULL) {
-		y1 = norm_index(ubi32_to_cpu(cur->vid.leb_ver), leb_versions,
+		y1 = norm_index(__be32_to_cpu(cur->vid.leb_ver), leb_versions,
 				breadth);
 
 		if (y1 == -1) {
@@ -380,7 +380,7 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 		if (count > 0)
 			fprintf(fpplot, ", ");
 
-		fprintf(fpplot, "\"%u\" %u", ubi32_to_cpu(cur->vid.leb_ver),
+		fprintf(fpplot, "\"%u\" %u", __be32_to_cpu(cur->vid.leb_ver),
 			y1);
 
 		cur = cur->next;
@@ -394,7 +394,7 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 	fprintf(fpplot, "set y2label \"data size\"\n");
 	fprintf(fpplot, "set y2tics (");
 	while (cur != NULL) {
-		y2 = norm_index(ubi32_to_cpu(cur->vid.data_size),
+		y2 = norm_index(__be32_to_cpu(cur->vid.data_size),
 				data_sizes, breadth);
 
 		if (y2 == -1) {
@@ -405,7 +405,7 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 		if (count > 0)
 			fprintf(fpplot, ", ");
 
-		fprintf(fpplot, "\"%u\" %u", ubi32_to_cpu(cur->vid.data_size),
+		fprintf(fpplot, "\"%u\" %u", __be32_to_cpu(cur->vid.data_size),
 			y2);
 
 		cur = cur->next;

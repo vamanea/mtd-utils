@@ -238,7 +238,7 @@ err:
 
 static int
 convert_ubi_volume(pfi_ubi_t ubi, pdd_data_t pdd, list_t raw_pebs,
-		struct ubi_vol_tbl_record *vol_tab,
+		struct ubi_vtbl_record *vol_tab,
 		size_t *ebs_written, io_t io)
 {
 	int rc = 0;
@@ -336,7 +336,7 @@ my_fmemopen (void *buf, size_t size, const char *opentype)
  */
 static int
 write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
-		struct ubi_vol_tbl_record *vol_tab, size_t vol_tab_size,
+		struct ubi_vtbl_record *vol_tab, size_t vol_tab_size,
 		size_t *ebs_written, io_t io)
 {
 	int rc = 0;
@@ -478,15 +478,15 @@ err:
 }
 
 static int
-init_vol_tab(struct ubi_vol_tbl_record **vol_tab, size_t *vol_tab_size)
+init_vol_tab(struct ubi_vtbl_record **vol_tab, size_t *vol_tab_size)
 {
 	uint32_t crc;
 	size_t i;
-	struct ubi_vol_tbl_record* res = NULL;
+	struct ubi_vtbl_record* res = NULL;
 
 	*vol_tab_size = UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE;
 
-	res = (struct ubi_vol_tbl_record*) calloc(1, *vol_tab_size);
+	res = (struct ubi_vtbl_record*) calloc(1, *vol_tab_size);
 	if (vol_tab == NULL) {
 		return -ENOMEM;
 	}
@@ -494,7 +494,7 @@ init_vol_tab(struct ubi_vol_tbl_record **vol_tab, size_t *vol_tab_size)
 	for (i = 0; i < UBI_MAX_VOLUMES; i++) {
 		crc = clc_crc32(crc32_table, UBI_CRC32_INIT,
 			&(res[i]), UBI_VTBL_RECORD_SIZE_CRC);
-		res[i].crc = cpu_to_ubi32(crc);
+		res[i].crc = __cpu_to_be32(crc);
 	}
 
 	*vol_tab = res;
@@ -513,7 +513,7 @@ create_raw(io_t io)
 	list_t pfi_ubis = mk_empty(); /* list of ubi sections from a pfi */
 	list_t raw_pebs	 = mk_empty(); /* list of raw eraseblocks */
 
-	struct ubi_vol_tbl_record *vol_tab = NULL;
+	struct ubi_vtbl_record *vol_tab = NULL;
 	pdd_data_t pdd = NULL;
 
 	rc = init_vol_tab (&vol_tab, &vol_tab_size);

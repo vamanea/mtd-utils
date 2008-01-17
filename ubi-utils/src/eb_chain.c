@@ -65,9 +65,9 @@ eb_chain_insert(struct eb_info **head, struct eb_info *new)
 		return 0;
 	}
 
-	new_vol = ubi32_to_cpu(new->vid.vol_id);
-	new_num = ubi32_to_cpu(new->vid.lnum);
-	new_ver = ubi32_to_cpu(new->vid.leb_ver);
+	new_vol = __be32_to_cpu(new->vid.vol_id);
+	new_num = __be32_to_cpu(new->vid.lnum);
+	new_ver = __be32_to_cpu(new->vid.leb_ver);
 
 	/** TRAVERSE HORIZONTALY **/
 
@@ -75,8 +75,8 @@ eb_chain_insert(struct eb_info **head, struct eb_info *new)
 	prev = NULL;
 
 	/* traverse until vol_id/lnum align */
-	vol = ubi32_to_cpu(cur->vid.vol_id);
-	num = ubi32_to_cpu(cur->vid.lnum);
+	vol = __be32_to_cpu(cur->vid.vol_id);
+	num = __be32_to_cpu(cur->vid.lnum);
 	while ((new_vol > vol) || ((new_vol == vol) && (new_num > num))) {
 		/* insert new at end of chain */
 		if (cur->next == NULL) {
@@ -88,8 +88,8 @@ eb_chain_insert(struct eb_info **head, struct eb_info *new)
 
 		prev = cur;
 		cur = cur->next;
-		vol = ubi32_to_cpu(cur->vid.vol_id);
-		num = ubi32_to_cpu(cur->vid.lnum);
+		vol = __be32_to_cpu(cur->vid.vol_id);
+		num = __be32_to_cpu(cur->vid.lnum);
 	}
 
 	if (prev == NULL)
@@ -111,7 +111,7 @@ eb_chain_insert(struct eb_info **head, struct eb_info *new)
 	prev = NULL;
 
 	/* traverse until versions align */
-	ver = ubi32_to_cpu(cur->vid.leb_ver);
+	ver = __be32_to_cpu(cur->vid.leb_ver);
 	while (new_ver < ver) {
 		/* insert new at bottom of history */
 		if (hist->older == NULL) {
@@ -124,7 +124,7 @@ eb_chain_insert(struct eb_info **head, struct eb_info *new)
 
 		prev = hist;
 		hist = hist->older;
-		ver = ubi32_to_cpu(hist->vid.leb_ver);
+		ver = __be32_to_cpu(hist->vid.leb_ver);
 	}
 
 	if (prev == NULL) {
@@ -168,8 +168,8 @@ eb_chain_position(struct eb_info **head, uint32_t vol_id, uint32_t *lnum,
 
 	cur = *head;
 	while (cur != NULL) {
-		vol = ubi32_to_cpu(cur->vid.vol_id);
-		num = ubi32_to_cpu(cur->vid.lnum);
+		vol = __be32_to_cpu(cur->vid.vol_id);
+		num = __be32_to_cpu(cur->vid.lnum);
 
 		if ((vol_id == vol) && ((lnum == NULL) || (*lnum == num))) {
 			*pos = cur;
@@ -210,24 +210,24 @@ eb_chain_print(FILE* stream, struct eb_info *head)
 		struct eb_info *hist;
 
 		fprintf(stream, "%08x %-8u %08x %-4s%-4s",
-			ubi32_to_cpu(cur->vid.vol_id),
-			ubi32_to_cpu(cur->vid.lnum),
-			ubi32_to_cpu(cur->vid.leb_ver),
+			__be32_to_cpu(cur->vid.vol_id),
+			__be32_to_cpu(cur->vid.lnum),
+			__be32_to_cpu(cur->vid.leb_ver),
 			cur->ec_crc_ok   ? "ok":"bad",
 			cur->vid_crc_ok  ? "ok":"bad");
 		if (cur->vid.vol_type == UBI_VID_STATIC)
 			fprintf(stream, "%-4s", cur->data_crc_ok ? "ok":"bad");
 		else	fprintf(stream, "%-4s", cur->data_crc_ok ? "ok":"ign");
 		fprintf(stream, " %-4d %08x %-8u %-8llu\n", cur->phys_block,
-			cur->phys_addr, ubi32_to_cpu(cur->vid.data_size),
-			ubi64_to_cpu(cur->ec.ec));
+			cur->phys_addr, __be32_to_cpu(cur->vid.data_size),
+			__be64_to_cpu(cur->ec.ec));
 
 		hist = cur->older;
 		while (hist != NULL) {
 			fprintf(stream, "%08x %-8u %08x %-4s%-4s",
-				ubi32_to_cpu(hist->vid.vol_id),
-				ubi32_to_cpu(hist->vid.lnum),
-				ubi32_to_cpu(hist->vid.leb_ver),
+				__be32_to_cpu(hist->vid.vol_id),
+				__be32_to_cpu(hist->vid.lnum),
+				__be32_to_cpu(hist->vid.leb_ver),
 				hist->ec_crc_ok   ? "ok":"bad",
 				hist->vid_crc_ok  ? "ok":"bad");
 			if (hist->vid.vol_type == UBI_VID_STATIC)
@@ -235,8 +235,8 @@ eb_chain_print(FILE* stream, struct eb_info *head)
 			else	fprintf(stream, "%-4s", hist->data_crc_ok ? "ok":"ign");
 			fprintf(stream, " %-4d %08x %-8u %-8llu (*)\n",
 				hist->phys_block, hist->phys_addr,
-				ubi32_to_cpu(hist->vid.data_size),
-				ubi64_to_cpu(hist->ec.ec));
+				__be32_to_cpu(hist->vid.data_size),
+				__be64_to_cpu(hist->ec.ec));
 
 			hist = hist->older;
 		}

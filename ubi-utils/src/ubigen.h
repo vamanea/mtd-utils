@@ -1,5 +1,3 @@
-#ifndef __UBIGEN_H__
-#define __UBIGEN_H__
 /*
  * Copyright (c) International Business Machines Corp., 2006
  *
@@ -22,23 +20,26 @@
  * An utility to update UBI volumes.
  */
 
-#include <stdio.h> /* FILE */
+#ifndef __UBIGEN_H__
+#define __UBIGEN_H__
+
+#include <stdio.h>
 #include <stdint.h>
 #include <mtd/ubi-header.h>
+#include <asm/byteorder.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define DEFAULT_BLOCKSIZE	(128 * 1024)
-#define DEFAULT_PAGESIZE	(2*1024)
+#define DEFAULT_BLOCKSIZE (128 * 1024)
+#define DEFAULT_PAGESIZE  (2*1024)
 
-#define EUBIGEN_INVALID_TYPE		1
-#define EUBIGEN_INVALID_HDR_OFFSET	2
-#define EUBIGEN_INVALID_ALIGNMENT	3
-#define EUBIGEN_TOO_SMALL_EB		4
-#define EUBIGEN_MAX_ERROR		5
-
+#define EUBIGEN_INVALID_TYPE       1
+#define EUBIGEN_INVALID_HDR_OFFSET 2
+#define EUBIGEN_INVALID_ALIGNMENT  3
+#define EUBIGEN_TOO_SMALL_EB       4
+#define EUBIGEN_MAX_ERROR          5
 
 typedef enum action {
 	NO_ERROR	 = 0x00000000,
@@ -140,10 +141,10 @@ int ubigen_write_broken_update(ubi_info_t u, uint32_t blk);
  *	   else	   Error.
  */
 int ubigen_set_lvol_rec(ubi_info_t u, size_t reserved_bytes,
-		const char* name, struct ubi_vol_tbl_record *lvol_rec);
+		const char* name, struct ubi_vtbl_record *lvol_rec);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __UBIGEN_H__ */
+#endif /* !__UBIGEN_H__ */
