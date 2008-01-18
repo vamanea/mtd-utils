@@ -51,3 +51,8 @@ This directory contains various stuff that has to be cleaned up and sorted out.
 
 * mkbootenv.c: no idea what is this about. Looks like something specific to IBM
   guys's setup.
+
+* pfiflash*: an utility to update UBI volumes described by a pfi file on
+  target. Nothing wrong with it, but it seems to be rather specific to IBM
+  guys' environment and it should be cleaned-up. It also should be documented
+  better.
