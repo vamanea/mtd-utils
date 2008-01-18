@@ -56,3 +56,5 @@ This directory contains various stuff that has to be cleaned up and sorted out.
   target. Nothing wrong with it, but it seems to be rather specific to IBM
   guys' environment and it should be cleaned-up. It also should be documented
   better.
+
+* pddcustomize: not sure what is this for, seems to be IBM-specific.
