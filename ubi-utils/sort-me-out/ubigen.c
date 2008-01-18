@@ -166,6 +166,7 @@ static int parse_opt(int argc, char * const argv[])
 				}
 				args.peb_size *= mult;
 			}
+			break;
 
 		case 'm':
 			args.min_io_size = strtoull(optarg, &endp, 0);
@@ -183,6 +184,7 @@ static int parse_opt(int argc, char * const argv[])
 				}
 				args.min_io_size *= mult;
 			}
+			break;
 
 		case 'e':
 			args.ec = strtoul(optarg, &endp, 0);
@@ -220,7 +222,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'O':
-			args.vid_hdr_offs =  strtoul(optarg, &endp, 0);
+			args.vid_hdr_offs = strtoul(optarg, &endp, 0);
 			if (endp == optarg || args.vid_hdr_offs < 0) {
 				errmsg("bad VID header offset: \"%s\"", optarg);
 				return -1;
