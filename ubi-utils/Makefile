@@ -73,7 +73,7 @@ nand2bin: nand2bin.o nandecc.o nandcorr.o
 bin2nand: bin2nand.o error.o nandecc.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubigen: ubigen.o libubigen.o crc32.o
+ubigen: ubigen.o libubigen.o crc32.o common.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
