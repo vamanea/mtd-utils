@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+#define MIN(a ,b) ((a) < (b) ? (a) : (b))
+
 /* Error messages */
 #define errmsg(fmt, ...) do {                                             \
         fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \

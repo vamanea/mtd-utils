@@ -1,5 +1,6 @@
 /*
  * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (C) 2007 Nokia Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,17 +15,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * Author: Oliver Lohmann
+ */
+
+/*
  *
  * Convert a PFI file (partial flash image) into a plain binary file.
  * This tool can be used to prepare the data to be burned into flash
  * chips in a manufacturing step where the flashes are written before
- * being soldered onto the hardware. For NAND images another step is
- * required to add the right OOB data to the binary image.
+ * being soldered onto the hardware. For NAND images one more step may be
+ * needed to add the right OOB data to the binary image.
  *
- * 1.3 Removed argp because we want to use uClibc.
- * 1.4 Minor cleanups
+ * Authors: Oliver Lohmann
+ *          Artem Bityutskiy
  */
 
 #include <stdlib.h>
@@ -46,130 +48,223 @@
 #define PROGRAM_VERSION "1.5"
 #define PROGRAM_NAME    "pfi2bin"
 
-#define MAX_FNAME 255
-#define DEFAULT_ERASE_COUNT  0 /* Hmmm.... Perhaps */
 #define ERR_BUF_SIZE 1024
-
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 static uint32_t crc32_table[256];
 static char err_buf[ERR_BUF_SIZE];
 
-/*
- * Data used to buffer raw blocks which have to be
- * located at a specific point inside the generated RAW file
- */
-
-typedef enum action_t {
-	ACT_NOTHING   = 0x00000000,
-	ACT_RAW	   = 0x00000001,
-} action_t;
-
-static const char copyright [] __attribute__((unused)) =
-	"(c) Copyright IBM Corp 2006\n";
-
-static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
-	"pfi2bin - a tool to convert PFI files into binary images.\n";
+static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+" - a tool to convert PFI files into raw flash images. Note, if not\n"
+"sure about some of the parameters, do not specify them and let the utility to\n"
+"use default values.";
 
 static const char *optionsstr =
-" Common settings:\n"
-"  -c, --copyright\n"
-"  -v, --verbose              Print more information.\n"
-"\n"
-" Input:\n"
-"  -j, --platform=pdd-file    PDD information which contains the card settings.\n"
-"\n"
-" Output:\n"
-"  -o, --output=filename      Outputfile, default: stdout.\n"
-"\n"
-"  -?, --help                 Give this help list\n"
-"      --usage                Give a short usage message\n"
-"  -V, --version              Print program version\n";
+"-o, --output=<file name>     output file name (default is stdout)\n"
+"-p, --peb-size=<bytes>       size of the physical eraseblock of the flash this\n"
+"                             UBI image is created for in bytes, kilobytes (KiB),\n"
+"                             or megabytes (MiB) (mandatory parameter)\n"
+"-m, --min-io-size=<bytes>    minimum input/output unit size of the flash in bytes\n"
+"-s, --sub-page-size=<bytes>  minimum input/output unit used for UBI headers, e.g.\n"
+"                             sub-page size in case of NAND flash (equivalent to\n"
+"                             the minimum input/output unit size by default)\n"
+"-O, --vid-hdr-offset=<num>   offset if the VID header from start of the physical\n"
+"                             eraseblock (default is the second minimum I/O unit\n"
+"                             or sub-page, if it was specified)\n"
+"-e, --erase-counter=<num>    the erase counter value to put to EC headers\n"
+"                             (default is 0)\n"
+"-x, --ubi-ver=<num>          UBI version number to put to EC headers\n"
+"                             (default is 1)\n"
+"-h, --help                   print help message\n"
+"-V, --version                print program version";
 
 static const char *usage =
-"Usage: pfi2bin [-cv?V] [-j pdd-file] [-o filename] [--copyright]\n"
-"            [--verbose] [--platform=pdd-file] [--output=filename] [--help]\n"
-"            [--usage] [--version] pfifile\n";
+"Usage: " PROGRAM_NAME "[-o filename] [-h] [-V] [--output=<filename>] [--help] [--version] pfifile\n"
+"Example:" PROGRAM_NAME "-o fs.raw fs.pfi";
 
 struct option long_options[] = {
-	{ .name = "copyright", .has_arg = 0, .flag = NULL, .val = 'c' },
-	{ .name = "verbose", .has_arg = 0, .flag = NULL, .val = 'v' },
-	{ .name = "platform", .has_arg = 1, .flag = NULL, .val = 'j' },
-	{ .name = "output", .has_arg = 1, .flag = NULL, .val = 'o' },
-	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
-	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
-	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ .name = "output",         .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "peb-size",       .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "min-io-size",    .has_arg = 1, .flag = NULL, .val = 'm' },
+	{ .name = "sub-page-size",  .has_arg = 1, .flag = NULL, .val = 's' },
+	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'O' },
+	{ .name = "erase-counter",  .has_arg = 1, .flag = NULL, .val = 'e' },
+	{ .name = "ubi-ver",        .has_arg = 1, .flag = NULL, .val = 'x' },
+	{ .name = "help",           .has_arg = 0, .flag = NULL, .val = 'h' },
+	{ .name = "version",        .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0}
 };
 
-typedef struct io {
-	FILE* fp_pdd;	/* a FilePointer to the PDD data */
-	FILE* fp_pfi;	/* a FilePointer to the PFI input stream */
-	FILE* fp_out;	/* a FilePointer to the output stream */
-} *io_t;
-
-typedef struct myargs {
-	/* common settings */
-	action_t action;
-	int verbose;
-	const char *f_in_pfi;
-	const char *f_in_pdd;
+struct args {
+	const char *f_in;
 	const char *f_out;
+	FILE *fp_in;
+	FILE *fp_out;
+	int peb_size;
+	int min_io_size;
+	int subpage_size;
+	int vid_hdr_offs;
+	int ec;
+	int ubi_ver;
+};
 
-	/* special stuff needed to get additional arguments */
-	char *arg1;
-	char **options;			/* [STRING...] */
-} myargs;
+static struct args args = {
+	.f_out        = NULL,
+	.peb_size     = -1,
+	.min_io_size  = -1,
+	.subpage_size = -1,
+	.vid_hdr_offs = 0,
+	.ec           = 0,
+	.ubi_ver      = 1,
+};
 
-static int
-parse_opt(int argc, char **argv, myargs *args)
+static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
 		int key;
+		char *endp;
 
-		key = getopt_long(argc, argv, "cvj:o:?V", long_options, NULL);
+		key = getopt_long(argc, argv, "o:p:m:s:O:e:x:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
-			/* common settings */
-			case 'v': /* --verbose=<level> */
-				args->verbose = 1;
-				break;
+		case 'o':
+			args.fp_out = fopen(optarg, "wb");
+			if (!args.fp_out) {
+				errmsg("cannot open file \"%s\"", optarg);
+				return -1;
+			}
+			args.f_out = optarg;
+			break;
 
-			case 'c': /* --copyright */
-				fprintf(stderr, "%s\n", copyright);
-				exit(0);
-				break;
+		case 'p':
+			args.peb_size = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args.peb_size <= 0) {
+				errmsg("bad physical eraseblock size: \"%s\"", optarg);
+				return -1;
+			}
+			if (*endp != '\0') {
+				int mult = ubiutils_get_multiplier(endp);
 
-			case 'j': /* --platform */
-				args->f_in_pdd = optarg;
-				break;
+				if (mult == -1) {
+					errmsg("bad size specifier: \"%s\" - "
+					       "should be 'KiB', 'MiB' or 'GiB'", endp);
+					return -1;
+				}
+				args.peb_size *= mult;
+			}
+			break;
 
-			case 'o': /* --output */
-				args->f_out = optarg;
-				break;
+		case 'm':
+			args.min_io_size = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args.min_io_size <= 0) {
+				errmsg("bad min. I/O unit size: \"%s\"", optarg);
+				return -1;
+			}
+			if (*endp != '\0') {
+				int mult = ubiutils_get_multiplier(endp);
 
-			case '?': /* help */
-				printf("pfi2bin [OPTION...] pfifile\n");
-				printf("%s", doc);
-				printf("%s", optionsstr);
-				exit(0);
-				break;
+				if (mult == -1) {
+					errmsg("bad size specifier: \"%s\" - "
+					       "should be 'KiB', 'MiB' or 'GiB'", endp);
+					return -1;
+				}
+				args.min_io_size *= mult;
+			}
+			break;
 
-			case 'V':
-				printf("%s\n", PROGRAM_VERSION);
-				exit(0);
-				break;
+		case 's':
+			args.subpage_size = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args.subpage_size <= 0) {
+				errmsg("bad sub-page size: \"%s\"", optarg);
+				return -1;
+			}
+			if (*endp != '\0') {
+				int mult = ubiutils_get_multiplier(endp);
 
-			default:
-				printf("%s", usage);
-				exit(-1);
+				if (mult == -1) {
+					errmsg("bad size specifier: \"%s\" - "
+					       "should be 'KiB', 'MiB' or 'GiB'", endp);
+					return -1;
+				}
+				args.subpage_size *= mult;
+			}
+			break;
+
+		case 'O':
+			args.vid_hdr_offs = strtoul(optarg, &endp, 0);
+			if (endp == optarg || args.vid_hdr_offs < 0) {
+				errmsg("bad VID header offset: \"%s\"", optarg);
+				return -1;
+			}
+			break;
+
+		case 'e':
+			args.ec = strtoul(optarg, &endp, 0);
+			if (endp == optarg || args.ec < 0) {
+				errmsg("bad erase counter value: \"%s\"", optarg);
+				return -1;
+			}
+			break;
+
+		case 'x':
+			args.ubi_ver = strtoul(optarg, &endp, 0);
+			if (endp == optarg || args.ubi_ver < 0) {
+				errmsg("bad UBI version: \"%s\"", optarg);
+				return -1;
+			}
+			break;
+
+		case 'h':
+			fprintf(stderr, "%s\n\n", doc);
+			fprintf(stderr, "%s\n\n", usage);
+			fprintf(stderr, "%s\n", optionsstr);
+			exit(EXIT_SUCCESS);
+
+		case 'V':
+			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			exit(EXIT_SUCCESS);
+
+		default:
+			fprintf(stderr, "Use -h for help\n");
+			return -1;
 		}
 	}
 
-	if (optind < argc)
-		args->f_in_pfi = argv[optind++];
+	if (optind == argc) {
+		errmsg("input PFI file was not specified (use -h for help)");
+		return -1;
+	}
+
+	if (optind != argc - 1) {
+		errmsg("more then one input PFI file was specified (use -h for help)");
+		return -1;
+	}
+
+	if (args.peb_size < 0) {
+		errmsg("physical eraseblock size was not specified (use -h for help)");
+		return -1;
+	}
+
+	if (args.min_io_size < 0) {
+		errmsg("min. I/O unit size was not specified (use -h for help)");
+		return -1;
+	}
+
+	if (args.subpage_size < 0)
+		args.subpage_size = args.min_io_size;
+
+	args.f_in = argv[optind++];
+	args.fp_in = fopen(args.f_in, "rb");
+	if (!args.fp_in) {
+		errmsg("cannot open file \"%s\"", args.f_in);
+		return -1;
+	}
+
+	if (!args.f_out) {
+		args.f_out = "stdout";
+		args.fp_out = stdout;
+	}
 
 	return 0;
 }
@@ -192,33 +287,29 @@ byte_to_blk(size_t byte, size_t blk_size)
  *		      or EOF.
  */
 static int
-memorize_raw_eb(pfi_raw_t pfi_raw, pdd_data_t pdd, list_t *raw_pebs,
-		io_t io)
+memorize_raw_eb(pfi_raw_t pfi_raw, list_t *raw_pebs)
 {
-	int rc = 0;
-	uint32_t i;
-
-	size_t read, to_read, eb_num;
-	size_t bytes_left;
+	int err = 0;
+	int i, read, to_read, eb_num, bytes_left;
 	list_t pebs = *raw_pebs;
 	peb_t	peb  = NULL;
 
-	long old_file_pos = ftell(io->fp_pfi);
-	for (i = 0; i < pfi_raw->starts_size; i++) {
+	long old_file_pos = ftell(args.fp_in);
+	for (i = 0; i < (int)pfi_raw->starts_size; i++) {
 		bytes_left = pfi_raw->data_size;
-		rc = fseek(io->fp_pfi, old_file_pos, SEEK_SET);
-		if (rc != 0)
+		err = fseek(args.fp_in, old_file_pos, SEEK_SET);
+		if (err != 0)
 			goto err;
 
-		eb_num = byte_to_blk(pfi_raw->starts[i], pdd->eb_size);
+		eb_num = byte_to_blk(pfi_raw->starts[i], args.peb_size);
 		while (bytes_left) {
-			to_read = MIN(bytes_left, pdd->eb_size);
-			rc = peb_new(eb_num++, pdd->eb_size, &peb);
-			if (rc != 0)
+			to_read = MIN(bytes_left, args.peb_size);
+			err = peb_new(eb_num++, args.peb_size, &peb);
+			if (err != 0)
 				goto err;
-			read = fread(peb->data, 1, to_read, io->fp_pfi);
+			read = fread(peb->data, 1, to_read, args.fp_in);
 			if (read != to_read) {
-				rc = -EIO;
+				err = -EIO;
 				goto err;
 			}
 			pebs = append_elem(peb, pebs);
@@ -230,15 +321,15 @@ memorize_raw_eb(pfi_raw_t pfi_raw, pdd_data_t pdd, list_t *raw_pebs,
 	return 0;
 err:
 	pebs = remove_all((free_func_t)&peb_free, pebs);
-	return rc;
+	return err;
 }
 
 static int
-convert_ubi_volume(pfi_ubi_t ubi, pdd_data_t pdd, list_t raw_pebs,
+convert_ubi_volume(pfi_ubi_t ubi, list_t raw_pebs,
 		struct ubi_vtbl_record *vol_tab,
-		size_t *ebs_written, io_t io)
+		size_t *ebs_written)
 {
-	int rc = 0;
+	int err = 0;
 	uint32_t i, j;
 	peb_t raw_peb;
 	peb_t cmp_peb;
@@ -255,25 +346,25 @@ convert_ubi_volume(pfi_ubi_t ubi, pdd_data_t pdd, list_t raw_pebs,
 		vol_type = UBI_VID_DYNAMIC;
 	}
 
-	rc = peb_new(0, 0, &cmp_peb);
-	if (rc != 0)
+	err = peb_new(0, 0, &cmp_peb);
+	if (err != 0)
 		goto err;
 
-	long old_file_pos = ftell(io->fp_pfi);
+	long old_file_pos = ftell(args.fp_in);
 	for (i = 0; i < ubi->ids_size; i++) {
-		rc = fseek(io->fp_pfi, old_file_pos, SEEK_SET);
-		if (rc != 0)
+		err = fseek(args.fp_in, old_file_pos, SEEK_SET);
+		if (err != 0)
 			goto err;
-		rc = ubigen_create(&u, ubi->ids[i], vol_type,
-				   pdd->eb_size, DEFAULT_ERASE_COUNT,
-				   ubi->alignment, UBI_VERSION,
-				   pdd->vid_hdr_offset, 0, ubi->data_size,
-				   io->fp_pfi, io->fp_out);
-		if (rc != 0)
+		err = ubigen_create(&u, ubi->ids[i], vol_type,
+				   args.peb_size, args.ec,
+				   ubi->alignment, args.ubi_ver,
+				   args.vid_hdr_offs, 0, ubi->data_size,
+				   args.fp_in, args.fp_out);
+		if (err != 0)
 			goto err;
 
-		rc = ubigen_get_leb_total(u, &leb_total);
-		if (rc != 0)
+		err = ubigen_get_leb_total(u, &leb_total);
+		if (err != 0)
 			goto err;
 
 		j = 0;
@@ -282,21 +373,21 @@ convert_ubi_volume(pfi_ubi_t ubi, pdd_data_t pdd, list_t raw_pebs,
 			raw_peb = is_in((cmp_func_t)peb_cmp, cmp_peb,
 					raw_pebs);
 			if (raw_peb) {
-				rc = peb_write(io->fp_out, raw_peb);
+				err = peb_write(args.fp_out, raw_peb);
 			}
 			else {
-				rc = ubigen_write_leb(u, NO_ERROR);
+				err = ubigen_write_leb(u, NO_ERROR);
 				j++;
 			}
-			if (rc != 0)
+			if (err != 0)
 				goto err;
 			(*ebs_written)++;
 		}
 		/* memorize volume table entry */
-		rc = ubigen_set_lvol_rec(u, ubi->size,
+		err = ubigen_set_lvol_rec(u, ubi->size,
 				ubi->names[i],
 				(void*) &vol_tab[ubi->ids[i]]);
-		if (rc != 0)
+		if (err != 0)
 			goto err;
 		ubigen_destroy(&u);
 	}
@@ -307,7 +398,7 @@ convert_ubi_volume(pfi_ubi_t ubi, pdd_data_t pdd, list_t raw_pebs,
 err:
 	peb_free(&cmp_peb);
 	ubigen_destroy(&u);
-	return rc;
+	return err;
 }
 
 
@@ -332,11 +423,11 @@ my_fmemopen (void *buf, size_t size, const char *opentype)
  *	   else		Error.
  */
 static int
-write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
+write_ubi_volume_table(list_t raw_pebs,
 		struct ubi_vtbl_record *vol_tab, size_t vol_tab_size,
-		size_t *ebs_written, io_t io)
+		size_t *ebs_written)
 {
-	int rc = 0;
+	int err = 0;
 	ubi_info_t u;
 	peb_t raw_peb;
 	peb_t cmp_peb;
@@ -346,8 +437,8 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 	int vt_slots;
 	size_t vol_tab_size_limit;
 
-	rc = peb_new(0, 0, &cmp_peb);
-	if (rc != 0)
+	err = peb_new(0, 0, &cmp_peb);
+	if (err != 0)
 		goto err;
 
 	/* @FIXME: Artem creates one volume with 2 LEBs.
@@ -356,16 +447,16 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 	 * introduce this stupid mechanism. Until no final
 	 * decision of the VTAB structure is made... Good enough.
 	 */
-	rc = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
-			   pdd->eb_size, DEFAULT_ERASE_COUNT,
-			   1, UBI_VERSION,
-			   pdd->vid_hdr_offset, UBI_COMPAT_REJECT,
-			   vol_tab_size, stdin, io->fp_out);
+	err = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
+			   args.peb_size, args.ec,
+			   1, args.ubi_ver,
+			   args.vid_hdr_offs, UBI_COMPAT_REJECT,
+			   vol_tab_size, stdin, args.fp_out);
 			   /* @FIXME stdin for fp_in is a hack */
-	if (rc != 0)
+	if (err != 0)
 		goto err;
-	rc = ubigen_get_leb_size(u, &leb_size);
-	if (rc != 0)
+	err = ubigen_get_leb_size(u, &leb_size);
+	if (err != 0)
 		goto err;
 	ubigen_destroy(&u);
 
@@ -386,35 +477,35 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 	memcpy(ptr, vol_tab, vol_tab_size_limit);
 	fp_leb = my_fmemopen(ptr, leb_size, "r");
 
-	rc = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
-			   pdd->eb_size, DEFAULT_ERASE_COUNT,
-			   1, UBI_VERSION, pdd->vid_hdr_offset,
+	err = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
+			   args.peb_size, args.ec,
+			   1, args.ubi_ver, args.vid_hdr_offs,
 			   UBI_COMPAT_REJECT, leb_size * UBI_LAYOUT_VOLUME_EBS,
-			   fp_leb, io->fp_out);
-	if (rc != 0)
+			   fp_leb, args.fp_out);
+	if (err != 0)
 		goto err;
-	rc = ubigen_get_leb_total(u, &leb_total);
-	if (rc != 0)
+	err = ubigen_get_leb_total(u, &leb_total);
+	if (err != 0)
 		goto err;
 
 	long old_file_pos = ftell(fp_leb);
 	while(j < leb_total) {
-		rc = fseek(fp_leb, old_file_pos, SEEK_SET);
-		if (rc != 0)
+		err = fseek(fp_leb, old_file_pos, SEEK_SET);
+		if (err != 0)
 			goto err;
 
 		cmp_peb->num = *ebs_written;
 		raw_peb = is_in((cmp_func_t)peb_cmp, cmp_peb,
 				raw_pebs);
 		if (raw_peb) {
-			rc = peb_write(io->fp_out, raw_peb);
+			err = peb_write(args.fp_out, raw_peb);
 		}
 		else {
-			rc = ubigen_write_leb(u, NO_ERROR);
+			err = ubigen_write_leb(u, NO_ERROR);
 			j++;
 		}
 
-		if (rc != 0)
+		if (err != 0)
 			goto err;
 		(*ebs_written)++;
 	}
@@ -424,20 +515,20 @@ err:
 	peb_free(&cmp_peb);
 	ubigen_destroy(&u);
 	fclose(fp_leb);
-	return rc;
+	return err;
 }
 
 static int
-write_remaining_raw_ebs(pdd_data_t pdd, list_t raw_blocks, size_t *ebs_written,
+write_remaining_raw_ebs(list_t raw_blocks, size_t *ebs_written,
 			FILE* fp_out)
 {
-	int rc = 0;
+	int err = 0;
 	uint32_t j, delta;
 	list_t ptr;
 	peb_t empty_eb, peb;
 
 	/* create an empty 0xff EB (for padding) */
-	rc = peb_new(0, pdd->eb_size, &empty_eb);
+	err = peb_new(0, args.peb_size, &empty_eb);
 
 	foreach(peb, ptr, raw_blocks) {
 		if (peb->num < *ebs_written) {
@@ -453,25 +544,21 @@ write_remaining_raw_ebs(pdd_data_t pdd, list_t raw_blocks, size_t *ebs_written,
 		}
 
 		delta = peb->num - *ebs_written;
-		if (((delta + *ebs_written) * pdd->eb_size) > pdd->flash_size) {
-			errmsg("RAW block outside of flash_size.");
-			goto err;
-		}
 		for (j = 0; j < delta; j++) {
-			rc = peb_write(fp_out, empty_eb);
-			if (rc != 0)
+			err = peb_write(fp_out, empty_eb);
+			if (err != 0)
 				goto err;
 			(*ebs_written)++;
 		}
-		rc = peb_write(fp_out, peb);
-		if (rc != 0)
+		err = peb_write(fp_out, peb);
+		if (err != 0)
 			goto err;
 		(*ebs_written)++;
 	}
 
 err:
 	peb_free(&empty_eb);
-	return rc;
+	return err;
 }
 
 static int
@@ -499,9 +586,9 @@ init_vol_tab(struct ubi_vtbl_record **vol_tab, size_t *vol_tab_size)
 }
 
 static int
-create_raw(io_t io)
+create_raw(void)
 {
-	int rc = 0;
+	int err = 0;
 	size_t ebs_written = 0; /* eraseblocks written already... */
 	size_t vol_tab_size;
 	list_t ptr;
@@ -511,166 +598,80 @@ create_raw(io_t io)
 	list_t raw_pebs	 = mk_empty(); /* list of raw eraseblocks */
 
 	struct ubi_vtbl_record *vol_tab = NULL;
-	pdd_data_t pdd = NULL;
 
-	rc = init_vol_tab (&vol_tab, &vol_tab_size);
-	if (rc != 0) {
+	err = init_vol_tab (&vol_tab, &vol_tab_size);
+	if (err != 0) {
 		errmsg("cannot initialize volume table");
 		goto err;
 	}
 
-	rc = read_pdd_data(io->fp_pdd, &pdd,
+	err = read_pfi_headers(&pfi_raws, &pfi_ubis, args.fp_in,
 			err_buf, ERR_BUF_SIZE);
-	if (rc != 0) {
-		errmsg("cannot read necessary pdd_data: %s rc: %d", err_buf, rc);
-		goto err;
-	}
-
-	rc = read_pfi_headers(&pfi_raws, &pfi_ubis, io->fp_pfi,
-			err_buf, ERR_BUF_SIZE);
-	if (rc != 0) {
-		errmsg("cannot read pfi header: %s rc: %d", err_buf, rc);
+	if (err != 0) {
+		errmsg("cannot read pfi header: %s err: %d", err_buf, err);
 		goto err;
 	}
 
 	pfi_raw_t pfi_raw;
 	foreach(pfi_raw, ptr, pfi_raws) {
-		rc = memorize_raw_eb(pfi_raw, pdd, &raw_pebs,
-			io);
-		if (rc != 0) {
-			errmsg("cannot create raw_block in mem. rc: %d\n", rc);
+		err = memorize_raw_eb(pfi_raw, &raw_pebs);
+		if (err != 0) {
+			errmsg("cannot create raw_block in mem. err: %d\n", err);
 			goto err;
 		}
 	}
 
 	pfi_ubi_t pfi_ubi;
 	foreach(pfi_ubi, ptr, pfi_ubis) {
-		rc = convert_ubi_volume(pfi_ubi, pdd, raw_pebs,
-					vol_tab, &ebs_written, io);
-		if (rc != 0) {
-			errmsg("cannot convert UBI volume. rc: %d\n", rc);
+		err = convert_ubi_volume(pfi_ubi, raw_pebs,
+					vol_tab, &ebs_written);
+		if (err != 0) {
+			errmsg("cannot convert UBI volume. err: %d\n", err);
 			goto err;
 		}
 	}
 
-	rc = write_ubi_volume_table(pdd, raw_pebs, vol_tab, vol_tab_size,
-			&ebs_written, io);
-	if (rc != 0) {
-		errmsg("cannot write UBI volume table. rc: %d\n", rc);
+	err = write_ubi_volume_table(raw_pebs, vol_tab, vol_tab_size,
+			&ebs_written);
+	if (err != 0) {
+		errmsg("cannot write UBI volume table. err: %d\n", err);
 		goto err;
 	}
 
-	rc  = write_remaining_raw_ebs(pdd, raw_pebs, &ebs_written, io->fp_out);
-	if (rc != 0)
+	err  = write_remaining_raw_ebs(raw_pebs, &ebs_written, args.fp_out);
+	if (err != 0)
 		goto err;
 
-	if (io->fp_out != stdout)
+	if (args.fp_out != stdout)
 		printf("Physical eraseblocks written: %8d\n", ebs_written);
 err:
 	free(vol_tab);
 	pfi_raws = remove_all((free_func_t)&free_pfi_raw, pfi_raws);
 	pfi_ubis = remove_all((free_func_t)&free_pfi_ubi, pfi_ubis);
 	raw_pebs = remove_all((free_func_t)&peb_free, raw_pebs);
-	free_pdd_data(&pdd);
-	return rc;
+	return err;
 }
 
-
-/* ------------------------------------------------------------------------- */
-static void
-open_io_handle(myargs *args, io_t io)
+int main(int argc, char * const argv[])
 {
-	/* set PDD input */
-	io->fp_pdd = fopen(args->f_in_pdd, "r");
-	if (io->fp_pdd == NULL) {
-		errmsg("cannot open: %s", args->f_in_pdd);
-	}
+	int err;
 
-	/* set PFI input */
-	io->fp_pfi = fopen(args->f_in_pfi, "r");
-	if (io->fp_pfi == NULL) {
-		errmsg("cannot open PFI input file: %s", args->f_in_pfi);
-	}
-
-	/* set output prefix */
-	if (strcmp(args->f_out,"") == 0)
-		io->fp_out = stdout;
-	else {
-		io->fp_out = fopen(args->f_out, "wb");
-		if (io->fp_out == NULL) {
-			errmsg("cannot open output file: %s", args->f_out);
-		}
-	}
-}
-
-static void
-close_io_handle(io_t io)
-{
-	if (fclose(io->fp_pdd) != 0) {
-		errmsg("cannot close PDD file");
-	}
-	if (fclose(io->fp_pfi) != 0) {
-		errmsg("cannot close PFI file");
-	}
-	if (io->fp_out != stdout) {
-		if (fclose(io->fp_out) != 0) {
-			errmsg("cannot close output file");
-		}
-	}
-
-	io->fp_pdd = NULL;
-	io->fp_pfi = NULL;
-	io->fp_out = NULL;
-}
-
-int main(int argc, char *argv[])
-{
-	int rc = 0;
+	err = parse_opt(argc, argv);
+	if (err)
+		return -1;
 
 	ubigen_init();
 	init_crc32_table(crc32_table);
 
-	struct io io = {NULL, NULL, NULL};
-	myargs args = {
-		.action = ACT_RAW,
-		.verbose = 0,
-
-		.f_in_pfi = "",
-		.f_in_pdd = "",
-		.f_out = "",
-
-		/* arguments */
-		.arg1 = NULL,
-		.options = NULL,
-	};
-
-	/* parse arguments */
-	parse_opt(argc, argv, &args);
-
-	if (strcmp(args.f_in_pfi, "") == 0) {
-		errmsg("no PFI input file specified");
-		exit(EXIT_FAILURE);
-	}
-
-	if (strcmp(args.f_in_pdd, "") == 0) {
-		errmsg("no PDD input file specified");
-		exit(EXIT_FAILURE);
-	}
-
-	open_io_handle(&args, &io);
-
-	printf("Creating RAW...");
-	rc = create_raw(&io);
-	if (rc != 0) {
+	err = create_raw();
+	if (err != 0) {
 		errmsg("creating RAW failed");
 		goto err;
 	}
 
 err:
-	close_io_handle(&io);
-	if (rc != 0) {
+	if (err != 0)
 		remove(args.f_out);
-	}
 
-	return rc;
+	return err;
 }

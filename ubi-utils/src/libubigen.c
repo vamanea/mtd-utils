@@ -421,7 +421,7 @@ ubigen_create(ubi_info_t* u, uint32_t vol_id, uint8_t vol_type,
 	*u = res;
 	return rc;
 
- ubigen_create_err:
+ubigen_create_err:
 	if (res) {
 		if (res->v)
 			free(res->v);
