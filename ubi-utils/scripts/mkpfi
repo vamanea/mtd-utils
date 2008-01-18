@@ -27,8 +27,8 @@
 use warnings;
 use strict;
 use lib "/usr/lib/perl5"; # Please change this path as you need it, or
-			  # make a proposal how this could be done
-			  # nicer.
+                          # make a proposal how this could be done
+                          # nicer.
 use Getopt::Long;
 use Pod::Usage;
 use Config::IniFiles;
@@ -43,6 +43,8 @@ our $pfi_version : unique = "0x1";
 # Globals
 my $verbose = 0;
 my $cfg;
+
+my $err_prefix  = "mkpfi error";
 
 my %opts = ();
 my %files = (config => "");
@@ -69,25 +71,25 @@ my %tools = (ubicrc32 => "ubicrc32");
 
 # Mandatory keys for UBI volumes.
 my %ubi_keys = ("ubi_ids"       => \&check_id_list,
-		"ubi_size"      => \&replace_num,
-		"ubi_type"      => \&replace_type,
-		"ubi_names"     => \&remove_spaces,
-		"ubi_alignment" => \&replace_num);
+                "ubi_size"      => \&replace_num,
+                "ubi_type"      => \&replace_type,
+                "ubi_names"     => \&remove_spaces,
+                "ubi_alignment" => \&replace_num);
 
 # Mandatory keys for RAW sections.
 my %raw_keys = ("raw_starts"     => \&expand_starts,
-		"raw_total_size" => \&replace_num);
+                "raw_total_size" => \&replace_num);
 
 # Common default keys for documentation and control purposes.
 my %common_keys = ("flags" => \&replace_num,
-		   "label" => \&do_nothing);
+                   "label" => \&do_nothing);
 
 # Define any defaults here. Values which maintained in this default
 # region need not to be specified by the user explicitly.
 my %def_ubi_keys      = ("ubi_alignment" => [\&set_default, "0x1"]);
 my %def_raw_keys      = ();
-my %def_common_keys   = ("flags"	 => [\&set_default, "0x0"],
-			 "label"	 => [\&generate_label, ""]);
+my %def_common_keys   = ("flags"         => [\&set_default, "0x0"],
+                         "label"         => [\&generate_label, ""]);
 
 # ----------------------------------------------------------------------------
 # Input keys, actually the path to the input data.
@@ -112,34 +114,30 @@ sub get_date {
 }
 
 # @brief Print an info message to stdout.
-sub INFO($) {
+sub infomsg($) {
 	my $str = shift;
 
-	if (!$verbose) {
-		return;
-	}
-
-	print STDOUT $str;
+	print "mkpfi: $str\n" if $verbose;
 }
 
 # @brief Print an error message to stderr.
-sub ERR($) {
+sub errmsg($) {
 	my $str = shift;
-	print STDERR $str;
+	print STDERR "$err_prefix: $str\n";
 }
 
 # @brief Print a warning message to stderr.
-sub WARN($) {
+sub warnmsg($) {
 	my $str = shift;
-	print STDERR $str;
+	print STDERR "mkpfi warning: $str\n";
 }
 
 sub parse_command_line($) {
 	my $opt = shift;
-	my $result = GetOptions( "help"	     => \$$opt{'help'},
-				 "man"	     => \$$opt{'man'},
-				 "config=s"  => \$$opt{'config'},
-				 "verbose"   => \$$opt{'verbose'},
+	my $result = GetOptions( "help"	    => \$$opt{'help'},
+				 "man"	    => \$$opt{'man'},
+				 "verbose"  => \$$opt{'verbose'},
+				 "config=s" => \$$opt{'config'},
 			       ) or pod2usage(2);
 	pod2usage(1) if defined ($$opt{help});
 	pod2usage(-verbose => 2) if defined ($$opt{man});
@@ -147,10 +145,9 @@ sub parse_command_line($) {
 	$verbose = $$opt{verbose} if defined $$opt{verbose};
 
 	if (!defined $$opt{config}) {
-		ERR("[ ERROR: No config file specified. Aborting...\n");
+		errmsg("no config file specified (use --help)");
 		exit 1;
 	}
-
 }
 
 # @brief Check if all needed tools are in PATH.
@@ -160,20 +157,18 @@ sub check_tools {
 
 	foreach $key (keys %tools) {
 		if (`which $tools{$key}` eq "") {
-			ERR("\n") if ($err == 0);
-			ERR("! Please add the tool \'$tools{$key}\' " .
-				"to your path!\n");
+			errmsg("\"$tools{$key}\" not found, add it to your path");
 			$err = 1;
 		}
 	}
-	die "[ ERROR: Did not find all needed tools!\n" if $err;
+	die "$err_prefix: cannot not find all needed tools\n" if $err;
 }
 
 sub open_cfg_file($) {
 	my $fname = shift;
-	my $res = new Config::IniFiles( -file => $fname );
+	my $res = new Config::IniFiles(-file => $fname);
 
-	die "[ ERROR: Cannot load your config file!\n" if (!defined $res);
+	die "$err_prefix: cannot load config file \"$fname\"\n" if (!defined $res);
 	return $res;
 }
 
@@ -244,9 +239,8 @@ sub expand_starts($$$) {
 
 	foreach $start (@starts) {
 		if (any_num_to_hex($start, \$res) != 0) {
-			ERR("[ ERROR: [$section]\n");
-			ERR("[        Expecting a list of numeric " .
-			    "values for parameter: $parameter\n");
+			errmsg("section [$section]: expecting a list of numeric " .
+			       "values for parameter \"$parameter\"");
 			exit 1;
 		}
 		push (@new_starts, $res);
@@ -262,9 +256,8 @@ sub check_id_list($$$) {
 	my $res;
 
 	if (!($val =~ m/^[0-9]+[,0-9]*/)) {
-		ERR("[ ERROR: Syntax error in 'ubi_ids' in " .
-		    "section '$section': $val\n");
-			ERR("[ Aborting... ");
+		errmsg("syntax error in 'ubi_ids' in " .
+		       "section \"$section\": $val");
 			exit 1;
 	}
 }
@@ -276,8 +269,8 @@ sub replace_type($$$) {
 
 	$res = lc($val);
 	grep {$res eq $_} ('static', 'dynamic')
-	    or die "[ ERROR: Unknown UBI Volume Type in " .
-	    "section '$section': $val\n";
+		or die "$err_prefix: unknown UBI Volume type in section" .
+		       "[$section]: $val\n";
 
 	$cfg->newval($section, $parameter, $res);
 }
@@ -289,9 +282,8 @@ sub replace_num($$$) {
 	my $res = "";
 
 	if (any_num_to_hex($val, \$res) != 0) {
-		ERR("[ ERROR: [$section]\n");
-		ERR("[        Expecting a numeric value " .
-		    "for parameter: $parameter\n");
+		errmsg("section [$section]: expecting a numeric value " .
+		       "for parameter: $parameter");
 		exit 1;
 	}
 	$cfg->newval($section, $parameter, $res);
@@ -330,29 +322,29 @@ sub create_bootenv_image($$$) {
 	my @key = ();
 
 	open $in, "<", $txt_fn
-		or die "[ ERROR: can't open bootenv file '$txt_fn'.\n";
+		or die "$err_prefix: can't open bootenv file '$txt_fn'.\n";
 	while (<$in>) {
 		next if (/^\s*(\#.*)?$/); # Skip comments/whitespace.
 
 		if (/^(\S+?)\+\=(.*)$/) {
 			defined($value{$1}) or
-				die "$txt_fn:$.: error: appending to" .
-					" non-existent '$1'\n";
+				die "$err_prefix: $txt_fn:$.: appending to" .
+				    " non-existent '$1'\n";
 			$value{$1} .= $2;
 		} elsif (/^(\S+?)\=(.*)$/) {
 			not defined($value{$1}) or
-				die "$txt_fn:$.: error: trying to" .
-					" redefine '$1'\n";
+				die "$err_prefix: $txt_fn:$.: trying to" .
+				     " redefine '$1'\n";
 			push @key, $1;
 			$value{$1} = $2;
 		} else {
-			die "$txt_fn:$.: error: unrecognized syntax\n";
+			die "$err_prefix: $txt_fn:$.: unrecognized syntax\n";
 		}
 	}
 	close $in;
 
 	$_ = &bootenv_sanity_check(\%value)
-		and die "$txt_fn: error: $_\n";
+		and die "$err_prefix: $txt_fn: $_\n";
 
 	my $tmp_file = new File::Temp();
 	push (@tmp_files, $tmp_file);
@@ -416,16 +408,12 @@ sub check_keys($$$) {
 	$err = 0;
 	for ($i = 0 ; $i < scalar(@$keys) ; $i++ ) {
 		if (!is_in_keylist($$keys[$i], \@parameters)) {
-			ERR("[ ERROR: [$section]\n") if $err == 0;
+			errmsg("section [$section]: missing key \"$$keys[$i]\"");
 			$err = 1;
-			ERR("[        Missing key '$$keys[$i]'\n");
 		}
 	}
 
-	if ($err) {
-		ERR("[ Aborting...\n");
-		exit 1;
-	}
+	exit 1 if $err;
 }
 
 sub push_pfi_data($$$$$) {
@@ -441,14 +429,14 @@ sub push_pfi_data($$$$$) {
 	$hdr .= sprintf("version=0x%08x\n", hex $pfi_version);
 	$hdr .= sprintf("mode=$mode\n");
 
-	# calculate the size of the binary data part
+	# Calculate the size of the binary data part
 	$tmp = -s $cfg->val($section, "image");
 	if (!defined $tmp) {
-		ERR("[ ERROR: [$section]\n");
-		ERR("[        Missing input image: "
-				. $cfg->val($section, "image") . "\n");
+		errmsg("section [$section]: missing input image \"" .
+		       $cfg->val($section, "image") . "\"");
 		exit 1;
 	}
+
 	# Check for the image to fit into the given space
 	my $quota;
 	if ($mode eq 'raw') {
@@ -457,7 +445,7 @@ sub push_pfi_data($$$$$) {
 		$quota = oct $cfg->val($section, "ubi_size");
 	}
 	$tmp <= $quota
-		or die "[ERROR: image file too big: " .
+		or die "$err_prefix: image file too big: " .
 		$cfg->val($section, "image") . "\n";
 	$pfi_info{'size'} = $tmp;
 
@@ -466,17 +454,16 @@ sub push_pfi_data($$$$$) {
 	my $img_file = $cfg->val($section, "image");
 	my $crc32 = `$tools{'ubicrc32'} $img_file 2>&1`;
 	if (any_num_to_hex($crc32, \$tmp) != 0) {
-		die "[ ERROR: $tools{'ubicrc32'} returned with errors";
+		die "$err_prefix: $tools{'ubicrc32'} returned an error\n";
 	}
 	$hdr .= sprintf("crc=$tmp\n");
-
 
 	# Process all remaining keys
 	for ($i = 0; $i < scalar (@$keys); $i++) {
 		if ($$keys[$i] eq "image") { # special case image input file
 			if (! -e ($tmp = $cfg->val($section, "image"))) {
-				ERR("[ ERROR: [$section]\n");
-				ERR("[        Cannot find input file $tmp\n");
+				errmsg("section [$section]: cannot find " .
+				       "input file $tmp");
 				exit 1;
 			}
 			next;
@@ -534,7 +521,7 @@ sub get_section_info($$) {
 	}
 
 	if (($ubi + $raw) != 1)	{ # double definition in section
-		ERR("[ ERROR: Layout error in section '$section'\n");
+		errmsg("layout error in section [$section]");
 		exit 1;
 	}
 
@@ -566,7 +553,7 @@ sub copy_bytes($$$) {
 
 		$bufsize < $to_copy or $bufsize = $to_copy;
 		read($in, $buf, $bufsize) == $bufsize
-			or die "[ ERROR: Image file shrunk during operation\n";
+			or die "$err_prefix: image file shrunk during operation\n";
 		print $out $buf;
 		$to_copy -= $bufsize;
 	}
@@ -576,13 +563,12 @@ sub write_target($$) {
 	my ($pfi_infos, $target) = @_;
 	my ($pfi_info);
 
-	INFO("[ Writting target pfi file: '$target.pfi'...\n");
+	infomsg("writting target pfi file \"$target.pfi\"");
 	if (-e "$target.pfi") {
-		WARN("! Replaced old pfi...\n");
 		`rm -f $target.pfi`;
 	}
 	open(FILE, ">", "$target.pfi")
-		or die "[ ERROR: Cannot create output file: $target.pfi\n";
+		or die "$err_prefix: cannot create output file: $target.pfi\n";
 	binmode(FILE);
 
 	# @FIXME sort by mode (first raw, then ubi)
@@ -592,33 +578,34 @@ sub write_target($$) {
 	# Print all headers first
 	foreach $pfi_info (@$pfi_infos) {
 		print FILE $$pfi_info{'header'};
-
 	}
+
 	# Print the linked data sections
 	print FILE "DATA\n";
 	foreach $pfi_info (@$pfi_infos) {
 		open(IMAGE, "<", $$pfi_info{'image'})
-				or die "[ ERROR: Cannot open input image: " .
-				"$$pfi_info{'image'}" . "\n";
+			or die "$err_prefix: cannot open input image: " .
+			       "$$pfi_info{'image'}\n";
 		binmode(IMAGE);
 		&copy_bytes(\*IMAGE, \*FILE, $$pfi_info{'size'});
-		close(IMAGE) or die "[ ERROR: Cannot close input image: " .
-				"$$pfi_info{'image'}" . "\n";
+		close(IMAGE) or die "$err_prefix: cannot close input image: " .
+				    "$$pfi_info{'image'}\n";
 	}
-	close(FILE) or die "[ ERROR: Cannot close output file: $target.pfi\n";
+
+	close(FILE) or die "$err_prefix: cannot close output file: $target.pfi\n";
 }
 
 sub process_config($) {
 	my $cfg = shift;
 	my @sections = $cfg->Sections;
 	my ($i, $j, $keylist, $def_keylist, $mode, $tmp,
-			@tlist, $complete,@pfi_infos);
+	    @tlist, $complete, @pfi_infos);
 
 	my @parameters = $cfg->Parameters("targets") or
-		die "[ ERROR: Config file has no 'targets' section!\n";
+		die "$err_prefix: config file has no [targets] section\n";
 
 	for ($i = 0 ; $i < scalar(@parameters) ; $i++ ) {
-		INFO("[ Processing target '$parameters[$i]'...\n");
+		infomsg("processing target \"$parameters[$i]\"");
 		@pfi_infos = ();
 
 		# get a list of subtargets
@@ -636,9 +623,7 @@ sub process_config($) {
 		write_target(\@pfi_infos, $parameters[$i]);
 	}
 
-	INFO("[ Success.\n");
-
-
+	infomsg("success");
 }
 
 sub clear_files() {
@@ -668,7 +653,7 @@ mkpfi - Using GetOpt::Long, Pod::Usage, Config::IniFiles
 
 =head1 SYNOPSIS
 
-mkpfi  [OPTIONS ...]
+mkpfi [OPTIONS ...]
 
 
 	OPTION
@@ -702,7 +687,7 @@ Print manual page, same as 'perldoc mkpfi'.
 
 =item B<--verbose>
 
-Be verbose!
+Be verbose.
 
 =back
 
