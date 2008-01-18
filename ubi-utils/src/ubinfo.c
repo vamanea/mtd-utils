@@ -42,7 +42,7 @@ struct args {
 	const char *node;
 };
 
-static struct args myargs = {
+static struct args args = {
 	.vol_id = -1,
 	.devn = -1,
 	.all = 0,
@@ -94,20 +94,20 @@ static int parse_opt(int argc, char * const argv[])
 
 		switch (key) {
 		case 'a':
-			myargs.all = 1;
+			args.all = 1;
 			break;
 
 		case 'n':
-			myargs.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.vol_id < 0) {
+			args.vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'd':
-			myargs.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.devn < 0) {
+			args.devn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.devn < 0) {
 				errmsg("bad UBI device number: \"%s\"", optarg);
 				return -1;
 			}
@@ -118,11 +118,11 @@ static int parse_opt(int argc, char * const argv[])
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case ':':
 			errmsg("parameter is missing");
@@ -130,12 +130,12 @@ static int parse_opt(int argc, char * const argv[])
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
-			exit(-1);
+			return -1;
 		}
 	}
 
 	if (optind == argc - 1) {
-		myargs.node = argv[optind];
+		args.node = argv[optind];
 	} else if (optind < argc) {
 		errmsg("more then one UBI devices specified (use -h for help)");
 		return -1;
@@ -170,7 +170,7 @@ static int translate_dev(libubi_t libubi, const char *node)
 			return -1;
 		}
 
-		myargs.devn = dev_info.dev_num;
+		args.devn = dev_info.dev_num;
 	} else {
 		struct ubi_vol_info vol_info;
 
@@ -182,15 +182,15 @@ static int translate_dev(libubi_t libubi, const char *node)
 			return -1;
 		}
 
-		if (myargs.vol_id != -1) {
+		if (args.vol_id != -1) {
 			errmsg("both volume character device node (\"%s\") and "
 			       "volume ID (%d) are specify, use only one of them"
-			       "(use -h for help)", node, myargs.vol_id);
+			       "(use -h for help)", node, args.vol_id);
 			return -1;
 		}
 
-		myargs.devn = vol_info.dev_num;
-		myargs.vol_id = vol_info.vol_id;
+		args.devn = vol_info.dev_num;
+		args.vol_id = vol_info.vol_id;
 	}
 
 	return 0;
@@ -402,7 +402,7 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	if (!myargs.node && myargs.devn != -1) {
+	if (!args.node && args.devn != -1) {
 		errmsg("specify either device number or node file (use -h for help)");
 		return -1;
 	}
@@ -414,31 +414,31 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	if (myargs.node) {
+	if (args.node) {
 		/*
 		 * A character device was specified, translate this into UBI
 		 * device number and volume ID.
 		 */
-		err = translate_dev(libubi, myargs.node);
+		err = translate_dev(libubi, args.node);
 		if (err)
 			goto out_libubi;
 	}
 
-	if (myargs.vol_id != -1 && myargs.devn == -1) {
+	if (args.vol_id != -1 && args.devn == -1) {
 		errmsg("volume ID is specified, but UBI device number is not "
 		       "(use -h for help)\n");
 		goto out_libubi;
 	}
 
-	if (myargs.devn != -1 && myargs.vol_id != -1) {
-		print_vol_info(libubi, myargs.devn, myargs.vol_id);
+	if (args.devn != -1 && args.vol_id != -1) {
+		print_vol_info(libubi, args.devn, args.vol_id);
 		goto out;
 	}
 
-	if (myargs.devn == -1 && myargs.vol_id == -1)
-		err = print_general_info(libubi, myargs.all);
-	else if (myargs.devn != -1 && myargs.vol_id == -1)
-		err = print_dev_info(libubi, myargs.devn, myargs.all);
+	if (args.devn == -1 && args.vol_id == -1)
+		err = print_general_info(libubi, args.all);
+	else if (args.devn != -1 && args.vol_id == -1)
+		err = print_dev_info(libubi, args.devn, args.all);
 
 	if (err)
 		goto out_libubi;

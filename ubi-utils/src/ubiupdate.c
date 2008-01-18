@@ -47,7 +47,7 @@ struct args {
 	const char *img;
 };
 
-static struct args myargs = {
+static struct args args = {
 	.truncate = 0,
 	.node = NULL,
 	.img = NULL,
@@ -86,18 +86,18 @@ static int parse_opt(int argc, char * const argv[])
 
 		switch (key) {
 		case 't':
-			myargs.truncate = 1;
+			args.truncate = 1;
 			break;
 
 		case 'h':
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case ':':
 			errmsg("parameter is missing");
@@ -105,7 +105,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
-			exit(-1);
+			return -1;
 		}
 	}
 
@@ -118,8 +118,8 @@ static int parse_opt(int argc, char * const argv[])
 		return -1;
 	}
 
-	myargs.node = argv[optind];
-	myargs.img  = argv[optind + 1];
+	args.node = argv[optind];
+	args.img  = argv[optind + 1];
 
 	return 0;
 }
@@ -128,16 +128,16 @@ static int truncate_volume(libubi_t libubi)
 {
 	int err, fd;
 
-	fd = open(myargs.node, O_RDWR);
+	fd = open(args.node, O_RDWR);
 	if (fd == -1) {
-		errmsg("cannot open \"%s\"", myargs.node);
+		errmsg("cannot open \"%s\"", args.node);
 		perror("open");
 		return -1;
 	}
 
 	err = ubi_update_start(libubi, fd, 0);
 	if (err) {
-		errmsg("cannot truncate volume \"%s\"", myargs.node);
+		errmsg("cannot truncate volume \"%s\"", args.node);
 		perror("ubi_update_start");
 		close(fd);
 		return -1;
@@ -159,14 +159,14 @@ static int ubi_write(int fd, const void *buf, int len)
 				continue;
 			}
 			errmsg("cannot write %d bytes to volume \"%s\"",
-			       len, myargs.node);
+			       len, args.node);
 			perror("write");
 			return -1;
 		}
 
 		if (ret == 0) {
 			errmsg("cannot write %d bytes to volume \"%s\"",
-			       len, myargs.node);
+			       len, args.node);
 			return -1;
 		}
 
@@ -190,36 +190,36 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 		return -1;
 	}
 
-	err = stat(myargs.img, &st);
+	err = stat(args.img, &st);
 	if (err < 0) {
-		errmsg("stat failed on \"%s\"", myargs.node);
+		errmsg("stat failed on \"%s\"", args.node);
 		goto out_free;
 	}
 
 	bytes = st.st_size;
 	if (bytes > vol_info->rsvd_bytes) {
 		errmsg("\"%s\" (size %lld) will not fit volume \"%s\" (size %lld)",
-		       myargs.img, bytes, myargs.node, vol_info->rsvd_bytes);
+		       args.img, bytes, args.node, vol_info->rsvd_bytes);
 		goto out_free;
 	}
 
-	fd = open(myargs.node, O_RDWR);
+	fd = open(args.node, O_RDWR);
 	if (fd == -1) {
-		errmsg("cannot open UBI volume \"%s\"", myargs.node);
+		errmsg("cannot open UBI volume \"%s\"", args.node);
 		perror("open");
 		goto out_free;
 	}
 
-	ifd = open(myargs.img, O_RDONLY);
+	ifd = open(args.img, O_RDONLY);
 	if (ifd == -1) {
-		errmsg("cannot open \"%s\"", myargs.img);
+		errmsg("cannot open \"%s\"", args.img);
 		perror("open");
 		goto out_close1;
 	}
 
 	err = ubi_update_start(libubi, fd, bytes);
 	if (err) {
-		errmsg("cannot start volume \"%s\" update", myargs.node);
+		errmsg("cannot start volume \"%s\" update", args.node);
 		perror("ubi_update_start");
 		goto out_close;
 	}
@@ -237,7 +237,7 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 				continue;
 			} else {
 				errmsg("cannot read %d bytes from \"%s\"",
-				       tocopy, myargs.img);
+				       tocopy, args.img);
 				perror("read");
 				goto out_close;
 			}
@@ -273,7 +273,7 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	if (!myargs.img && !myargs.truncate) {
+	if (!args.img && !args.truncate) {
 		errmsg("incorrect arguments, use -h for help");
 		return -1;
 	}
@@ -284,25 +284,25 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
-	err = ubi_node_type(libubi, myargs.node);
+	err = ubi_node_type(libubi, args.node);
 	if (err == 1) {
 		errmsg("\"%s\" is an UBI device node, not an UBI volume node",
-		       myargs.node);
+		       args.node);
 		goto out_libubi;
 	} else if (err < 0) {
-		errmsg("\"%s\" is not an UBI volume node", myargs.node);
+		errmsg("\"%s\" is not an UBI volume node", args.node);
 		goto out_libubi;
 	}
 
-	err = ubi_get_vol_info(libubi, myargs.node, &vol_info);
+	err = ubi_get_vol_info(libubi, args.node, &vol_info);
 	if (err) {
 		errmsg("cannot get information about UBI volume \"%s\"",
-		       myargs.node);
+		       args.node);
 		perror("ubi_get_dev_info");
 		goto out_libubi;
 	}
 
-	if (myargs.truncate)
+	if (args.truncate)
 		err = truncate_volume(libubi);
 	else
 		err = update_volume(libubi, &vol_info);

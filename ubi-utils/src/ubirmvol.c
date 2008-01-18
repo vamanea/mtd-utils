@@ -42,7 +42,7 @@ struct args {
 	const char *node;
 };
 
-static struct args myargs = {
+static struct args args = {
 	.vol_id = -1,
 	.node = NULL,
 };
@@ -69,7 +69,7 @@ static const struct option long_options[] = {
 
 static int param_sanity_check(void)
 {
-	if (myargs.vol_id == -1) {
+	if (args.vol_id == -1) {
 		errmsg("volume ID is was not specified");
 		return -1;
 	}
@@ -90,8 +90,8 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 
 		case 'n':
-			myargs.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.vol_id < 0) {
+			args.vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
@@ -101,11 +101,11 @@ static int parse_opt(int argc, char * const argv[])
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case ':':
 			errmsg("parameter is missing");
@@ -113,7 +113,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
-			exit(-1);
+			return -1;
 		}
 	}
 
@@ -125,7 +125,7 @@ static int parse_opt(int argc, char * const argv[])
 		return -1;
 	}
 
-	myargs.node = argv[optind];
+	args.node = argv[optind];
 
 	if (param_sanity_check())
 		return -1;
@@ -149,17 +149,17 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	err = ubi_node_type(libubi, myargs.node);
+	err = ubi_node_type(libubi, args.node);
 	if (err == 2) {
 		errmsg("\"%s\" is an UBI volume node, not an UBI device node",
-		       myargs.node);
+		       args.node);
 		goto out_libubi;
 	} else if (err < 0) {
-		errmsg("\"%s\" is not an UBI device node", myargs.node);
+		errmsg("\"%s\" is not an UBI device node", args.node);
 		goto out_libubi;
 	}
 
-	err = ubi_rmvol(libubi, myargs.node, myargs.vol_id);
+	err = ubi_rmvol(libubi, args.node, args.vol_id);
 	if (err) {
 		errmsg("cannot UBI remove volume");
 		perror("ubi_rmvol");

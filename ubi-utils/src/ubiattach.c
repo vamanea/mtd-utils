@@ -42,7 +42,7 @@ struct args {
 	const char *node;
 };
 
-static struct args myargs = {
+static struct args args = {
 	.devn = UBI_DEV_NUM_AUTO,
 	.mtdn = -1,
 	.vidoffs = 0,
@@ -57,7 +57,7 @@ static const char *optionsstr =
 "                                (the number is assigned automatically if this is not\n"
 "                                specified\n"
 "-m, --mtdn=<MTD device number>  MTD device number to attach\n"
-"-o, --vid-hdr-offset            VID header offset (do not specify this unless you\n"
+"-O, --vid-hdr-offset            VID header offset (do not specify this unless you\n"
 "                                really know what you do and the optimal defaults will\n"
 "                                be used)\n"
 "-h, --help                      print help message\n"
@@ -73,7 +73,7 @@ static const char *usage =
 static const struct option long_options[] = {
 	{ .name = "devn",           .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ .name = "mtdn",           .has_arg = 1, .flag = NULL, .val = 'm' },
-	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'o' },
+	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "help",           .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",        .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0},
@@ -85,14 +85,14 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "m:d:ohV", long_options, NULL);
+		key = getopt_long(argc, argv, "m:d:OhV", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
 		case 'd':
-			myargs.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.devn < 0) {
+			args.devn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.devn < 0) {
 				errmsg("bad UBI device number: \"%s\"", optarg);
 				return -1;
 			}
@@ -100,8 +100,8 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'm':
-			myargs.mtdn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.mtdn < 0) {
+			args.mtdn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.mtdn < 0) {
 				errmsg("bad MTD device number: \"%s\"", optarg);
 				return -1;
 			}
@@ -109,8 +109,8 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'o':
-			myargs.vidoffs = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.vidoffs <= 0) {
+			args.vidoffs = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.vidoffs <= 0) {
 				errmsg("bad VID header offset: \"%s\"", optarg);
 				return -1;
 			}
@@ -121,11 +121,11 @@ static int parse_opt(int argc, char * const argv[])
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case ':':
 			errmsg("parameter is missing");
@@ -133,7 +133,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
-			exit(-1);
+			return -1;
 		}
 	}
 
@@ -145,12 +145,12 @@ static int parse_opt(int argc, char * const argv[])
 		return -1;
 	}
 
-	if (myargs.mtdn == -1) {
+	if (args.mtdn == -1) {
 		errmsg("MTD device number was not specified (use -h for help)");
 		return -1;
 	}
 
-	myargs.node = argv[optind];
+	args.node = argv[optind];
 	return 0;
 }
 
@@ -188,13 +188,13 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
-	req.dev_num = myargs.devn;
-	req.mtd_num = myargs.mtdn;
-	req.vid_hdr_offset = myargs.vidoffs;
+	req.dev_num = args.devn;
+	req.mtd_num = args.mtdn;
+	req.vid_hdr_offset = args.vidoffs;
 
-	err = ubi_attach_mtd(libubi, myargs.node, &req);
+	err = ubi_attach_mtd(libubi, args.node, &req);
 	if (err) {
-		errmsg("cannot attach mtd%d", myargs.mtdn);
+		errmsg("cannot attach mtd%d", args.mtdn);
 		perror("ubi_attach_mtd");
 		goto out_libubi;
 	}

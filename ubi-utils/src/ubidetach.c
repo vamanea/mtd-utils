@@ -41,7 +41,7 @@ struct args {
 	const char *node;
 };
 
-static struct args myargs = {
+static struct args args = {
 	.devn = UBI_DEV_NUM_AUTO,
 	.mtdn = -1,
 	.node = NULL,
@@ -83,8 +83,8 @@ static int parse_opt(int argc, char * const argv[])
 
 		switch (key) {
 		case 'd':
-			myargs.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.devn < 0) {
+			args.devn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.devn < 0) {
 				errmsg("bad UBI device number: \"%s\"", optarg);
 				return -1;
 			}
@@ -92,8 +92,8 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'm':
-			myargs.mtdn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.mtdn < 0) {
+			args.mtdn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.mtdn < 0) {
 				errmsg("bad MTD device number: \"%s\"", optarg);
 				return -1;
 			}
@@ -104,11 +104,11 @@ static int parse_opt(int argc, char * const argv[])
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case ':':
 			errmsg("parameter is missing");
@@ -116,7 +116,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
-			exit(-1);
+			return -1;
 		}
 	}
 
@@ -128,17 +128,17 @@ static int parse_opt(int argc, char * const argv[])
 		return -1;
 	}
 
-	if (myargs.mtdn == -1 && myargs.devn == -1) {
+	if (args.mtdn == -1 && args.devn == -1) {
 		errmsg("neither MTD nor UBI devices were specified (use -h for help)");
 		return -1;
 	}
 
-	if (myargs.mtdn != -1 && myargs.devn != -1) {
+	if (args.mtdn != -1 && args.devn != -1) {
 		errmsg("specify either MTD or UBI device (use -h for help)");
 		return -1;
 	}
 
-	myargs.node = argv[optind];
+	args.node = argv[optind];
 	return 0;
 }
 
@@ -174,17 +174,17 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
-	if (myargs.devn != -1) {
-		err = ubi_remove_dev(libubi, myargs.node, myargs.devn);
+	if (args.devn != -1) {
+		err = ubi_remove_dev(libubi, args.node, args.devn);
 		if (err) {
-			errmsg("cannot remove ubi%d", myargs.devn);
+			errmsg("cannot remove ubi%d", args.devn);
 			perror("ubi_remove_dev");
 			goto out_libubi;
 		}
 	} else {
-		err = ubi_detach_mtd(libubi, myargs.node, myargs.mtdn);
+		err = ubi_detach_mtd(libubi, args.node, args.mtdn);
 		if (err) {
-			errmsg("cannot detach mtd%d", myargs.mtdn);
+			errmsg("cannot detach mtd%d", args.mtdn);
 			perror("ubi_detach_mtd");
 			goto out_libubi;
 		}

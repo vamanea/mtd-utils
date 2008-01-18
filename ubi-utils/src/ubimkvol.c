@@ -49,7 +49,7 @@ struct args {
 	int maxavs;
 };
 
-static struct args myargs = {
+static struct args args = {
 	.vol_type = UBI_DYNAMIC_VOLUME,
 	.bytes = -1,
 	.lebs = -1,
@@ -104,24 +104,24 @@ static int param_sanity_check(void)
 {
 	int len;
 
-	if (myargs.bytes == -1 && !myargs.maxavs && myargs.lebs == -1) {
+	if (args.bytes == -1 && !args.maxavs && args.lebs == -1) {
 		errmsg("volume size was not specified (use -h for help)");
 		return -1;
 	}
 
-	if ((myargs.bytes != -1 && (myargs.maxavs || myargs.lebs != -1))  ||
-	    (myargs.lebs != -1  && (myargs.maxavs || myargs.bytes != -1)) ||
-	    (myargs.maxavs && (myargs.bytes != -1 || myargs.lebs != -1))) {
+	if ((args.bytes != -1 && (args.maxavs || args.lebs != -1))  ||
+	    (args.lebs != -1  && (args.maxavs || args.bytes != -1)) ||
+	    (args.maxavs && (args.bytes != -1 || args.lebs != -1))) {
 		errmsg("size specified with more then one option");
 		return -1;
 	}
 
-	if (myargs.name == NULL) {
+	if (args.name == NULL) {
 		errmsg("volume name was not specified (use -h for help)");
 		return -1;
 	}
 
-	len = strlen(myargs.name);
+	len = strlen(args.name);
 	if (len > UBI_MAX_VOLUME_NAME) {
 		errmsg("too long name (%d symbols), max is %d",
 			len, UBI_MAX_VOLUME_NAME);
@@ -144,9 +144,9 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 		case 't':
 			if (!strcmp(optarg, "dynamic"))
-				myargs.vol_type = UBI_DYNAMIC_VOLUME;
+				args.vol_type = UBI_DYNAMIC_VOLUME;
 			else if (!strcmp(optarg, "static"))
-				myargs.vol_type = UBI_STATIC_VOLUME;
+				args.vol_type = UBI_STATIC_VOLUME;
 			else {
 				errmsg("bad volume type: \"%s\"", optarg);
 				return -1;
@@ -154,8 +154,8 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 's':
-			myargs.bytes = strtoull(optarg, &endp, 0);
-			if (endp == optarg || myargs.bytes <= 0) {
+			args.bytes = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args.bytes <= 0) {
 				errmsg("bad volume size: \"%s\"", optarg);
 				return -1;
 			}
@@ -167,51 +167,51 @@ static int parse_opt(int argc, char * const argv[])
 					       "should be 'KiB', 'MiB' or 'GiB'", endp);
 					return -1;
 				}
-				myargs.bytes *= mult;
+				args.bytes *= mult;
 			}
 			break;
 
 		case 'S':
-			myargs.lebs = strtoull(optarg, &endp, 0);
-			if (endp == optarg || myargs.lebs <= 0 || *endp != '\0') {
+			args.lebs = strtoull(optarg, &endp, 0);
+			if (endp == optarg || args.lebs <= 0 || *endp != '\0') {
 				errmsg("bad volume size: \"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'a':
-			myargs.alignment = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.alignment <= 0) {
+			args.alignment = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.alignment <= 0) {
 				errmsg("bad volume alignment: \"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'n':
-			myargs.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || myargs.vol_id < 0) {
+			args.vol_id = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
 			break;
 
 		case 'N':
-			myargs.name = optarg;
-			myargs.nlen = strlen(myargs.name);
+			args.name = optarg;
+			args.nlen = strlen(args.name);
 			break;
 
 		case 'h':
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(0);
+			exit(EXIT_SUCCESS);
 
 		case 'm':
-			myargs.maxavs = 1;
+			args.maxavs = 1;
 			break;
 
 		case ':':
@@ -220,7 +220,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
-			exit(-1);
+			return -1;
 		}
 	}
 
@@ -232,7 +232,7 @@ static int parse_opt(int argc, char * const argv[])
 		return -1;
 	}
 
-	myargs.node = argv[optind];
+	args.node = argv[optind];
 
 	if (param_sanity_check())
 		return -1;
@@ -259,52 +259,52 @@ int main(int argc, char * const argv[])
 		return -1;
 	}
 
-	err = ubi_node_type(libubi, myargs.node);
+	err = ubi_node_type(libubi, args.node);
 	if (err == 2) {
 		errmsg("\"%s\" is an UBI volume node, not an UBI device node",
-		       myargs.node);
+		       args.node);
 		goto out_libubi;
 	} else if (err < 0) {
-		errmsg("\"%s\" is not an UBI device node", myargs.node);
+		errmsg("\"%s\" is not an UBI device node", args.node);
 		goto out_libubi;
 	}
 
-	err = ubi_get_dev_info(libubi, myargs.node, &dev_info);
+	err = ubi_get_dev_info(libubi, args.node, &dev_info);
 	if (err) {
 		errmsg("cannot get information about UBI device \"%s\"",
-		       myargs.node);
+		       args.node);
 		perror("ubi_get_dev_info");
 		goto out_libubi;
 	}
 
-	if (myargs.maxavs) {
-		myargs.bytes = dev_info.avail_bytes;
+	if (args.maxavs) {
+		args.bytes = dev_info.avail_bytes;
 		printf("Set volume size to %lld\n", req.bytes);
 	}
 
-	if (myargs.lebs != -1) {
-		myargs.bytes = dev_info.leb_size;
-		myargs.bytes -= dev_info.leb_size % myargs.alignment;
-		myargs.bytes *= myargs.lebs;
+	if (args.lebs != -1) {
+		args.bytes = dev_info.leb_size;
+		args.bytes -= dev_info.leb_size % args.alignment;
+		args.bytes *= args.lebs;
 	}
 
-	req.vol_id = myargs.vol_id;
-	req.alignment = myargs.alignment;
-	req.bytes = myargs.bytes;
-	req.vol_type = myargs.vol_type;
-	req.name = myargs.name;
+	req.vol_id = args.vol_id;
+	req.alignment = args.alignment;
+	req.bytes = args.bytes;
+	req.vol_type = args.vol_type;
+	req.name = args.name;
 
-	err = ubi_mkvol(libubi, myargs.node, &req);
+	err = ubi_mkvol(libubi, args.node, &req);
 	if (err < 0) {
 		errmsg("cannot UBI create volume");
 		perror("ubi_mkvol");
 		goto out_libubi;
 	}
 
-	myargs.vol_id = req.vol_id;
+	args.vol_id = req.vol_id;
 
 	/* Print information about the created device */
-	err = ubi_get_vol_info1(libubi, dev_info.dev_num, myargs.vol_id, &vol_info);
+	err = ubi_get_vol_info1(libubi, dev_info.dev_num, args.vol_id, &vol_info);
 	if (err) {
 		errmsg("cannot get information about newly created UBI volume");
 		perror("ubi_get_vol_info1");
