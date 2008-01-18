@@ -1,8 +1,0 @@
-TODO
-====
-
- * The tests from the scripts/ directory should live in
-   mtd-utils/tests/ubi-tests/ and it would be nice to have a short
-   description of the tests
- * May we please split UBI-related stuff and pure NAND-related stuff and
-   not to keep this all in one.

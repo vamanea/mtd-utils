@@ -15,7 +15,7 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 
 PERLPROGS = mkpfi ubicrc32.pl
 TARGETS = ubiupdate ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
-	bin2nand nand2bin mkbootenv unubi pfi2bin ubicrc32 ubinfo \
+	mkbootenv unubi pfi2bin ubicrc32 ubinfo \
 	ubiattach ubidetach
 
 vpath   %.c ./src
@@ -55,6 +55,9 @@ ubimkvol: ubimkvol.o common.o libubi.o
 ubirmvol: ubirmvol.o common.o libubi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
+ubicrc32: ubicrc32.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
 		libubi.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
@@ -67,12 +70,6 @@ ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
 		libubi.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-nand2bin: nand2bin.o nandecc.o nandcorr.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-bin2nand: bin2nand.o error.o nandecc.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
 mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
@@ -81,9 +78,6 @@ unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
 
 pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
 		hashmap.o reader.o pfi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubicrc32: ubicrc32.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 install: ${TARGETS}
