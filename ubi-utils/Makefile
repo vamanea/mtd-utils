@@ -15,7 +15,7 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 
 PERLPROGS = mkpfi ubicrc32.pl
 TARGETS = ubiupdate ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
-	mkbootenv unubi pfi2bin ubicrc32 ubinfo \
+	unubi pfi2bin ubicrc32 ubinfo \
 	ubiattach ubidetach
 
 vpath   %.c ./src
@@ -68,9 +68,6 @@ pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
 
 ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
 		libubi.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
