@@ -37,15 +37,14 @@
 
 #include <ubigen.h>
 #include <mtd/ubi-header.h>
-
-#include "config.h"
+#include "common.h"
 #include "list.h"
-#include "error.h"
 #include "reader.h"
 #include "peb.h"
 #include "crc32.h"
 
-#define PROGRAM_VERSION "1.4"
+#define PROGRAM_VERSION "1.5"
+#define PROGRAM_NAME    "pfi2bin"
 
 #define MAX_FNAME 255
 #define DEFAULT_ERASE_COUNT  0 /* Hmmm.... Perhaps */
@@ -155,8 +154,6 @@ parse_opt(int argc, char **argv, myargs *args)
 				printf("pfi2bin [OPTION...] pfifile\n");
 				printf("%s", doc);
 				printf("%s", optionsstr);
-				printf("\nReport bugs to %s\n",
-				       PACKAGE_BUGREPORT);
 				exit(0);
 				break;
 
@@ -449,15 +446,15 @@ write_remaining_raw_ebs(pdd_data_t pdd, list_t raw_blocks, size_t *ebs_written,
 		}
 
 		if (peb->num < *ebs_written) {
-			err_msg("eb_num: %d\n", peb->num);
-			err_msg("Bug: This should never happen. %d %s",
+			errmsg("eb_num: %d\n", peb->num);
+			errmsg("Bug: This should never happen. %d %s",
 				__LINE__, __FILE__);
 			goto err;
 		}
 
 		delta = peb->num - *ebs_written;
 		if (((delta + *ebs_written) * pdd->eb_size) > pdd->flash_size) {
-			err_msg("RAW block outside of flash_size.");
+			errmsg("RAW block outside of flash_size.");
 			goto err;
 		}
 		for (j = 0; j < delta; j++) {
@@ -518,23 +515,21 @@ create_raw(io_t io)
 
 	rc = init_vol_tab (&vol_tab, &vol_tab_size);
 	if (rc != 0) {
-		err_msg("Cannot initialize volume table.");
+		errmsg("cannot initialize volume table");
 		goto err;
 	}
 
 	rc = read_pdd_data(io->fp_pdd, &pdd,
 			err_buf, ERR_BUF_SIZE);
 	if (rc != 0) {
-		err_msg("Cannot read necessary pdd_data: %s rc: %d",
-				err_buf, rc);
+		errmsg("cannot read necessary pdd_data: %s rc: %d", err_buf, rc);
 		goto err;
 	}
 
 	rc = read_pfi_headers(&pfi_raws, &pfi_ubis, io->fp_pfi,
 			err_buf, ERR_BUF_SIZE);
 	if (rc != 0) {
-		err_msg("Cannot read pfi header: %s rc: %d",
-				err_buf, rc);
+		errmsg("cannot read pfi header: %s rc: %d", err_buf, rc);
 		goto err;
 	}
 
@@ -543,8 +538,7 @@ create_raw(io_t io)
 		rc = memorize_raw_eb(pfi_raw, pdd, &raw_pebs,
 			io);
 		if (rc != 0) {
-			err_msg("Cannot create raw_block in mem. rc: %d\n",
-				rc);
+			errmsg("cannot create raw_block in mem. rc: %d\n", rc);
 			goto err;
 		}
 	}
@@ -554,7 +548,7 @@ create_raw(io_t io)
 		rc = convert_ubi_volume(pfi_ubi, pdd, raw_pebs,
 					vol_tab, &ebs_written, io);
 		if (rc != 0) {
-			err_msg("Cannot convert UBI volume. rc: %d\n", rc);
+			errmsg("cannot convert UBI volume. rc: %d\n", rc);
 			goto err;
 		}
 	}
@@ -562,7 +556,7 @@ create_raw(io_t io)
 	rc = write_ubi_volume_table(pdd, raw_pebs, vol_tab, vol_tab_size,
 			&ebs_written, io);
 	if (rc != 0) {
-		err_msg("Cannot write UBI volume table. rc: %d\n", rc);
+		errmsg("cannot write UBI volume table. rc: %d\n", rc);
 		goto err;
 	}
 
@@ -571,7 +565,7 @@ create_raw(io_t io)
 		goto err;
 
 	if (io->fp_out != stdout)
-		info_msg("Physical eraseblocks written: %8d\n", ebs_written);
+		printf("Physical eraseblocks written: %8d\n", ebs_written);
 err:
 	free(vol_tab);
 	pfi_raws = remove_all((free_func_t)&free_pfi_raw, pfi_raws);
@@ -589,13 +583,13 @@ open_io_handle(myargs *args, io_t io)
 	/* set PDD input */
 	io->fp_pdd = fopen(args->f_in_pdd, "r");
 	if (io->fp_pdd == NULL) {
-		err_sys("Cannot open: %s", args->f_in_pdd);
+		errmsg("cannot open: %s", args->f_in_pdd);
 	}
 
 	/* set PFI input */
 	io->fp_pfi = fopen(args->f_in_pfi, "r");
 	if (io->fp_pfi == NULL) {
-		err_sys("Cannot open PFI input file: %s", args->f_in_pfi);
+		errmsg("cannot open PFI input file: %s", args->f_in_pfi);
 	}
 
 	/* set output prefix */
@@ -604,7 +598,7 @@ open_io_handle(myargs *args, io_t io)
 	else {
 		io->fp_out = fopen(args->f_out, "wb");
 		if (io->fp_out == NULL) {
-			err_sys("Cannot open output file: %s", args->f_out);
+			errmsg("cannot open output file: %s", args->f_out);
 		}
 	}
 }
@@ -613,14 +607,14 @@ static void
 close_io_handle(io_t io)
 {
 	if (fclose(io->fp_pdd) != 0) {
-		err_sys("Cannot close PDD file.");
+		errmsg("cannot close PDD file");
 	}
 	if (fclose(io->fp_pfi) != 0) {
-		err_sys("Cannot close PFI file.");
+		errmsg("cannot close PFI file");
 	}
 	if (io->fp_out != stdout) {
 		if (fclose(io->fp_out) != 0) {
-			err_sys("Cannot close output file.");
+			errmsg("cannot close output file");
 		}
 	}
 
@@ -629,8 +623,7 @@ close_io_handle(io_t io)
 	io->fp_out = NULL;
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int rc = 0;
 
@@ -655,19 +648,21 @@ main(int argc, char *argv[])
 	parse_opt(argc, argv, &args);
 
 	if (strcmp(args.f_in_pfi, "") == 0) {
-		err_quit("No PFI input file specified!");
+		errmsg("no PFI input file specified");
+		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(args.f_in_pdd, "") == 0) {
-		err_quit("No PDD input file specified!");
+		errmsg("no PDD input file specified");
+		exit(EXIT_FAILURE);
 	}
 
 	open_io_handle(&args, &io);
 
-	info_msg("[ Creating RAW...");
+	printf("Creating RAW...");
 	rc = create_raw(&io);
 	if (rc != 0) {
-		err_msg("Creating RAW failed.");
+		errmsg("creating RAW failed");
 		goto err;
 	}
 

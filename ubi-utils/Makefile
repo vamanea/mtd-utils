@@ -14,8 +14,8 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 	-Wwrite-strings -W -std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi
-TARGETS = ubiupdate ubimkvol ubirmvol ubimirror unubi pfi2bin ubicrc32 ubinfo \
-	  ubiattach ubidetach
+TARGETS = ubiupdate ubimkvol ubirmvol ubicrc32 ubinfo ubiattach ubidetach \
+	  unubi pfi2bin
 
 vpath   %.c ./src
 
@@ -57,14 +57,10 @@ ubirmvol: ubirmvol.o common.o libubi.o
 ubicrc32: ubicrc32.o crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
 unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
+pfi2bin: pfi2bin.o common.o peb.o list.o crc32.o libubigen.o bootenv.o \
 		hashmap.o reader.o pfi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 

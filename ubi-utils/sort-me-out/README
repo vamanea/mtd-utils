@@ -58,3 +58,8 @@ This directory contains various stuff that has to be cleaned up and sorted out.
   better.
 
 * pddcustomize: not sure what is this for, seems to be IBM-specific.
+
+* ubimirror: not exactly sure what is this for - if it is neede, it should be
+  cleaned-up and moved to src/
+
+* error.[ch]: strange and rather IBM-specific error messages output infrastructure.
