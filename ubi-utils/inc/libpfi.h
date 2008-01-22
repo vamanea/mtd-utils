@@ -35,10 +35,29 @@
  */
 
 #include <stdio.h>		/* FILE */
+#include "list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct pfi_ubi {
+	long long data_offs;
+	uint32_t data_size;
+	uint32_t alignment;
+	uint32_t *ids;
+	uint32_t ids_size;
+	char **names;
+	uint32_t names_size;
+	uint32_t size;
+	int vol_type;
+	int curr_seqnum; /* specifies the seqnum taken in an update,
+			    default: 0 (used by pfiflash, ubimirror) */
+	uint32_t crc;
+};
+
+int read_pfi_headers(struct list_entry **ubi_list, FILE *fp_pfi);
+int free_pfi_ubi(struct pfi_ubi **pfi_ubi);
 
 /* Definitions. */
 
@@ -73,13 +92,7 @@ extern "C" {
  */
 #define PFI_FLAG_PROTECTED   0x00000001
 
-
-/**
- * @brief Handle to pfi header. Used in most of the functions associated
- * with pfi file handling.
- */
-typedef struct pfi_header *pfi_header;
-
+struct pfi_header;
 
 /**
  * @brief Initialize a pfi header object.
@@ -89,7 +102,7 @@ typedef struct pfi_header *pfi_header;
  * @return	 0 on success, otherwise:
  *		 PFI_ENOMEM : no memory available for the handle.
  */
-int pfi_header_init (pfi_header *head);
+int pfi_header_init (struct pfi_header **head);
 
 
 /**
@@ -98,7 +111,7 @@ int pfi_header_init (pfi_header *head);
  * @param head	 handle. head is invalid after calling this function.
  * @return	 0 always.
  */
-int pfi_header_destroy (pfi_header *head);
+int pfi_header_destroy (struct pfi_header **head);
 
 
 /**
@@ -115,7 +128,7 @@ int pfi_header_destroy (pfi_header *head);
  *				 new value is not convertable e.g. not in
  *				 0xXXXXXXXX format.
  */
-int pfi_header_setvalue (pfi_header head,
+int pfi_header_setvalue (struct pfi_header *head,
 			  const char *key, const char *value);
 
 
@@ -131,7 +144,7 @@ int pfi_header_setvalue (pfi_header head,
  *		 PFI_EBADTYPE : value is not a string. This happens
  *				 when the key stores a string.
  */
-int pfi_header_setnumber (pfi_header head,
+int pfi_header_setnumber (struct pfi_header *head,
 			   const char *key, uint32_t value);
 
 
@@ -146,12 +159,12 @@ int pfi_header_setnumber (pfi_header head,
  *		 PFI_EUNDEF   : key was not found.
  *		 PFI_EBADTYPE : stored value is not an integer but a string.
  */
-int pfi_header_getnumber (pfi_header head,
+int pfi_header_getnumber (struct pfi_header *head,
 			   const char *key, uint32_t *value);
 
 
 static inline uint32_t
-pfi_getnumber(pfi_header head, const char *key)
+pfi_getnumber(struct pfi_header *head, const char *key)
 {
 	uint32_t value;
 	pfi_header_getnumber(head, key, &value);
@@ -169,7 +182,7 @@ pfi_getnumber(pfi_header head, const char *key)
  *		 PFI_EUNDEF   : key was not found.
  *		 PFI_EBADTYPE : stored value is not a string but an integer.
  */
-int pfi_header_getstring (pfi_header head,
+int pfi_header_getstring (struct pfi_header *head,
 			   const char *key, char *value, size_t size);
 
 
@@ -183,7 +196,7 @@ int pfi_header_getstring (pfi_header head,
  *		 PFI_ENOHEADER : wrong header version or magic number.
  *		 -E*		: see <asm/errno.h>.
  */
-int pfi_header_write (FILE *out, pfi_header head);
+int pfi_header_write (FILE *out, struct pfi_header *head);
 
 
 /**
@@ -203,7 +216,7 @@ int pfi_header_write (FILE *out, pfi_header head);
  * required in those cases. For optional fields the checking must still be
  * done.
  */
-int pfi_header_read (FILE *in, pfi_header head);
+int pfi_header_read (FILE *in, struct pfi_header *head);
 
 
 /**
@@ -216,7 +229,7 @@ int pfi_header_read (FILE *in, pfi_header head);
  * @note Prints out that it is not implemented and whom you should
  * contact if you need it urgently!.
  */
-int pfi_header_dump (FILE *out, pfi_header head);
+int pfi_header_dump (FILE *out, struct pfi_header *head);
 
 
 /*
@@ -232,7 +245,7 @@ int pfi_header_dump (FILE *out, pfi_header head);
  *		 PFI_EINVAL	  : func is not valid
  *		 0 ok.
  */
-typedef int (* pfi_read_func)(FILE *in, pfi_header hdr, void *priv_data);
+typedef int (* pfi_read_func)(FILE *in, struct pfi_header *hdr, void *priv_data);
 
 int pfi_read (FILE *in, pfi_read_func func, void *priv_data);
 

@@ -24,36 +24,30 @@
 
 #include "list.h"
 
-list_t
-mk_empty(void)
-{
-	return (list_t) NULL;
-}
-
 int
-is_empty(list_t l)
+is_empty(struct list_entry *l)
 {
 	return l == NULL;
 }
 
 info_t
-head(list_t l)
+head(struct list_entry *l)
 {
 	assert(!is_empty(l));
 	return l->info;
 }
 
-list_t
-tail(list_t l)
+struct list_entry *
+tail(struct list_entry *l)
 {
 	assert(!is_empty(l));
 	return l->next;
 }
 
-list_t
-remove_head(list_t l)
+struct list_entry *
+remove_head(struct list_entry *l)
 {
-	list_t res;
+	struct list_entry *res;
 	assert(!is_empty(l));
 
 	res = l->next;
@@ -61,10 +55,10 @@ remove_head(list_t l)
 	return res;
 }
 
-list_t
-cons(info_t e, list_t l)
+struct list_entry *
+cons(info_t e, struct list_entry *l)
 {
-	list_t res = malloc(sizeof(*l));
+	struct list_entry *res = malloc(sizeof(*l));
 	if (!res)
 		return NULL;
 	res->info = e;
@@ -73,14 +67,14 @@ cons(info_t e, list_t l)
 	return res;
 }
 
-list_t
-prepend_elem(info_t e, list_t l)
+struct list_entry *
+prepend_elem(info_t e, struct list_entry *l)
 {
 	return cons(e,l);
 }
 
-list_t
-append_elem(info_t e, list_t l)
+struct list_entry *
+append_elem(info_t e, struct list_entry *l)
 {
 	if (is_empty(l)) {
 		return cons(e,l);
@@ -90,8 +84,8 @@ append_elem(info_t e, list_t l)
 	return l;
 }
 
-list_t
-insert_sorted(cmp_func_t cmp, info_t e, list_t l)
+struct list_entry *
+insert_sorted(cmp_func_t cmp, info_t e, struct list_entry *l)
 {
 	if (is_empty(l))
 		return cons(e, l);
@@ -112,12 +106,12 @@ insert_sorted(cmp_func_t cmp, info_t e, list_t l)
 	return NULL;
 }
 
-list_t
-remove_all(free_func_t free_func, list_t l)
+struct list_entry *
+remove_all(free_func_t free_func, struct list_entry *l)
 {
 	if (is_empty(l))
 		return l;
-	list_t lnext = l->next;
+	struct list_entry *lnext = l->next;
 
 	if (free_func && l->info) {
 		free_func(&(l->info));
@@ -129,7 +123,7 @@ remove_all(free_func_t free_func, list_t l)
 
 
 info_t
-is_in(cmp_func_t cmp, info_t e, list_t l)
+is_in(cmp_func_t cmp, info_t e, struct list_entry *l)
 {
 	return
 	(is_empty(l))
@@ -139,11 +133,11 @@ is_in(cmp_func_t cmp, info_t e, list_t l)
 
 
 void
-apply(process_func_t process_func, list_t l)
+apply(process_func_t process_func, struct list_entry *l)
 {
-	list_t ptr;
+	struct list_entry *ptr;
 	void *i;
-	foreach(i, ptr, l) {
+	list_for_each(i, ptr, l) {
 		process_func(i);
 	}
 }

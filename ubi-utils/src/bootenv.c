@@ -282,7 +282,6 @@ bootenv_read_crc(FILE* fp, bootenv_t env, size_t size, uint32_t* ret_crc)
 	int rc;
 	char *buf = NULL;
 	size_t i = 0;
-	uint32_t crc32_table[256];
 
 	if ((fp == NULL) || (env == NULL))
 		return -EINVAL;
@@ -317,8 +316,7 @@ bootenv_read_crc(FILE* fp, bootenv_t env, size_t size, uint32_t* ret_crc)
 
 	/* calculate crc to return */
 	if (ret_crc != NULL) {
-		init_crc32_table(crc32_table);
-		*ret_crc = clc_crc32(crc32_table, UBI_CRC32_INIT, buf, size);
+		*ret_crc = crc32(UBI_CRC32_INIT, buf, size);
 	}
 
 	/* transfer to hashmap */
@@ -442,7 +440,6 @@ bootenv_write_crc(FILE* fp, bootenv_t env, uint32_t* ret_crc)
 	int rc = 0;
 	size_t size = 0;
 	char *buf = NULL;
-	uint32_t crc32_table[256];
 
 	if ((fp == NULL) || (env == NULL))
 		return -EINVAL;
@@ -458,8 +455,7 @@ bootenv_write_crc(FILE* fp, bootenv_t env, uint32_t* ret_crc)
 
 	/* calculate crc to return */
 	if (ret_crc != NULL) {
-		init_crc32_table(crc32_table);
-		*ret_crc = clc_crc32(crc32_table, UBI_CRC32_INIT, buf, size);
+		*ret_crc = crc32(UBI_CRC32_INIT, buf, size);
 	}
 
 	if (fwrite(buf, size, 1, fp) != 1) {

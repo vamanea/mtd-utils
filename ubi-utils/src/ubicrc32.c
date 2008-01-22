@@ -91,8 +91,7 @@ static int parse_opt(int argc, char * const argv[])
 int main(int argc, char * const argv[])
 {
 	int err = 0;
-	uint32_t crc32_table[256];
-	uint32_t crc32 = UBI_CRC32_INIT;
+	uint32_t crc = UBI_CRC32_INIT;
 	char buf[BUFSIZE];
 	FILE *fp;
 
@@ -110,8 +109,6 @@ int main(int argc, char * const argv[])
 	if (err)
 		return err;
 
-	init_crc32_table(crc32_table);
-
 	while (!feof(fp)) {
 		size_t read;
 
@@ -122,10 +119,10 @@ int main(int argc, char * const argv[])
 			err = -1;
 			goto out_close;
 		}
-		crc32 = clc_crc32(crc32_table, crc32, buf, read);
+		crc = crc32(crc, buf, read);
 	}
 
-	printf("0x%08x\n", crc32);
+	printf("0x%08x\n", crc);
 
 out_close:
 	if (fp != stdin)

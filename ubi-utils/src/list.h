@@ -1,5 +1,3 @@
-#ifndef __LIST_H__
-#define __LIST_H__
 /*
  * Copyright (c) International Business Machines Corp., 2006
  *
@@ -20,37 +18,44 @@
  * Author: Oliver Lohmann
  */
 
+#ifndef __UBIUTILS_LIST_H__
+#define __UBIUTILS_LIST_H__
+
 #include <stdint.h>
 
-#define foreach(elem, ptr, list)				\
-	for (elem = list != NULL ? (typeof(elem)) head(list)	\
-				 : NULL, ptr = list;		\
-		ptr != NULL;					\
-		ptr = tail(ptr),				\
-		elem = (typeof(elem)) ptr ? head(ptr) : NULL)
+#define list_for_each(elem, ptr, list)                           \
+	for ((elem) = (list) != NULL ? (typeof(elem)) head(list) \
+				 : NULL, (ptr) = (list);         \
+		ptr != NULL;                                     \
+		ptr = tail(ptr),                                 \
+		elem = (typeof(elem)) (ptr) ? head(ptr) : NULL)
 
-typedef struct node* list_t;
+static inline struct list_entry *list_empty(void)
+{
+	return NULL;
+}
+
 typedef void* info_t;
 typedef int  (*free_func_t)(info_t*);
 typedef int  (*cmp_func_t)(info_t, info_t);
 typedef void (*process_func_t)(info_t);
 
-struct node {
-	list_t next;
+struct list_entry {
+	struct list_entry *next;
 	info_t	info;
 };
 
-list_t mk_empty(void);
-int    is_empty(list_t l);
-info_t is_in(cmp_func_t cmp, info_t e, list_t l);
-info_t head(list_t l);
-list_t tail(list_t l);
-list_t remove_head(list_t l);
-list_t cons(info_t e, list_t l);
-list_t prepend_elem(info_t e, list_t);
-list_t append_elem(info_t e, list_t);
-list_t remove_all(free_func_t free_func, list_t l);
-list_t insert_sorted(cmp_func_t cmp_func, info_t e, list_t l);
-void   apply(process_func_t process_func, list_t l);
+struct list_entry *list_empty(void);
+int    is_empty(struct list_entry *l);
+info_t is_in(cmp_func_t cmp, info_t e, struct list_entry *l);
+info_t head(struct list_entry *l);
+struct list_entry *tail(struct list_entry *l);
+struct list_entry *remove_head(struct list_entry *l);
+struct list_entry *cons(info_t e, struct list_entry *l);
+struct list_entry *prepend_elem(info_t e, struct list_entry *);
+struct list_entry *append_elem(info_t e, struct list_entry *);
+struct list_entry *remove_all(free_func_t free_func, struct list_entry *l);
+struct list_entry *insert_sorted(cmp_func_t cmp_func, info_t e, struct list_entry *l);
+void   apply(process_func_t process_func, struct list_entry *l);
 
-#endif /* __LIST_H__ */
+#endif /* !__UBIUTILS_LIST_H__ */

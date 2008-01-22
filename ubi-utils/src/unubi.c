@@ -121,8 +121,6 @@ static const char *usage =
 #define FN_VOLWH	"%s/volume%03u"			/* whole volume */
 #define FN_VITBL	"%s/vol_info_table%u"		/* vol info table */
 
-static uint32_t crc32_table[256];
-
 /* struct args:
  *	bsize		int, blocksize of image blocks
  *	hsize		int, eraseblock header size
@@ -351,7 +349,7 @@ data_crc(FILE* fpin, size_t length, uint32_t *ret_crc)
 	if (rc < 0)
 		return -1;
 
-	crc = clc_crc32(crc32_table, UBI_CRC32_INIT, buf, length);
+	crc = crc32(UBI_CRC32_INIT, buf, length);
 	*ret_crc = crc;
 	return 0;
 }
@@ -462,8 +460,7 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 		}
 
 		/* check crc */
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &rec,
-				UBI_VTBL_RECORD_SIZE_CRC);
+		crc = crc32(UBI_CRC32_INIT, &rec, UBI_VTBL_RECORD_SIZE_CRC);
 		if (crc != __be32_to_cpu(rec.crc))
 			continue;
 
@@ -689,8 +686,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		}
 
 		/* check erasecounter header crc */
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &(cur->ec),
-				UBI_EC_HDR_SIZE_CRC);
+		crc = crc32(UBI_CRC32_INIT, &(cur->ec), UBI_EC_HDR_SIZE_CRC);
 		if (__be32_to_cpu(cur->ec.hdr_crc) != crc) {
 			snprintf(reason, MAXPATH, ".invalid.ec_hdr_crc");
 			goto invalid;
@@ -734,8 +730,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 		cur->ec_crc_ok = 1;
 
 		/* check volume id header crc */
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &(cur->vid),
-				UBI_VID_HDR_SIZE_CRC);
+		crc = crc32(UBI_CRC32_INIT, &(cur->vid), UBI_VID_HDR_SIZE_CRC);
 		if (__be32_to_cpu(cur->vid.hdr_crc) != crc) {
 			snprintf(reason, MAXPATH, ".invalid.vid_hdr_crc");
 			goto invalid;
@@ -932,7 +927,6 @@ main(int argc, char *argv[])
 	vols_len = 0;
 	vols = NULL;
 	fpin = NULL;
-	init_crc32_table(crc32_table);
 
 	/* setup struct args a */
 	memset(&a, 0, sizeof(a));

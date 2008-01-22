@@ -1,6 +1,6 @@
 /*
  * Copyright (c) International Business Machines Corp., 2006
- * Copyright (C) 2007 Nokia Corporation
+ * Copyright (C) 2008 Nokia Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,28 +30,20 @@
  */
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
+#include <unistd.h>
 
-#include <ubigen.h>
 #include <mtd/ubi-header.h>
+#include <libubigen.h>
+#include <libpfi.h>
 #include "common.h"
 #include "list.h"
-#include "reader.h"
-#include "peb.h"
-#include "crc32.h"
 
 #define PROGRAM_VERSION "1.5"
 #define PROGRAM_NAME    "pfi2bin"
-
-#define ERR_BUF_SIZE 1024
-
-static uint32_t crc32_table[256];
-static char err_buf[ERR_BUF_SIZE];
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 " - a tool to convert PFI files into raw flash images. Note, if not\n"
@@ -269,386 +261,110 @@ static int parse_opt(int argc, char * const argv[])
 	return 0;
 }
 
-
-static size_t
-byte_to_blk(size_t byte, size_t blk_size)
-{
-	return	(byte % blk_size) == 0
-		? byte / blk_size
-		: byte / blk_size + 1;
-}
-
-
-
-
 /**
- * @precondition  IO: File stream points to first byte of RAW data.
- * @postcondition IO: File stream points to first byte of next
- *		      or EOF.
+ * pfi2vol_info - convert PFI UBI volume information to libubigen.
+ * @pfi: PFI UBI volume information
+ * @n: PFI volume index to convert
+ * @vi: libubigen volume information
  */
-static int
-memorize_raw_eb(pfi_raw_t pfi_raw, list_t *raw_pebs)
+static void pfi2vol_info(const struct pfi_ubi *pfi, int n,
+			 struct ubigen_vol_info *vi,
+			 const struct ubigen_info *ui)
 {
-	int err = 0;
-	int i, read, to_read, eb_num, bytes_left;
-	list_t pebs = *raw_pebs;
-	peb_t	peb  = NULL;
-
-	long old_file_pos = ftell(args.fp_in);
-	for (i = 0; i < (int)pfi_raw->starts_size; i++) {
-		bytes_left = pfi_raw->data_size;
-		err = fseek(args.fp_in, old_file_pos, SEEK_SET);
-		if (err != 0)
-			goto err;
-
-		eb_num = byte_to_blk(pfi_raw->starts[i], args.peb_size);
-		while (bytes_left) {
-			to_read = MIN(bytes_left, args.peb_size);
-			err = peb_new(eb_num++, args.peb_size, &peb);
-			if (err != 0)
-				goto err;
-			read = fread(peb->data, 1, to_read, args.fp_in);
-			if (read != to_read) {
-				err = -EIO;
-				goto err;
-			}
-			pebs = append_elem(peb, pebs);
-			bytes_left -= read;
-		}
-
+	vi->id = pfi->ids[n];
+	vi->bytes = pfi->size;
+	vi->alignment = pfi->alignment;
+	vi->data_pad = ui->leb_size % vi->alignment;
+	vi->usable_leb_size = ui->leb_size - vi->data_pad;
+	vi->type = pfi->vol_type;
+	vi->name = pfi->names[n];
+	vi->name_len = strlen(vi->name);
+	if (vi->name_len > UBI_VOL_NAME_MAX) {
+		errmsg("too long name, cut to %d symbols: \"%s\"",
+		       UBI_VOL_NAME_MAX, vi->name);
+		vi->name_len = UBI_VOL_NAME_MAX;
 	}
-	*raw_pebs = pebs;
-	return 0;
-err:
-	pebs = remove_all((free_func_t)&peb_free, pebs);
-	return err;
+
+	vi->used_ebs = (vi->bytes + vi->usable_leb_size - 1) / vi->usable_leb_size;
+	vi->compat = 0;
 }
 
-static int
-convert_ubi_volume(pfi_ubi_t ubi, list_t raw_pebs,
-		struct ubi_vtbl_record *vol_tab,
-		size_t *ebs_written)
+static int create_flash_image(void)
 {
-	int err = 0;
-	uint32_t i, j;
-	peb_t raw_peb;
-	peb_t cmp_peb;
-	ubi_info_t u;
-	size_t leb_total = 0;
-	uint8_t vol_type;
+	int i, err, vtbl_size = args.peb_size;
+	struct ubigen_info ui;
+	struct list_entry *ubi_list = list_empty(), *ptr;
+	struct ubi_vtbl_record *vtbl;
+	struct pfi_ubi *pfi;
 
-	switch (ubi->type) {
-	case pfi_ubi_static:
-		vol_type = UBI_VID_STATIC; break;
-	case pfi_ubi_dynamic:
-		vol_type = UBI_VID_DYNAMIC; break;
-	default:
-		vol_type = UBI_VID_DYNAMIC;
-	}
-
-	err = peb_new(0, 0, &cmp_peb);
-	if (err != 0)
-		goto err;
-
-	long old_file_pos = ftell(args.fp_in);
-	for (i = 0; i < ubi->ids_size; i++) {
-		err = fseek(args.fp_in, old_file_pos, SEEK_SET);
-		if (err != 0)
-			goto err;
-		err = ubigen_create(&u, ubi->ids[i], vol_type,
-				   args.peb_size, args.ec,
-				   ubi->alignment, args.ubi_ver,
-				   args.vid_hdr_offs, 0, ubi->data_size,
-				   args.fp_in, args.fp_out);
-		if (err != 0)
-			goto err;
-
-		err = ubigen_get_leb_total(u, &leb_total);
-		if (err != 0)
-			goto err;
-
-		j = 0;
-		while(j < leb_total) {
-			cmp_peb->num = *ebs_written;
-			raw_peb = is_in((cmp_func_t)peb_cmp, cmp_peb,
-					raw_pebs);
-			if (raw_peb) {
-				err = peb_write(args.fp_out, raw_peb);
-			}
-			else {
-				err = ubigen_write_leb(u, NO_ERROR);
-				j++;
-			}
-			if (err != 0)
-				goto err;
-			(*ebs_written)++;
-		}
-		/* memorize volume table entry */
-		err = ubigen_set_lvol_rec(u, ubi->size,
-				ubi->names[i],
-				(void*) &vol_tab[ubi->ids[i]]);
-		if (err != 0)
-			goto err;
-		ubigen_destroy(&u);
-	}
-
-	peb_free(&cmp_peb);
-	return 0;
-
-err:
-	peb_free(&cmp_peb);
-	ubigen_destroy(&u);
-	return err;
-}
-
-
-static FILE*
-my_fmemopen (void *buf, size_t size, const char *opentype)
-{
-    FILE* f;
-    size_t ret;
-
-    assert(strcmp(opentype, "r") == 0);
-
-    f = tmpfile();
-    ret = fwrite(buf, 1, size, f);
-    rewind(f);
-
-    return f;
-}
-
-/**
- * @brief		Builds a UBI volume table from a volume entry list.
- * @return 0		On success.
- *	   else		Error.
- */
-static int
-write_ubi_volume_table(list_t raw_pebs,
-		struct ubi_vtbl_record *vol_tab, size_t vol_tab_size,
-		size_t *ebs_written)
-{
-	int err = 0;
-	ubi_info_t u;
-	peb_t raw_peb;
-	peb_t cmp_peb;
-	size_t leb_size, leb_total, j = 0;
-	uint8_t *ptr = NULL;
-	FILE* fp_leb = NULL;
-	int vt_slots;
-	size_t vol_tab_size_limit;
-
-	err = peb_new(0, 0, &cmp_peb);
-	if (err != 0)
-		goto err;
-
-	/* @FIXME: Artem creates one volume with 2 LEBs.
-	 * IMO 2 volumes would be more convenient. In order
-	 * to get 2 reserved LEBs from ubigen, I have to
-	 * introduce this stupid mechanism. Until no final
-	 * decision of the VTAB structure is made... Good enough.
-	 */
-	err = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
-			   args.peb_size, args.ec,
-			   1, args.ubi_ver,
-			   args.vid_hdr_offs, UBI_COMPAT_REJECT,
-			   vol_tab_size, stdin, args.fp_out);
-			   /* @FIXME stdin for fp_in is a hack */
-	if (err != 0)
-		goto err;
-	err = ubigen_get_leb_size(u, &leb_size);
-	if (err != 0)
-		goto err;
-	ubigen_destroy(&u);
-
-	/*
-	 * The number of supported volumes is restricted by the eraseblock size
-	 * and by the UBI_MAX_VOLUMES constant.
-	 */
-	vt_slots = leb_size / UBI_VTBL_RECORD_SIZE;
-	if (vt_slots > UBI_MAX_VOLUMES)
-		vt_slots = UBI_MAX_VOLUMES;
-	vol_tab_size_limit = vt_slots * UBI_VTBL_RECORD_SIZE;
-
-	ptr = (uint8_t*) malloc(leb_size * sizeof(uint8_t));
-	if (ptr == NULL)
-		goto err;
-
-	memset(ptr, 0xff, leb_size);
-	memcpy(ptr, vol_tab, vol_tab_size_limit);
-	fp_leb = my_fmemopen(ptr, leb_size, "r");
-
-	err = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
-			   args.peb_size, args.ec,
-			   1, args.ubi_ver, args.vid_hdr_offs,
-			   UBI_COMPAT_REJECT, leb_size * UBI_LAYOUT_VOLUME_EBS,
-			   fp_leb, args.fp_out);
-	if (err != 0)
-		goto err;
-	err = ubigen_get_leb_total(u, &leb_total);
-	if (err != 0)
-		goto err;
-
-	long old_file_pos = ftell(fp_leb);
-	while(j < leb_total) {
-		err = fseek(fp_leb, old_file_pos, SEEK_SET);
-		if (err != 0)
-			goto err;
-
-		cmp_peb->num = *ebs_written;
-		raw_peb = is_in((cmp_func_t)peb_cmp, cmp_peb,
-				raw_pebs);
-		if (raw_peb) {
-			err = peb_write(args.fp_out, raw_peb);
-		}
-		else {
-			err = ubigen_write_leb(u, NO_ERROR);
-			j++;
-		}
-
-		if (err != 0)
-			goto err;
-		(*ebs_written)++;
-	}
-
-err:
-	free(ptr);
-	peb_free(&cmp_peb);
-	ubigen_destroy(&u);
-	fclose(fp_leb);
-	return err;
-}
-
-static int
-write_remaining_raw_ebs(list_t raw_blocks, size_t *ebs_written,
-			FILE* fp_out)
-{
-	int err = 0;
-	uint32_t j, delta;
-	list_t ptr;
-	peb_t empty_eb, peb;
-
-	/* create an empty 0xff EB (for padding) */
-	err = peb_new(0, args.peb_size, &empty_eb);
-
-	foreach(peb, ptr, raw_blocks) {
-		if (peb->num < *ebs_written) {
-			continue; /* omit blocks which
-				     are already passed */
-		}
-
-		if (peb->num < *ebs_written) {
-			errmsg("eb_num: %d\n", peb->num);
-			errmsg("Bug: This should never happen. %d %s",
-				__LINE__, __FILE__);
-			goto err;
-		}
-
-		delta = peb->num - *ebs_written;
-		for (j = 0; j < delta; j++) {
-			err = peb_write(fp_out, empty_eb);
-			if (err != 0)
-				goto err;
-			(*ebs_written)++;
-		}
-		err = peb_write(fp_out, peb);
-		if (err != 0)
-			goto err;
-		(*ebs_written)++;
-	}
-
-err:
-	peb_free(&empty_eb);
-	return err;
-}
-
-static int
-init_vol_tab(struct ubi_vtbl_record **vol_tab, size_t *vol_tab_size)
-{
-	uint32_t crc;
-	size_t i;
-	struct ubi_vtbl_record* res = NULL;
-
-	*vol_tab_size = UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE;
-
-	res = (struct ubi_vtbl_record*) calloc(1, *vol_tab_size);
-	if (vol_tab == NULL) {
-		return -ENOMEM;
-	}
-
-	for (i = 0; i < UBI_MAX_VOLUMES; i++) {
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT,
-			&(res[i]), UBI_VTBL_RECORD_SIZE_CRC);
-		res[i].crc = __cpu_to_be32(crc);
-	}
-
-	*vol_tab = res;
-	return 0;
-}
-
-static int
-create_raw(void)
-{
-	int err = 0;
-	size_t ebs_written = 0; /* eraseblocks written already... */
-	size_t vol_tab_size;
-	list_t ptr;
-
-	list_t pfi_raws = mk_empty(); /* list of raw sections from a pfi */
-	list_t pfi_ubis = mk_empty(); /* list of ubi sections from a pfi */
-	list_t raw_pebs	 = mk_empty(); /* list of raw eraseblocks */
-
-	struct ubi_vtbl_record *vol_tab = NULL;
-
-	err = init_vol_tab (&vol_tab, &vol_tab_size);
-	if (err != 0) {
+	vtbl = ubigen_create_empty_vtbl(&vtbl_size);
+	if (!vtbl) {
 		errmsg("cannot initialize volume table");
-		goto err;
+		return -1;
 	}
 
-	err = read_pfi_headers(&pfi_raws, &pfi_ubis, args.fp_in,
-			err_buf, ERR_BUF_SIZE);
+	ubigen_info_init(&ui, args.peb_size, args.min_io_size,
+			 args.subpage_size, args.vid_hdr_offs, args.ubi_ver,
+			 args.ec);
+
+	err = read_pfi_headers(&ubi_list, args.fp_in);
 	if (err != 0) {
-		errmsg("cannot read pfi header: %s err: %d", err_buf, err);
-		goto err;
+		errmsg("cannot read PFI headers, error %d", err);
+		goto error;
 	}
 
-	pfi_raw_t pfi_raw;
-	foreach(pfi_raw, ptr, pfi_raws) {
-		err = memorize_raw_eb(pfi_raw, &raw_pebs);
-		if (err != 0) {
-			errmsg("cannot create raw_block in mem. err: %d\n", err);
-			goto err;
+	/* Add all volumes to the volume table */
+	list_for_each(pfi, ptr, ubi_list)
+		for (i = 0; i < pfi->ids_size; i++) {
+			struct ubigen_vol_info vi;
+
+			pfi2vol_info(pfi, i, &vi, &ui);
+			ubigen_add_volume(&ui, &vi, vtbl);
 		}
+
+	err = ubigen_write_layout_vol(&ui, vtbl, args.fp_out);
+	if (err) {
+		errmsg("cannot create layout volume");
+		goto error;
 	}
 
-	pfi_ubi_t pfi_ubi;
-	foreach(pfi_ubi, ptr, pfi_ubis) {
-		err = convert_ubi_volume(pfi_ubi, raw_pebs,
-					vol_tab, &ebs_written);
-		if (err != 0) {
-			errmsg("cannot convert UBI volume. err: %d\n", err);
-			goto err;
+	/* Write all volumes */
+	list_for_each(pfi, ptr, ubi_list)
+		for (i = 0; i < pfi->ids_size; i++) {
+			struct ubigen_vol_info vi;
+
+			pfi2vol_info(pfi, i, &vi, &ui);
+			err = fseek(args.fp_in, pfi->data_offs, SEEK_SET);
+			if (err == -1) {
+				errmsg("cannot seek input file");
+				perror("fseek");
+				goto error;
+			}
+
+			err = ubigen_write_volume(&ui, &vi, pfi->data_size,
+						  args.fp_in, args.fp_out);
+			if (err) {
+				errmsg("cannot write volume %d", vi.id);
+				goto error;
+			}
 		}
+
+	if (args.fp_out != stdout) {
+		i = ftell(args.fp_out);
+		if (i == -1) {
+			errmsg("cannot seek output file");
+			perror("ftell");
+			goto error;
+		}
+
+		printf("physical eraseblocks written: %d (", i / ui.peb_size);
+		ubiutils_print_bytes(i, 0);
+		printf(")\n");
 	}
 
-	err = write_ubi_volume_table(raw_pebs, vol_tab, vol_tab_size,
-			&ebs_written);
-	if (err != 0) {
-		errmsg("cannot write UBI volume table. err: %d\n", err);
-		goto err;
-	}
-
-	err  = write_remaining_raw_ebs(raw_pebs, &ebs_written, args.fp_out);
-	if (err != 0)
-		goto err;
-
-	if (args.fp_out != stdout)
-		printf("Physical eraseblocks written: %8d\n", ebs_written);
-err:
-	free(vol_tab);
-	pfi_raws = remove_all((free_func_t)&free_pfi_raw, pfi_raws);
-	pfi_ubis = remove_all((free_func_t)&free_pfi_ubi, pfi_ubis);
-	raw_pebs = remove_all((free_func_t)&peb_free, raw_pebs);
+error:
+	free(vtbl);
+	ubi_list = remove_all((free_func_t)&free_pfi_ubi, ubi_list);
 	return err;
 }
 
@@ -660,17 +376,8 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	ubigen_init();
-	init_crc32_table(crc32_table);
-
-	err = create_raw();
-	if (err != 0) {
-		errmsg("creating RAW failed");
-		goto err;
-	}
-
-err:
-	if (err != 0)
+	err = create_flash_image();
+	if (err)
 		remove(args.f_out);
 
 	return err;

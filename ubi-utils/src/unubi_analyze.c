@@ -100,7 +100,7 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 {
 	char filename[PATH_MAX + 1];
 	size_t count, eraseblocks;
-	uint32_t crc, crc32_table[256];
+	uint32_t crc;
 	uint64_t *erase_counts;
 	FILE* fpdata;
 	FILE* fpplot;
@@ -108,9 +108,6 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 
 	if (first == NULL)
 		return -1;
-
-	/* crc check still needed for `first' linked list */
-	init_crc32_table(crc32_table);
 
 	/* prepare output files */
 	memset(filename, 0, PATH_MAX + 1);
@@ -164,8 +161,7 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 	fprintf(fpdata, "# eraseblock_no actual_erase_count "
 			"sorted_erase_count\n");
 	while (cur != NULL) {
-		crc = clc_crc32(crc32_table, UBI_CRC32_INIT, &cur->ec,
-				UBI_EC_HDR_SIZE_CRC);
+		crc = crc32(UBI_CRC32_INIT, &cur->ec, UBI_EC_HDR_SIZE_CRC);
 
 		if ((__be32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC) ||
 		    (crc != __be32_to_cpu(cur->ec.hdr_crc)))

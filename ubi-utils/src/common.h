@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #define MIN(a ,b) ((a) < (b) ? (a) : (b))
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* Error messages */
 #define errmsg(fmt, ...) do {                                             \
