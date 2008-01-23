@@ -19,6 +19,8 @@
 #ifndef __UBI_UTILS_COMMON_H__
 #define __UBI_UTILS_COMMON_H__
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,18 +28,30 @@ extern "C" {
 #define MIN(a ,b) ((a) < (b) ? (a) : (b))
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
+/* Verbose messages */
+#define verbose(verbose, fmt, ...) do {                            \
+	if (verbose)                                               \
+		printf(PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__); \
+} while(0)
+
+/* Normal messages */
+#define normsg(fmt, ...) do {                              \
+	printf(PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__); \
+} while(0)
+
 /* Error messages */
 #define errmsg(fmt, ...) do {                                             \
-        fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \
+	fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \
 } while(0)
 
 /* Warnings */
 #define warnmsg(fmt, ...) do {                                              \
-        fprintf(stderr, PROGRAM_NAME " warning: " fmt "\n", ##__VA_ARGS__); \
+	fprintf(stderr, PROGRAM_NAME " warning: " fmt "\n", ##__VA_ARGS__); \
 } while(0)
 
 int ubiutils_get_multiplier(const char *str);
 void ubiutils_print_bytes(long long bytes, int bracket);
+void ubiutils_print_text(FILE *stream, const char *txt, int len);
 
 #ifdef __cplusplus
 }

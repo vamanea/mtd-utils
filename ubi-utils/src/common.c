@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Artem Bityutskiy, 2007
+ * Copyright (C) 2007, 2008 Nokia Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +19,13 @@
 /*
  * This file contains various common stuff used by UBI utilities.
  *
- * Author: Artem Bityutskiy
+ * Authors: Artem Bityutskiy
+ *          Adrian Hunter
  */
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * ubiutils_bytes_multiplier - convert size specifier to an integer
@@ -86,4 +88,57 @@ void ubiutils_print_bytes(long long bytes, int bracket)
 
 	if (bracket)
 		printf(")");
+}
+
+/**
+ * ubiutils_print_text - print text and fold it.
+ * @stream: file stream to print to
+ * @text: text to print
+ * @width: maximum allowed text width
+ *
+ * Print text and fold it so that each line would not have more then @width
+ * characters.
+ */
+void ubiutils_print_text(FILE *stream, const char *text, int width)
+{
+	int pos, bpos = 0;
+	const char *p;
+	char line[1024];
+
+	if (width > 1023) {
+		fprintf(stream, "%s\n", text);
+		return;
+	}
+	p = text;
+	pos = 0;
+	while (p[pos]) {
+		while (!isspace(p[pos])) {
+			line[pos] = p[pos];
+			if (!p[pos])
+				break;
+			++pos;
+			if (pos == width) {
+				line[pos] = '\0';
+				fprintf(stream, "%s\n", line);
+				p += pos;
+				pos = 0;
+			}
+		}
+		while (pos < width) {
+			line[pos] = p[pos];
+			if (!p[pos]) {
+				bpos = pos;
+				break;
+			}
+			if (isspace(p[pos]))
+				bpos = pos;
+			++pos;
+		}
+		line[bpos] = '\0';
+		fprintf(stream, "%s\n", line);
+		p += bpos;
+		pos = 0;
+		while (p[pos] && isspace(p[pos]))
+			++p;
+	}
 }

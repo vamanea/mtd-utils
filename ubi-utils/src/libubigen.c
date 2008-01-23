@@ -38,35 +38,6 @@
 #define PROGRAM_NAME "libubigen"
 
 /**
- * ubigen_create_empty_vtbl - creates empty volume table.
- * @size: physical eraseblock size on input, size of the volume table on output
- *
- * This function creates an empty volume table and returns a pointer to it in
- * case of success and %NULL in case of failure. The volume table size is
- * returned in @size which has to contain PEB size on input.
- */
-struct ubi_vtbl_record *ubigen_create_empty_vtbl(int *size)
-{
-	struct ubi_vtbl_record *vtbl;
-	int i;
-
-	if (*size > UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE)
-		*size = UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE;
-
-	vtbl = calloc(1, *size);
-	if (!vtbl)
-		return NULL;
-
-	for (i = 0; i < UBI_MAX_VOLUMES; i++) {
-		uint32_t crc = crc32(UBI_CRC32_INIT, &vtbl[i],
-				     UBI_VTBL_RECORD_SIZE_CRC);
-		vtbl[i].crc = __cpu_to_be32(crc);
-	}
-
-	return vtbl;
-}
-
-/**
  * ubigen_info_init - initialize libubigen.
  * @ui: libubigen information
  * @peb_size: flash physical eraseblock size
@@ -93,27 +64,66 @@ void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 	ui->leb_size = peb_size - ui->data_offs;
 	ui->ubi_ver = ubi_ver;
 	ui->ec = ec;
+
+	ui->vtbl_size = ui->leb_size;
+	if (ui->vtbl_size > UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE)
+		ui->vtbl_size = UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE;
+	ui->max_volumes = ui->vtbl_size / UBI_VTBL_RECORD_SIZE;
+}
+
+/**
+ * ubigen_create_empty_vtbl - creates empty volume table.
+ *
+ * This function creates an empty volume table and returns a pointer to it in
+ * case of success and %NULL in case of failure. The returned object has to be
+ * freed with 'free()' call.
+ */
+struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui)
+{
+	struct ubi_vtbl_record *vtbl;
+	int i;
+
+	vtbl = calloc(1, ui->vtbl_size);
+	if (!vtbl) {
+		errmsg("cannot allocate %d bytes of memory", ui->vtbl_size);
+		return NULL;
+	}
+
+	for (i = 0; i < UBI_MAX_VOLUMES; i++) {
+		uint32_t crc = crc32(UBI_CRC32_INIT, &vtbl[i],
+				     UBI_VTBL_RECORD_SIZE_CRC);
+		vtbl[i].crc = __cpu_to_be32(crc);
+	}
+
+	return vtbl;
 }
 
 /**
  * ubigen_add_volume - add a volume to the volume table.
- * @vol_id: volume ID
- * @bytes: volume size in bytes
- * @alignment: volume alignment
- * @vol_type: volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
- * @name: volume name
  * @ui: libubigen information
+ * @vi: volume information
  * @vtbl: volume table to add to
  *
  * This function adds volume described by input parameters to the volume table
  * @vtbl.
  */
-void ubigen_add_volume(const struct ubigen_info *ui,
+int ubigen_add_volume(const struct ubigen_info *ui,
 		       const struct ubigen_vol_info *vi,
 		       struct ubi_vtbl_record *vtbl)
 {
 	struct ubi_vtbl_record *vtbl_rec = &vtbl[vi->id];
 	uint32_t tmp;
+
+	if (vi->id >= ui->max_volumes) {
+		errmsg("too high volume id %d, max. volumes is %d",
+		       vi->id, ui->max_volumes);
+		return -1;
+	}
+	if (vi->alignment >= ui->leb_size) {
+		errmsg("too large alignment %d, max is %d (LEB size)",
+		       vi->alignment, ui->leb_size);
+		return -1;
+	}
 
 	memset(vtbl_rec, '\0', sizeof(struct ubi_vtbl_record));
 	tmp = (vi->bytes + ui->leb_size - 1) / ui->leb_size;
@@ -129,6 +139,7 @@ void ubigen_add_volume(const struct ubigen_info *ui,
 
 	tmp = crc32(UBI_CRC32_INIT, vtbl_rec, UBI_VTBL_RECORD_SIZE_CRC);
 	vtbl_rec->crc =	 __cpu_to_be32(tmp);
+	return 0;
 }
 
 /**
@@ -212,6 +223,17 @@ int ubigen_write_volume(const struct ubigen_info *ui,
 {
 	int len = vi->usable_leb_size, rd, lnum = 0;
 	char inbuf[ui->leb_size], outbuf[ui->peb_size];
+
+	if (vi->id >= ui->max_volumes) {
+		errmsg("too high volume id %d, max. volumes is %d",
+		       vi->id, ui->max_volumes);
+		return -1;
+	}
+	if (vi->alignment >= ui->leb_size) {
+		errmsg("too large alignment %d, max is %d (LEB size)",
+		       vi->alignment, ui->leb_size);
+		return -1;
+	}
 
 	memset(outbuf, 0xFF, ui->data_offs);
 	init_ec_hdr(ui, (struct ubi_ec_hdr *)outbuf);

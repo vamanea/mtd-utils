@@ -41,6 +41,8 @@ extern "C" {
  * @data_offs: data offset
  * @ubi_ver: UBI version
  * @ec: initial erase counter
+ * @vtbl_size: volume table size
+ * @max_volumes: maximum amount of volumes
  */
 struct ubigen_info
 {
@@ -51,6 +53,8 @@ struct ubigen_info
 	int data_offs;
 	int ubi_ver;
 	long long ec;
+	int vtbl_size;
+	int max_volumes;
 };
 
 /**
@@ -87,10 +91,11 @@ struct ubigen_vol_info
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 		      int subpage_size, int vid_hdr_offs, int ubi_ver,
 		      long long ec);
-struct ubi_vtbl_record *ubigen_create_empty_vtbl(int *size);
-void ubigen_add_volume(const struct ubigen_info *ui,
-		       const struct ubigen_vol_info *vi,
-		       struct ubi_vtbl_record *vtbl);
+struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui);
+int ubigen_get_vtbl_size(const struct ubigen_info *ui);
+int ubigen_add_volume(const struct ubigen_info *ui,
+		      const struct ubigen_vol_info *vi,
+		      struct ubi_vtbl_record *vtbl);
 int ubigen_write_volume(const struct ubigen_info *ui,
 			const struct ubigen_vol_info *vi,
 			long long bytes, FILE *in, FILE *out);

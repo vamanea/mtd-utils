@@ -10,65 +10,53 @@ MANDIR=/usr/man
 INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
-CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror -Wall -O0 -g
+CFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(OPTFLAGS) -Werror -Wall
 
-PERLPROGS = mkpfi
-TARGETS = ubiupdate ubimkvol ubirmvol ubicrc32 ubinfo ubiattach ubidetach \
-	  unubi pfi2bin
+LIBS = libubi libubigen libiniparser
+UTILS = ubiupdate ubimkvol ubirmvol ubicrc32 ubinfo ubiattach ubidetach ubinize
 
-vpath   %.c ./src
+vpath %.c src
 
-%: %.o
-	$(CC) $(LDFLAGS) -g -o $@ $^
+all: $(UTILS)
 
+# The below cancels existing implicite rule to make programs from .c files,
+# in order to force make using our rule defined below
+%: %.c
+
+# The below is the rule to get an .o file from a .c file
 %.o: %.c
-	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
+	$(CC) $(CFLAGS) $< -c -o $@
 
-all: $(TARGETS) libubi.a
-
-IGNORE=${wildcard .*.c.dep}
--include ${IGNORE}
-
-clean:
-	rm -rf *.o $(TARGETS) .*.c.dep libubi.a
-
-libubi.a: libubi.o
-	ar cr $@ $^
-
-ubidetach: ubidetach.o common.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubiattach: ubiattach.o common.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubinfo: ubinfo.o common.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubiupdate: ubiupdate.o common.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubimkvol: ubimkvol.o common.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubirmvol: ubirmvol.o common.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
+# And the below is the rule to get final executable from its .o and common.o
+%: libubi %.o common.o
+	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
 
 ubicrc32: ubicrc32.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
-unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
-	$(CC) $(LDFLAGS) -o $@ $^
+ubinize: ubinize.o common.o crc32.o libiniparser libubigen
+	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
-pfi2bin: pfi2bin.o common.o list.o crc32.o libubigen.o bootenv.o \
-	 hashmap.o libpfi.o common.o
-	$(CC) $(LDFLAGS) -o $@ $^
+libubi: libubi.o
+	$(AR) crv $@.a $^
+	ranlib $@.a
 
-install: ${TARGETS}
+libubigen: libubigen.o
+	$(AR) crv $@.a $^
+	ranlib $@.a
+
+libiniparser: libiniparser.o dictionary.o
+	$(AR) crv $@.a $^
+	ranlib $@.a
+
+clean:
+	rm -rf *.o $(addsuffix .a, $(LIBS)) $(UTILS) .*.c.dep
+
+install: ${UTILS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
-	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)
+	install -m0755 ${UTILS} ${DESTDIR}/${SBINDIR}/
 
 uninstall:
-	for file in ${TARGETS} ${PERLPROGS}; do \
+	for file in ${UTILS}; do \
 		$(RM) ${DESTDIR}/${SBINDIR}/$$file; \
 	done
