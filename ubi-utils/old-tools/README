@@ -1,3 +1,15 @@
+This directory contains old UBI tools which I cannot maintain
+because they are too messy and vague for me and the original authors
+do not seem to have much time for them. Some of the utilities are
+just not of general interest because they are oriented to specific
+tasks of the guys from IBM.
+
+But the "unubi" utility must be very useful but it fails when I
+try to feed an image to it, so it should be looked at and fixed,
+then moved to the main "main" place.
+
+Artem Bityutskiy
+
 README
 ======
 
@@ -28,9 +40,6 @@ ubigen          - tool to create binary UBI images e.g. for a
 nandimg         - tool to add OOB data to binary images intended
                   for NAND flash systems
 ubilib          - UBI library
-ubimkvol        - UBI volume creation utility
-ubirmvol        - UBI volume removal utility
-ubiupdatevol    - UBI volume update utility
 
 
 The following text is from original UBI announcement

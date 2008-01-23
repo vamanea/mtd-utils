@@ -1,0 +1,16 @@
+pdd=flash_type,flash_size,flash_eraseblock_size,flash_page_size,card_serialnumber,card_type,ethaddr,eth1addr,eth0,eth1,total,card_hardwarelevel
+pdd_preserve=ethaddr,eth1addr,card_serialnumber
+# To be personalized
+ethaddr=00:04:34:56:78:9A
+eth1addr=00:04:34:56:78:9B
+card_serialnumber=SN0
+# Static for this card type
+total=102M
+card_type=nand_driven_testcard
+card_hardwarelevel=0
+eth0=bcm5222,eth0,0
+eth1=bcm5222,eth0,1
+flash_type=NAND
+flash_size=0x08000000
+flash_eraseblock_size=0x00020000
+flash_page_size=0x00000800
