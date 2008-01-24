@@ -132,6 +132,7 @@ int ubigen_add_volume(const struct ubigen_info *ui,
 	vtbl_rec->vol_type = vi->type;
 	tmp = ui->leb_size % vi->alignment;
 	vtbl_rec->data_pad = __cpu_to_be32(tmp);
+	vtbl_rec->flags = vi->flags;
 
 	memcpy(vtbl_rec->name, vi->name, vi->name_len);
 	vtbl_rec->name[vi->name_len] = '\0';

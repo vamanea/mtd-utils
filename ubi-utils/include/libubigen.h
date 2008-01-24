@@ -25,6 +25,7 @@
 #ifndef __LIBUBIGEN_H__
 #define __LIBUBIGEN_H__
 
+#include <stdint.h>
 #include <stdio.h>
 #include <asm/byteorder.h>
 
@@ -73,6 +74,7 @@ struct ubigen_info
  *            for static volumes only)
  * @bytes: size of the volume contents in bytes (relevant for static volumes
  *         only)
+ * @flags: volume flags (%UBI_VTBL_AUTORESIZE_FLG)
  */
 struct ubigen_vol_info
 {
@@ -86,6 +88,7 @@ struct ubigen_vol_info
 	int compat;
 	int used_ebs;
 	long long bytes;
+	uint8_t flags;
 };
 
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,

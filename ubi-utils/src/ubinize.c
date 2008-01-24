@@ -90,15 +90,16 @@ static const char *ini_doc = "INI-file format.\n"
 "vol_size=30MiB\n"
 "vol_type=dynamic\n"
 "vol_name=jffs2_volume\n"
+"vol_flags=autoresize\n"
 "vol_alignment=1\n\n"
 "This example configuration file tells the utility to create an UBI image\n"
 "with one volume with ID 1, volume size 30MiB, the volume is dynamic, has\n"
-"name \"jffs2_volume\" and alignment 1. The \"image=../jffs2.img\" line tells\n"
-"the utility to take the contents of the volume from the \"../jffs2.img\"\n"
-"file. The size of the image file has to be less or equivalent to the volume\n"
-"size (30MiB). The \"mode=ubi\" line is mandatory and just tells that the\n"
-"section describes an UBI volume - other section modes may be added in\n"
-"future.\n"
+"name \"jffs2_volume\", \"autoresize\" volume flag, and alignment 1. The\n"
+"\"image=../jffs2.img\" line tells the utility to take the contents of the\n"
+"volume from the \"../jffs2.img\" file. The size of the image file has to be\n"
+"less or equivalent to the volume size (30MiB). The \"mode=ubi\" line is\n"
+"mandatory and just tells that the section describes an UBI volume - other\n"
+"section modes may be added in the future.\n"
 "Notes:\n"
 "  * size in vol_size might be specified kilobytes (KiB), megabytes (MiB),\n"
 "    gigabytes (GiB) or bytes (no modifier);\n"
@@ -108,7 +109,7 @@ static const char *ini_doc = "INI-file format.\n"
 "  * volume alignment must not be greater than the logical eraseblock size;\n"
 "  * one ini file may contain arbitrary number of sections, the utility will\n"
 "    put all the volumes which are described by these section to the output\n"
-"    UBI image file.\n";
+"    UBI image file.";
 
 struct option long_options[] = {
 	{ .name = "output",         .has_arg = 1, .flag = NULL, .val = 'o' },
@@ -253,8 +254,8 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'h':
 			ubiutils_print_text(stderr, doc, 80);
-			fprintf(stderr, "\n%s\n", ini_doc);
-			fprintf(stderr, "\n\n%s\n\n", usage);
+			fprintf(stderr, "\n%s\n\n", ini_doc);
+			fprintf(stderr, "%s\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
 
@@ -465,6 +466,20 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 
 	verbose(args.verbose, "volume alignment: %d", vi->alignment);
 
+	/* Fetch volume flags */
+	sprintf(buf, "%s:vol_flags", sname);
+	p = iniparser_getstring(args.dict, buf, NULL);
+	if (p) {
+		if (!strcmp(p, "autoresize")) {
+			verbose(args.verbose, "autoresize flags found");
+			vi->flags |= UBI_VTBL_AUTORESIZE_FLG;
+		} else {
+			errmsg("unknown flags \"%s\" in section \"%s\"",
+			       p, sname);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
@@ -588,7 +603,7 @@ int main(int argc, char * const argv[])
 		}
 
 		verbose(args.verbose, "writing volume %d", vi.id);
-		verbose(args.verbose, "image file:  %s", img);
+		verbose(args.verbose, "image file: %s", img);
 
 		err = ubigen_write_volume(&ui, &vi, st.st_size, f, args.fp_out);
 		fclose(f);
