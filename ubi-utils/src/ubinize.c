@@ -570,6 +570,16 @@ int main(int argc, char * const argv[])
 			goto out_dict;
 		}
 
+		/*
+		 * Make sure the image size is not larger then the volume size.
+		 */
+		if (st.st_size > vi.bytes) {
+			errmsg("error in section \"%s\": size of the image file \"%s\" "
+			       "is %lld, which is larger then the volume size %lld",
+			       sname, img, (long long)st.st_size, vi.bytes);
+			goto out_dict;
+		}
+
 		f = fopen(img, "r");
 		if (!f) {
 			errmsg("cannot open \"%s\"", img);
