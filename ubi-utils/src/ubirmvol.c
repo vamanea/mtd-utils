@@ -48,7 +48,7 @@ static struct args args = {
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
-			 " - a tool to remove UBI volumes.";
+				 " - a tool to remove UBI volumes.";
 
 static const char *optionsstr =
 "  -n, --vol_id=<volume id>   volume ID to remove\n"

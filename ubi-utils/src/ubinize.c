@@ -46,9 +46,8 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 "ini file defines all the UBI volumes - their characteristics and the and the "
 "contents, but it does not define the characteristics of the flash the UBI "
 "image is generated for. Instead, the flash characteristics are defined via "
-"the comman-line options. "
-"Note, if not sure about some of the command-line parameters, do not specify "
-"them and let the utility to use default values.";
+"the command-line options. Note, if not sure about some of the command-line "
+"parameters, do not specify them and let the utility to use default values.";
 
 static const char *optionsstr =
 "-o, --output=<file name>     output file name (default is stdout)\n"
@@ -76,8 +75,40 @@ static const char *optionsstr =
 
 static const char *usage =
 "Usage: " PROGRAM_NAME " [-o filename] [-h] [-V] [--output=<filename>] [--help]\n"
-"\t\t[--version] inifile\n"
+"\t\t[--version] ini-file\n"
 "Example: " PROGRAM_NAME "-o fs.raw cfg.ini";
+
+static const char *ini_doc = "INI-file format.\n"
+"The input configuration ini-file describes all the volumes which have to\n"
+"be included to the output UBI image. Each volume is described in its own\n"
+"section which may be named arbitrarily. The section consists on\n"
+"\"key=value\" pairs, for example:\n\n"
+"[jffs2-volume]\n"
+"mode=ubi\n"
+"image=../jffs2.img\n"
+"vol_id=1\n"
+"vol_size=30MiB\n"
+"vol_type=dynamic\n"
+"vol_name=jffs2_volume\n"
+"vol_alignment=1\n\n"
+"This example configuration file tells the utility to create an UBI image\n"
+"with one volume with ID 1, volume size 30MiB, the volume is dynamic, has\n"
+"name \"jffs2_volume\" and alignment 1. The \"image=../jffs2.img\" line tells\n"
+"the utility to take the contents of the volume from the \"../jffs2.img\"\n"
+"file. The size of the image file has to be less or equivalent to the volume\n"
+"size (30MiB). The \"mode=ubi\" line is mandatory and just tells that the\n"
+"section describes an UBI volume - other section modes may be added in\n"
+"future.\n"
+"Notes:\n"
+"  * size in vol_size might be specified kilobytes (KiB), megabytes (MiB),\n"
+"    gigabytes (GiB) or bytes (no modifier);\n"
+"  * if \"vol_size\" key is absent, the volume size is assumed to be\n"
+"    equivalent to the size of the image file (defined by \"image\" key);\n"
+"  * if the \"image\" is absent, the volume is assumed to be empty;\n"
+"  * volume alignment must not be greater than the logical eraseblock size;\n"
+"  * one ini file may contain arbitrary number of sections, the utility will\n"
+"    put all the volumes which are described by these section to the output\n"
+"    UBI image file.\n";
 
 struct option long_options[] = {
 	{ .name = "output",         .has_arg = 1, .flag = NULL, .val = 'o' },
@@ -222,6 +253,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'h':
 			ubiutils_print_text(stderr, doc, 80);
+			fprintf(stderr, "\n%s\n", ini_doc);
 			fprintf(stderr, "\n\n%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
