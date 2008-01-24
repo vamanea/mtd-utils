@@ -640,33 +640,3 @@ out:
 	remove(args.f_out);
 	return err;
 }
-
-#if 0
-/**
- * pfi2vol_info - convert PFI UBI volume information to libubigen.
- * @pfi: PFI UBI volume information
- * @n: PFI volume index to convert
- * @vi: libubigen volume information
- */
-static void pfi2vol_info(const struct pfi_ubi *pfi, int n,
-			 struct ubigen_vol_info *vi,
-			 const struct ubigen_info *ui)
-{
-	vi->id = pfi->ids[n];
-	vi->bytes = pfi->size;
-	vi->alignment = pfi->alignment;
-	vi->data_pad = ui->leb_size % vi->alignment;
-	vi->usable_leb_size = ui->leb_size - vi->data_pad;
-	vi->type = pfi->vol_type;
-	vi->name = pfi->names[n];
-	vi->name_len = strlen(vi->name);
-	if (vi->name_len > UBI_VOL_NAME_MAX) {
-		errmsg("too long name, cut to %d symbols: \"%s\"",
-		       UBI_VOL_NAME_MAX, vi->name);
-		vi->name_len = UBI_VOL_NAME_MAX;
-	}
-
-	vi->used_ebs = (vi->bytes + vi->usable_leb_size - 1) / vi->usable_leb_size;
-	vi->compat = 0;
-}
-#endif
