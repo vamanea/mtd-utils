@@ -335,7 +335,7 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 int ubi_update_start(libubi_t desc, int fd, long long bytes);
 
 /**
- * ubi_update_start - start atomic LEB change.
+ * ubi_leb_change_start - start atomic LEB change.
  * @desc: UBI library descriptor
  * @fd: volume character devie file descriptor
  * @lnum: LEB number to change
