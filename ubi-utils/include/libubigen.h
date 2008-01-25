@@ -27,7 +27,6 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <endian.h>
 
 #ifdef __cplusplus
 extern "C" {
