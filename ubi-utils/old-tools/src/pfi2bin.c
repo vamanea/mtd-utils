@@ -359,7 +359,7 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 	 * introduce this stupid mechanism. Until no final
 	 * decision of the VTAB structure is made... Good enough.
 	 */
-	rc = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
+	rc = ubigen_create(&u, UBI_LAYOUT_VOLUME_ID, UBI_VID_DYNAMIC,
 			   pdd->eb_size, DEFAULT_ERASE_COUNT,
 			   1, UBI_VERSION,
 			   pdd->vid_hdr_offset, UBI_COMPAT_REJECT,
@@ -389,7 +389,7 @@ write_ubi_volume_table(pdd_data_t pdd, list_t raw_pebs,
 	memcpy(ptr, vol_tab, vol_tab_size_limit);
 	fp_leb = my_fmemopen(ptr, leb_size, "r");
 
-	rc = ubigen_create(&u, UBI_LAYOUT_VOL_ID, UBI_VID_DYNAMIC,
+	rc = ubigen_create(&u, UBI_LAYOUT_VOLUME_ID, UBI_VID_DYNAMIC,
 			   pdd->eb_size, DEFAULT_ERASE_COUNT,
 			   1, UBI_VERSION, pdd->vid_hdr_offset,
 			   UBI_COMPAT_REJECT, leb_size * UBI_LAYOUT_VOLUME_EBS,

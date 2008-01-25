@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <asm/byteorder.h>
+#include <endian.h>
 
 #ifdef __cplusplus
 extern "C" {

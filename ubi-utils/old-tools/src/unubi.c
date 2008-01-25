@@ -431,7 +431,7 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 	fseek(fpin, __be32_to_cpu(cur->ec.data_offset), SEEK_CUR);
 
 	/* prepare output file */
-	if (__be32_to_cpu(cur->vid.vol_id) != UBI_LAYOUT_VOL_ID)
+	if (__be32_to_cpu(cur->vid.vol_id) != UBI_LAYOUT_VOLUME_ID)
 		return -2;
 	memset(filename, 0, MAXPATH + 1);
 	snprintf(filename, MAXPATH, FN_VITBL, path, num);
@@ -771,7 +771,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 
 		/* extract info-table */
 		if (a->itable &&
-		    (__be32_to_cpu(cur->vid.vol_id) == UBI_LAYOUT_VOL_ID)) {
+		    (__be32_to_cpu(cur->vid.vol_id) == UBI_LAYOUT_VOLUME_ID)) {
 			extract_itable(fpin, cur, a->bsize,
 				       itable_num, a->odir_path);
 			itable_num++;

@@ -23,9 +23,9 @@
 #ifndef __LIBUBI_H__
 #define __LIBUBI_H__
 
+#include <ctype.h>
 #include <stdint.h>
 #include <mtd/ubi-user.h>
-#include <ctype.h>
 #include <mtd/ubi-header.h>
 
 #ifdef __cplusplus

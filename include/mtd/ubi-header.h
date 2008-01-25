@@ -30,6 +30,7 @@
 #ifndef __UBI_HEADER_H__
 #define __UBI_HEADER_H__
 
+#include <stdint.h>
 #include <asm/byteorder.h>
 
 /* The version of UBI images supported by this implementation */
@@ -116,8 +117,8 @@ enum {
 #define UBI_VID_HDR_SIZE sizeof(struct ubi_vid_hdr)
 
 /* Sizes of UBI headers without the ending CRC */
-#define UBI_EC_HDR_SIZE_CRC  (UBI_EC_HDR_SIZE  - sizeof(__be32))
-#define UBI_VID_HDR_SIZE_CRC (UBI_VID_HDR_SIZE - sizeof(__be32))
+#define UBI_EC_HDR_SIZE_CRC  (UBI_EC_HDR_SIZE  - sizeof(uint32_t))
+#define UBI_VID_HDR_SIZE_CRC (UBI_VID_HDR_SIZE - sizeof(uint32_t))
 
 /**
  * struct ubi_ec_hdr - UBI erase counter header.
@@ -145,14 +146,14 @@ enum {
  * eraseblocks.
  */
 struct ubi_ec_hdr {
-	__be32  magic;
-	__u8    version;
-	__u8    padding1[3];
-	__be64  ec; /* Warning: the current limit is 31-bit anyway! */
-	__be32  vid_hdr_offset;
-	__be32  data_offset;
-	__u8    padding2[36];
-	__be32  hdr_crc;
+	uint32_t magic;
+	uint8_t  version;
+	uint8_t  padding1[3];
+	uint64_t ec; /* Warning: the current limit is 31-bit anyway! */
+	uint32_t vid_hdr_offset;
+	uint32_t data_offset;
+	uint8_t  padding2[36];
+	uint32_t hdr_crc;
 } __attribute__ ((packed));
 
 /**
@@ -270,22 +271,22 @@ struct ubi_ec_hdr {
  * software (say, cramfs) on top of the UBI volume.
  */
 struct ubi_vid_hdr {
-	__be32  magic;
-	__u8    version;
-	__u8    vol_type;
-	__u8    copy_flag;
-	__u8    compat;
-	__be32  vol_id;
-	__be32  lnum;
-	__be32  leb_ver; /* obsolete, to be removed, don't use */
-	__be32  data_size;
-	__be32  used_ebs;
-	__be32  data_pad;
-	__be32  data_crc;
-	__u8    padding1[4];
-	__be64  sqnum;
-	__u8    padding2[12];
-	__be32  hdr_crc;
+	uint32_t magic;
+	uint8_t  version;
+	uint8_t  vol_type;
+	uint8_t  copy_flag;
+	uint8_t  compat;
+	uint32_t vol_id;
+	uint32_t lnum;
+	uint32_t leb_ver; /* obsolete, to be removed, don't use */
+	uint32_t data_size;
+	uint32_t used_ebs;
+	uint32_t data_pad;
+	uint32_t data_crc;
+	uint8_t  padding1[4];
+	uint64_t sqnum;
+	uint8_t  padding2[12];
+	uint32_t hdr_crc;
 } __attribute__ ((packed));
 
 /* Internal UBI volumes count */
@@ -299,7 +300,9 @@ struct ubi_vid_hdr {
 
 /* The layout volume contains the volume table */
 
-#define UBI_LAYOUT_VOL_ID        UBI_INTERNAL_VOL_START
+#define UBI_LAYOUT_VOLUME_ID     UBI_INTERNAL_VOL_START
+#define UBI_LAYOUT_VOLUME_TYPE   UBI_VID_DYNAMIC
+#define UBI_LAYOUT_VOLUME_ALIGN  1
 #define UBI_LAYOUT_VOLUME_EBS    2
 #define UBI_LAYOUT_VOLUME_NAME   "layout volume"
 #define UBI_LAYOUT_VOLUME_COMPAT UBI_COMPAT_REJECT
@@ -314,7 +317,7 @@ struct ubi_vid_hdr {
 #define UBI_VTBL_RECORD_SIZE sizeof(struct ubi_vtbl_record)
 
 /* Size of the volume table record without the ending CRC */
-#define UBI_VTBL_RECORD_SIZE_CRC (UBI_VTBL_RECORD_SIZE - sizeof(__be32))
+#define UBI_VTBL_RECORD_SIZE_CRC (UBI_VTBL_RECORD_SIZE - sizeof(uint32_t))
 
 /**
  * struct ubi_vtbl_record - a record in the volume table.
@@ -355,16 +358,16 @@ struct ubi_vid_hdr {
  * Empty records contain all zeroes and the CRC checksum of those zeroes.
  */
 struct ubi_vtbl_record {
-	__be32  reserved_pebs;
-	__be32  alignment;
-	__be32  data_pad;
-	__u8    vol_type;
-	__u8    upd_marker;
-	__be16  name_len;
-	__u8    name[UBI_VOL_NAME_MAX+1];
-	__u8    flags;
-	__u8    padding[23];
-	__be32  crc;
+	uint32_t reserved_pebs;
+	uint32_t alignment;
+	uint32_t data_pad;
+	uint8_t  vol_type;
+	uint8_t  upd_marker;
+	uint16_t name_len;
+	uint8_t  name[UBI_VOL_NAME_MAX+1];
+	uint8_t  flags;
+	uint8_t  padding[23];
+	uint32_t crc;
 } __attribute__ ((packed));
 
 #endif /* !__UBI_HEADER_H__ */

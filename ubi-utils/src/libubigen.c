@@ -302,7 +302,7 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui,
 		size = UBI_MAX_VOLUMES * UBI_VTBL_RECORD_SIZE;
 
 	vi.bytes = ui->leb_size * UBI_LAYOUT_VOLUME_EBS;
-	vi.id = UBI_LAYOUT_VOL_ID;
+	vi.id = UBI_LAYOUT_VOLUME_ID;
 	vi.alignment = 1;
 	vi.data_pad = 0;
 	vi.usable_leb_size = ui->leb_size;
