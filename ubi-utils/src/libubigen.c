@@ -303,10 +303,11 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui,
 
 	vi.bytes = ui->leb_size * UBI_LAYOUT_VOLUME_EBS;
 	vi.id = UBI_LAYOUT_VOLUME_ID;
-	vi.alignment = 1;
-	vi.data_pad = 0;
-	vi.usable_leb_size = ui->leb_size;
-	vi.type = UBI_VID_DYNAMIC;
+	vi.alignment = UBI_LAYOUT_VOLUME_ALIGN;
+	vi.data_pad =  ui->leb_size % UBI_LAYOUT_VOLUME_ALIGN;
+	vi.usable_leb_size = ui->leb_size - vi.data_pad;
+	vi.data_pad = ui->leb_size - vi.usable_leb_size;
+	vi.type = UBI_LAYOUT_VOLUME_TYPE;
 	vi.name = UBI_LAYOUT_VOLUME_NAME;
 	vi.name_len = strlen(UBI_LAYOUT_VOLUME_NAME);
 	vi.compat = UBI_LAYOUT_VOLUME_COMPAT;
