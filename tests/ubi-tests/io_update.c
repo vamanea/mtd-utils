@@ -17,7 +17,7 @@
  *
  * Author: Artem B. Bityutskiy
  *
- * Test UBI volume update.
+ * Test UBI volume update and atomic LEB change
  */
 
 #include <stdio.h>
@@ -28,7 +28,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "libubi.h"
+
+#include <libubi.h>
+#include <mtd/ubi-user.h>
 #define TESTNAME "io_update"
 #include "common.h"
 
@@ -65,12 +67,15 @@ const char *node;
 /*
  * test_update1 - helper function for test_update().
  */
-static int test_update1(struct ubi_vol_info *vol_info)
+static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 {
+	long long total_len = leb_change ? vol_info->leb_size
+					 : vol_info->rsvd_bytes;
 	int sequences[SEQ_SZ][3] = SEQUENCES(dev_info.min_io_size,
-					     vol_info->leb_size);
+					     leb_change ? dev_info.min_io_size * 2
+					     		: vol_info->leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	unsigned char buf[vol_info->rsvd_bytes];
+	unsigned char buf[total_len];
 	int fd, i, j;
 
 	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num,
@@ -86,14 +91,30 @@ static int test_update1(struct ubi_vol_info *vol_info)
 	for (i = 0; i < SEQ_SZ; i++) {
 		int ret, stop = 0, len = 0;
 		off_t off = 0;
-		unsigned char buf1[vol_info->rsvd_bytes];
+		long long test_len;
+		unsigned char buf1[total_len];
 
-		if (ubi_update_start(libubi, fd, vol_info->rsvd_bytes)) {
-			failed("ubi_update_start");
-			goto close;
+		/*
+		 * test_len is LEB size (if we test atomic LEB change) or
+		 * volume size (if we test update). For better test coverage,
+		 * use a little smaller LEB change/update length.
+		 */
+		test_len = total_len - (rand() % (total_len / 10));
+
+		if (leb_change) {
+			if (ubi_leb_change_start(libubi, fd, 0, test_len,
+						 UBI_SHORTTERM)) {
+				failed("ubi_update_start");
+				goto close;
+			}
+		} else {
+			if (ubi_update_start(libubi, fd, test_len)) {
+				failed("ubi_update_start");
+				goto close;
+			}
 		}
 
-		for (j = 0; off < vol_info->rsvd_bytes; j++) {
+		for (j = 0; off < test_len; j++) {
 			int n, rnd_len, l;
 
 			if (!stop) {
@@ -108,13 +129,18 @@ static int test_update1(struct ubi_vol_info *vol_info)
 			 * and the other part with 0xFFs to test how UBI
 			 * stripes 0xFFs multiple of I/O unit size.
 			 */
-			if (off + l > vol_info->rsvd_bytes)
-				l = vol_info->rsvd_bytes - off;
+			if (off + l > test_len)
+				l = test_len - off;
 			rnd_len = rand() % (l + 1);
 			for (n = 0; n < rnd_len; n++)
 				buf[off + n] = (unsigned char)rand();
 				memset(buf + off + rnd_len, 0xFF, l - rnd_len);
 
+			/*
+			 * Deliberately pass len instead of l (len may be
+			 * greater then l if this is the last chunk) because
+			 * UBI have to read only l bytes anyway.
+			 */
 			ret = write(fd, buf + off, len);
 			if (ret < 0) {
 				failed("write");
@@ -133,25 +159,31 @@ static int test_update1(struct ubi_vol_info *vol_info)
 
 		/* Check data */
 		if ((ret = lseek(fd, SEEK_SET, 0)) != 0) {
-			if (ret < 0)
-				failed("lseek");
+			failed("lseek");
 			err_msg("cannot seek to 0");
 			goto close;
 		}
-		memset(buf1, 0x01, vol_info->rsvd_bytes);
-		ret = read(fd, buf1, vol_info->rsvd_bytes + 1);
+
+		memset(buf1, 0x01, test_len);
+
+		if (vol_info->type == UBI_STATIC_VOLUME)
+			/*
+			 * Static volume must not let use read more then it
+			 * contains.
+			 */
+			ret = read(fd, buf1, test_len + 100);
+		else
+			ret = read(fd, buf1, test_len);
 		if (ret < 0) {
 			failed("read");
-			err_msg("failed to read %d bytes",
-				vol_info->rsvd_bytes + 1);
+			err_msg("failed to read %d bytes", test_len);
 			goto close;
 		}
-		if (ret != vol_info->rsvd_bytes) {
-			err_msg("failed to read %d bytes, read %d",
-				vol_info->rsvd_bytes, ret);
+		if (ret != test_len) {
+			err_msg("failed to read %d bytes, read %d", test_len, ret);
 			goto close;
 		}
-		if (memcmp(buf, buf1, vol_info->rsvd_bytes)) {
+		if (memcmp(buf, buf1, test_len)) {
 			err_msg("data corruption");
 			goto close;
 		}
@@ -166,7 +198,7 @@ close:
 }
 
 /**
- * test_update - check volume update capabilities.
+ * test_update - check volume update and atomic LEB change capabilities.
  *
  * @type  volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
  *
@@ -208,9 +240,16 @@ static int test_update(int type)
 			goto remove;
 		}
 
-		if (test_update1(&vol_info)) {
+		if (test_update1(&vol_info, 0)) {
 			err_msg("alignment = %d", req.alignment);
 			goto remove;
+		}
+
+		if (vol_info.type != UBI_STATIC_VOLUME) {
+			if (test_update1(&vol_info, 1)) {
+				err_msg("alignment = %d", req.alignment);
+				goto remove;
+			}
 		}
 
 		if (ubi_rmvol(libubi, node, req.vol_id)) {

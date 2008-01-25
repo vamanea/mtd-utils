@@ -146,7 +146,7 @@ struct ubi_dev_info
  * @rsvd_bytes: how many bytes are reserved for this volume
  * @rsvd_lebs: how many logical eraseblocks are reserved for this volume
  * @leb_size: logical eraseblock size of this volume (may be less then
- *           device's logical eraseblock size due to alignment)
+ *            device's logical eraseblock size due to alignment)
  * @corrupted: non-zero if the volume is corrupted
  * @name: volume name (null-terminated)
  */
@@ -329,9 +329,24 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
  * @bytes: how many bytes will be written to the volume
  *
  * This function initiates UBI volume update and returns %0 in case of success
- * and %-1 in case of error.
+ * and %-1 in case of error. The caller is assumed to write @bytes data to the
+ * volume @fd afterwards.
  */
 int ubi_update_start(libubi_t desc, int fd, long long bytes);
+
+/**
+ * ubi_update_start - start atomic LEB change.
+ * @desc: UBI library descriptor
+ * @fd: volume character devie file descriptor
+ * @lnum: LEB number to change
+ * @bytes: how many bytes of new data will be written to the LEB
+ * @dtype: data type (%UBI_LONGTERM, %UBI_SHORTTERM, %UBI_UNKNOWN)
+ *
+ * This function initiates atomic LEB change operation and returns %0 in case
+ * of success and %-1 in case of error. he caller is assumed to write @bytes
+ * data to the volume @fd afterwards.
+ */
+int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype);
 
 #ifdef __cplusplus
 }

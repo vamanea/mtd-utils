@@ -1012,6 +1012,21 @@ int ubi_update_start(libubi_t desc, int fd, long long bytes)
 	return 0;
 }
 
+int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype)
+{
+	struct ubi_leb_change_req req;
+
+	desc = desc;
+	memset(&req, 0, sizeof(struct ubi_leb_change_req));
+	req.lnum = lnum;
+	req.bytes = bytes;
+	req.dtype = dtype;
+
+	if (ioctl(fd, UBI_IOCEBCH, &req))
+		return -1;
+	return 0;
+}
+
 int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 {
 	DIR *sysfs_ubi;

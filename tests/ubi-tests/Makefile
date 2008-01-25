@@ -1,6 +1,7 @@
 LIBUBI_PATH=../../ubi-utils/
 LIBUBI_SRC_PATH=../../ubi-utils/src
 LIBUBI_HEADER_PATH=../../ubi-utils/include
+UBI_HEADERS_PATH=../../include/
 UBIUTILS_PATH=../../ubi-utils/
 
 CC := $(CROSS)gcc
@@ -15,7 +16,7 @@ HELPERS=$(addprefix helpers/, $(HELPER_NAMES))
 # it removes the. If you want to prevent the removal, uncomment the below
 #.SECONDARY: $(addsuffix .o, $(TESTS)) $(addsuffix .o, $(HELPERS))
 
-CFLAGS += -Wall -I$(LIBUBI_HEADER_PATH) -L. -O2
+CFLAGS += -Wall -I$(LIBUBI_HEADER_PATH) -I $(UBI_HEADERS_PATH) -L. -O2
 
 all: ubi-utils libubi $(TESTS) $(HELPERS)
 
