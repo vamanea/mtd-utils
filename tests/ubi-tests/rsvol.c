@@ -36,44 +36,6 @@ static libubi_t libubi;
 static struct ubi_dev_info dev_info;
 const char *node;
 
-static int test_basic(int type);
-static int test_rsvol(int type);
-
-int main(int argc, char * const argv[])
-{
-	if (initial_check(argc, argv))
-		return 1;
-
-	node = argv[1];
-
-	libubi = libubi_open();
-	if (libubi == NULL) {
-		failed("libubi_open");
-		return 1;
-	}
-
-	if (ubi_get_dev_info(libubi, node, &dev_info)) {
-		failed("ubi_get_dev_info");
-		goto close;
-	}
-
-	if (test_basic(UBI_DYNAMIC_VOLUME))
-		goto close;
-	if (test_basic(UBI_STATIC_VOLUME))
-		goto close;
-	if (test_rsvol(UBI_DYNAMIC_VOLUME))
-		goto close;
-	if (test_rsvol(UBI_STATIC_VOLUME))
-		goto close;
-
-	libubi_close(libubi);
-	return 0;
-
-close:
-	libubi_close(libubi);
-	return 1;
-}
-
 /**
  * test_basic - check volume re-size capability.
  *
@@ -136,70 +98,6 @@ remove:
 	return -1;
 }
 
-static int test_rsvol1(struct ubi_vol_info *vol_info);
-
-/**
- * test_rsvol - test UBI volume re-size.
- *
- * @type  volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
- *
- * Thus function returns %0 in case of success and %-1 in case of failure.
- */
-static int test_rsvol(int type)
-{
-	const char *name = TESTNAME "test_rsvol:()";
-	int alignments[] = ALIGNMENTS(dev_info.leb_size);
-	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	struct ubi_mkvol_request req;
-	int i;
-
-	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
-		int leb_size;
-		struct ubi_vol_info vol_info;
-
-		req.vol_id = UBI_VOL_NUM_AUTO;
-		req.vol_type = type;
-		req.name = name;
-
-		req.alignment = alignments[i];
-		req.alignment -= req.alignment % dev_info.min_io_size;
-		if (req.alignment == 0)
-			req.alignment = dev_info.min_io_size;
-
-		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
-		req.bytes =  MIN_AVAIL_EBS * leb_size;
-
-		if (ubi_mkvol(libubi, node, &req)) {
-			failed("ubi_mkvol");
-			return -1;
-		}
-
-		sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num,
-			req.vol_id);
-
-		if (ubi_get_vol_info(libubi, vol_node, &vol_info)) {
-			failed("ubi_get_vol_info");
-			goto remove;
-		}
-
-		if (test_rsvol1(&vol_info)) {
-			err_msg("alignment = %d", req.alignment);
-			goto remove;
-		}
-
-		if (ubi_rmvol(libubi, node, req.vol_id)) {
-			failed("ubi_rmvol");
-			return -1;
-		}
-	}
-
-	return 0;
-
-remove:
-	ubi_rmvol(libubi, node, req.vol_id);
-	return -1;
-}
-
 /*
  * Helper function for test_rsvol().
  */
@@ -237,7 +135,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	}
 
 	/* Write data to the volume */
-	sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num,
+	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num,
 			vol_info->vol_id);
 
 	fd = open(vol_node, O_RDWR);
@@ -256,7 +154,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	for (i = 0; i < bytes; i++)
 		buf[i] = (unsigned char)i;
 
-	ret = write(fd, &buf[0], bytes);
+	ret = write(fd, buf, bytes);
 	if (ret != bytes) {
 		failed("write");
 		goto close;
@@ -287,8 +185,8 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 		failed("seek");
 		goto close;
 	}
-	memset(&buf[0], 0, bytes);
-	ret = read(fd, &buf[0], bytes);
+	memset(buf, 0, bytes);
+	ret = read(fd, buf, bytes);
 	if (ret != bytes) {
 		failed("read");
 		goto close;
@@ -307,4 +205,101 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 close:
 	close(fd);
 	return -1;
+}
+
+/**
+ * test_rsvol - test UBI volume re-size.
+ *
+ * @type  volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
+ *
+ * Thus function returns %0 in case of success and %-1 in case of failure.
+ */
+static int test_rsvol(int type)
+{
+	const char *name = TESTNAME "test_rsvol:()";
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
+	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
+	struct ubi_mkvol_request req;
+	int i;
+
+	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
+		int leb_size;
+		struct ubi_vol_info vol_info;
+
+		req.vol_id = UBI_VOL_NUM_AUTO;
+		req.vol_type = type;
+		req.name = name;
+
+		req.alignment = alignments[i];
+		req.alignment -= req.alignment % dev_info.min_io_size;
+		if (req.alignment == 0)
+			req.alignment = dev_info.min_io_size;
+
+		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
+		req.bytes =  MIN_AVAIL_EBS * leb_size;
+
+		if (ubi_mkvol(libubi, node, &req)) {
+			failed("ubi_mkvol");
+			return -1;
+		}
+
+		sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num,
+			req.vol_id);
+
+		if (ubi_get_vol_info(libubi, vol_node, &vol_info)) {
+			failed("ubi_get_vol_info");
+			goto remove;
+		}
+
+		if (test_rsvol1(&vol_info)) {
+			err_msg("alignment = %d", req.alignment);
+			goto remove;
+		}
+
+		if (ubi_rmvol(libubi, node, req.vol_id)) {
+			failed("ubi_rmvol");
+			return -1;
+		}
+	}
+
+	return 0;
+
+remove:
+	ubi_rmvol(libubi, node, req.vol_id);
+	return -1;
+}
+
+int main(int argc, char * const argv[])
+{
+	if (initial_check(argc, argv))
+		return 1;
+
+	node = argv[1];
+
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		failed("libubi_open");
+		return 1;
+	}
+
+	if (ubi_get_dev_info(libubi, node, &dev_info)) {
+		failed("ubi_get_dev_info");
+		goto close;
+	}
+
+	if (test_basic(UBI_DYNAMIC_VOLUME))
+		goto close;
+	if (test_basic(UBI_STATIC_VOLUME))
+		goto close;
+	if (test_rsvol(UBI_DYNAMIC_VOLUME))
+		goto close;
+	if (test_rsvol(UBI_STATIC_VOLUME))
+		goto close;
+
+	libubi_close(libubi);
+	return 0;
+
+close:
+	libubi_close(libubi);
+	return 1;
 }

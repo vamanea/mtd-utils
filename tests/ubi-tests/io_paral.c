@@ -42,8 +42,6 @@ const char *node;
 static int iterations = ITERATIONS;
 int total_bytes;
 
-static void * the_thread(void *ptr);
-
 static long long memory_limit(void)
 {
 	long long result = 0;
@@ -55,93 +53,6 @@ static long long memory_limit(void)
 	fscanf(f, "%*s %lld", &result);
 	fclose(f);
 	return result * 1024 / 4;
-}
-
-int main(int argc, char * const argv[])
-{
-	int i, ret;
-	pthread_t threads[THREADS_NUM];
-	struct ubi_mkvol_request req;
-	long long mem_limit;
-
-	if (initial_check(argc, argv))
-		return 1;
-
-	node = argv[1];
-
-	libubi = libubi_open();
-	if (libubi == NULL) {
-		failed("libubi_open");
-		return 1;
-	}
-
-	if (ubi_get_dev_info(libubi, node, &dev_info)) {
-		failed("ubi_get_dev_info");
-		goto close;
-	}
-
-	req.alignment = 1;
-	mem_limit = memory_limit();
-	if (mem_limit && mem_limit < dev_info.avail_bytes)
-		total_bytes = req.bytes =
-				(mem_limit / dev_info.leb_size / THREADS_NUM)
-				* dev_info.leb_size;
-	else
-		total_bytes = req.bytes =
-				((dev_info.avail_lebs - 3) / THREADS_NUM)
-				* dev_info.leb_size;
-	for (i = 0; i < THREADS_NUM; i++) {
-		char name[100];
-
-		req.vol_id = i;
-		sprintf(&name[0], TESTNAME":%d", i);
-		req.name = &name[0];
-		req.vol_type = (i & 1) ? UBI_STATIC_VOLUME : UBI_DYNAMIC_VOLUME;
-
-		if (ubi_mkvol(libubi, node, &req)) {
-			failed("ubi_mkvol");
-			goto remove;
-		}
-	}
-
-	/* Create one volume with static data to make WL work more */
-	req.vol_id = THREADS_NUM;
-	req.name = TESTNAME ":static";
-	req.vol_type = UBI_DYNAMIC_VOLUME;
-	req.bytes = 3*dev_info.leb_size;
-	if (ubi_mkvol(libubi, node, &req)) {
-		failed("ubi_mkvol");
-		goto remove;
-	}
-
-	for (i = 0; i < THREADS_NUM; i++) {
-		ret = pthread_create(&threads[i], NULL, &the_thread, (void*)i);
-		if (ret) {
-			failed("pthread_create");
-			goto remove;
-		}
-	}
-
-	for (i = 0; i < THREADS_NUM; i++)
-		pthread_join(threads[i], NULL);
-
-	for (i = 0; i <= THREADS_NUM; i++) {
-		if (ubi_rmvol(libubi, node, i)) {
-			failed("ubi_rmvol");
-			goto remove;
-		}
-	}
-
-	libubi_close(libubi);
-	return 0;
-
-remove:
-	for (i = 0; i <= THREADS_NUM; i++)
-		ubi_rmvol(libubi, node, i);
-
-close:
-	libubi_close(libubi);
-	return 1;
 }
 
 /**
@@ -162,7 +73,7 @@ static void * the_thread(void *ptr)
 		goto free;
 	}
 
-	sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num, vol_id);
+	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num, vol_id);
 
 	while (iter--) {
 		int i, ret, written = 0, rd = 0;
@@ -248,4 +159,91 @@ free:
 	free(wbuf);
 	free(rbuf);
 	return NULL;
+}
+
+int main(int argc, char * const argv[])
+{
+	int i, ret;
+	pthread_t threads[THREADS_NUM];
+	struct ubi_mkvol_request req;
+	long long mem_limit;
+
+	if (initial_check(argc, argv))
+		return 1;
+
+	node = argv[1];
+
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		failed("libubi_open");
+		return 1;
+	}
+
+	if (ubi_get_dev_info(libubi, node, &dev_info)) {
+		failed("ubi_get_dev_info");
+		goto close;
+	}
+
+	req.alignment = 1;
+	mem_limit = memory_limit();
+	if (mem_limit && mem_limit < dev_info.avail_bytes)
+		total_bytes = req.bytes =
+				(mem_limit / dev_info.leb_size / THREADS_NUM)
+				* dev_info.leb_size;
+	else
+		total_bytes = req.bytes =
+				((dev_info.avail_lebs - 3) / THREADS_NUM)
+				* dev_info.leb_size;
+	for (i = 0; i < THREADS_NUM; i++) {
+		char name[100];
+
+		req.vol_id = i;
+		sprintf(name, TESTNAME":%d", i);
+		req.name = name;
+		req.vol_type = (i & 1) ? UBI_STATIC_VOLUME : UBI_DYNAMIC_VOLUME;
+
+		if (ubi_mkvol(libubi, node, &req)) {
+			failed("ubi_mkvol");
+			goto remove;
+		}
+	}
+
+	/* Create one volume with static data to make WL work more */
+	req.vol_id = THREADS_NUM;
+	req.name = TESTNAME ":static";
+	req.vol_type = UBI_DYNAMIC_VOLUME;
+	req.bytes = 3*dev_info.leb_size;
+	if (ubi_mkvol(libubi, node, &req)) {
+		failed("ubi_mkvol");
+		goto remove;
+	}
+
+	for (i = 0; i < THREADS_NUM; i++) {
+		ret = pthread_create(&threads[i], NULL, &the_thread, (void*)i);
+		if (ret) {
+			failed("pthread_create");
+			goto remove;
+		}
+	}
+
+	for (i = 0; i < THREADS_NUM; i++)
+		pthread_join(threads[i], NULL);
+
+	for (i = 0; i <= THREADS_NUM; i++) {
+		if (ubi_rmvol(libubi, node, i)) {
+			failed("ubi_rmvol");
+			goto remove;
+		}
+	}
+
+	libubi_close(libubi);
+	return 0;
+
+remove:
+	for (i = 0; i <= THREADS_NUM; i++)
+		ubi_rmvol(libubi, node, i);
+
+close:
+	libubi_close(libubi);
+	return 1;
 }

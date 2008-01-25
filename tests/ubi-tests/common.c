@@ -166,11 +166,11 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 			  req->vol_type, vol_info.type);
 		return -1;
 	}
-	if (strlen(req->name) != strlen(&vol_info.name[0]) ||
-	    strcmp(req->name, &vol_info.name[0]) != 0) {
+	if (strlen(req->name) != strlen(vol_info.name) ||
+	    strcmp(req->name, vol_info.name) != 0) {
 		__err_msg(test, func, line,
 			  "bad name: requested \"%s\", got \"%s\"",
-			  req->name, &vol_info.name[0]);
+			  req->name, vol_info.name);
 		return -1;
 	}
 	if (vol_info.corrupted) {
@@ -239,8 +239,8 @@ int __check_vol_patt(libubi_t libubi, struct ubi_dev_info *dev_info,
 	while (bytes < vol_info.data_bytes) {
 		int i;
 
-		memset(&buf[0], ~byte, 512);
-		ret = read(fd, &buf[0], 512);
+		memset(buf, ~byte, 512);
+		ret = read(fd, buf, 512);
 		if (ret == -1) {
 			__failed(test, func, line, "read");
 			__err_msg(test, func, line, "bytes = %lld, ret = %d",
@@ -307,10 +307,10 @@ int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
 		goto close;
 	}
 
-	memset(&buf[0], byte, 512);
+	memset(buf, byte, 512);
 
 	while (written != bytes) {
-		ret = write(fd, &buf[0], 512);
+		ret = write(fd, buf, 512);
 		if (ret == -1) {
 			__failed(test, func, line, "write");
 			__err_msg(test, func, line, "written = %lld, ret = %d",

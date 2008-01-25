@@ -31,45 +31,6 @@ static libubi_t libubi;
 static struct ubi_dev_info dev_info;
 const char *node;
 
-static int mkvol_basic(void);
-static int mkvol_alignment(void);
-static int mkvol_multiple(void);
-
-int main(int argc, char * const argv[])
-{
-	if (initial_check(argc, argv))
-		return 1;
-
-	node = argv[1];
-
-	libubi = libubi_open();
-	if (libubi == NULL) {
-		failed("libubi_open");
-		return 1;
-	}
-
-	if (ubi_get_dev_info(libubi, node, &dev_info)) {
-		failed("ubi_get_dev_info");
-		goto close;
-	}
-
-	if (mkvol_basic())
-		goto close;
-
-	if (mkvol_alignment())
-		goto close;
-
-	if (mkvol_multiple())
-		goto close;
-
-	libubi_close(libubi);
-	return 0;
-
-close:
-	libubi_close(libubi);
-	return 1;
-}
-
 /**
  * mkvol_alignment - create volumes with different alignments.
  *
@@ -209,8 +170,8 @@ static int mkvol_multiple(void)
 		req.bytes = 1;
 		req.vol_type = UBI_STATIC_VOLUME;
 
-		sprintf(&nm[0], "%s:%d", name, i);
-		req.name = &nm[0];
+		sprintf(nm, "%s:%d", name, i);
+		req.name = nm;
 
 		if (ubi_mkvol(libubi, node, &req)) {
 			if (errno == ENFILE) {
@@ -251,3 +212,39 @@ remove:
 		ubi_rmvol(libubi, node, i);
 	return -1;
 }
+
+int main(int argc, char * const argv[])
+{
+	if (initial_check(argc, argv))
+		return 1;
+
+	node = argv[1];
+
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		failed("libubi_open");
+		return 1;
+	}
+
+	if (ubi_get_dev_info(libubi, node, &dev_info)) {
+		failed("ubi_get_dev_info");
+		goto close;
+	}
+
+	if (mkvol_basic())
+		goto close;
+
+	if (mkvol_alignment())
+		goto close;
+
+	if (mkvol_multiple())
+		goto close;
+
+	libubi_close(libubi);
+	return 0;
+
+close:
+	libubi_close(libubi);
+	return 1;
+}
+

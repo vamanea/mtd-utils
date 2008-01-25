@@ -36,44 +36,6 @@ static libubi_t libubi;
 static struct ubi_dev_info dev_info;
 const char *node;
 
-static int test_basic(int type);
-static int test_aligned(int type);
-
-int main(int argc, char * const argv[])
-{
-	if (initial_check(argc, argv))
-		return 1;
-
-	node = argv[1];
-
-	libubi = libubi_open();
-	if (libubi == NULL) {
-		failed("libubi_open");
-		return 1;
-	}
-
-	if (ubi_get_dev_info(libubi, node, &dev_info)) {
-		failed("ubi_get_dev_info");
-		goto close;
-	}
-
-	if (test_basic(UBI_DYNAMIC_VOLUME))
-		goto close;
-	if (test_basic(UBI_STATIC_VOLUME))
-		goto close;
-	if (test_aligned(UBI_DYNAMIC_VOLUME))
-		goto close;
-	if (test_aligned(UBI_STATIC_VOLUME))
-		goto close;
-
-	libubi_close(libubi);
-	return 0;
-
-close:
-	libubi_close(libubi);
-	return 1;
-}
-
 /**
  * test_basic - check basic volume read and update capabilities.
  *
@@ -98,16 +60,16 @@ static int test_basic(int type)
 		return -1;
 	}
 
-	sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num, req.vol_id);
+	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num, req.vol_id);
 
 	/* Make sure newly created volume contains only 0xFF bytes */
-	if (check_vol_patt(&vol_node[0], 0xFF))
+	if (check_vol_patt(vol_node, 0xFF))
 		goto remove;
 
 	/* Write 0xA5 bytes to the volume */
-	if (update_vol_patt(&vol_node[0], dev_info.avail_bytes, 0xA5))
+	if (update_vol_patt(vol_node, dev_info.avail_bytes, 0xA5))
 		goto remove;
-	if (check_vol_patt(&vol_node[0], 0xA5))
+	if (check_vol_patt(vol_node, 0xA5))
 		goto remove;
 
 	if (ubi_rmvol(libubi, node, req.vol_id)) {
@@ -156,16 +118,16 @@ static int test_aligned(int type)
 			return -1;
 		}
 
-		sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num, req.vol_id);
+		sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num, req.vol_id);
 
 		/* Make sure newly created volume contains only 0xFF bytes */
-		if (check_vol_patt(&vol_node[0], 0xFF))
+		if (check_vol_patt(vol_node, 0xFF))
 			goto remove;
 
 		/* Write 0xA5 bytes to the volume */
-		if (update_vol_patt(&vol_node[0], req.bytes, 0xA5))
+		if (update_vol_patt(vol_node, req.bytes, 0xA5))
 			goto remove;
-		if (check_vol_patt(&vol_node[0], 0xA5))
+		if (check_vol_patt(vol_node, 0xA5))
 			goto remove;
 
 		if (ubi_rmvol(libubi, node, req.vol_id)) {
@@ -179,4 +141,39 @@ static int test_aligned(int type)
 remove:
 	ubi_rmvol(libubi, node, req.vol_id);
 	return -1;
+}
+
+int main(int argc, char * const argv[])
+{
+	if (initial_check(argc, argv))
+		return 1;
+
+	node = argv[1];
+
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		failed("libubi_open");
+		return 1;
+	}
+
+	if (ubi_get_dev_info(libubi, node, &dev_info)) {
+		failed("ubi_get_dev_info");
+		goto close;
+	}
+
+	if (test_basic(UBI_DYNAMIC_VOLUME))
+		goto close;
+	if (test_basic(UBI_STATIC_VOLUME))
+		goto close;
+	if (test_aligned(UBI_DYNAMIC_VOLUME))
+		goto close;
+	if (test_aligned(UBI_STATIC_VOLUME))
+		goto close;
+
+	libubi_close(libubi);
+	return 0;
+
+close:
+	libubi_close(libubi);
+	return 1;
 }

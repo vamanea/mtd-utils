@@ -246,8 +246,8 @@ int main(int argc, char * const argv[])
 
 	if (test_update(UBI_DYNAMIC_VOLUME))
 		goto close;
-//	if (test_update(UBI_STATIC_VOLUME))
-//		goto close;
+	if (test_update(UBI_STATIC_VOLUME))
+		goto close;
 
 	libubi_close(libubi);
 	return 0;

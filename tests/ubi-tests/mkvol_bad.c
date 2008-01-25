@@ -32,41 +32,6 @@ static libubi_t libubi;
 static struct ubi_dev_info dev_info;
 const char *node;
 
-static int test_mkvol(void);
-static int test_rmvol(void);
-
-int main(int argc, char * const argv[])
-{
-	if (initial_check(argc, argv))
-		return 1;
-
-	node = argv[1];
-
-	libubi = libubi_open();
-	if (libubi == NULL) {
-		failed("libubi_open");
-		return 1;
-	}
-
-	if (ubi_get_dev_info(libubi, node, &dev_info)) {
-		failed("ubi_get_dev_info");
-		goto close;
-	}
-
-	if (test_mkvol())
-		goto close;
-
-	if (test_rmvol())
-		goto close;
-
-	libubi_close(libubi);
-	return 0;
-
-close:
-	libubi_close(libubi);
-	return 1;
-}
-
 /**
  * test_mkvol - test that UBI mkvol ioctl rejects bad input parameters.
  *
@@ -161,10 +126,10 @@ static int test_mkvol(void)
 	{
 		char name[UBI_VOL_NAME_MAX + 5];
 
-		memset(&name[0], 'x', UBI_VOL_NAME_MAX + 1);
+		memset(name, 'x', UBI_VOL_NAME_MAX + 1);
 		name[UBI_VOL_NAME_MAX + 1] = '\0';
 
-		req.name = &name[0];
+		req.name = name;
 		ret = ubi_mkvol(libubi, node, &req);
 		if (check_failed(ret, EINVAL, "ubi_mkvol", "name_len = %d",
 				 UBI_VOL_NAME_MAX + 1))
@@ -225,8 +190,8 @@ static int test_mkvol(void)
 		req.bytes = 1;
 		req.vol_type = UBI_STATIC_VOLUME;
 
-		sprintf(&nm[0], "%s:%d", name, i);
-		req.name = &nm[0];
+		sprintf(nm, "%s:%d", name, i);
+		req.name = nm;
 
 		if (ubi_mkvol(libubi, node, &req)) {
 			/*
@@ -301,4 +266,36 @@ static int test_rmvol(void)
 		return -1;
 
 	return 0;
+}
+
+int main(int argc, char * const argv[])
+{
+	if (initial_check(argc, argv))
+		return 1;
+
+	node = argv[1];
+
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		failed("libubi_open");
+		return 1;
+	}
+
+	if (ubi_get_dev_info(libubi, node, &dev_info)) {
+		failed("ubi_get_dev_info");
+		goto close;
+	}
+
+	if (test_mkvol())
+		goto close;
+
+	if (test_rmvol())
+		goto close;
+
+	libubi_close(libubi);
+	return 0;
+
+close:
+	libubi_close(libubi);
+	return 1;
 }

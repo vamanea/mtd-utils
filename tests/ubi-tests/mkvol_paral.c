@@ -36,7 +36,38 @@ static struct ubi_dev_info dev_info;
 const char *node;
 static int iterations = ITERATIONS;
 
-static void * the_thread(void *ptr);
+/**
+ * the_thread - the testing thread.
+ *
+ * @ptr  thread number
+ */
+static void * the_thread(void *ptr)
+{
+	int n = (int)ptr, iter = iterations;
+	struct ubi_mkvol_request req;
+	const char *name =  TESTNAME ":the_thread()";
+	char nm[strlen(name) + 50];
+
+	req.alignment = 1;
+	req.bytes = dev_info.avail_bytes/ITERATIONS;
+	req.vol_type = UBI_DYNAMIC_VOLUME;
+	sprintf(nm, "%s:%d", name, n);
+	req.name = nm;
+
+	while (iter--) {
+		req.vol_id = UBI_VOL_NUM_AUTO;
+		if (ubi_mkvol(libubi, node, &req)) {
+			failed("ubi_mkvol");
+			return NULL;
+		}
+		if (ubi_rmvol(libubi, node, req.vol_id)) {
+			failed("ubi_rmvol");
+			return NULL;
+		}
+	}
+
+	return NULL;
+}
 
 int main(int argc, char * const argv[])
 {
@@ -76,37 +107,4 @@ int main(int argc, char * const argv[])
 close:
 	libubi_close(libubi);
 	return 1;
-}
-
-/**
- * the_thread - the testing thread.
- *
- * @ptr  thread number
- */
-static void * the_thread(void *ptr)
-{
-	int n = (int)ptr, iter = iterations;
-	struct ubi_mkvol_request req;
-	const char *name =  TESTNAME ":the_thread()";
-	char nm[strlen(name) + 50];
-
-	req.alignment = 1;
-	req.bytes = dev_info.avail_bytes/ITERATIONS;
-	req.vol_type = UBI_DYNAMIC_VOLUME;
-	sprintf(&nm[0], "%s:%d", name, n);
-	req.name = &nm[0];
-
-	while (iter--) {
-		req.vol_id = UBI_VOL_NUM_AUTO;
-		if (ubi_mkvol(libubi, node, &req)) {
-			failed("ubi_mkvol");
-			return NULL;
-		}
-		if (ubi_rmvol(libubi, node, req.vol_id)) {
-			failed("ubi_rmvol");
-			return NULL;
-		}
-	}
-
-	return NULL;
 }

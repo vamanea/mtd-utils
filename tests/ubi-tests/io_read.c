@@ -35,42 +35,24 @@
 static libubi_t libubi;
 static struct ubi_dev_info dev_info;
 const char *node;
+static int fd;
 
-static int test_static(void);
-static int test_read(int type);
+/* Data lengthes to test, @io - minimal I/O unit size, @s - eraseblock size */
+#define LENGTHES(io, s)                                                        \
+	{1, (io), (io)+1, 2*(io), 3*(io)-1, 3*(io),                            \
+	 PAGE_SIZE-1, PAGE_SIZE-(io), 2*PAGE_SIZE, 2*PAGE_SIZE-(io),           \
+	 (s)/2-1, (s)/2, (s)/2+1, (s)-1, (s), (s)+1, 2*(s)-(io), 2*(s),        \
+	 2*(s)+(io), 3*(s), 3*(s)+(io)};
 
-int main(int argc, char * const argv[])
-{
-	if (initial_check(argc, argv))
-		return 1;
-
-	node = argv[1];
-
-	libubi = libubi_open();
-	if (libubi == NULL) {
-		failed("libubi_open");
-		return 1;
-	}
-
-	if (ubi_get_dev_info(libubi, node, &dev_info)) {
-		failed("ubi_get_dev_info");
-		goto close;
-	}
-
-	if (test_static())
-		goto close;
-	if (test_read(UBI_DYNAMIC_VOLUME))
-		goto close;
-	if (test_read(UBI_STATIC_VOLUME))
-		goto close;
-
-	libubi_close(libubi);
-	return 0;
-
-close:
-	libubi_close(libubi);
-	return 1;
-}
+/*
+ * Offsets to test, @io - minimal I/O unit size, @s - eraseblock size, @sz -
+ * volume size.
+ */
+#define OFFSETS(io, s, sz)                                                     \
+	{0, (io)-1, (io), (io)+1, 2*(io)-1, 2*(io), 3*(io)-1, 3*(io),          \
+	 PAGE_SIZE-1, PAGE_SIZE-(io), 2*PAGE_SIZE, 2*PAGE_SIZE-(io),           \
+	 (s)/2-1, (s)/2, (s)/2+1, (s)-1, (s), (s)+1, 2*(s)-(io), 2*(s),        \
+	 2*(s)+(io), 3*(s), (sz)-(s)-1, (sz)-(io)-1, (sz)-PAGE_SIZE-1};
 
 /**
  * test_static - test static volume-specific features.
@@ -97,7 +79,7 @@ static int test_static(void)
 		return -1;
 	}
 
-	sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num, req.vol_id);
+	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num, req.vol_id);
 
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
@@ -118,7 +100,7 @@ static int test_static(void)
 	}
 
 	/* Ensure read returns EOF */
-	ret = read(fd, &buf[0], 1);
+	ret = read(fd, buf, 1);
 	if (ret < 0) {
 		failed("read");
 		goto close;
@@ -133,7 +115,7 @@ static int test_static(void)
 		goto close;
 	}
 
-	ret = write(fd, &buf[0], 10);
+	ret = write(fd, buf, 10);
 	if (ret < 0) {
 		failed("write");
 		goto close;
@@ -147,7 +129,7 @@ static int test_static(void)
 		failed("seek");
 		goto close;
 	}
-	ret = read(fd, &buf[0], 20);
+	ret = read(fd, buf, 20);
 	if (ret < 0) {
 		failed("read");
 		goto close;
@@ -172,80 +154,72 @@ remove:
 	return -1;
 }
 
-static int test_read1(struct ubi_vol_info *vol_info);
-
-/**
- * test_read - test UBI volume reading from different offsets.
- *
- * @type  volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
- *
- * Thus function returns %0 in case of success and %-1 in case of failure.
+/*
+ * A helper function for test_read2().
  */
-static int test_read(int type)
+static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 {
-	const char *name = TESTNAME ":test_read()";
-	int alignments[] = ALIGNMENTS(dev_info.leb_size);
-	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	struct ubi_mkvol_request req;
+	int i, len1;
+	unsigned char ck_buf[len], buf[len];
+	off_t new_off;
+
+	if (off + len > vol_info->data_bytes)
+		len1 = vol_info->data_bytes - off;
+	else
+		len1 = len;
+
+	if (lseek(fd, off, SEEK_SET) != off) {
+		failed("seek");
+		err_msg("len = %d", len);
+		return -1;
+	}
+	if (read(fd, buf, len) != len1) {
+		failed("read");
+		err_msg("len = %d", len);
+		return -1;
+	}
+
+	new_off = lseek(fd, 0, SEEK_CUR);
+	if (new_off != off + len1) {
+		if (new_off == -1)
+			failed("lseek");
+		else
+			err_msg("read %d bytes from %lld, but resulting "
+				"offset is %lld", len1, (long long) off, (long long) new_off);
+		return -1;
+	}
+
+	for (i = 0; i < len1; i++)
+		ck_buf[i] = (unsigned char)(off + i);
+
+	if (memcmp(buf, ck_buf, len1)) {
+		err_msg("incorrect data read from offset %lld",
+			(long long)off);
+		err_msg("len = %d", len);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * A helper function for test_read1().
+ */
+static int test_read2(const struct ubi_vol_info *vol_info, int len)
+{
 	int i;
+	off_t offsets[] = OFFSETS(dev_info.min_io_size, vol_info->leb_size,
+				  vol_info->data_bytes);
 
-	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
-		int leb_size;
-		struct ubi_vol_info vol_info;
-
-		req.vol_id = UBI_VOL_NUM_AUTO;
-		req.vol_type = type;
-		req.name = name;
-
-		req.alignment = alignments[i];
-		req.alignment -= req.alignment % dev_info.min_io_size;
-		if (req.alignment == 0)
-			req.alignment = dev_info.min_io_size;
-
-		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
-		req.bytes =  MIN_AVAIL_EBS * leb_size;
-
-		if (ubi_mkvol(libubi, node, &req)) {
-			failed("ubi_mkvol");
-			return -1;
-		}
-
-		sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num,
-			req.vol_id);
-
-		if (ubi_get_vol_info(libubi, vol_node, &vol_info)) {
-			failed("ubi_get_vol_info");
-			goto remove;
-		}
-
-		if (test_read1(&vol_info)) {
-			err_msg("alignment = %d", req.alignment);
-			goto remove;
-		}
-
-		if (ubi_rmvol(libubi, node, req.vol_id)) {
-			failed("ubi_rmvol");
+	for (i = 0; i < sizeof(offsets)/sizeof(off_t); i++) {
+		if (test_read3(vol_info, len, offsets[i])) {
+			err_msg("offset = %d", offsets[i]);
 			return -1;
 		}
 	}
 
 	return 0;
-
-remove:
-	ubi_rmvol(libubi, node, req.vol_id);
-	return -1;
 }
-
-static int test_read2(const struct ubi_vol_info *vol_info, int len);
-
-static int fd;
-
-/* Data lengthes to test, @io - minimal I/O unit size, @s - eraseblock size */
-#define LENGTHES(io, s)                                                        \
-	{1, (io), (io)+1, 2*(io), 3*(io)-1, 3*(io),                            \
-	 PAGE_SIZE-1, PAGE_SIZE-(io), 2*PAGE_SIZE, 2*PAGE_SIZE-(io),           \
-	 (s)/2-1, (s)/2, (s)/2+1, (s)-1, (s), (s)+1, 2*(s)-(io), 2*(s),        \
-	 2*(s)+(io), 3*(s), 3*(s)+(io)};
 
 /*
  * A helper function for test_read().
@@ -256,7 +230,7 @@ static int test_read1(struct ubi_vol_info *vol_info)
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	int lengthes[] = LENGTHES(dev_info.min_io_size, vol_info->leb_size);
 
-	sprintf(&vol_node[0], UBI_VOLUME_PATTERN, dev_info.dev_num,
+	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num,
 		vol_info->vol_id);
 
 	fd = open(vol_node, O_RDWR);
@@ -280,7 +254,7 @@ static int test_read1(struct ubi_vol_info *vol_info)
 		for (i = 0; i < 512; i++)
 			buf[i] = (unsigned char)(written + i);
 
-		ret = write(fd, &buf[0], 512);
+		ret = write(fd, buf, 512);
 		if (ret == -1) {
 			failed("write");
 			err_msg("written = %d, ret = %d", written, ret);
@@ -318,81 +292,97 @@ close:
 	return -1;
 }
 
-static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off);
-
-/*
- * Offsets to test, @io - minimal I/O unit size, @s - eraseblock size, @sz -
- * volume size.
+/**
+ * test_read - test UBI volume reading from different offsets.
+ *
+ * @type  volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
+ *
+ * Thus function returns %0 in case of success and %-1 in case of failure.
  */
-#define OFFSETS(io, s, sz)                                                     \
-	{0, (io)-1, (io), (io)+1, 2*(io)-1, 2*(io), 3*(io)-1, 3*(io),          \
-	 PAGE_SIZE-1, PAGE_SIZE-(io), 2*PAGE_SIZE, 2*PAGE_SIZE-(io),           \
-	 (s)/2-1, (s)/2, (s)/2+1, (s)-1, (s), (s)+1, 2*(s)-(io), 2*(s),        \
-	 2*(s)+(io), 3*(s), (sz)-(s)-1, (sz)-(io)-1, (sz)-PAGE_SIZE-1};
-
-/*
- * A helper function for test_read1().
- */
-static int test_read2(const struct ubi_vol_info *vol_info, int len)
+static int test_read(int type)
 {
+	const char *name = TESTNAME ":test_read()";
+	int alignments[] = ALIGNMENTS(dev_info.leb_size);
+	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
+	struct ubi_mkvol_request req;
 	int i;
-	off_t offsets[] = OFFSETS(dev_info.min_io_size, vol_info->leb_size,
-				  vol_info->data_bytes);
 
-	for (i = 0; i < sizeof(offsets)/sizeof(off_t); i++) {
-		if (test_read3(vol_info, len, offsets[i])) {
-			err_msg("offset = %d", offsets[i]);
+	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
+		int leb_size;
+		struct ubi_vol_info vol_info;
+
+		req.vol_id = UBI_VOL_NUM_AUTO;
+		req.vol_type = type;
+		req.name = name;
+
+		req.alignment = alignments[i];
+		req.alignment -= req.alignment % dev_info.min_io_size;
+		if (req.alignment == 0)
+			req.alignment = dev_info.min_io_size;
+
+		leb_size = dev_info.leb_size - dev_info.leb_size % req.alignment;
+		req.bytes =  MIN_AVAIL_EBS * leb_size;
+
+		if (ubi_mkvol(libubi, node, &req)) {
+			failed("ubi_mkvol");
+			return -1;
+		}
+
+		sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num,
+			req.vol_id);
+
+		if (ubi_get_vol_info(libubi, vol_node, &vol_info)) {
+			failed("ubi_get_vol_info");
+			goto remove;
+		}
+
+		if (test_read1(&vol_info)) {
+			err_msg("alignment = %d", req.alignment);
+			goto remove;
+		}
+
+		if (ubi_rmvol(libubi, node, req.vol_id)) {
+			failed("ubi_rmvol");
 			return -1;
 		}
 	}
 
 	return 0;
+
+remove:
+	ubi_rmvol(libubi, node, req.vol_id);
+	return -1;
 }
 
-/*
- * A helper function for test_read2().
- */
-static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
+int main(int argc, char * const argv[])
 {
-	int i, len1;
-	unsigned char ck_buf[len], buf[len];
-	off_t new_off;
+	if (initial_check(argc, argv))
+		return 1;
 
-	if (off + len > vol_info->data_bytes)
-		len1 = vol_info->data_bytes - off;
-	else
-		len1 = len;
+	node = argv[1];
 
-	if (lseek(fd, off, SEEK_SET) != off) {
-		failed("seek");
-		err_msg("len = %d", len);
-		return -1;
-	}
-	if (read(fd, &buf[0], len) != len1) {
-		failed("read");
-		err_msg("len = %d", len);
-		return -1;
+	libubi = libubi_open();
+	if (libubi == NULL) {
+		failed("libubi_open");
+		return 1;
 	}
 
-	new_off = lseek(fd, 0, SEEK_CUR);
-	if (new_off != off + len1) {
-		if (new_off == -1)
-			failed("lseek");
-		else
-			err_msg("read %d bytes from %lld, but resulting "
-				"offset is %lld", len1, (long long) off, (long long) new_off);
-		return -1;
+	if (ubi_get_dev_info(libubi, node, &dev_info)) {
+		failed("ubi_get_dev_info");
+		goto close;
 	}
 
-	for (i = 0; i < len1; i++)
-		ck_buf[i] = (unsigned char)(off + i);
+	if (test_static())
+		goto close;
+	if (test_read(UBI_DYNAMIC_VOLUME))
+		goto close;
+	if (test_read(UBI_STATIC_VOLUME))
+		goto close;
 
-	if (memcmp(&buf[0], &ck_buf[0], len1)) {
-		err_msg("incorrect data read from offset %lld",
-			(long long)off);
-		err_msg("len = %d", len);
-		return -1;
-	}
-
+	libubi_close(libubi);
 	return 0;
+
+close:
+	libubi_close(libubi);
+	return 1;
 }
