@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <mtd_swab.h>
 
 #ifdef __cplusplus
 extern "C" {

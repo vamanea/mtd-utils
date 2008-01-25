@@ -78,7 +78,7 @@ validate_ubi_info(ubi_info_t u)
 		return EUBIGEN_INVALID_TYPE;
 	}
 
-	if (__be32_to_cpu(u->ec->vid_hdr_offset) < UBI_VID_HDR_SIZE) {
+	if (be32_to_cpu(u->ec->vid_hdr_offset) < UBI_VID_HDR_SIZE) {
 		return EUBIGEN_INVALID_HDR_OFFSET;
 	}
 
@@ -142,16 +142,16 @@ add_static_info(ubi_info_t u, size_t data_size, ubigen_action_t action)
 	uint32_t crc = clc_crc32(crc32_table, UBI_CRC32_INIT,
 				 u->ptr_data, data_size);
 
-	u->v->data_size = __cpu_to_be32(data_size);
-	u->v->data_crc = __cpu_to_be32(crc);
+	u->v->data_size = cpu_to_be32(data_size);
+	u->v->data_crc = cpu_to_be32(crc);
 
 	if (action & BROKEN_DATA_CRC) {
 		u->v->data_crc =
-			__cpu_to_be32(__be32_to_cpu(u->v->data_crc) + 1);
+			cpu_to_be32(be32_to_cpu(u->v->data_crc) + 1);
 	}
 	if (action & BROKEN_DATA_SIZE) {
 		u->v->data_size =
-			__cpu_to_be32(__be32_to_cpu(u->v->data_size) + 1);
+			cpu_to_be32(be32_to_cpu(u->v->data_size) + 1);
 	}
 }
 
@@ -161,9 +161,9 @@ write_vid_hdr(ubi_info_t u, ubigen_action_t action)
 	uint32_t crc = clc_crc32(crc32_table, UBI_CRC32_INIT,
 				 u->v, UBI_VID_HDR_SIZE_CRC);
 	/* Write VID header */
-	u->v->hdr_crc = __cpu_to_be32(crc);
+	u->v->hdr_crc = cpu_to_be32(crc);
 	if (action & BROKEN_HDR_CRC) {
-		u->v->hdr_crc = __cpu_to_be32(__be32_to_cpu(u->v->hdr_crc) + 1);
+		u->v->hdr_crc = cpu_to_be32(be32_to_cpu(u->v->hdr_crc) + 1);
 	}
 	memcpy(u->ptr_vid_hdr, u->v, UBI_VID_HDR_SIZE);
 }
@@ -197,7 +197,7 @@ ubigen_write_leb(ubi_info_t u, ubigen_action_t action)
 		add_static_info(u, read, action);
 	}
 
-	u->v->lnum = __cpu_to_be32(u->blks_written);
+	u->v->lnum = cpu_to_be32(u->blks_written);
 
 	if (action & MARK_AS_UPDATE) {
 		u->v->copy_flag = (u->v->copy_flag)++;
@@ -267,19 +267,19 @@ dump_info(ubi_info_t u ubi_unused)
 
 	fprintf(stderr, "ubi volume\n");
 	fprintf(stderr, "version      :	  %8d\n", u->v->version);
-	fprintf(stderr, "vol_id	      :	  %8d\n", __be32_to_cpu(u->v->vol_id));
+	fprintf(stderr, "vol_id	      :	  %8d\n", be32_to_cpu(u->v->vol_id));
 	fprintf(stderr, "vol_type     :	  %8s\n",
 		u->v->vol_type == UBI_VID_STATIC ?
 		"static" : "dynamic");
 	fprintf(stderr, "used_ebs     :	  %8d\n",
-		__be32_to_cpu(u->v->used_ebs));
+		be32_to_cpu(u->v->used_ebs));
 	fprintf(stderr, "peb_size     : 0x%08x\n", u->peb_size);
 	fprintf(stderr, "leb_size     : 0x%08x\n", u->leb_size);
 	fprintf(stderr, "data_pad     : 0x%08x\n",
-		__be32_to_cpu(u->v->data_pad));
+		be32_to_cpu(u->v->data_pad));
 	fprintf(stderr, "leb_total    :	  %8d\n", u->leb_total);
 	fprintf(stderr, "header offs  : 0x%08x\n",
-		__be32_to_cpu(u->ec->vid_hdr_offset));
+		be32_to_cpu(u->ec->vid_hdr_offset));
 	fprintf(stderr, "bytes_total  :	  %8d\n", u->bytes_total);
 	fprintf(stderr, "  +  in MiB  : %8.2f M\n",
 		((float)(u->bytes_total)) / 1024 / 1024);
@@ -372,31 +372,31 @@ ubigen_create(ubi_info_t* u, uint32_t vol_id, uint8_t vol_type,
 	res->fp_out = fp_out;
 
 	/* vid hdr data which doesn't change */
-	res->v->magic = __cpu_to_be32(UBI_VID_HDR_MAGIC);
+	res->v->magic = cpu_to_be32(UBI_VID_HDR_MAGIC);
 	res->v->version = version ? version : UBI_VERSION;
 	res->v->vol_type = vol_type;
-	res->v->vol_id = __cpu_to_be32(vol_id);
+	res->v->vol_id = cpu_to_be32(vol_id);
 	res->v->compat = compat_flag;
-	res->v->data_pad = __cpu_to_be32(res->data_pad);
+	res->v->data_pad = cpu_to_be32(res->data_pad);
 
 	/* static only: used_ebs */
 	if (res->v->vol_type == UBI_VID_STATIC) {
-		res->v->used_ebs = __cpu_to_be32(byte_to_blk
+		res->v->used_ebs = cpu_to_be32(byte_to_blk
 						(res->bytes_total,
 						 res->leb_size));
 	}
 
 	/* ec hdr (fixed, doesn't change) */
-	res->ec->magic = __cpu_to_be32(UBI_EC_HDR_MAGIC);
+	res->ec->magic = cpu_to_be32(UBI_EC_HDR_MAGIC);
 	res->ec->version = version ? version : UBI_VERSION;
-	res->ec->ec = __cpu_to_be64(ec);
-	res->ec->vid_hdr_offset = __cpu_to_be32(vid_hdr_offset);
+	res->ec->ec = cpu_to_be64(ec);
+	res->ec->vid_hdr_offset = cpu_to_be32(vid_hdr_offset);
 
-	res->ec->data_offset = __cpu_to_be32(data_offset);
+	res->ec->data_offset = cpu_to_be32(data_offset);
 
 	crc = clc_crc32(crc32_table, UBI_CRC32_INIT, res->ec,
 			UBI_EC_HDR_SIZE_CRC);
-	res->ec->hdr_crc = __cpu_to_be32(crc);
+	res->ec->hdr_crc = cpu_to_be32(crc);
 
 	/* prepare a read buffer */
 	res->buf = (uint8_t*) malloc (res->peb_size * sizeof(uint8_t));
@@ -407,8 +407,8 @@ ubigen_create(ubi_info_t* u, uint32_t vol_id, uint8_t vol_type,
 
 	/* point to distinct regions within the buffer */
 	res->ptr_ec_hdr = res->buf;
-	res->ptr_vid_hdr = res->buf + __be32_to_cpu(res->ec->vid_hdr_offset);
-	res->ptr_data = res->buf + __be32_to_cpu(res->ec->vid_hdr_offset)
+	res->ptr_vid_hdr = res->buf + be32_to_cpu(res->ec->vid_hdr_offset);
+	res->ptr_data = res->buf + be32_to_cpu(res->ec->vid_hdr_offset)
 		+ UBI_VID_HDR_SIZE;
 
 	rc = validate_ubi_info(res);
@@ -468,19 +468,19 @@ ubigen_set_lvol_rec(ubi_info_t u, size_t reserved_bytes,
 	memset(lvol_rec, 0x0, UBI_VTBL_RECORD_SIZE);
 
 	lvol_rec->reserved_pebs =
-		__cpu_to_be32(byte_to_blk(reserved_bytes, u->leb_size));
-	lvol_rec->alignment = __cpu_to_be32(u->alignment);
+		cpu_to_be32(byte_to_blk(reserved_bytes, u->leb_size));
+	lvol_rec->alignment = cpu_to_be32(u->alignment);
 	lvol_rec->data_pad = u->v->data_pad;
 	lvol_rec->vol_type = u->v->vol_type;
 
 	lvol_rec->name_len =
-		__cpu_to_be16((uint16_t)strlen((const char*)vol_name));
+		cpu_to_be16((uint16_t)strlen((const char*)vol_name));
 
 	memcpy(lvol_rec->name, vol_name, UBI_VOL_NAME_MAX + 1);
 
 	crc = clc_crc32(crc32_table, UBI_CRC32_INIT,
 			lvol_rec, UBI_VTBL_RECORD_SIZE_CRC);
-	lvol_rec->crc =	 __cpu_to_be32(crc);
+	lvol_rec->crc =	 cpu_to_be32(crc);
 
 	return 0;
 }

@@ -494,7 +494,7 @@ init_vol_tab(struct ubi_vtbl_record **vol_tab, size_t *vol_tab_size)
 	for (i = 0; i < UBI_MAX_VOLUMES; i++) {
 		crc = clc_crc32(crc32_table, UBI_CRC32_INIT,
 			&(res[i]), UBI_VTBL_RECORD_SIZE_CRC);
-		res[i].crc = __cpu_to_be32(crc);
+		res[i].crc = cpu_to_be32(crc);
 	}
 
 	*vol_tab = res;

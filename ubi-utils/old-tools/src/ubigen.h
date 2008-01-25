@@ -25,6 +25,7 @@
 #include <stdio.h> /* FILE */
 #include <stdint.h>
 #include <mtd/ubi-header.h>
+#include <mtd_swab.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -92,7 +92,7 @@ struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui)
 	for (i = 0; i < UBI_MAX_VOLUMES; i++) {
 		uint32_t crc = crc32(UBI_CRC32_INIT, &vtbl[i],
 				     UBI_VTBL_RECORD_SIZE_CRC);
-		vtbl[i].crc = __cpu_to_be32(crc);
+		vtbl[i].crc = cpu_to_be32(crc);
 	}
 
 	return vtbl;
@@ -127,19 +127,19 @@ int ubigen_add_volume(const struct ubigen_info *ui,
 
 	memset(vtbl_rec, '\0', sizeof(struct ubi_vtbl_record));
 	tmp = (vi->bytes + ui->leb_size - 1) / ui->leb_size;
-	vtbl_rec->reserved_pebs = __cpu_to_be32(tmp);
-	vtbl_rec->alignment = __cpu_to_be32(vi->alignment);
+	vtbl_rec->reserved_pebs = cpu_to_be32(tmp);
+	vtbl_rec->alignment = cpu_to_be32(vi->alignment);
 	vtbl_rec->vol_type = vi->type;
 	tmp = ui->leb_size % vi->alignment;
-	vtbl_rec->data_pad = __cpu_to_be32(tmp);
+	vtbl_rec->data_pad = cpu_to_be32(tmp);
 	vtbl_rec->flags = vi->flags;
 
 	memcpy(vtbl_rec->name, vi->name, vi->name_len);
 	vtbl_rec->name[vi->name_len] = '\0';
-	vtbl_rec->name_len = __cpu_to_be16(vi->name_len);
+	vtbl_rec->name_len = cpu_to_be16(vi->name_len);
 
 	tmp = crc32(UBI_CRC32_INIT, vtbl_rec, UBI_VTBL_RECORD_SIZE_CRC);
-	vtbl_rec->crc =	 __cpu_to_be32(tmp);
+	vtbl_rec->crc =	 cpu_to_be32(tmp);
 	return 0;
 }
 
@@ -155,15 +155,15 @@ static void init_ec_hdr(const struct ubigen_info *ui,
 
 	memset(hdr, '\0', sizeof(struct ubi_ec_hdr));
 
-	hdr->magic = __cpu_to_be32(UBI_EC_HDR_MAGIC);
+	hdr->magic = cpu_to_be32(UBI_EC_HDR_MAGIC);
 	hdr->version = ui->ubi_ver;
-	hdr->ec = __cpu_to_be64(ui->ec);
-	hdr->vid_hdr_offset = __cpu_to_be32(ui->vid_hdr_offs);
+	hdr->ec = cpu_to_be64(ui->ec);
+	hdr->vid_hdr_offset = cpu_to_be32(ui->vid_hdr_offs);
 
-	hdr->data_offset = __cpu_to_be32(ui->data_offs);
+	hdr->data_offset = cpu_to_be32(ui->data_offs);
 
 	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
-	hdr->hdr_crc = __cpu_to_be32(crc);
+	hdr->hdr_crc = cpu_to_be32(crc);
 }
 
 /**
@@ -187,23 +187,23 @@ static void init_vid_hdr(const struct ubigen_info *ui,
 
 	memset(hdr, '\0', sizeof(struct ubi_vid_hdr));
 
-	hdr->magic = __cpu_to_be32(UBI_VID_HDR_MAGIC);
+	hdr->magic = cpu_to_be32(UBI_VID_HDR_MAGIC);
 	hdr->version = ui->ubi_ver;
 	hdr->vol_type = vi->type;
-	hdr->vol_id = __cpu_to_be32(vi->id);
-	hdr->lnum = __cpu_to_be32(lnum);
-	hdr->data_pad = __cpu_to_be32(vi->data_pad);
+	hdr->vol_id = cpu_to_be32(vi->id);
+	hdr->lnum = cpu_to_be32(lnum);
+	hdr->data_pad = cpu_to_be32(vi->data_pad);
 	hdr->compat = vi->compat;
 
 	if (vi->type == UBI_VID_STATIC) {
-		hdr->data_size = __cpu_to_be32(data_size);
-		hdr->used_ebs = __cpu_to_be32(vi->used_ebs);
+		hdr->data_size = cpu_to_be32(data_size);
+		hdr->used_ebs = cpu_to_be32(vi->used_ebs);
 		crc = crc32(UBI_CRC32_INIT, data, data_size);
-		hdr->data_crc = __cpu_to_be32(crc);
+		hdr->data_crc = cpu_to_be32(crc);
 	}
 
 	crc = crc32(UBI_CRC32_INIT, hdr, UBI_VID_HDR_SIZE_CRC);
-	hdr->hdr_crc = __cpu_to_be32(crc);
+	hdr->hdr_crc = cpu_to_be32(crc);
 }
 
 /**

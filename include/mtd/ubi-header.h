@@ -31,7 +31,6 @@
 #define __UBI_HEADER_H__
 
 #include <stdint.h>
-#include <asm/byteorder.h>
 
 /* The version of UBI images supported by this implementation */
 #define UBI_VERSION 1
