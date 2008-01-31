@@ -618,6 +618,11 @@ int main(int argc, char * const argv[])
 
 	verbose(args.verbose, "writing layout volume");
 
+	if (fseek(args.fp_out, 0, SEEK_SET) == -1) {
+		errmsg("cannot seek file \"%s\"", args.f_out);
+		goto out_dict;
+	}
+
 	err = ubigen_write_layout_vol(&ui, vtbl, args.fp_out);
 	if (err) {
 		errmsg("cannot write layout volume");
