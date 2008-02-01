@@ -320,31 +320,6 @@ static int vol_read_data(const char *patt, int dev_num, int vol_id, void *buf,
 }
 
 /**
- * dent_is_dir - check if a file is a directory.
- * @dir: the base directory path of the file
- * @name: file name
- *
- * This function returns %1 if file @name in directory @dir is a directoru, and
- * %0 if not.
- */
-static int dent_is_dir(const char *dir, const char *name)
-{
-	int ret;
-	struct stat st;
-	char full_path[strlen(dir) + strlen(name) + 2];
-
-	sprintf(full_path, "%s/%s", dir, name);
-	ret = lstat(full_path, &st);
-	if (ret) {
-		errmsg("lstat failed on \"%s\"", full_path);
-		perror("lstat");
-		return -1;
-	}
-
-	return !!S_ISDIR(st.st_mode);
-}
-
-/**
  * dev_get_major - get major and minor numbers of an UBI device.
  * @lib: libubi descriptor
  * @dev_num: UBI device number
@@ -874,20 +849,21 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 	info->lowest_dev_num = INT_MAX;
 	while (1) {
 		int dev_num, ret;
+		char tmp_buf[256];
 
 		errno = 0;
 		dirent = readdir(sysfs_ubi);
 		if (!dirent)
 			break;
-		/*
-		 * Make sure this direntry is a directory and not a symlink -
-		 * Linux puts symlinks to UBI volumes on this UBI device to the
-		 * same sysfs directory.
-		 */
-		if (!dent_is_dir(lib->sysfs_ubi, dirent->d_name))
-			continue;
 
-		ret = sscanf(dirent->d_name, UBI_DEV_NAME_PATT, &dev_num);
+		if (strlen(dirent->d_name) > 256) {
+			errmsg("invalid entry in %s: \"%s\"",
+			       lib->sysfs_ubi, dirent->d_name);
+			goto out_close;
+		}
+
+		ret = sscanf(dirent->d_name, UBI_DEV_NAME_PATT"%s",
+			     &dev_num, tmp_buf);
 		if (ret == 1) {
 			info->dev_count += 1;
 			if (dev_num > info->highest_dev_num)
@@ -1044,12 +1020,20 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 
 	while (1) {
 		int vol_id, ret, devno;
+		char tmp_buf[256];
 
 		errno = 0;
 		dirent = readdir(sysfs_ubi);
 		if (!dirent)
 			break;
-		ret = sscanf(dirent->d_name, UBI_VOL_NAME_PATT, &devno, &vol_id);
+
+		if (strlen(dirent->d_name) > 256) {
+			errmsg("invalid entry in %s: \"%s\"",
+			       lib->sysfs_ubi, dirent->d_name);
+			goto out_close;
+		}
+
+		ret = sscanf(dirent->d_name, UBI_VOL_NAME_PATT"%s", &devno, &vol_id, tmp_buf);
 		if (ret == 2 && devno == dev_num) {
 			info->vol_count += 1;
 			if (vol_id > info->highest_vol_num)
