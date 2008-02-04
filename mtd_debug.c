@@ -272,6 +272,8 @@ int showinfo (int fd)
 		case MTD_DATAFLASH:
 			printf ("MTD_DATAFLASH");
 			break;
+		case MTD_UBIVOLUME:
+			printf ("MTD_UBIVOLUME");
 		default:
 			printf ("(unknown type - new MTD API maybe?)");
 	}
@@ -298,6 +300,8 @@ int showinfo (int fd)
 		{
 			{ "MTD_WRITEABLE", MTD_WRITEABLE },
 			{ "MTD_BIT_WRITEABLE", MTD_BIT_WRITEABLE },
+			{ "MTD_NO_ERASE", MTD_NO_ERASE },
+			{ "MTD_STUPID_LOCK", MTD_STUPID_LOCK },
 			{ NULL, -1 }
 		};
 		for (i = 0; flags[i].name != NULL; i++)
