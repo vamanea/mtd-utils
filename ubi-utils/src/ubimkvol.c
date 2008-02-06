@@ -174,7 +174,7 @@ static int parse_opt(int argc, char * const argv[])
 		case 'S':
 			args.lebs = strtoull(optarg, &endp, 0);
 			if (endp == optarg || args.lebs <= 0 || *endp != '\0') {
-				errmsg("bad volume size: \"%s\"", optarg);
+				errmsg("bad LEB count: \"%s\"", optarg);
 				return -1;
 			}
 			break;
@@ -315,7 +315,7 @@ int main(int argc, char * const argv[])
 	ubiutils_print_bytes(vol_info.rsvd_bytes, 0);
 	printf("), LEB size ");
 	ubiutils_print_bytes(vol_info.leb_size, 1);
-	printf(", %s volume, name \"%s\", alignment %d\n",
+	printf(", %s, name \"%s\", alignment %d\n",
 	       req.vol_type == UBI_DYNAMIC_VOLUME ? "dynamic" : "static",
 	       vol_info.name, vol_info.alignment);
 
