@@ -26,18 +26,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 /**
- * ubiutils_bytes_multiplier - convert size specifier to an integer
- *                             multiplier.
- *
+ * get_multiplier - convert size specifier to an integer multiplier.
  * @str: the size specifier string
  *
  * This function parses the @str size specifier, which may be one of
  * 'KiB', 'MiB', or 'GiB' into an integer multiplier. Returns positive
  * size multiplier in case of success and %-1 in case of failure.
  */
-int ubiutils_get_multiplier(const char *str)
+static int get_multiplier(const char *str)
 {
 	if (!str)
 		return 1;
@@ -54,6 +53,39 @@ int ubiutils_get_multiplier(const char *str)
 		return 1024 * 1024 * 1024;
 
 	return -1;
+}
+
+/**
+ * ubiutils_get_bytes - convert a string containing amount of bytes into an
+ * integer
+ * @str: string to convert
+ *
+ * This function parses @str which may have an onee of 'KiB', 'MiB', or 'GiB'
+ * size specifiers. Returns positive amount of bytes in case of success and %-1
+ * in case of failure.
+ */
+long long ubiutils_get_bytes(const char *str)
+{
+	char *endp;
+	long long bytes = strtoull(str, &endp, 0);
+
+	if (endp == str || bytes < 0) {
+		fprintf(stderr, "incorrect amount of bytes: \"%s\"", str);
+		return -1;
+	}
+
+	if (*endp != '\0') {
+		int mult = get_multiplier(endp);
+
+		if (mult == -1) {
+			fprintf(stderr, "bad size specifier: \"%s\" - "
+			        "should be 'KiB', 'MiB' or 'GiB'", endp);
+			return -1;
+		}
+		bytes *= mult;
+	}
+
+	return bytes;
 }
 
 /**

@@ -20,6 +20,8 @@
 #define __UBI_UTILS_COMMON_H__
 
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,16 +42,25 @@ extern "C" {
 } while(0)
 
 /* Error messages */
-#define errmsg(fmt, ...) do {                                             \
+#define errmsg(fmt, ...)  ({                                              \
 	fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \
-} while(0)
+	-1;                                                               \
+})
+
+/* System error messages */
+#define sys_errmsg(fmt, ...)  ({                                          \
+	int _err = errno;                                                 \
+	fprintf(stderr, PROGRAM_NAME " error: " fmt "\n", ##__VA_ARGS__); \
+	fprintf(stderr, "error %d (%s)", _err, strerror(_err));           \
+	-1;                                                               \
+})
 
 /* Warnings */
 #define warnmsg(fmt, ...) do {                                              \
 	fprintf(stderr, PROGRAM_NAME " warning: " fmt "\n", ##__VA_ARGS__); \
 } while(0)
 
-int ubiutils_get_multiplier(const char *str);
+long long ubiutils_get_bytes(const char *str);
 void ubiutils_print_bytes(long long bytes, int bracket);
 void ubiutils_print_text(FILE *stream, const char *txt, int len);
 

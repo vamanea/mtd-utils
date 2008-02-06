@@ -23,14 +23,26 @@
 #ifndef __LIBUBI_INT_H__
 #define __LIBUBI_INT_H__
 
+#include <string.h>
+#include <errno.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Error messages */
-#define errmsg(fmt, ...) do {                                      \
+#define errmsg(fmt, ...)  ({                                       \
         fprintf(stderr, "libubi error: " fmt "\n", ##__VA_ARGS__); \
-} while(0)
+	-1;                                                        \
+})
+
+/* System error messages */
+#define sys_errmsg(fmt, ...)  ({                                   \
+	int _err = errno;                                          \
+	fprintf(stderr, "libubi error: " fmt "\n", ##__VA_ARGS__); \
+	fprintf(stderr, "error %d (%s)", _err, strerror(_err));    \
+	-1;                                                        \
+})
 
 /*
  * The below are pre-define UBI file and directory names.

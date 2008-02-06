@@ -26,7 +26,6 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 #include <libubi.h>
 #include "common.h"
@@ -99,18 +98,14 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'n':
 			args.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
-				errmsg("bad volume ID: " "\"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.vol_id < 0)
+				return errmsg("bad volume ID: " "\"%s\"", optarg);
 			break;
 
 		case 'd':
 			args.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.devn < 0) {
-				errmsg("bad UBI device number: \"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.devn < 0)
+				return errmsg("bad UBI device number: \"%s\"", optarg);
 
 			break;
 
@@ -125,8 +120,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case ':':
-			errmsg("parameter is missing");
-			return -1;
+			return errmsg("parameter is missing");
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
@@ -134,12 +128,10 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	if (optind == argc - 1) {
+	if (optind == argc - 1)
 		args.node = argv[optind];
-	} else if (optind < argc) {
-		errmsg("more then one UBI devices specified (use -h for help)");
-		return -1;
-	}
+	else if (optind < argc)
+		return errmsg("more then one UBI devices specified (use -h for help)");
 
 	return 0;
 }
@@ -150,44 +142,30 @@ static int translate_dev(libubi_t libubi, const char *node)
 
 	err = ubi_node_type(libubi, node);
 	if (err == -1) {
-		if (errno) {
-			errmsg("unrecognized device node \"%s\"", node);
-			return -1;
-		}
-		errmsg("\"%s\" does not correspond to any UBI device or volume",
-		       node);
-		return -1;
+		if (errno)
+			return errmsg("unrecognized device node \"%s\"", node);
+		return errmsg("\"%s\" does not correspond to any UBI device or volume", node);
 	}
 
 	if (err == 1) {
 		struct ubi_dev_info dev_info;
 
 		err = ubi_get_dev_info(libubi, node, &dev_info);
-		if (err) {
-			errmsg("cannot get information about UBI device \"%s\"",
-			       node);
-			perror("ubi_get_dev_info");
-			return -1;
-		}
+		if (err)
+			return sys_errmsg("cannot get information about UBI device \"%s\"", node);
 
 		args.devn = dev_info.dev_num;
 	} else {
 		struct ubi_vol_info vol_info;
 
 		err = ubi_get_vol_info(libubi, node, &vol_info);
-		if (err) {
-			errmsg("cannot get information about UBI volume \"%s\"",
-			       node);
-			perror("ubi_get_vol_info");
-			return -1;
-		}
+		if (err)
+			return sys_errmsg("cannot get information about UBI volume \"%s\"", node);
 
-		if (args.vol_id != -1) {
-			errmsg("both volume character device node (\"%s\") and "
-			       "volume ID (%d) are specify, use only one of them"
-			       "(use -h for help)", node, args.vol_id);
-			return -1;
-		}
+		if (args.vol_id != -1)
+			return errmsg("both volume character device node (\"%s\") and "
+				      "volume ID (%d) are specify, use only one of them"
+				      "(use -h for help)", node, args.vol_id);
 
 		args.devn = vol_info.dev_num;
 		args.vol_id = vol_info.vol_id;
@@ -202,12 +180,9 @@ static int print_vol_info(libubi_t libubi, int dev_num, int vol_id)
 	struct ubi_vol_info vol_info;
 
 	err = ubi_get_vol_info1(libubi, dev_num, vol_id, &vol_info);
-	if (err) {
-		errmsg("cannot get information about UBI volume %d on ubi%d",
-		       vol_id, dev_num);
-		perror("ubi_get_vol_info1");
-		return -1;
-	}
+	if (err)
+		return sys_errmsg("cannot get information about UBI volume %d on ubi%d",
+				  vol_id, dev_num);
 
 	printf("Volume ID:   %d (on ubi%d)\n", vol_info.vol_id, vol_info.dev_num);
 	printf("Type:        %s\n",
@@ -237,11 +212,8 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 	struct ubi_vol_info vol_info;
 
 	err = ubi_get_dev_info1(libubi, dev_num, &dev_info);
-	if (err) {
-		errmsg("cannot get information about UBI device %d", dev_num);
-		perror("ubi_get_dev_info1");
-		return -1;
-	}
+	if (err)
+		return sys_errmsg("cannot get information about UBI device %d", dev_num);
 
 	printf("ubi%d:\n", dev_info.dev_num);
 	printf("Volumes count:                           %d\n", dev_info.vol_count);
@@ -274,10 +246,8 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 			if (errno == ENOENT)
 				continue;
 
-			errmsg("libubi failed to probe volume %d on ubi%d",
-			       i, dev_info.dev_num);
-			perror("ubi_get_vol_info1");
-			return -1;
+			return sys_errmsg("libubi failed to probe volume %d on ubi%d",
+					  i, dev_info.dev_num);
 		}
 
 		if (!first)
@@ -304,10 +274,8 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 			if (errno == ENOENT)
 				continue;
 
-			errmsg("libubi failed to probe volume %d on ubi%d",
-			       i, dev_info.dev_num);
-			perror("ubi_get_vol_info1");
-			return -1;
+			return sys_errmsg("libubi failed to probe volume %d on ubi%d",
+					  i, dev_info.dev_num);
 		}
 		first = 0;
 
@@ -326,11 +294,8 @@ static int print_general_info(libubi_t libubi, int all)
 	struct ubi_dev_info dev_info;
 
 	err = ubi_get_info(libubi, &ubi_info);
-	if (err) {
-		errmsg("cannot get UBI information");
-		perror("ubi_get_info");
-		return -1;
-	}
+	if (err)
+		return sys_errmsg("cannot get UBI information");
 
 	printf("UBI version:                    %d\n", ubi_info.version);
 	printf("Count of UBI devices:           %d\n", ubi_info.dev_count);
@@ -351,9 +316,7 @@ static int print_general_info(libubi_t libubi, int all)
 			if (errno == ENOENT)
 				continue;
 
-			errmsg("libubi failed to probe UBI device %d", i);
-			perror("ubi_get_dev_info1");
-			return -1;
+			return sys_errmsg("libubi failed to probe UBI device %d", i);
 		}
 
 		if (!first)
@@ -380,9 +343,7 @@ static int print_general_info(libubi_t libubi, int all)
 			if (errno == ENOENT)
 				continue;
 
-			errmsg("libubi failed to probe UBI device %d", i);
-			perror("ubi_get_dev_info1");
-			return -1;
+			return sys_errmsg("libubi failed to probe UBI device %d", i);
 		}
 		first = 0;
 
@@ -402,17 +363,12 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	if (!args.node && args.devn != -1) {
-		errmsg("specify either device number or node file (use -h for help)");
-		return -1;
-	}
+	if (!args.node && args.devn != -1)
+		return errmsg("specify either device number or node file (use -h for help)");
 
 	libubi = libubi_open();
-	if (libubi == NULL) {
-		errmsg("cannot open libubi");
-		perror("libubi_open");
-		return -1;
-	}
+	if (libubi == NULL)
+		return sys_errmsg("cannot open libubi");
 
 	if (args.node) {
 		/*

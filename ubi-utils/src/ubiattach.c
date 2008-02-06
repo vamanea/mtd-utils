@@ -26,7 +26,6 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 #include <libubi.h>
 #include "common.h"
@@ -92,28 +91,22 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 		case 'd':
 			args.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.devn < 0) {
-				errmsg("bad UBI device number: \"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.devn < 0)
+				return errmsg("bad UBI device number: \"%s\"", optarg);
 
 			break;
 
 		case 'm':
 			args.mtdn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.mtdn < 0) {
-				errmsg("bad MTD device number: \"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.mtdn < 0)
+				return errmsg("bad MTD device number: \"%s\"", optarg);
 
 			break;
 
 		case 'o':
 			args.vidoffs = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vidoffs <= 0) {
-				errmsg("bad VID header offset: \"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.vidoffs <= 0)
+				return errmsg("bad VID header offset: \"%s\"", optarg);
 
 			break;
 
@@ -128,8 +121,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case ':':
-			errmsg("parameter is missing");
-			return -1;
+			return errmsg("parameter is missing");
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
@@ -137,18 +129,13 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	if (optind == argc) {
-		errmsg("UBI control device name was not specified (use -h for help)");
-		return -1;
-	} else if (optind != argc - 1) {
-		errmsg("more then one UBI control device specified (use -h for help)");
-		return -1;
-	}
+	if (optind == argc)
+		return errmsg("UBI control device name was not specified (use -h for help)");
+	else if (optind != argc - 1)
+		return errmsg("more then one UBI control device specified (use -h for help)");
 
-	if (args.mtdn == -1) {
-		errmsg("MTD device number was not specified (use -h for help)");
-		return -1;
-	}
+	if (args.mtdn == -1)
+		return errmsg("MTD device number was not specified (use -h for help)");
 
 	args.node = argv[optind];
 	return 0;
@@ -167,19 +154,15 @@ int main(int argc, char * const argv[])
 		return -1;
 
 	libubi = libubi_open();
-	if (libubi == NULL) {
-		errmsg("cannot open libubi");
-		perror("libubi_open");
-		return -1;
-	}
+	if (libubi == NULL)
+		return sys_errmsg("cannot open libubi");
 
 	/*
 	 * Make sure the kernel is fresh enough and this feature is supported.
 	 */
 	err = ubi_get_info(libubi, &ubi_info);
 	if (err) {
-		errmsg("cannot get UBI information");
-		perror("ubi_get_info");
+		sys_errmsg("cannot get UBI information");
 		goto out_libubi;
 	}
 
@@ -194,16 +177,14 @@ int main(int argc, char * const argv[])
 
 	err = ubi_attach_mtd(libubi, args.node, &req);
 	if (err) {
-		errmsg("cannot attach mtd%d", args.mtdn);
-		perror("ubi_attach_mtd");
+		sys_errmsg("cannot attach mtd%d", args.mtdn);
 		goto out_libubi;
 	}
 
 	/* Print some information about the new UBI device */
 	err = ubi_get_dev_info1(libubi, req.dev_num, &dev_info);
 	if (err) {
-		errmsg("cannot get information about newly created UBI device");
-		perror("ubi_get_dev_info1");
+		sys_errmsg("cannot get information about newly created UBI device");
 		goto out_libubi;
 	}
 

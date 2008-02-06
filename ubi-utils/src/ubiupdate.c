@@ -24,7 +24,6 @@
  *          Artem Bityutskiy
  */
 
-#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -100,8 +99,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case ':':
-			errmsg("parameter is missing");
-			return -1;
+			return errmsg("parameter is missing");
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
@@ -109,14 +107,11 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	if (optind == argc) {
-		errmsg("UBI device name was not specified (use -h for help)");
-		return -1;
-	} else if (optind != argc - 2) {
-		errmsg("specify UBI device name and image file name as first 2 "
-		       "parameters (use -h for help)");
-		return -1;
-	}
+	if (optind == argc)
+		return errmsg("UBI device name was not specified (use -h for help)");
+	else if (optind != argc - 2)
+		return errmsg("specify UBI device name and image file name as first 2 "
+			      "parameters (use -h for help)");
 
 	args.node = argv[optind];
 	args.img  = argv[optind + 1];
@@ -129,16 +124,12 @@ static int truncate_volume(libubi_t libubi)
 	int err, fd;
 
 	fd = open(args.node, O_RDWR);
-	if (fd == -1) {
-		errmsg("cannot open \"%s\"", args.node);
-		perror("open");
-		return -1;
-	}
+	if (fd == -1)
+		return sys_errmsg("cannot open \"%s\"", args.node);
 
 	err = ubi_update_start(libubi, fd, 0);
 	if (err) {
-		errmsg("cannot truncate volume \"%s\"", args.node);
-		perror("ubi_update_start");
+		sys_errmsg("cannot truncate volume \"%s\"", args.node);
 		close(fd);
 		return -1;
 	}
@@ -158,17 +149,12 @@ static int ubi_write(int fd, const void *buf, int len)
 				warnmsg("do not interrupt me!");
 				continue;
 			}
-			errmsg("cannot write %d bytes to volume \"%s\"",
-			       len, args.node);
-			perror("write");
-			return -1;
+			return sys_errmsg("cannot write %d bytes to volume \"%s\"",
+					  len, args.node);
 		}
 
-		if (ret == 0) {
-			errmsg("cannot write %d bytes to volume \"%s\"",
-			       len, args.node);
-			return -1;
-		}
+		if (ret == 0)
+			return errmsg("cannot write %d bytes to volume \"%s\"", len, args.node);
 
 		len -= ret;
 		buf += ret;
@@ -185,10 +171,8 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	char *buf;
 
 	buf = malloc(vol_info->leb_size);
-	if (!buf) {
-		errmsg("cannot allocate %d bytes of memory", vol_info->leb_size);
-		return -1;
-	}
+	if (!buf)
+		return errmsg("cannot allocate %d bytes of memory", vol_info->leb_size);
 
 	err = stat(args.img, &st);
 	if (err < 0) {
@@ -205,22 +189,19 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 
 	fd = open(args.node, O_RDWR);
 	if (fd == -1) {
-		errmsg("cannot open UBI volume \"%s\"", args.node);
-		perror("open");
+		sys_errmsg("cannot open UBI volume \"%s\"", args.node);
 		goto out_free;
 	}
 
 	ifd = open(args.img, O_RDONLY);
 	if (ifd == -1) {
-		errmsg("cannot open \"%s\"", args.img);
-		perror("open");
+		sys_errmsg("cannot open \"%s\"", args.img);
 		goto out_close1;
 	}
 
 	err = ubi_update_start(libubi, fd, bytes);
 	if (err) {
-		errmsg("cannot start volume \"%s\" update", args.node);
-		perror("ubi_update_start");
+		sys_errmsg("cannot start volume \"%s\" update", args.node);
 		goto out_close;
 	}
 
@@ -236,9 +217,8 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 				warnmsg("do not interrupt me!");
 				continue;
 			} else {
-				errmsg("cannot read %d bytes from \"%s\"",
-				       tocopy, args.img);
-				perror("read");
+				sys_errmsg("cannot read %d bytes from \"%s\"",
+					   tocopy, args.img);
 				goto out_close;
 			}
 		}
@@ -273,14 +253,12 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	if (!args.img && !args.truncate) {
-		errmsg("incorrect arguments, use -h for help");
-		return -1;
-	}
+	if (!args.img && !args.truncate)
+		return errmsg("incorrect arguments, use -h for help");
 
 	libubi = libubi_open();
 	if (libubi == NULL) {
-		perror("Cannot open libubi");
+		sys_errmsg("cannot open libubi");
 		goto out_libubi;
 	}
 
@@ -296,9 +274,8 @@ int main(int argc, char * const argv[])
 
 	err = ubi_get_vol_info(libubi, args.node, &vol_info);
 	if (err) {
-		errmsg("cannot get information about UBI volume \"%s\"",
-		       args.node);
-		perror("ubi_get_dev_info");
+		sys_errmsg("cannot get information about UBI volume \"%s\"",
+			   args.node);
 		goto out_libubi;
 	}
 

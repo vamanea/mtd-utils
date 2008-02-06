@@ -28,7 +28,6 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 #include <libubi.h>
 #include "common.h"
@@ -143,11 +142,8 @@ int main(int argc, char * const argv[])
 		return -1;
 
 	libubi = libubi_open();
-	if (libubi == NULL) {
-		errmsg("cannot open libubi");
-		perror("libubi_open");
-		return -1;
-	}
+	if (libubi == NULL)
+		return sys_errmsg("cannot open libubi");
 
 	err = ubi_node_type(libubi, args.node);
 	if (err == 2) {
@@ -161,8 +157,7 @@ int main(int argc, char * const argv[])
 
 	err = ubi_rmvol(libubi, args.node, args.vol_id);
 	if (err) {
-		errmsg("cannot UBI remove volume");
-		perror("ubi_rmvol");
+		sys_errmsg("cannot UBI remove volume");
 		goto out_libubi;
 	}
 

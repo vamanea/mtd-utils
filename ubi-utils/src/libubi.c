@@ -27,7 +27,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <limits.h>
@@ -50,8 +49,7 @@ static char *mkpath(const char *path, const char *name)
 
 	n = malloc(len1 + len2 + 2);
 	if (!n) {
-		errmsg("cannot allocate %d bytes", len1 + len2 + 2);
-		perror("malloc");
+		sys_errmsg("cannot allocate %d bytes", len1 + len2 + 2);
 		return NULL;
 	}
 
@@ -83,8 +81,7 @@ static int read_positive_ll(const char *file, long long *value)
 
 	rd = read(fd, buf, 50);
 	if (rd == -1) {
-		errmsg("cannot read \"%s\"", file);
-		perror("read");
+		sys_errmsg("cannot read \"%s\"", file);
 		goto out_error;
 	}
 	if (rd == 50) {
@@ -106,11 +103,8 @@ static int read_positive_ll(const char *file, long long *value)
 		goto out_error;
 	}
 
-	if (close(fd)) {
-		errmsg("close failed on \"%s\"", file);
-		perror("close");
-		return -1;
-	}
+	if (close(fd))
+		return sys_errmsg("close failed on \"%s\"", file);
 
 	return 0;
 
@@ -166,16 +160,14 @@ static int read_data(const char *file, void *buf, int buf_len)
 
 	rd = read(fd, buf, buf_len);
 	if (rd == -1) {
-		errmsg("cannot read \"%s\"", file);
-		perror("read");
+		sys_errmsg("cannot read \"%s\"", file);
 		goto out_error;
 	}
 
 	/* Make sure all data is read */
 	tmp1 = read(fd, &tmp, 1);
 	if (tmp1 == 1) {
-		errmsg("cannot read \"%s\"", file);
-		perror("read");
+		sys_errmsg("cannot read \"%s\"", file);
 		goto out_error;
 	}
 	if (tmp1) {
@@ -186,8 +178,7 @@ static int read_data(const char *file, void *buf, int buf_len)
 	}
 
 	if (close(fd)) {
-		errmsg("close failed on \"%s\"", file);
-		perror("close");
+		sys_errmsg("close failed on \"%s\"", file);
 		return -1;
 	}
 
@@ -217,16 +208,14 @@ static int read_major(const char *file, int *major, int *minor)
 
 	ret = sscanf(buf, "%d:%d\n", major, minor);
 	if (ret != 2) {
-		errmsg("\"%s\" does not have major:minor format", file);
 		errno = EINVAL;
-		return -1;
+		return errmsg("\"%s\" does not have major:minor format", file);
 	}
 
 	if (*major < 0 || *minor < 0) {
-		errmsg("bad major:minor %d:%d in \"%s\"",
-		       *major, *minor, file);
 		errno = EINVAL;
-		return -1;
+		return errmsg("bad major:minor %d:%d in \"%s\"",
+			      *major, *minor, file);
 	}
 
 	return 0;
@@ -377,18 +366,16 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
 		return -1;
 
 	if (!S_ISCHR(st.st_mode)) {
-		errmsg("\"%s\" is not a character device", node);
 		errno = EINVAL;
-		return -1;
+		return errmsg("\"%s\" is not a character device", node);
 	}
 
 	major = major(st.st_rdev);
 	minor = minor(st.st_rdev);
 
 	if (minor == 0) {
-		errmsg("\"%s\" is not a volume character device", node);
 		errno = EINVAL;
-		return -1;
+		return errmsg("\"%s\" is not a volume character device", node);
 	}
 
 	if (ubi_get_info((libubi_t *)lib, &info))
@@ -445,18 +432,16 @@ static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 		return -1;
 
 	if (!S_ISCHR(stat.st_mode)) {
-		errmsg("\"%s\" is not a character device", node);
 		errno = EINVAL;
-		return -1;
+		return errmsg("\"%s\" is not a character device", node);
 	}
 
 	major = major(stat.st_rdev);
 	minor = minor(stat.st_rdev);
 
 	if (minor != 0) {
-		errmsg("\"%s\" is not an UBI character device", node);
 		errno = EINVAL;
-		return -1;
+		return errmsg("\"%s\" is not an UBI character device", node);
 	}
 
 	if (ubi_get_info((libubi_t *)lib, &info))
@@ -551,8 +536,7 @@ libubi_t libubi_open(void)
 	}
 
 	if (close(fd)) {
-		errmsg("close failed on \"%s\"", lib->sysfs_ubi);
-		perror("close");
+		sys_errmsg("close failed on \"%s\"", lib->sysfs_ubi);
 		goto out_error;
 	}
 
@@ -840,11 +824,8 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 	 * devices are present.
 	 */
 	sysfs_ubi = opendir(lib->sysfs_ubi);
-	if (!sysfs_ubi) {
-		errmsg("cannot open %s", lib->sysfs_ubi);
-		perror("opendir");
-		return -1;
-	}
+	if (!sysfs_ubi)
+		return sys_errmsg("cannot open %s", lib->sysfs_ubi);
 
 	info->lowest_dev_num = INT_MAX;
 	while (1) {
@@ -874,16 +855,12 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 	}
 
 	if (!dirent && errno) {
-		errmsg("readdir failed on \"%s\"", lib->sysfs_ubi);
-		perror("readdir");
+		sys_errmsg("readdir failed on \"%s\"", lib->sysfs_ubi);
 		goto out_close;
 	}
 
-	if (closedir(sysfs_ubi)) {
-		errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
-		perror("closedir");
-		return -1;
-	}
+	if (closedir(sysfs_ubi))
+		return sys_errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
 
 	if (info->lowest_dev_num == INT_MAX)
 		info->lowest_dev_num = 0;
@@ -1044,16 +1021,12 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	}
 
 	if (!dirent && errno) {
-		errmsg("readdir failed on \"%s\"", lib->sysfs_ubi);
-		perror("readdir");
+		sys_errmsg("readdir failed on \"%s\"", lib->sysfs_ubi);
 		goto out_close;
 	}
 
-	if (closedir(sysfs_ubi)) {
-		errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
-		perror("closedir");
-		return -1;
-	}
+	if (closedir(sysfs_ubi))
+		return sys_errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
 
 	if (info->lowest_vol_num == INT_MAX)
 		info->lowest_vol_num = 0;

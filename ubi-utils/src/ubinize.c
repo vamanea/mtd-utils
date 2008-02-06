@@ -28,7 +28,6 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -163,89 +162,45 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 		case 'o':
 			args.fp_out = fopen(optarg, "wb");
-			if (!args.fp_out) {
-				errmsg("cannot open file \"%s\"", optarg);
-				return -1;
-			}
+			if (!args.fp_out)
+				return errmsg("cannot open file \"%s\"", optarg);
 			args.f_out = optarg;
 			break;
 
 		case 'p':
-			args.peb_size = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args.peb_size <= 0) {
-				errmsg("bad physical eraseblock size: \"%s\"", optarg);
-				return -1;
-			}
-			if (*endp != '\0') {
-				int mult = ubiutils_get_multiplier(endp);
-
-				if (mult == -1) {
-					errmsg("bad size specifier: \"%s\" - "
-					       "should be 'KiB', 'MiB' or 'GiB'", endp);
-					return -1;
-				}
-				args.peb_size *= mult;
-			}
+			args.peb_size = ubiutils_get_bytes(optarg);
+			if (args.peb_size <= 0)
+				return errmsg("bad physical eraseblock size: \"%s\"", optarg);
 			break;
 
 		case 'm':
-			args.min_io_size = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args.min_io_size <= 0) {
-				errmsg("bad min. I/O unit size: \"%s\"", optarg);
-				return -1;
-			}
-			if (*endp != '\0') {
-				int mult = ubiutils_get_multiplier(endp);
-
-				if (mult == -1) {
-					errmsg("bad size specifier: \"%s\" - "
-					       "should be 'KiB', 'MiB' or 'GiB'", endp);
-					return -1;
-				}
-				args.min_io_size *= mult;
-			}
+			args.min_io_size = ubiutils_get_bytes(optarg);
+			if (args.min_io_size <= 0)
+				return errmsg("bad min. I/O unit size: \"%s\"", optarg);
 			break;
 
 		case 's':
-			args.subpage_size = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args.subpage_size <= 0) {
-				errmsg("bad sub-page size: \"%s\"", optarg);
-				return -1;
-			}
-			if (*endp != '\0') {
-				int mult = ubiutils_get_multiplier(endp);
-
-				if (mult == -1) {
-					errmsg("bad size specifier: \"%s\" - "
-					       "should be 'KiB', 'MiB' or 'GiB'", endp);
-					return -1;
-				}
-				args.subpage_size *= mult;
-			}
+			args.subpage_size = ubiutils_get_bytes(optarg);
+			if (args.subpage_size <= 0)
+				return errmsg("bad sub-page size: \"%s\"", optarg);
 			break;
 
 		case 'O':
 			args.vid_hdr_offs = strtoul(optarg, &endp, 0);
-			if (endp == optarg || args.vid_hdr_offs < 0) {
-				errmsg("bad VID header offset: \"%s\"", optarg);
-				return -1;
-			}
+			if (endp == optarg || args.vid_hdr_offs < 0)
+				return errmsg("bad VID header offset: \"%s\"", optarg);
 			break;
 
 		case 'e':
 			args.ec = strtoul(optarg, &endp, 0);
-			if (endp == optarg || args.ec < 0) {
-				errmsg("bad erase counter value: \"%s\"", optarg);
-				return -1;
-			}
+			if (endp == optarg || args.ec < 0)
+				return errmsg("bad erase counter value: \"%s\"", optarg);
 			break;
 
 		case 'x':
 			args.ubi_ver = strtoul(optarg, &endp, 0);
-			if (endp == optarg || args.ubi_ver < 0) {
-				errmsg("bad UBI version: \"%s\"", optarg);
-				return -1;
-			}
+			if (endp == optarg || args.ubi_ver < 0)
+				return errmsg("bad UBI version: \"%s\"", optarg);
 			break;
 
 		case 'v':
@@ -269,27 +224,19 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	if (optind == argc) {
-		errmsg("input PFI file was not specified (use -h for help)");
-		return -1;
-	}
+	if (optind == argc)
+		return errmsg("input PFI file was not specified (use -h for help)");
 
-	if (optind != argc - 1) {
-		errmsg("more then one input PFI file was specified (use -h for help)");
-		return -1;
-	}
+	if (optind != argc - 1)
+		return errmsg("more then one input PFI file was specified (use -h for help)");
 
 	args.f_in = argv[optind];
 
-	if (args.peb_size < 0) {
-		errmsg("physical eraseblock size was not specified (use -h for help)");
-		return -1;
-	}
+	if (args.peb_size < 0)
+		return errmsg("physical eraseblock size was not specified (use -h for help)");
 
-	if (args.min_io_size < 0) {
-		errmsg("min. I/O unit size was not specified (use -h for help)");
-		return -1;
-	}
+	if (args.min_io_size < 0)
+		return errmsg("min. I/O unit size was not specified (use -h for help)");
 
 	if (args.subpage_size < 0)
 		args.subpage_size = args.min_io_size;
@@ -310,10 +257,8 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 
 	*img = NULL;
 
-	if (strlen(sname) > 128) {
-		errmsg("too long section name \"%s\"", sname);
-		return -1;
-	}
+	if (strlen(sname) > 128)
+		return errmsg("too long section name \"%s\"", sname);
 
 	/* Make sure mode is UBI, otherwise ignore this section */
 	sprintf(buf, "%s:mode", sname);
@@ -342,21 +287,14 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 	/* Fetch volume id */
 	sprintf(buf, "%s:vol_id", sname);
 	vi->id = iniparser_getint(args.dict, buf, -1);
-	if (vi->id == -1) {
-		errmsg("\"vol_id\" key not found in section  \"%s\"", sname);
-		return -1;
-	}
+	if (vi->id == -1)
+		return errmsg("\"vol_id\" key not found in section  \"%s\"", sname);
 
-	if (vi->id < 0) {
-		errmsg("negative volume ID %d", vi->id);
-		return -1;
-	}
+	if (vi->id < 0)
+		return errmsg("negative volume ID %d", vi->id);
 
-	if (vi->id >= UBI_MAX_VOLUMES) {
-		errmsg("too highe volume ID %d, max. is %d",
-		       vi->id, UBI_MAX_VOLUMES);
-		return -1;
-	}
+	if (vi->id >= UBI_MAX_VOLUMES)
+		return errmsg("too high volume ID %d, max. is %d", vi->id, UBI_MAX_VOLUMES);
 
 	verbose(args.verbose, "volume ID: %d", vi->id);
 
@@ -364,48 +302,24 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 	sprintf(buf, "%s:vol_size", sname);
 	p = iniparser_getstring(args.dict, buf, NULL);
 	if (p) {
-		char *endp;
-
-		vi->bytes = strtoull((char *)p, &endp, 0);
-		if (endp == p || vi->bytes <= 0) {
-			errmsg("bad \"vol_size\" key: \"%s\"", p);
-			return -1;
-		}
-
-		if (*endp != '\0') {
-			int mult = ubiutils_get_multiplier(endp);
-
-			if (mult == -1) {
-				errmsg("bad size specifier: \"%s\" - "
-				       "should be 'KiB', 'MiB' or 'GiB'", endp);
-				return -1;
-			}
-			vi->bytes *= mult;
-		}
+		vi->bytes = ubiutils_get_bytes(optarg);
+		if (vi->bytes <= 0)
+			return errmsg("bad \"vol_size\" key: \"%s\"", p);
 
 		verbose(args.verbose, "volume size: %lld bytes", vi->bytes);
 	} else {
 		struct stat st;
 
-		if (!*img) {
-			errmsg("neither image file (\"image=\") nor volume size"
-			       " (\"vol_size=\") specified");
-			return -1;
-		}
+		if (!*img)
+			return errmsg("neither image file (\"image=\") nor volume size (\"vol_size=\") specified");
 
-		if (stat(*img, &st)) {
-			errmsg("cannot stat \"%s\"", *img);
-			perror("stat");
-			return -1;
-		}
+		if (stat(*img, &st))
+			return sys_errmsg("cannot stat \"%s\"", *img);
 
 		vi->bytes = st.st_size;
 
-		if (vi->bytes == 0) {
-			errmsg("file \"%s\" referred from section \"%s\" is empty",
-			       *img, sname);
-			return -1;
-		}
+		if (vi->bytes == 0)
+			return errmsg("file \"%s\" referred from section \"%s\" is empty", *img, sname);
 
 		printf(PROGRAM_NAME ": volume size was not specified in"
 		       "section \"%s\", assume ", sname);
@@ -425,10 +339,8 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 			vi->type = UBI_VID_STATIC;
 		else if (!strcmp(p, "dynamic"))
 			vi->type = UBI_VID_DYNAMIC;
-		else {
-			errmsg("invalid volume type \"%s\"", p);
-			return -1;
-		}
+		else
+			return errmsg("invalid volume type \"%s\"", p);
 	}
 
 	verbose(args.verbose, "volume type: %s",
@@ -437,18 +349,14 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 	/* Fetch volume name */
 	sprintf(buf, "%s:vol_name", sname);
 	p = iniparser_getstring(args.dict, buf, NULL);
-	if (!p) {
-		errmsg("\"vol_name\" key not found in section  \"%s\"", sname);
-		return -1;
-	}
+	if (!p)
+		return errmsg("\"vol_name\" key not found in section  \"%s\"", sname);
 
 	vi->name = p;
 	vi->name_len = strlen(p);
-	if (vi->name_len > UBI_VOL_NAME_MAX) {
-		errmsg("too long volume name in section \"%s\", max. is "
-		       "%d characters", vi->name, UBI_VOL_NAME_MAX);
-		return -1;
-	}
+	if (vi->name_len > UBI_VOL_NAME_MAX)
+		return errmsg("too long volume name in section \"%s\", max. is %d characters",
+			      vi->name, UBI_VOL_NAME_MAX);
 
 	verbose(args.verbose, "volume name: %s", p);
 
@@ -459,10 +367,8 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 		normsg("volume alignment was not specified in section "
 		       "\"%s\", assume 1", sname);
 			vi->alignment = 1;
-	} else if (vi->id < 0) {
-		errmsg("negative volume alignement %d", vi->alignment);
-		return -1;
-	}
+	} else if (vi->id < 0)
+		return errmsg("negative volume alignement %d", vi->alignment);
 
 	verbose(args.verbose, "volume alignment: %d", vi->alignment);
 
@@ -474,9 +380,7 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 			verbose(args.verbose, "autoresize flags found");
 			vi->flags |= UBI_VTBL_AUTORESIZE_FLG;
 		} else {
-			errmsg("unknown flags \"%s\" in section \"%s\"",
-			       p, sname);
-			return -1;
+			return errmsg("unknown flags \"%s\" in section \"%s\"", p, sname);
 		}
 	}
 
@@ -580,8 +484,7 @@ int main(int argc, char * const argv[])
 			continue;
 
 		if (stat(img, &st)) {
-			errmsg("cannot stat \"%s\"", img);
-			perror("stat");
+			sys_errmsg("cannot stat \"%s\"", img);
 			goto out_dict;
 		}
 
@@ -597,8 +500,7 @@ int main(int argc, char * const argv[])
 
 		f = fopen(img, "r");
 		if (!f) {
-			errmsg("cannot open \"%s\"", img);
-			perror("fopen");
+			sys_errmsg("cannot open \"%s\"", img);
 			goto out_dict;
 		}
 

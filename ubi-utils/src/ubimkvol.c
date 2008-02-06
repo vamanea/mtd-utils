@@ -28,7 +28,6 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 #include <libubi.h>
 #include "common.h"
@@ -104,29 +103,20 @@ static int param_sanity_check(void)
 {
 	int len;
 
-	if (args.bytes == -1 && !args.maxavs && args.lebs == -1) {
-		errmsg("volume size was not specified (use -h for help)");
-		return -1;
-	}
+	if (args.bytes == -1 && !args.maxavs && args.lebs == -1)
+		return errmsg("volume size was not specified (use -h for help)");
 
 	if ((args.bytes != -1 && (args.maxavs || args.lebs != -1))  ||
 	    (args.lebs != -1  && (args.maxavs || args.bytes != -1)) ||
-	    (args.maxavs && (args.bytes != -1 || args.lebs != -1))) {
-		errmsg("size specified with more then one option");
-		return -1;
-	}
+	    (args.maxavs && (args.bytes != -1 || args.lebs != -1)))
+		return errmsg("size specified with more then one option");
 
-	if (args.name == NULL) {
-		errmsg("volume name was not specified (use -h for help)");
-		return -1;
-	}
+	if (args.name == NULL)
+		return errmsg("volume name was not specified (use -h for help)");
 
 	len = strlen(args.name);
-	if (len > UBI_MAX_VOLUME_NAME) {
-		errmsg("too long name (%d symbols), max is %d",
-			len, UBI_MAX_VOLUME_NAME);
-		return -1;
-	}
+	if (len > UBI_MAX_VOLUME_NAME)
+		return errmsg("too long name (%d symbols), max is %d", len, UBI_MAX_VOLUME_NAME);
 
 	return 0;
 }
@@ -147,52 +137,32 @@ static int parse_opt(int argc, char * const argv[])
 				args.vol_type = UBI_DYNAMIC_VOLUME;
 			else if (!strcmp(optarg, "static"))
 				args.vol_type = UBI_STATIC_VOLUME;
-			else {
-				errmsg("bad volume type: \"%s\"", optarg);
-				return -1;
-			}
+			else
+				return errmsg("bad volume type: \"%s\"", optarg);
 			break;
 
 		case 's':
-			args.bytes = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args.bytes <= 0) {
-				errmsg("bad volume size: \"%s\"", optarg);
-				return -1;
-			}
-			if (*endp != '\0') {
-				int mult = ubiutils_get_multiplier(endp);
-
-				if (mult == -1) {
-					errmsg("bad size specifier: \"%s\" - "
-					       "should be 'KiB', 'MiB' or 'GiB'", endp);
-					return -1;
-				}
-				args.bytes *= mult;
-			}
+			args.bytes = ubiutils_get_bytes(optarg);
+			if (args.bytes <= 0)
+				return errmsg("bad volume size: \"%s\"", optarg);
 			break;
 
 		case 'S':
 			args.lebs = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args.lebs <= 0 || *endp != '\0') {
-				errmsg("bad LEB count: \"%s\"", optarg);
-				return -1;
-			}
+			if (endp == optarg || args.lebs <= 0 || *endp != '\0')
+				return errmsg("bad LEB count: \"%s\"", optarg);
 			break;
 
 		case 'a':
 			args.alignment = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.alignment <= 0) {
-				errmsg("bad volume alignment: \"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.alignment <= 0)
+				return errmsg("bad volume alignment: \"%s\"", optarg);
 			break;
 
 		case 'n':
 			args.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
-				errmsg("bad volume ID: " "\"%s\"", optarg);
-				return -1;
-			}
+			if (*endp != '\0' || endp == optarg || args.vol_id < 0)
+				return errmsg("bad volume ID: " "\"%s\"", optarg);
 			break;
 
 		case 'N':
@@ -215,8 +185,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case ':':
-			errmsg("parameter is missing");
-			return -1;
+			return errmsg("parameter is missing");
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
@@ -224,13 +193,10 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	if (optind == argc) {
-		errmsg("UBI device name was not specified (use -h for help)");
-		return -1;
-	} else if (optind != argc - 1) {
-		errmsg("more then one UBI device specified (use -h for help)");
-		return -1;
-	}
+	if (optind == argc)
+		return errmsg("UBI device name was not specified (use -h for help)");
+	else if (optind != argc - 1)
+		return errmsg("more then one UBI device specified (use -h for help)");
 
 	args.node = argv[optind];
 
@@ -253,11 +219,8 @@ int main(int argc, char * const argv[])
 		return err;
 
 	libubi = libubi_open();
-	if (!libubi) {
-		errmsg("cannot open libubi");
-		perror("libubi_open");
-		return -1;
-	}
+	if (!libubi)
+		return sys_errmsg("cannot open libubi");
 
 	err = ubi_node_type(libubi, args.node);
 	if (err == 2) {
@@ -271,9 +234,8 @@ int main(int argc, char * const argv[])
 
 	err = ubi_get_dev_info(libubi, args.node, &dev_info);
 	if (err) {
-		errmsg("cannot get information about UBI device \"%s\"",
-		       args.node);
-		perror("ubi_get_dev_info");
+		sys_errmsg("cannot get information about UBI device \"%s\"",
+			   args.node);
 		goto out_libubi;
 	}
 
@@ -296,8 +258,7 @@ int main(int argc, char * const argv[])
 
 	err = ubi_mkvol(libubi, args.node, &req);
 	if (err < 0) {
-		errmsg("cannot UBI create volume");
-		perror("ubi_mkvol");
+		sys_errmsg("cannot UBI create volume");
 		goto out_libubi;
 	}
 
@@ -306,8 +267,7 @@ int main(int argc, char * const argv[])
 	/* Print information about the created device */
 	err = ubi_get_vol_info1(libubi, dev_info.dev_num, args.vol_id, &vol_info);
 	if (err) {
-		errmsg("cannot get information about newly created UBI volume");
-		perror("ubi_get_vol_info1");
+		sys_errmsg("cannot get information about newly created UBI volume");
 		goto out_libubi;
 	}
 

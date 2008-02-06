@@ -28,7 +28,6 @@
 #include <getopt.h>
 #include <argp.h>
 #include <unistd.h>
-#include <errno.h>
 #include <mtd/ubi-header.h>
 
 #include "crc32.h"
@@ -76,8 +75,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case ':':
-			errmsg("parameter is missing");
-			return -1;
+			return errmsg("parameter is missing");
 
 		default:
 			fprintf(stderr, "Use -h for help\n");
@@ -97,11 +95,8 @@ int main(int argc, char * const argv[])
 
 	if (argc > 1) {
 		fp = fopen(argv[1], "r");
-		if (!fp) {
-			errmsg("cannot open \"%s\"", argv[1]);
-			perror("fopen");
-			return -1;
-		}
+		if (!fp)
+			return sys_errmsg("cannot open \"%s\"", argv[1]);
 	} else
 		fp = stdin;
 
@@ -114,8 +109,7 @@ int main(int argc, char * const argv[])
 
 		read = fread(buf, 1, BUFSIZE, fp);
 		if (ferror(fp)) {
-			errmsg("cannot read input file");
-			perror("fread");
+			sys_errmsg("cannot read input file");
 			err = -1;
 			goto out_close;
 		}
