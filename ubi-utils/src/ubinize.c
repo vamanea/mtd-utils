@@ -302,7 +302,7 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 	sprintf(buf, "%s:vol_size", sname);
 	p = iniparser_getstring(args.dict, buf, NULL);
 	if (p) {
-		vi->bytes = ubiutils_get_bytes(optarg);
+		vi->bytes = ubiutils_get_bytes(p);
 		if (vi->bytes <= 0)
 			return errmsg("bad \"vol_size\" key: \"%s\"", p);
 
