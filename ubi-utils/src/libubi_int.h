@@ -40,7 +40,7 @@ extern "C" {
 #define sys_errmsg(fmt, ...)  ({                                   \
 	int _err = errno;                                          \
 	fprintf(stderr, "libubi error: " fmt "\n", ##__VA_ARGS__); \
-	fprintf(stderr, "error %d (%s)", _err, strerror(_err));    \
+	fprintf(stderr, "error %d (%s)\n", _err, strerror(_err));  \
 	-1;                                                        \
 })
 
