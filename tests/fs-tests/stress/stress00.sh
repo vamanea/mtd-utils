@@ -43,8 +43,7 @@ FSIZE=$(( $FREESPACE/15 ));
 "$FWRITE00 -z $FSIZE -n0 -p 100 -s -o" \
 "$RNDWR -z $FSIZE -n0 -p 10 -e" \
 "$RNDWR -z $FSIZE -n0 -p 100 -e" \
-"$PDFLUSH -z 1073741824 -n0" \
-"$GCHUP -n0"
+"$PDFLUSH -z 1073741824 -n0"
 
 STATUS=$?
 

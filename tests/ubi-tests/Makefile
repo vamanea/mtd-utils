@@ -1,8 +1,8 @@
-LIBUBI_PATH=../../ubi-utils/
-LIBUBI_SRC_PATH=../../ubi-utils/src
-LIBUBI_HEADER_PATH=../../ubi-utils/include
+LIBUBI_PATH=../../ubi-utils/new-utils/
+LIBUBI_SRC_PATH=../../ubi-utils/new-utils/src/
+LIBUBI_HEADER_PATH=../../ubi-utils/new-utils/include
 UBI_HEADERS_PATH=../../include/
-UBIUTILS_PATH=../../ubi-utils/
+UBIUTILS_PATH=../../ubi-utils/new-utils/
 
 CC := $(CROSS)gcc
 

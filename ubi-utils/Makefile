@@ -2,7 +2,7 @@
 # Makefile for ubi-utils
 #
 
-OPTFLAGS := -O2 -Wall
+OPTFLAGS := -O2 -g -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
 SBINDIR=/usr/sbin
@@ -10,53 +10,82 @@ MANDIR=/usr/man
 INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
-CFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(OPTFLAGS) -Werror -Wall
+CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
+	-Wwrite-strings -W -std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
-LIBS = libubi libubigen libiniparser
-UTILS = ubiupdate ubimkvol ubirmvol ubicrc32 ubinfo ubiattach ubidetach ubinize
+PERLPROGS = mkpfi ubicrc32.pl
+TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
+	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32
 
-vpath %.c src
+vpath   %.c ./src
 
-all: $(UTILS)
+%: %.o
+	$(CC) $(LDFLAGS) -g -o $@ $^
 
-# The below cancels existing implicite rule to make programs from .c files,
-# in order to force make using our rule defined below
-%: %.c
-
-# The below is the rule to get an .o file from a .c file
 %.o: %.c
-	$(CC) $(CFLAGS) $< -c -o $@
+	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
 
-# And the below is the rule to get final executable from its .o and common.o
-%: libubi %.o common.o
-	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
+all: $(TARGETS)
+	make -C new-utils
 
-ubicrc32: ubicrc32.o crc32.o
-	$(CC) $(CFLAGS) -o $@ $^
-
-ubinize: ubinize.o common.o crc32.o libiniparser libubigen
-	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
-
-libubi: libubi.o
-	$(AR) crv $@.a $^
-	ranlib $@.a
-
-libubigen: libubigen.o
-	$(AR) crv $@.a $^
-	ranlib $@.a
-
-libiniparser: libiniparser.o dictionary.o
-	$(AR) crv $@.a $^
-	ranlib $@.a
+IGNORE=${wildcard .*.c.dep}
+-include ${IGNORE}
 
 clean:
-	rm -rf *.o $(addsuffix .a, $(LIBS)) $(UTILS) .*.c.dep
+	rm -rf *.o $(TARGETS) .*.c.dep
+	make -C new-utils clean
 
-install: ${UTILS}
+ubiupdatevol: ubiupdatevol.o error.o libubi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubimkvol: ubimkvol.o error.o libubi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubirmvol: ubirmvol.o error.o libubi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
+		libubi.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
+		bootenv.o hashmap.o pfi.o libubi.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
+		libubi.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+nand2bin: nand2bin.o nandecc.o nandcorr.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+bin2nand: bin2nand.o error.o nandecc.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubigen: ubigen.o libubigen.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
+		hashmap.o reader.o pfi.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+ubicrc32: ubicrc32.o crc32.o
+	$(CC) $(LDFLAGS) -o $@ $^
+
+install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 ${UTILS} ${DESTDIR}/${SBINDIR}/
+	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)
+	make -C new-utils install
 
 uninstall:
-	for file in ${UTILS}; do \
+	for file in ${TARGETS} ${PERLPROGS}; do \
 		$(RM) ${DESTDIR}/${SBINDIR}/$$file; \
 	done
+	make -C new-utils uninstall

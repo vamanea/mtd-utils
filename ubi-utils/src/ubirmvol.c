@@ -19,8 +19,13 @@
 /*
  * An utility to remove UBI volumes.
  *
- * Authors: Artem Bityutskiy <dedekind@infradead.org>
- *          Frank Haverkamp <haver@vnet.ibm.com>
+ * Author: Artem B. Bityutskiy <dedekind@linutronix.de>
+ *         Frank Haverkamp <haver@vnet.ibm.com>
+ *
+ * 1.1 Reworked the userinterface to use argp.
+ * 1.2 Removed argp because we want to use uClibc.
+ * 1.3 Minor cleanups
+ * 1.4 Use a different libubi
  */
 
 #include <stdio.h>
@@ -28,136 +33,190 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
+#include <config.h>
 #include <libubi.h>
-#include "common.h"
 
-#define PROGRAM_VERSION "1.5"
-#define PROGRAM_NAME    "ubirmvol"
+#define PROGRAM_VERSION "1.4"
 
-/* The variables below are set by command line arguments */
+/*
+ * The below variables are set by command line options.
+ */
 struct args {
+	int devn;
 	int vol_id;
-	const char *node;
+	char node[256];
+
+	/* special stuff needed to get additional arguments */
+	char *arg1;
+	char **options;		/* [STRING...] */
 };
 
-static struct args args = {
+static struct args myargs = {
+	.devn = -1,
 	.vol_id = -1,
-	.node = NULL,
+
+	.arg1 = NULL,
+	.options = NULL,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
-				 " - a tool to remove UBI volumes.";
+static int param_sanity_check(struct args *args, libubi_t libubi);
+
+static char doc[] = "\nVersion: " PROGRAM_VERSION "\n"
+	"ubirmvol - make UBI Volume.\n";
 
 static const char *optionsstr =
-"  -n, --vol_id=<volume id>   volume ID to remove\n"
-"  -h, --help                 print help message\n"
-"  -V, --version              print program version";
+"  -d, --devn=<devn>          UBI device\n"
+"  -n, --vol_id=<volume id>   UBI volume id, if not specified, the volume ID\n"
+"                             will be assigned automatically\n"
+"  -?, --help                 Give this help list\n"
+"      --usage                Give a short usage message\n"
+"  -V, --version              Print program version\n";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " <UBI device node file name> [-n <volume id>] [--vol_id=<volume id>] [-h] [--help]\n\n"
-"Example: " PROGRAM_NAME "/dev/ubi0 -n 1 - remove UBI volume 1 from UBI device corresponding\n"
-"         to the node file /dev/ubi0.";
+"Usage: ubirmvol [-?V] [-d <devn>] [-n <volume id>] [--devn=<devn>]\n"
+"            [--vol_id=<volume id>] [--help] [--usage] [--version]\n";
 
-static const struct option long_options[] = {
-	{ .name = "vol_id",  .has_arg = 1, .flag = NULL, .val = 'n' },
-	{ .name = "help",    .has_arg = 0, .flag = NULL, .val = 'h' },
+struct option long_options[] = {
+	{ .name = "devn", .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "vol_id", .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "help", .has_arg = 0, .flag = NULL, .val = '?' },
+	{ .name = "usage", .has_arg = 0, .flag = NULL, .val = 0 },
 	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
-	{ NULL, 0, NULL, 0},
+	{ NULL, 0, NULL, 0}
 };
 
-static int param_sanity_check(void)
+/*
+ * @brief Parse the arguments passed into the test case.
+ *
+ * @param argc		 The number of arguments
+ * @param argv		 The list of arguments
+ * @param args		 Pointer to argument structure
+ *
+ * @return error
+ *
+ */
+static int
+parse_opt(int argc, char **argv, struct args *args)
 {
-	if (args.vol_id == -1) {
-		errmsg("volume ID is was not specified");
-		return -1;
-	}
+	char *endp;
 
-	return 0;
-}
-
-static int parse_opt(int argc, char * const argv[])
-{
 	while (1) {
 		int key;
-		char *endp;
 
-		key = getopt_long(argc, argv, "n:hV", long_options, NULL);
+		key = getopt_long(argc, argv, "d:n:?V", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
-
-		case 'n':
-			args.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
-				errmsg("bad volume ID: " "\"%s\"", optarg);
-				return -1;
-			}
-			break;
-
-		case 'h':
-			fprintf(stderr, "%s\n\n", doc);
-			fprintf(stderr, "%s\n\n", usage);
-			fprintf(stderr, "%s\n", optionsstr);
-			exit(EXIT_SUCCESS);
-
-		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
-			exit(EXIT_SUCCESS);
-
-		case ':':
-			errmsg("parameter is missing");
-			return -1;
-
-		default:
-			fprintf(stderr, "Use -h for help\n");
-			return -1;
+			case 'd': /* --devn=<device number> */
+				args->devn = strtoul(optarg, &endp, 0);
+				if (*endp != '\0' || endp == optarg ||
+					args->devn < 0) {
+					fprintf(stderr,
+						"Bad UBI device number: "
+						"\"%s\"\n", optarg);
+					goto out;
+				}
+				sprintf(args->node, "/dev/ubi%d", args->devn);
+				break;
+			case 'n': /* --volid=<volume id> */
+				args->vol_id = strtoul(optarg, &endp, 0);
+				if (*endp != '\0' || endp == optarg ||
+				    (args->vol_id < 0 &&
+				     args->vol_id != UBI_DYNAMIC_VOLUME)) {
+					fprintf(stderr, "Bad volume ID: "
+							"\"%s\"\n", optarg);
+					goto out;
+				}
+				break;
+			case ':':
+				fprintf(stderr, "Parameter is missing\n");
+				goto out;
+			case '?': /* help */
+				fprintf(stderr,
+					"Usage: ubirmvol [OPTION...]\n");
+				fprintf(stderr, "%s", doc);
+				fprintf(stderr, "%s", optionsstr);
+				fprintf(stderr, "\nReport bugs to %s\n",
+					PACKAGE_BUGREPORT);
+				exit(0);
+				break;
+			case 'V':
+				fprintf(stderr, "%s\n", PROGRAM_VERSION);
+				exit(0);
+				break;
+			default:
+				fprintf(stderr, "%s", usage);
+				exit(-1);
 		}
 	}
 
-	if (optind == argc) {
-		errmsg("UBI device name was not specified (use -h for help)");
-		return -1;
-	} else if (optind != argc - 1) {
-		errmsg("more then one UBI device specified (use -h for help)");
-		return -1;
+	return 0;
+ out:
+	return -1;
+}
+
+static int param_sanity_check(struct args *args, libubi_t libubi)
+{
+	int err;
+	struct ubi_info ubi;
+
+	if (args->vol_id == -1) {
+		fprintf(stderr, "Volume ID was not specified\n");
+		goto out;
 	}
 
-	args.node = argv[optind];
-
-	if (param_sanity_check())
+	err = ubi_get_info(libubi, &ubi);
+	if (err)
 		return -1;
 
+	if (args->devn >= (int)ubi.dev_count) {
+		fprintf(stderr, "Device %d does not exist\n", args->devn);
+		goto out;
+	}
+
 	return 0;
+
+out:
+	errno = EINVAL;
+	return -1;
 }
 
 int main(int argc, char * const argv[])
 {
-	int err;
+	int err, old_errno;
 	libubi_t libubi;
 
-	err = parse_opt(argc, argv);
+	err = parse_opt(argc, (char **)argv, &myargs);
 	if (err)
+		return err == 1 ? 0 : -1;
+
+	if (myargs.devn == -1) {
+		fprintf(stderr, "Device number was not specified\n");
+		fprintf(stderr, "Use -h option for help\n");
 		return -1;
+	}
 
 	libubi = libubi_open();
-	if (libubi == NULL)
-		return sys_errmsg("cannot open libubi");
+	if (libubi == NULL) {
+		perror("Cannot open libubi");
+		return -1;
+	}
 
-	err = ubi_node_type(libubi, args.node);
-	if (err == 2) {
-		errmsg("\"%s\" is an UBI volume node, not an UBI device node",
-		       args.node);
-		goto out_libubi;
-	} else if (err < 0) {
-		errmsg("\"%s\" is not an UBI device node", args.node);
+	err = param_sanity_check(&myargs, libubi);
+	if (err) {
+		perror("Input parameters check");
+		fprintf(stderr, "Use -h option for help\n");
 		goto out_libubi;
 	}
 
-	err = ubi_rmvol(libubi, args.node, args.vol_id);
-	if (err) {
-		sys_errmsg("cannot UBI remove volume");
+	err = ubi_rmvol(libubi, myargs.node, myargs.vol_id);
+	old_errno = errno;
+	if (err < 0) {
+		perror("Cannot remove volume");
+		fprintf(stderr, "    err=%d errno=%d\n", err, old_errno);
 		goto out_libubi;
 	}
 
