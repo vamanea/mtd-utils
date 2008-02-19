@@ -75,7 +75,8 @@ static const char *optionsstr =
 static const char *usage =
 "Usage: " PROGRAM_NAME " [-o filename] [-h] [-V] [--output=<filename>] [--help]\n"
 "\t\t[--version] ini-file\n"
-"Example: " PROGRAM_NAME "-o fs.raw cfg.ini";
+"Example: " PROGRAM_NAME " -o ubi.img cfg.ini - create UBI image 'ubi.img' as\n"
+"         described by configuration file 'cfg.ini'";
 
 static const char *ini_doc = "INI-file format.\n"
 "The input configuration ini-file describes all the volumes which have to\n"
@@ -225,10 +226,10 @@ static int parse_opt(int argc, char * const argv[])
 	}
 
 	if (optind == argc)
-		return errmsg("input PFI file was not specified (use -h for help)");
+		return errmsg("input configuration file was not specified (use -h for help)");
 
 	if (optind != argc - 1)
-		return errmsg("more then one input PFI file was specified (use -h for help)");
+		return errmsg("more then one configuration file was specified (use -h for help)");
 
 	args.f_in = argv[optind];
 
