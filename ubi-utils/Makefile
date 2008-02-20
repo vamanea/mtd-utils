@@ -14,8 +14,11 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 	-Wwrite-strings -W -std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi ubicrc32.pl
-TARGETS = ubiupdatevol ubimkvol ubirmvol pfiflash pddcustomize ubimirror \
-	bin2nand nand2bin ubigen mkbootenv unubi pfi2bin ubicrc32
+
+NTARGETS = ubiattach ubicrc32 ubidetach ubimkvol ubinfo ubinize \
+	ubirmvol ubiupdatevol
+TARGETS = pfiflash pddcustomize ubimirror bin2nand nand2bin ubigen \
+	mkbootenv unubi pfi2bin $(NTARGETS)
 
 vpath   %.c ./src
 
@@ -31,18 +34,13 @@ all: $(TARGETS)
 IGNORE=${wildcard .*.c.dep}
 -include ${IGNORE}
 
+$(NTARGETS):
+	make -C new-utils $@
+	mv new-utils/$@ $@
+
 clean:
 	rm -rf *.o $(TARGETS) .*.c.dep
 	make -C new-utils clean
-
-ubiupdatevol: ubiupdatevol.o error.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubimkvol: ubimkvol.o error.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubirmvol: ubirmvol.o error.o libubi.o
-	$(CC) $(LDFLAGS) -o $@ $^
 
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
 		libubi.o crc32.o
@@ -75,17 +73,12 @@ pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
 		hashmap.o reader.o pfi.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ubicrc32: ubicrc32.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
 install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
 	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)
-	make -C new-utils install
 
 uninstall:
 	for file in ${TARGETS} ${PERLPROGS}; do \
 		$(RM) ${DESTDIR}/${SBINDIR}/$$file; \
 	done
-	make -C new-utils uninstall

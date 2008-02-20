@@ -31,7 +31,7 @@
 #include "common.h"
 
 #define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "ubi-nfo"
+#define PROGRAM_NAME    "ubinfo"
 
 /* The variables below are set by command line arguments */
 struct args {

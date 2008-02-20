@@ -13,8 +13,8 @@ CC := $(CROSS)gcc
 CFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(OPTFLAGS) -Werror -Wall
 
 LIBS = libubi libubigen libiniparser
-UTILS = ubi-update ubi-mkvol ubi-rmvol ubi-crc32 ubi-info ubi-attach \
-        ubi-detach ubi-nize
+UTILS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
+        ubidetach ubinize
 
 vpath %.c src
 
@@ -32,10 +32,10 @@ all: $(UTILS)
 %: libubi %.o common.o
 	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
 
-ubi-crc32: ubi-crc32.o crc32.o
+ubicrc32: ubicrc32.o crc32.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-ubi-nize: ubi-nize.o common.o crc32.o libiniparser libubigen
+ubinize: ubinize.o common.o crc32.o libiniparser libubigen
 	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
 libubi: libubi.o

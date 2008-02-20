@@ -16,7 +16,7 @@
  */
 
 /*
- * An utility to attach MTD devices to UBI.
+ * An utility to delete UBI devices (detach MTD devices from UBI).
  *
  * Author: Artem Bityutskiy
  */
@@ -31,50 +31,42 @@
 #include "common.h"
 
 #define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "ubi-attach"
+#define PROGRAM_NAME    "ubidetach"
 
 /* The variables below are set by command line arguments */
 struct args {
 	int devn;
 	int mtdn;
-	int vidoffs;
 	const char *node;
 };
 
 static struct args args = {
 	.devn = UBI_DEV_NUM_AUTO,
 	.mtdn = -1,
-	.vidoffs = 0,
 	.node = NULL,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
-			 " - a tool to attach MTD device to UBI.";
+" - a tool to remove UBI devices (detach MTD devices from UBI)";
 
 static const char *optionsstr =
-"-d, --devn=<UBI device number>  the number to assign to the newly created UBI device\n"
-"                                (the number is assigned automatically if this is not\n"
-"                                specified\n"
-"-m, --mtdn=<MTD device number>  MTD device number to attach\n"
-"-O, --vid-hdr-offset            VID header offset (do not specify this unless you\n"
-"                                really know what you do and the optimal defaults will\n"
-"                                be used)\n"
+"-d, --devn=<UBI device number>  UBI device number to delete\n"
+"-m, --mtdn=<MTD device number>  or altrnatively, MTD device number to detach -\n"
+"                                this will delete corresponding UBI device\n"
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME "<UBI control device node file name> [-m <MTD device number>] [-d <UBI device number>]\n"
-"\t\t[--mtdn=<MTD device number>] [--devn <UBI device number>]\n"
-"Example 1: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 - attach MTD device 0 (mtd0) to UBI\n"
-"Example 2: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 -d 3 - attach MTD device 0 (mtd0) to UBI and\n"
-"           and create UBI device number 3 (ubi3)";
+"Usage: " PROGRAM_NAME "<UBI control device node file name> [-d <UBI device number>] [-m <MTD device number>]\n"
+"\t\t[--devn <UBI device number>] [--mtdn=<MTD device number>]\n"
+"Example 1: " PROGRAM_NAME " /dev/ubi_ctrl -d 2 - delete UBI device 2 (ubi2)\n"
+"Example 2: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 - detach MTD device 0 (mtd0)";
 
 static const struct option long_options[] = {
-	{ .name = "devn",           .has_arg = 1, .flag = NULL, .val = 'd' },
-	{ .name = "mtdn",           .has_arg = 1, .flag = NULL, .val = 'm' },
-	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'O' },
-	{ .name = "help",           .has_arg = 0, .flag = NULL, .val = 'h' },
-	{ .name = "version",        .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ .name = "devn",    .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "mtdn",    .has_arg = 1, .flag = NULL, .val = 'm' },
+	{ .name = "help",    .has_arg = 0, .flag = NULL, .val = 'h' },
+	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0},
 };
 
@@ -84,7 +76,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "m:d:OhV", long_options, NULL);
+		key = getopt_long(argc, argv, "m:d:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -100,13 +92,6 @@ static int parse_opt(int argc, char * const argv[])
 			args.mtdn = strtoul(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || args.mtdn < 0)
 				return errmsg("bad MTD device number: \"%s\"", optarg);
-
-			break;
-
-		case 'o':
-			args.vidoffs = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vidoffs <= 0)
-				return errmsg("bad VID header offset: \"%s\"", optarg);
 
 			break;
 
@@ -134,8 +119,11 @@ static int parse_opt(int argc, char * const argv[])
 	else if (optind != argc - 1)
 		return errmsg("more then one UBI control device specified (use -h for help)");
 
-	if (args.mtdn == -1)
-		return errmsg("MTD device number was not specified (use -h for help)");
+	if (args.mtdn == -1 && args.devn == -1)
+		return errmsg("neither MTD nor UBI devices were specified (use -h for help)");
+
+	if (args.mtdn != -1 && args.devn != -1)
+		return errmsg("specify either MTD or UBI device (use -h for help)");
 
 	args.node = argv[optind];
 	return 0;
@@ -146,8 +134,6 @@ int main(int argc, char * const argv[])
 	int err;
 	libubi_t libubi;
 	struct ubi_info ubi_info;
-	struct ubi_dev_info dev_info;
-	struct ubi_attach_request req;
 
 	err = parse_opt(argc, argv);
 	if (err)
@@ -167,34 +153,23 @@ int main(int argc, char * const argv[])
 	}
 
 	if (ubi_info.ctrl_major == -1) {
-		errmsg("MTD attach/detach feature is not supported by your kernel");
+		errmsg("MTD detach/detach feature is not supported by your kernel");
 		goto out_libubi;
 	}
 
-	req.dev_num = args.devn;
-	req.mtd_num = args.mtdn;
-	req.vid_hdr_offset = args.vidoffs;
-
-	err = ubi_attach_mtd(libubi, args.node, &req);
-	if (err) {
-		sys_errmsg("cannot attach mtd%d", args.mtdn);
-		goto out_libubi;
+	if (args.devn != -1) {
+		err = ubi_remove_dev(libubi, args.node, args.devn);
+		if (err) {
+			sys_errmsg("cannot remove ubi%d", args.devn);
+			goto out_libubi;
+		}
+	} else {
+		err = ubi_detach_mtd(libubi, args.node, args.mtdn);
+		if (err) {
+			sys_errmsg("cannot detach mtd%d", args.mtdn);
+			goto out_libubi;
+		}
 	}
-
-	/* Print some information about the new UBI device */
-	err = ubi_get_dev_info1(libubi, req.dev_num, &dev_info);
-	if (err) {
-		sys_errmsg("cannot get information about newly created UBI device");
-		goto out_libubi;
-	}
-
-	printf("UBI device number %d, total %d LEBs (", dev_info.dev_num, dev_info.total_lebs);
-	ubiutils_print_bytes(dev_info.total_bytes, 0);
-	printf("), available %d LEBs (", dev_info.avail_lebs);
-	ubiutils_print_bytes(dev_info.avail_bytes, 0);
-	printf("), LEB size ");
-	ubiutils_print_bytes(dev_info.leb_size, 1);
-	printf("\n");
 
 	libubi_close(libubi);
 	return 0;
@@ -203,3 +178,4 @@ out_libubi:
 	libubi_close(libubi);
 	return -1;
 }
+

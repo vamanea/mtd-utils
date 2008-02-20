@@ -1,7 +1,6 @@
 This directory contains a new UBI toolchain which is intended to replace
-the old one. All the utilities start with "ubi-" to distinguish them from
-the old utilities. All support "-h" option which prints sufficient usage
-information. See the MTD web-site for more information.
+the old one. All utilities support "-h" option which prints sufficient
+usage information. See the MTD web-site for more information.
 
 Motivation for new tool-chain.
 

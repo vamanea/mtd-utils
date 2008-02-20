@@ -37,7 +37,7 @@
 #include "common.h"
 
 #define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "ubi-nize"
+#define PROGRAM_NAME    "ubinize"
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 " - a tool to generate UBI images. An UBI image may contain one or more UBI "

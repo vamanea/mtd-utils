@@ -37,19 +37,21 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "ubi-update"
+#define PROGRAM_VERSION "1.1"
+#define PROGRAM_NAME    "ubiupdatevol"
 
 struct args {
 	int truncate;
 	const char *node;
 	const char *img;
+	/* For deprecated -d and -B options handling */
+	int devn;
+	char dev_name[256];
+	int broken_update;
 };
 
 static struct args args = {
-	.truncate = 0,
-	.node = NULL,
-	.img = NULL,
+	.devn = -1,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -59,11 +61,16 @@ static const char *optionsstr =
 "-n, --vol_id=<volume id>   ID of UBI volume to update\n"
 "-t, --truncate             truncate volume (wipe it out)\n"
 "-h, --help                 print help message\n"
-"-V, --version              print program version";
+"-V, --version              print program version\n\n"
+"The following are compatibility options which are deprecated, do not use them\n"
+"-d, --devn=<devn>          UBI device number - may be used instead of the UBI\n"
+"                           device node name in which case the utility assumes\n"
+"                           that the device node is \"/dev/ubi<devn>\"\n"
+"-B, --broken-update        broken update, this is for testing";
 
 static const char *usage =
 "Usage: " PROGRAM_NAME " <UBI volume node file name> [-t] [-h] [-V] [--truncate] [--help]\n"
-"\t\t[--version] <image file>\n\n"
+"\t\t\t[--version] <image file>\n\n"
 "Example 1: " PROGRAM_NAME " /dev/ubi0_1 fs.img - write file \"fs.img\" to UBI volume /dev/ubi0_1\n"
 "Example 2: " PROGRAM_NAME " /dev/ubi0_1 -t - wipe out UBI volume /dev/ubi0_1";
 
@@ -71,6 +78,9 @@ struct option long_options[] = {
 	{ .name = "truncate", .has_arg = 0, .flag = NULL, .val = 't' },
 	{ .name = "help",     .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",  .has_arg = 0, .flag = NULL, .val = 'V' },
+	/* Deprecated -d and -B options */
+	{ .name = "devn",     .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "broken-update", .has_arg = 1, .flag = NULL, .val = 'B' },
 	{ NULL, 0, NULL, 0}
 };
 
@@ -79,7 +89,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key;
 
-		key = getopt_long(argc, argv, "n:thV", long_options, NULL);
+		key = getopt_long(argc, argv, "n:th?Vd:", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -89,10 +99,29 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'h':
+		case '?':
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n\n", usage);
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
+
+		case 'd':
+		{
+			char *endp;
+
+			/* Handle deprecated -d option */
+			warnmsg("-d is depricated and will be removed, do not use it");
+			args.devn = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.devn < 0)
+				return errmsg("bad UBI device number: " "\"%s\"", optarg);
+			break;
+		}
+
+		case 'B':
+			/* Handle deprecated -B option */
+			warnmsg("-B is depricated and will be removed, do not use it");
+			args.broken_update = 1;
+			break;
 
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
@@ -107,11 +136,17 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	if (optind == argc)
-		return errmsg("UBI device name was not specified (use -h for help)");
-	else if (optind != argc - 2)
-		return errmsg("specify UBI device name and image file name as first 2 "
-			      "parameters (use -h for help)");
+	/* Handle deprecated -d option */
+	if (args.devn != -1) {
+		sprintf(args.dev_name, "/dev/ubi%d", args.devn);
+		args.node = args.dev_name;
+	} else {
+		if (optind == argc)
+			return errmsg("UBI device name was not specified (use -h for help)");
+		else if (optind != argc - 2)
+			return errmsg("specify UBI device name and image file name as first 2 "
+				      "parameters (use -h for help)");
+	}
 
 	args.node = argv[optind];
 	args.img  = argv[optind + 1];
@@ -186,6 +221,10 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 		       args.img, bytes, args.node, vol_info->rsvd_bytes);
 		goto out_free;
 	}
+
+	/* A hack to handle deprecated -B option */
+	if (args.broken_update)
+		bytes = 1;
 
 	fd = open(args.node, O_RDWR);
 	if (fd == -1) {
