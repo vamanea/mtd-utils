@@ -29,26 +29,26 @@ all: $(UTILS)
 	$(CC) $(CFLAGS) $< -c -o $@
 
 # And the below is the rule to get final executable from its .o and common.o
-%: libubi %.o common.o
+%: libubi.a %.o common.o
 	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
 
 ubicrc32: ubicrc32.o crc32.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-ubinize: ubinize.o common.o crc32.o libiniparser libubigen
+ubinize: ubinize.o common.o crc32.o libiniparser.a libubigen.a
 	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
-libubi: libubi.o
-	$(AR) crv $@.a $^
-	ranlib $@.a
+libubi.a: libubi.o
+	$(AR) crv $@ $^
+	ranlib $@
 
-libubigen: libubigen.o
-	$(AR) crv $@.a $^
-	ranlib $@.a
+libubigen.a: libubigen.o
+	$(AR) crv $@ $^
+	ranlib $@
 
-libiniparser: libiniparser.o dictionary.o
-	$(AR) crv $@.a $^
-	ranlib $@.a
+libiniparser.a: libiniparser.o dictionary.o
+	$(AR) crv $@ $^
+	ranlib $@
 
 clean:
 	rm -rf *.o $(addsuffix .a, $(LIBS)) $(UTILS) .*.c.dep
