@@ -1,5 +1,5 @@
 /*
- * Copyright (c) International Business Machines Corp., 2006
+ * Copyright (c) International Business Machines Corp., 2008
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
  * 1.3 Removed argp because we want to use uClibc.
  * 1.4 Minor cleanups
  * 1.5 Migrated to new libubi
+ * 1.6 Fixed broken volume update
  */
 
 #include <stdio.h>
@@ -46,7 +47,7 @@
 #include "libubi.h"
 #include "ubimirror.h"
 
-#define PROGRAM_VERSION "1.5"
+#define PROGRAM_VERSION "1.6"
 
 #define DEFAULT_DEV_PATTERN    "/dev/ubi%d"
 #define DEFAULT_VOL_PATTERN    "/dev/ubi%d_%d"
@@ -369,7 +370,7 @@ ubi_write_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 	int rc = 0;
 	char path[PATH_MAX];
 	FILE* fp_out = NULL;
-	size_t nbytes ;
+	size_t nbytes;
 
 	rc = bootenv_size(env, &nbytes);
 	if (rc) {
@@ -387,6 +388,13 @@ ubi_write_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 	fp_out = fopen(path, "r+");
 	if (fp_out == NULL) {
 		err_msg("Cannot fopen volume:%d number:%d\n", devno, id);
+		rc = -EBADF;
+		goto err;
+	}
+
+	rc = ubi_update_start(ulib, fileno(fp_out), nbytes);
+	if (rc != 0) {
+		err_msg("Cannot start update for %s\n", path);
 		goto err;
 	}
 
@@ -396,7 +404,6 @@ ubi_write_bootenv(uint32_t devno, uint32_t id, bootenv_t env)
 			devno, id);
 		goto err;
 	}
-
 err:
 	if( fp_out )
 		fclose(fp_out);
@@ -495,9 +502,9 @@ main(int argc, char **argv) {
 		rc = write_bootenv(args.file_in, env);
 	else
 		rc = ubi_write_bootenv(EXAMPLE_UBI_DEVICE, boot_volno, env);
-	if (rc != 0) {
+	if (rc != 0)
 		goto err;
-	}
+
 	if( args.both )		/* No side specified, update both */
 		rc = do_mirror(boot_volno);
 
