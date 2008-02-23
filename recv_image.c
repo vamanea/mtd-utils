@@ -1,5 +1,6 @@
 
 #define _XOPEN_SOURCE 500
+#define _USE_MISC
 
 #include <errno.h>  	
 #include <error.h> 	
