@@ -172,9 +172,9 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 		    (crc != be32_to_cpu(cur->ec.hdr_crc)))
 			fprintf(fpdata, "# ");
 
-		fprintf(fpdata, "%u %llu %llu", count,
-			be64_to_cpu(cur->ec.ec),
-			erase_counts[count]);
+		fprintf(fpdata, "%zu %llu %llu", count,
+			(unsigned long long)be64_to_cpu(cur->ec.ec),
+			(unsigned long long)erase_counts[count]);
 
 		if (be32_to_cpu(cur->ec.magic) != UBI_EC_HDR_MAGIC)
 			fprintf(fpdata, " ## bad magic: %08x",
@@ -203,7 +203,7 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 		if ((count % EC_X_INT) == 0) {
 			if (count > 0)
 				fprintf(fpplot, ", ");
-			fprintf(fpplot, "%d", count);
+			fprintf(fpplot, "%zd", count);
 		}
 
 		cur = cur->next;
@@ -212,9 +212,9 @@ unubi_analyze_ec_hdr(struct eb_info *first, const char *path)
 	fprintf(fpplot, ")\n");
 
 	fprintf(fpplot, "set ylabel \"erase count\"\n");
-	fprintf(fpplot, "set xrange [-1:%u]\n", eraseblocks + 1);
+	fprintf(fpplot, "set xrange [-1:%zu]\n", eraseblocks + 1);
 	fprintf(fpplot, "# set yrange [-1:%llu]\n",
-		erase_counts[eraseblocks - 1] + 1);
+		(unsigned long long)erase_counts[eraseblocks - 1] + 1);
 	fprintf(fpplot, "plot \"%s\" u 1:2 t \"unsorted: %s\" with boxes\n",
 		FN_EH_DATA, FN_EH_DATA);
 	fprintf(fpplot, "# replot \"%s\" u 1:3 t \"sorted: %s\" with lines\n",
@@ -328,7 +328,7 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 			goto exit;
 		}
 
-		fprintf(fpdata, "%u %u %u   %u %u   %u %u\n",
+		fprintf(fpdata, "%zu %u %u   %u %u   %u %u\n",
 			count,
 			be32_to_cpu(cur->vid.vol_id),
 			be32_to_cpu(cur->vid.lnum),
@@ -353,10 +353,10 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 			fprintf(fpplot, ", ");
 		if (step != be32_to_cpu(cur->vid.vol_id)) {
 			step = be32_to_cpu(cur->vid.vol_id);
-			fprintf(fpplot, "\"%d\" %d 0", step, count);
+			fprintf(fpplot, "\"%zd\" %zd 0", step, count);
 		}
 		else
-			fprintf(fpplot, "\"%d\" %d 1",
+			fprintf(fpplot, "\"%d\" %zd 1",
 				be32_to_cpu(cur->vid.lnum), count);
 		cur = cur->next;
 		count++;
@@ -416,7 +416,7 @@ unubi_analyze_vid_hdr(struct eb_info **head, const char *path)
 
 	y1 = norm_index(leb_versions[breadth - 1], leb_versions, breadth);
 	y2 = norm_index(data_sizes[breadth - 1], data_sizes, breadth);
-	fprintf(fpplot, "set xrange [-1:%u]\n", count + 1);
+	fprintf(fpplot, "set xrange [-1:%zu]\n", count + 1);
 	fprintf(fpplot, "set yrange [-1:%u]\n", y1 + 1);
 	fprintf(fpplot, "set y2range [-1:%u]\n", y2 + 1);
 	fprintf(fpplot, "plot \"%s\" u 1:4 t \"leb version: %s\" "
