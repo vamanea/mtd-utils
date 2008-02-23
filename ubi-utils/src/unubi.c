@@ -118,9 +118,9 @@ static const char *usage =
 #define FN_INVAL	"%s/eb%04u%s"			/* invalid eraseblock */
 #define FN_NSURE	"%s/eb%04u_%03u_%03u_%03x%s"	/* unsure eraseblock */
 #define FN_VALID	"%s/eb%04u_%03u_%03u_%03x%s"	/* valid eraseblock */
-#define FN_VOLSP	"%s/vol%03u_%03u_%03u_%04u"	/* split volume */
+#define FN_VOLSP	"%s/vol%03u_%03u_%03u_%04zu"	/* split volume */
 #define FN_VOLWH	"%s/volume%03u"			/* whole volume */
-#define FN_VITBL	"%s/vol_info_table%u"		/* vol info table */
+#define FN_VITBL	"%s/vol_info_table%zu"		/* vol info table */
 
 static uint32_t crc32_table[256];
 
@@ -492,7 +492,7 @@ extract_itable(FILE *fpin, struct eb_info *cur, size_t bsize, size_t num,
 		sprintf(name, "%s", rec.name);
 
 		/* print record line to fpout */
-		fprintf(fpout, "%u\t%u\t%u\t%s\t0x%08x\t%s\n",
+		fprintf(fpout, "%zu\t%u\t%u\t%s\t0x%08x\t%s\n",
 			i,
 			be32_to_cpu(rec.reserved_pebs),
 			be32_to_cpu(rec.alignment),
