@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <argp.h>
 #include <unistd.h>
 #include <mtd/ubi-header.h>
 
