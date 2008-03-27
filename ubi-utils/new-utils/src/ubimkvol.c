@@ -263,7 +263,7 @@ int main(int argc, char * const argv[])
 
 	if (args.maxavs) {
 		args.bytes = dev_info.avail_bytes;
-		printf("Set volume size to %lld\n", req.bytes);
+		printf("Set volume size to %lld\n", args.bytes);
 	}
 
 	if (args.lebs != -1) {
