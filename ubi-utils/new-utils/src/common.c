@@ -88,7 +88,7 @@ long long ubiutils_get_bytes(const char *str)
 	long long bytes = strtoull(str, &endp, 0);
 
 	if (endp == str || bytes < 0) {
-		fprintf(stderr, "incorrect amount of bytes: \"%s\"", str);
+		fprintf(stderr, "incorrect amount of bytes: \"%s\"\n", str);
 		return -1;
 	}
 
@@ -97,7 +97,7 @@ long long ubiutils_get_bytes(const char *str)
 
 		if (mult == -1) {
 			fprintf(stderr, "bad size specifier: \"%s\" - "
-			        "should be 'KiB', 'MiB' or 'GiB'", endp);
+			        "should be 'KiB', 'MiB' or 'GiB'\n", endp);
 			return -1;
 		}
 		bytes *= mult;

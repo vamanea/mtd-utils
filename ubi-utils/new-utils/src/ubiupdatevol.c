@@ -211,7 +211,7 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 
 	err = stat(args.img, &st);
 	if (err < 0) {
-		errmsg("stat failed on \"%s\"", args.node);
+		errmsg("stat failed on \"%s\"", args.img);
 		goto out_free;
 	}
 
