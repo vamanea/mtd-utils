@@ -78,7 +78,7 @@ static int get_multiplier(const char *str)
  * integer
  * @str: string to convert
  *
- * This function parses @str which may have an onee of 'KiB', 'MiB', or 'GiB'
+ * This function parses @str which may have one of 'KiB', 'MiB', or 'GiB'
  * size specifiers. Returns positive amount of bytes in case of success and %-1
  * in case of failure.
  */
