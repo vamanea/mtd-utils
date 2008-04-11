@@ -97,7 +97,7 @@ int jffs2_lzo_init(void)
 		return -1;
 
 	/* Worse case LZO compression size from their FAQ */
-	lzo_compress_buf = malloc(page_size + (page_size / 64) + 16 + 3);
+	lzo_compress_buf = malloc(page_size + (page_size / 16) + 64 + 3);
 	if (!lzo_compress_buf) {
 		free(lzo_mem);
 		return -1;
