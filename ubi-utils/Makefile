@@ -6,7 +6,7 @@ OPTFLAGS := -O2 -g -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
 SBINDIR=/usr/sbin
-MANDIR=/usr/man
+MANDIR=/usr/share/man
 INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
