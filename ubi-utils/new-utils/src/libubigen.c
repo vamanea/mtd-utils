@@ -52,8 +52,11 @@ void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 		      int subpage_size, int vid_hdr_offs, int ubi_ver,
 		      long long ec)
 {
-	if (!vid_hdr_offs)
-		vid_hdr_offs = subpage_size;
+	if (!vid_hdr_offs) {
+		vid_hdr_offs = UBI_EC_HDR_SIZE + subpage_size - 1;
+		vid_hdr_offs /= subpage_size;
+		vid_hdr_offs *= subpage_size;
+	}
 
 	ui->peb_size = peb_size;
 	ui->min_io_size = min_io_size;
