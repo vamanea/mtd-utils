@@ -1662,13 +1662,13 @@ int main(int argc, char **argv)
 	int compr_prior  = -1;
 	int warn_page_size = 0;
 
-	jffs2_compressors_init();
-
 	page_size = sysconf(_SC_PAGESIZE);
 	if (page_size < 0) /* System doesn't know so ... */
 		page_size = 4096; /* ... we make an educated guess */
 	if (page_size != 4096)
 		warn_page_size = 1; /* warn user if page size not 4096 */
+
+	jffs2_compressors_init();
 
 	while ((opt = getopt_long(argc, argv,
 					"D:d:r:s:o:qUPfh?vVe:lbp::nc:m:x:X:Lty:i:", long_options, &c)) >= 0)
