@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Artem Bityutskiy, 2007
+ * Copyright (c) Artem Bityutskiy, 2007, 2008
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,9 @@ extern "C" {
 /* Normal messages */
 #define normsg(fmt, ...) do {                              \
 	printf(PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__); \
+} while(0)
+#define normsg_cont(fmt, ...) do {                    \
+	printf(PROGRAM_NAME ": " fmt, ##__VA_ARGS__); \
 } while(0)
 
 /* Error messages */

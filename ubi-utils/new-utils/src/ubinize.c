@@ -322,8 +322,7 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 		if (vi->bytes == 0)
 			return errmsg("file \"%s\" referred from section \"%s\" is empty", *img, sname);
 
-		printf(PROGRAM_NAME ": volume size was not specified in"
-		       "section \"%s\", assume ", sname);
+		normsg_cont("volume size was not specified in section \"%s\", assume ", sname);
 		ubiutils_print_bytes(vi->bytes, 1);
 		printf("\n");
 	}
@@ -332,7 +331,7 @@ int read_section(const char *sname, struct ubigen_vol_info *vi,
 	sprintf(buf, "%s:vol_type", sname);
 	p = iniparser_getstring(args.dict, buf, NULL);
 	if (!p) {
-		normsg(": volume type was not specified in "
+		normsg("volume type was not specified in "
 		       "section \"%s\", assume \"dynamic\"\n", sname);
 		vi->type = UBI_VID_DYNAMIC;
 	} else {

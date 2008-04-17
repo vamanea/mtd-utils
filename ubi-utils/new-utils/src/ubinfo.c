@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Nokia Corporation.
+ * Copyright (C) 2007, 2008 Nokia Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by

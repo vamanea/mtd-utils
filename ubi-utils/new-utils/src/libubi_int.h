@@ -30,20 +30,6 @@
 extern "C" {
 #endif
 
-/* Error messages */
-#define errmsg(fmt, ...)  ({                                       \
-        fprintf(stderr, "libubi error: " fmt "\n", ##__VA_ARGS__); \
-	-1;                                                        \
-})
-
-/* System error messages */
-#define sys_errmsg(fmt, ...)  ({                                   \
-	int _err = errno;                                          \
-	fprintf(stderr, "libubi error: " fmt "\n", ##__VA_ARGS__); \
-	fprintf(stderr, "error %d (%s)\n", _err, strerror(_err));  \
-	-1;                                                        \
-})
-
 /*
  * The below are pre-define UBI file and directory names.
  *

@@ -32,6 +32,9 @@
 #include <limits.h>
 #include "libubi.h"
 #include "libubi_int.h"
+#include "common.h"
+
+#define PROGRAM_NAME "libubi"
 
 /**
  * mkpath - compose full path from 2 given components.
@@ -628,9 +631,8 @@ libubi_t libubi_open(int required)
 	if (read_positive_int(lib->ubi_version, &version))
 		goto out_error;
 	if (version != LIBUBI_UBI_VERSION) {
-		fprintf(stderr, "LIBUBI: this library was made for UBI version "
-				"%d, but UBI version %d is detected\n",
-			LIBUBI_UBI_VERSION, version);
+		errmsg("this library was made for UBI version %d, but UBI "
+		       "version %d is detected\n", LIBUBI_UBI_VERSION, version);
 		goto out_error;
 	}
 
