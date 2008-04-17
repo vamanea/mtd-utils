@@ -366,7 +366,7 @@ int main(int argc, char * const argv[])
 	if (!args.node && args.devn != -1)
 		return errmsg("specify either device number or node file (use -h for help)");
 
-	libubi = libubi_open();
+	libubi = libubi_open(1);
 	if (libubi == NULL)
 		return sys_errmsg("cannot open libubi");
 

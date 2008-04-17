@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * Author: Artem B. Bityutskiy
+ * Author: Artem Bityutskiy
  *
  * UBI (Unsorted Block Images) library.
  */
@@ -501,7 +501,7 @@ static int mtd_num2ubi_dev(struct libubi *lib, int mtd_num, int *dev_num)
 	return -1;
 }
 
-libubi_t libubi_open(void)
+libubi_t libubi_open(int required)
 {
 	int fd, version;
 	struct libubi *lib;
@@ -530,8 +530,9 @@ libubi_t libubi_open(void)
 	/* Make sure UBI is present */
 	fd = open(lib->sysfs_ubi, O_RDONLY);
 	if (fd == -1) {
-		errmsg("cannot open \"%s\", UBI does not seem to exist in system",
-		       lib->sysfs_ubi);
+		if (required)
+			errmsg("cannot open \"%s\", UBI does not seem to "
+			       "exist in system", lib->sysfs_ubi);
 		goto out_error;
 	}
 

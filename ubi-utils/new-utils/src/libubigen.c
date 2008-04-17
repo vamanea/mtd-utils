@@ -111,8 +111,8 @@ struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui)
  * @vtbl.
  */
 int ubigen_add_volume(const struct ubigen_info *ui,
-		       const struct ubigen_vol_info *vi,
-		       struct ubi_vtbl_record *vtbl)
+		      const struct ubigen_vol_info *vi,
+		      struct ubi_vtbl_record *vtbl)
 {
 	struct ubi_vtbl_record *vtbl_rec = &vtbl[vi->id];
 	uint32_t tmp;

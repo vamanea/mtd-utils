@@ -153,7 +153,7 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	libubi = libubi_open();
+	libubi = libubi_open(1);
 	if (libubi == NULL)
 		return sys_errmsg("cannot open libubi");
 

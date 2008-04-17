@@ -295,7 +295,7 @@ int main(int argc, char * const argv[])
 	if (!args.img && !args.truncate)
 		return errmsg("incorrect arguments, use -h for help");
 
-	libubi = libubi_open();
+	libubi = libubi_open(1);
 	if (libubi == NULL) {
 		sys_errmsg("cannot open libubi");
 		goto out_libubi;
