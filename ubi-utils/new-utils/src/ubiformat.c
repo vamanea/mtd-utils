@@ -129,6 +129,8 @@ static int parse_opt(int argc, char * const argv[])
 			args.subpage_size = ubiutils_get_bytes(optarg);
 			if (args.subpage_size <= 0)
 				return errmsg("bad sub-page size: \"%s\"", optarg);
+			if (!is_power_of_2(args.subpage_size))
+				return errmsg("sub-page size should be power of 2");
 			break;
 
 		case 'O':
@@ -516,10 +518,15 @@ int main(int argc, char * const argv[])
 
 	if (args.subpage_size == 0)
 		args.subpage_size = mtd.min_io_size;
-	else if (args.subpage_size > mtd.min_io_size ||
-		 mtd.min_io_size % args.subpage_size) {
-		errmsg("bad sub-page size %d", args.subpage_size);
-		goto out_close;
+	else {
+		if (args.subpage_size > mtd.min_io_size) {
+			errmsg("sub-page cannot be larger then min. I/O unit");
+			goto out_close;
+		}
+
+		if (mtd.min_io_size % args.subpage_size) {
+			errmsg("min. I/O unit size should be multiple of sub-page size");
+		}
 	}
 
 	/*

@@ -177,12 +177,16 @@ static int parse_opt(int argc, char * const argv[])
 			args.min_io_size = ubiutils_get_bytes(optarg);
 			if (args.min_io_size <= 0)
 				return errmsg("bad min. I/O unit size: \"%s\"", optarg);
+			if (!is_power_of_2(args.min_io_size))
+				return errmsg("min. I/O unit size should be power of 2");
 			break;
 
 		case 's':
 			args.subpage_size = ubiutils_get_bytes(optarg);
 			if (args.subpage_size <= 0)
 				return errmsg("bad sub-page size: \"%s\"", optarg);
+			if (!is_power_of_2(args.subpage_size))
+				return errmsg("sub-page size should be power of 2");
 			break;
 
 		case 'O':
@@ -241,8 +245,20 @@ static int parse_opt(int argc, char * const argv[])
 	if (args.subpage_size < 0)
 		args.subpage_size = args.min_io_size;
 
+	if (args.subpage_size > args.min_io_size)
+		return errmsg("sub-page cannot be larger then min. I/O unit");
+
+	if (args.peb_size % args.min_io_size)
+		return errmsg("physical eraseblock should be multiple of min. I/O units");
+
+	if (args.min_io_size % args.subpage_size)
+		return errmsg("min. I/O unit size should be multiple of sub-page size");
+
 	if (!args.f_out)
 		return errmsg("output file was not specified (use -h for help)");
+
+	if (args.vid_hdr_offs && args.vid_hdr_offs + UBI_VID_HDR_SIZE >= args.peb_size)
+		return errmsg("bad VID header position");
 
 	return 0;
 }
@@ -408,10 +424,12 @@ int main(int argc, char * const argv[])
 			 args.subpage_size, args.vid_hdr_offs,
 			 args.ubi_ver);
 
-	verbose(args.verbose, "LEB size:    %d", ui.leb_size);
-	verbose(args.verbose, "PEB size:    %d", ui.peb_size);
-	verbose(args.verbose, "min_io_size: %d", ui.min_io_size);
-	verbose(args.verbose, "VID offset:  %d", ui.vid_hdr_offs);
+	verbose(args.verbose, "LEB size:      %d", ui.leb_size);
+	verbose(args.verbose, "PEB size:      %d", ui.peb_size);
+	verbose(args.verbose, "min. I/O size: %d", ui.min_io_size);
+	verbose(args.verbose, "sub-page size: %d", ui.min_io_size);
+	verbose(args.verbose, "VID offset:    %d", ui.vid_hdr_offs);
+	verbose(args.verbose, "data offset:   %d", ui.data_offs);
 
 	vtbl = ubigen_create_empty_vtbl(&ui);
 	if (!vtbl)

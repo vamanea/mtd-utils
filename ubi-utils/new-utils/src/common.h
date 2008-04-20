@@ -68,6 +68,11 @@ extern "C" {
 	fprintf(stderr, PROGRAM_NAME ": warning!: " fmt "\n", ##__VA_ARGS__); \
 } while(0)
 
+static inline int is_power_of_2(unsigned long long n)
+{
+	        return (n != 0 && ((n & (n - 1)) == 0));
+}
+
 long long ubiutils_get_bytes(const char *str);
 void ubiutils_print_bytes(long long bytes, int bracket);
 void ubiutils_print_text(FILE *stream, const char *txt, int len);
