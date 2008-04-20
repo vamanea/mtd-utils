@@ -26,8 +26,6 @@
 #define __LIBUBIGEN_H__
 
 #include <stdint.h>
-#include <stdio.h>
-#include <mtd_swab.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +39,6 @@ extern "C" {
  * @vid_hdr_offs: offset of the VID header
  * @data_offs: data offset
  * @ubi_ver: UBI version
- * @ec: initial erase counter
  * @vtbl_size: volume table size
  * @max_volumes: maximum amount of volumes
  */
@@ -53,7 +50,6 @@ struct ubigen_info
 	int vid_hdr_offs;
 	int data_offs;
 	int ubi_ver;
-	long long ec;
 	int vtbl_size;
 	int max_volumes;
 };
@@ -92,18 +88,20 @@ struct ubigen_vol_info
 };
 
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
-		      int subpage_size, int vid_hdr_offs, int ubi_ver,
-		      long long ec);
+		      int subpage_size, int vid_hdr_offs, int ubi_ver);
 struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui);
+void ubigen_init_ec_hdr(const struct ubigen_info *ui,
+		        struct ubi_ec_hdr *hdr, long long ec);
 int ubigen_get_vtbl_size(const struct ubigen_info *ui);
 int ubigen_add_volume(const struct ubigen_info *ui,
 		      const struct ubigen_vol_info *vi,
 		      struct ubi_vtbl_record *vtbl);
 int ubigen_write_volume(const struct ubigen_info *ui,
-			const struct ubigen_vol_info *vi,
-			long long bytes, FILE *in, FILE *out);
-int ubigen_write_layout_vol(const struct ubigen_info *ui,
-			    struct ubi_vtbl_record *vtbl, FILE *out);
+			const struct ubigen_vol_info *vi, long long ec,
+			long long bytes, int in, int out);
+int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
+			    long long ec1, long long ec2,
+			    struct ubi_vtbl_record *vtbl, int fd);
 
 #ifdef __cplusplus
 }

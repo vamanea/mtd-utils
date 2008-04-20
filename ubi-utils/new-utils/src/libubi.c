@@ -477,12 +477,13 @@ static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 	return -1;
 }
 
-static int mtd_num2ubi_dev(struct libubi *lib, int mtd_num, int *dev_num)
+int mtd_num2ubi_dev(libubi_t desc, int mtd_num, int *dev_num)
 {
 	struct ubi_info info;
 	int i, ret, mtd_num1;
+	struct libubi *lib = desc;
 
-	if (ubi_get_info((libubi_t *)lib, &info))
+	if (ubi_get_info(desc, &info))
 		return -1;
 
 	for (i = info.lowest_dev_num; i <= info.highest_dev_num; i++) {
@@ -500,7 +501,7 @@ static int mtd_num2ubi_dev(struct libubi *lib, int mtd_num, int *dev_num)
 		}
 	}
 
-	errno = ENODEV;
+	errno = 0;
 	return -1;
 }
 
@@ -714,8 +715,10 @@ int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num)
 	int ret, ubi_dev;
 
 	ret = mtd_num2ubi_dev(desc, mtd_num, &ubi_dev);
-	if (ret == -1)
+	if (ret == -1) {
+		errno = ENODEV;
 		return ret;
+	}
 
 	return ubi_remove_dev(desc, node, ubi_dev);
 }

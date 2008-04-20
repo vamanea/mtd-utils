@@ -195,6 +195,17 @@ void libubi_close(libubi_t desc);
 int ubi_get_info(libubi_t desc, struct ubi_info *info);
 
 /**
+ * mtd_num2ubi_dev - find UBI device by attached MTD device.
+ * @@desc: UBI library descriptor
+ * @mtd_num: MTD device number
+ * @dev_num: UBI device number is returned here
+ *
+ * This function finds UBI device to which MTD device @mtd_num is attached.
+ * Returns %0 if the UBI device was found and %-1 if not.
+ */
+int mtd_num2ubi_dev(libubi_t desc, int mtd_num, int *dev_num);
+
+/**
  * ubi_attach_mtd - attach MTD device to UBI.
  * @desc: UBI library descriptor
  * @node: name of the UBI control character device node

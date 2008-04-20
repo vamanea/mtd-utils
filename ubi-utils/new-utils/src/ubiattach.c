@@ -84,7 +84,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "m:d:OhV", long_options, NULL);
+		key = getopt_long(argc, argv, "m:d:O:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -103,7 +103,7 @@ static int parse_opt(int argc, char * const argv[])
 
 			break;
 
-		case 'o':
+		case 'O':
 			args.vidoffs = strtoul(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || args.vidoffs <= 0)
 				return errmsg("bad VID header offset: \"%s\"", optarg);

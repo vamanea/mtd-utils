@@ -24,12 +24,14 @@
  *          Oliver Lohmann
  */
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <mtd/ubi-header.h>
 #include <libubigen.h>
@@ -49,7 +51,7 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 "parameters, do not specify them and let the utility to use default values.";
 
 static const char *optionsstr =
-"-o, --output=<file name>     output file name (default is stdout)\n"
+"-o, --output=<file name>     output file name\n"
 "-p, --peb-size=<bytes>       size of the physical eraseblock of the flash\n"
 "                             this UBI image is created for in bytes,\n"
 "                             kilobytes (KiB), or megabytes (MiB)\n"
@@ -61,14 +63,14 @@ static const char *optionsstr =
 "                             flash (equivalent to the minimum input/output\n"
 "                             unit size by default)\n"
 "-O, --vid-hdr-offset=<num>   offset if the VID header from start of the\n"
-"                             physical eraseblock (default is the second\n"
-"                             minimum I/O unit or sub-page, if it was\n"
-"                             specified)\n"
+"                             physical eraseblock (default is the next\n"
+"                             minimum I/O unit or sub-page after the EC\n"
+"                             header)\n"
 "-e, --erase-counter=<num>    the erase counter value to put to EC headers\n"
 "                             (default is 0)\n"
 "-x, --ubi-ver=<num>          UBI version number to put to EC headers\n"
 "                             (default is 1)\n"
-"-v  --verbose                be verbose\n"
+"-v, --verbose                be verbose\n"
 "-h, --help                   print help message\n"
 "-V, --version                print program version";
 
@@ -128,7 +130,7 @@ struct option long_options[] = {
 struct args {
 	const char *f_in;
 	const char *f_out;
-	FILE *fp_out;
+	int out_fd;
 	int peb_size;
 	int min_io_size;
 	int subpage_size;
@@ -140,14 +142,10 @@ struct args {
 };
 
 static struct args args = {
-	.f_out        = NULL,
 	.peb_size     = -1,
 	.min_io_size  = -1,
 	.subpage_size = -1,
-	.vid_hdr_offs = 0,
-	.ec           = 0,
 	.ubi_ver      = 1,
-	.verbose      = 0,
 };
 
 static int parse_opt(int argc, char * const argv[])
@@ -162,9 +160,10 @@ static int parse_opt(int argc, char * const argv[])
 
 		switch (key) {
 		case 'o':
-			args.fp_out = fopen(optarg, "wb");
-			if (!args.fp_out)
-				return errmsg("cannot open file \"%s\"", optarg);
+			args.out_fd = open(optarg, O_CREAT | O_TRUNC | O_WRONLY,
+					   S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP | S_IROTH);
+			if (args.out_fd == -1)
+				return sys_errmsg("cannot open file \"%s\"", optarg);
 			args.f_out = optarg;
 			break;
 
@@ -242,16 +241,14 @@ static int parse_opt(int argc, char * const argv[])
 	if (args.subpage_size < 0)
 		args.subpage_size = args.min_io_size;
 
-	if (!args.f_out) {
-		args.f_out = "stdout";
-		args.fp_out = stdout;
-	}
+	if (!args.f_out)
+		return errmsg("output file was not specified (use -h for help)");
 
 	return 0;
 }
 
-int read_section(const char *sname, struct ubigen_vol_info *vi,
-		 const char **img)
+static int read_section(const char *sname, struct ubigen_vol_info *vi,
+			const char **img)
 {
 	char buf[256];
 	const char *p;
@@ -401,6 +398,7 @@ int main(int argc, char * const argv[])
 	int err = -1, sects, i, volumes;
 	struct ubigen_info ui;
 	struct ubi_vtbl_record *vtbl;
+	off_t seek;
 
 	err = parse_opt(argc, argv);
 	if (err)
@@ -408,7 +406,7 @@ int main(int argc, char * const argv[])
 
 	ubigen_info_init(&ui, args.peb_size, args.min_io_size,
 			 args.subpage_size, args.vid_hdr_offs,
-			 args.ubi_ver, args.ec);
+			 args.ubi_ver);
 
 	verbose(args.verbose, "LEB size:    %d", ui.leb_size);
 	verbose(args.verbose, "PEB size:    %d", ui.peb_size);
@@ -444,8 +442,9 @@ int main(int argc, char * const argv[])
 	 * Skip 2 PEBs at the beginning of the file for the volume table which
 	 * will be written later.
 	 */
-	if (fseek(args.fp_out, ui.peb_size * 2, SEEK_SET) == -1) {
-		errmsg("cannot seek file \"%s\"", args.f_out);
+	seek = ui.peb_size * 2;
+	if (lseek(args.out_fd, seek, SEEK_SET) != seek) {
+		sys_errmsg("cannot seek file \"%s\"", args.f_out);
 		goto out_dict;
 	}
 
@@ -454,7 +453,7 @@ int main(int argc, char * const argv[])
 		struct ubigen_vol_info vi;
 		const char *img = NULL;
 		struct stat st;
-		FILE *f;
+		int fd;
 
 		if (!sname) {
 			errmsg("ini-file parsing error (iniparser_getsecname)");
@@ -471,6 +470,10 @@ int main(int argc, char * const argv[])
 		if (!err)
 			volumes += 1;
 		init_vol_info(&ui, &vi);
+
+		if (vi.id >= ui.max_volumes)
+			return errmsg("too high volume ID %d, max. is %d",
+				      vi.id, ui.max_volumes);
 
 		verbose(args.verbose, "adding volume %d", vi.id);
 
@@ -498,8 +501,8 @@ int main(int argc, char * const argv[])
 			goto out_dict;
 		}
 
-		f = fopen(img, "r");
-		if (!f) {
+		fd = open(img, O_RDONLY);
+		if (fd == -1) {
 			sys_errmsg("cannot open \"%s\"", img);
 			goto out_dict;
 		}
@@ -507,8 +510,8 @@ int main(int argc, char * const argv[])
 		verbose(args.verbose, "writing volume %d", vi.id);
 		verbose(args.verbose, "image file: %s", img);
 
-		err = ubigen_write_volume(&ui, &vi, st.st_size, f, args.fp_out);
-		fclose(f);
+		err = ubigen_write_volume(&ui, &vi, args.ec, st.st_size, fd, args.out_fd);
+		close(fd);
 		if (err) {
 			errmsg("cannot write volume for section \"%s\"", sname);
 			goto out_dict;
@@ -520,12 +523,7 @@ int main(int argc, char * const argv[])
 
 	verbose(args.verbose, "writing layout volume");
 
-	if (fseek(args.fp_out, 0, SEEK_SET) == -1) {
-		errmsg("cannot seek file \"%s\"", args.f_out);
-		goto out_dict;
-	}
-
-	err = ubigen_write_layout_vol(&ui, vtbl, args.fp_out);
+	err = ubigen_write_layout_vol(&ui, 0, 1, args.ec, args.ec, vtbl, args.out_fd);
 	if (err) {
 		errmsg("cannot write layout volume");
 		goto out_dict;
@@ -535,7 +533,7 @@ int main(int argc, char * const argv[])
 
 	iniparser_freedict(args.dict);
 	free(vtbl);
-	fclose(args.fp_out);
+	close(args.out_fd);
 	return 0;
 
 out_dict:
@@ -543,7 +541,7 @@ out_dict:
 out_vtbl:
 	free(vtbl);
 out:
-	fclose(args.fp_out);
+	close(args.out_fd);
 	remove(args.f_out);
 	return err;
 }
