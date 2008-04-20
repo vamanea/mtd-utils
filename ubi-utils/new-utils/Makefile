@@ -12,9 +12,9 @@ INCLUDEDIR=/usr/include
 CC := $(CROSS)gcc
 CFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(OPTFLAGS) -Werror -Wall
 
-LIBS = libubi libubigen libiniparser
+LIBS = libubi libmtd libubigen libiniparser libscan
 UTILS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-        ubidetach ubinize
+        ubidetach ubinize ubiformat
 
 vpath %.c src
 
@@ -38,7 +38,14 @@ ubicrc32: ubicrc32.o crc32.o
 ubinize: ubinize.o common.o crc32.o libiniparser.a libubigen.a
 	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
+ubiformat: ubiformat.o common.o crc32.o libmtd.a libscan.a libubi.a libubigen.a
+	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lscan -lubi -lubigen -o $@
+
 libubi.a: libubi.o
+	$(AR) crv $@ $^
+	ranlib $@
+
+libmtd.a: libmtd.o
 	$(AR) crv $@ $^
 	ranlib $@
 
@@ -47,6 +54,10 @@ libubigen.a: libubigen.o
 	ranlib $@
 
 libiniparser.a: libiniparser.o dictionary.o
+	$(AR) crv $@ $^
+	ranlib $@
+
+libscan.a: libscan.o crc32.o
 	$(AR) crv $@ $^
 	ranlib $@
 
