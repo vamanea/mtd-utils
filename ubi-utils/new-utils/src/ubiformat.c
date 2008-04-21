@@ -296,7 +296,7 @@ static int drop_ffs(const struct mtd_info *mtd, const void *buf, int len)
 static int flash_image(const struct mtd_info *mtd, const struct ubigen_info *ui,
 		       struct ubi_scan_info *si)
 {
-	int fd, img_ebs, eb, written_ebs = 0;
+	int fd, img_ebs, eb, written_ebs = 0, divisor;
 	struct stat st;
 
 	if (stat(args.image, &st))
@@ -316,6 +316,7 @@ static int flash_image(const struct mtd_info *mtd, const struct ubigen_info *ui,
 		return sys_errmsg("cannot open \"%s\"", args.image);
 
 	verbose(args.verbose, "will write %d eraseblocks", img_ebs);
+	divisor = img_ebs;
 	for (eb = 0; eb < mtd->eb_cnt; eb++) {
 		int err, new_len;
 		char buf[mtd->eb_size];
@@ -323,12 +324,14 @@ static int flash_image(const struct mtd_info *mtd, const struct ubigen_info *ui,
 
 		if (!args.quiet && !args.verbose) {
 			printf("\r" PROGRAM_NAME ": flashing eraseblock %d -- %2lld %% complete  ",
-			       eb, (long long)(eb + 1) * 100 / img_ebs);
+			       eb, (long long)(eb + 1) * 100 / divisor);
 			fflush(stdout);
 		}
 
-		if (si->ec[eb] == EB_BAD)
+		if (si->ec[eb] == EB_BAD) {
+			divisor += 1;
 			continue;
+		}
 
 		if (args.verbose) {
 			normsg_cont("eraseblock %d: erase", eb);
