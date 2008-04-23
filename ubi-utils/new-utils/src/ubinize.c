@@ -418,7 +418,7 @@ static void init_vol_info(const struct ubigen_info *ui,
 
 int main(int argc, char * const argv[])
 {
-	int err = -1, sects, i, volumes;
+	int err = -1, sects, i, volumes, autoresize_was_already = 0;
 	struct ubigen_info ui;
 	struct ubi_vtbl_record *vtbl;
 	off_t seek;
@@ -501,6 +501,14 @@ int main(int argc, char * const argv[])
 				      vi.id, ui.max_volumes);
 
 		verbose(args.verbose, "adding volume %d", vi.id);
+
+		/* Make sure only one volume has auto-resize flag */
+		if (vi.flags & UBI_VTBL_AUTORESIZE_FLG) {
+			if (autoresize_was_already)
+				return errmsg("only one volume is allowed "
+					      "to have auto-resize flag");
+			autoresize_was_already = 1;
+		}
 
 		err = ubigen_add_volume(&ui, &vi, vtbl);
 		if (err) {
