@@ -135,7 +135,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'O':
 			args.vid_hdr_offs = strtoul(optarg, &endp, 0);
-			if (args.vid_hdr_offs < 0 || *endp != '\0' || endp == optarg)
+			if (args.vid_hdr_offs <= 0 || *endp != '\0' || endp == optarg)
 				return errmsg("bad VID header offset: \"%s\"", optarg);
 			break;
 
@@ -523,12 +523,25 @@ int main(int argc, char * const argv[])
 		args.subpage_size = mtd.min_io_size;
 	else {
 		if (args.subpage_size > mtd.min_io_size) {
-			errmsg("sub-page cannot be larger then min. I/O unit");
+			errmsg("sub-page cannot be larger than min. I/O unit");
 			goto out_close;
 		}
 
 		if (mtd.min_io_size % args.subpage_size) {
 			errmsg("min. I/O unit size should be multiple of sub-page size");
+			goto out_close;
+		}
+	}
+
+	/* Validate VID header offset if it was specified */
+	if (args.vid_hdr_offs != 0) {
+		if (args.vid_hdr_offs % 8) {
+			errmsg("VID header offset has to be multiple of min. I/O unit size");
+			goto out_close;
+		}
+		if (args.vid_hdr_offs + UBI_VID_HDR_SIZE > mtd.eb_size) {
+			errmsg("bad VID header offset");
+			goto out_close;
 		}
 	}
 

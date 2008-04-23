@@ -239,6 +239,9 @@ static int parse_opt(int argc, char * const argv[])
 	if (args.peb_size < 0)
 		return errmsg("physical eraseblock size was not specified (use -h for help)");
 
+	if (args.peb_size > 1024*1024)
+		return errmsg("too high physical eraseblock size %d", args.peb_size);
+
 	if (args.min_io_size < 0)
 		return errmsg("min. I/O unit size was not specified (use -h for help)");
 
@@ -257,8 +260,12 @@ static int parse_opt(int argc, char * const argv[])
 	if (!args.f_out)
 		return errmsg("output file was not specified (use -h for help)");
 
-	if (args.vid_hdr_offs && args.vid_hdr_offs + UBI_VID_HDR_SIZE >= args.peb_size)
-		return errmsg("bad VID header position");
+	if (args.vid_hdr_offs) {
+		if (args.vid_hdr_offs + UBI_VID_HDR_SIZE >= args.peb_size)
+			return errmsg("bad VID header position");
+		if (args.vid_hdr_offs % 8)
+			return errmsg("VID header offset has to be multiple of min. I/O unit size");
+	}
 
 	return 0;
 }
