@@ -135,13 +135,13 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'O':
 			args.vid_hdr_offs = strtoul(optarg, &endp, 0);
-			if (endp == optarg || args.vid_hdr_offs < 0)
+			if (args.vid_hdr_offs < 0 || *endp != '\0' || endp == optarg)
 				return errmsg("bad VID header offset: \"%s\"", optarg);
 			break;
 
 		case 'e':
 			args.ec = strtoull(optarg, &endp, 0);
-			if (endp == optarg || args.ec <= 0 || *endp != '\0')
+			if (args.ec <= 0 || *endp != '\0' || endp == optarg)
 				return errmsg("bad erase counter value: \"%s\"", optarg);
 			if (args.ec >= EC_MAX)
 				return errmsg("too high erase %llu, counter, max is %u", args.ec, EC_MAX);
@@ -166,7 +166,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'x':
 			args.ubi_ver = strtoul(optarg, &endp, 0);
-			if (endp == optarg || args.ubi_ver < 0)
+			if (args.ubi_ver < 0 || *endp != '\0' || endp == optarg)
 				return errmsg("bad UBI version: \"%s\"", optarg);
 			break;
 
