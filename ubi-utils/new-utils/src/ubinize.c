@@ -121,7 +121,7 @@ struct option long_options[] = {
 	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "erase-counter",  .has_arg = 1, .flag = NULL, .val = 'e' },
 	{ .name = "ubi-ver",        .has_arg = 1, .flag = NULL, .val = 'x' },
-	{ .name = "verbose",        .has_arg = 1, .flag = NULL, .val = 'v' },
+	{ .name = "verbose",        .has_arg = 0, .flag = NULL, .val = 'v' },
 	{ .name = "help",           .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",        .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0}
