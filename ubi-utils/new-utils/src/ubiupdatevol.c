@@ -143,7 +143,7 @@ static int parse_opt(int argc, char * const argv[])
 	} else {
 		if (optind == argc)
 			return errmsg("UBI device name was not specified (use -h for help)");
-		else if (optind != argc - 2)
+		else if (optind != argc - 2 && !args.truncate)
 			return errmsg("specify UBI device name and image file name as first 2 "
 				      "parameters (use -h for help)");
 	}
@@ -291,9 +291,6 @@ int main(int argc, char * const argv[])
 	err = parse_opt(argc, argv);
 	if (err)
 		return -1;
-
-	if (!args.img && !args.truncate)
-		return errmsg("incorrect arguments, use -h for help");
 
 	libubi = libubi_open(1);
 	if (libubi == NULL) {
