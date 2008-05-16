@@ -16,7 +16,7 @@ CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
 PERLPROGS = mkpfi ubicrc32.pl
 
 NTARGETS = ubiattach ubicrc32 ubidetach ubimkvol ubinfo ubinize \
-	ubirmvol ubiupdatevol
+	ubirmvol ubiupdatevol ubiformat
 TARGETS = pfiflash pddcustomize ubimirror bin2nand nand2bin ubigen \
 	mkbootenv unubi pfi2bin $(NTARGETS)
 
