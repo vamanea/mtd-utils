@@ -77,8 +77,8 @@ static const char *optionsstr =
 static const char *usage =
 "Usage: " PROGRAM_NAME " [-o filename] [-h] [-V] [--output=<filename>] [--help]\n"
 "\t\t[--version] ini-file\n"
-"Example: " PROGRAM_NAME " -o ubi.img cfg.ini - create UBI image 'ubi.img' as\n"
-"         described by configuration file 'cfg.ini'";
+"Example: " PROGRAM_NAME " -o ubi.img -p 16KiB -m 512 -s 256 cfg.ini - create UBI image\n"
+"         'ubi.img' as described by configuration file 'cfg.ini'";
 
 static const char *ini_doc = "INI-file format.\n"
 "The input configuration ini-file describes all the volumes which have to\n"
@@ -383,11 +383,9 @@ static int read_section(const char *sname, struct ubigen_vol_info *vi,
 	/* Fetch volume alignment */
 	sprintf(buf, "%s:vol_alignment", sname);
 	vi->alignment = iniparser_getint(args.dict, buf, -1);
-	if (vi->alignment == -1) {
-		normsg("volume alignment was not specified in section "
-		       "\"%s\", assume 1", sname);
-			vi->alignment = 1;
-	} else if (vi->id < 0)
+	if (vi->alignment == -1)
+		vi->alignment = 1;
+	else if (vi->id < 0)
 		return errmsg("negative volume alignement %d", vi->alignment);
 
 	verbose(args.verbose, "volume alignment: %d", vi->alignment);
