@@ -1,14 +1,14 @@
 
 #define _XOPEN_SOURCE 500
-#define _USE_MISC
 
-#include <errno.h>  	
-#include <error.h> 	
-#include <netdb.h> 	
-#include <stdio.h> 	
-#include <stdlib.h> 	
+#include <errno.h>
+#include <error.h>
+#include <stdio.h>
+#define __USE_GNU
+#include <netdb.h>
+#include <stdlib.h>
 #include <string.h>
-#include <unistd.h> 	
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 						~(meminfo.erasesize - 1);
 					erase.length = meminfo.erasesize;
 
-					printf("Will erase at %08lx len %08lx (bad write was at %08lx)\n", 
+					printf("Will erase at %08x len %08x (bad write was at %08x)\n", 
 					       erase.start, erase.length, eraseblocks[block_nr].flash_offset);
 					if (ioctl(flfd, MEMERASE, &erase)) {
 						perror("MEMERASE");
