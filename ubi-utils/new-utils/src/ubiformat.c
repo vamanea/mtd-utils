@@ -263,7 +263,7 @@ static int change_ec(struct ubi_ec_hdr *hdr, long long ec)
 
 	/* Check the EC header */
 	if (be32_to_cpu(hdr->magic) != UBI_EC_HDR_MAGIC)
-		return errmsg("mad UBI magic %#08x, should be %#08x",
+		return errmsg("bad UBI magic %#08x, should be %#08x",
 			      be32_to_cpu(hdr->magic), UBI_EC_HDR_MAGIC);
 
 	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
