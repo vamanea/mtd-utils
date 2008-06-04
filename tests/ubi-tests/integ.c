@@ -745,7 +745,7 @@ int main(int argc,char *argv[])
 	srand(initial_seed);
 	load_ubi();
 
-	libubi = libubi_open();
+	libubi = libubi_open(1);
 	if (!libubi)
 		error_exit("Failed to open libubi");
 
@@ -766,7 +766,7 @@ int main(int argc,char *argv[])
 
 		reload_ubi();
 
-		libubi = libubi_open();
+		libubi = libubi_open(1);
 		if (!libubi)
 			error_exit("Failed to open libubi");
 
