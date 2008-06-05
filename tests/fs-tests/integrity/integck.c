@@ -1287,7 +1287,7 @@ static void do_an_operation(void)
 
 static void create_test_data(void)
 {
-	uint64_t i;
+	uint64_t i, n;
 
 	grow = 1;
 	shrink = 0;
@@ -1300,7 +1300,8 @@ static void create_test_data(void)
 	grow = 0;
 	shrink = 1;
 	/* Drop to less than 90% full */
-	for (;;) {
+	n = operation_count / 40;
+	while (n--) {
 		uint64_t free;
 		uint64_t total;
 		for (i = 0; i < 10; ++i)
@@ -1313,13 +1314,14 @@ static void create_test_data(void)
 	grow = 0;
 	shrink = 0;
 	full = 0;
-	for (i = 0; i < operation_count * 2; ++i)
+	n = operation_count * 2;
+	for (i = 0; i < n; ++i)
 		do_an_operation();
 }
 
 static void update_test_data(void)
 {
-	uint64_t i;
+	uint64_t i, n;
 
 	grow = 1;
 	shrink = 0;
@@ -1329,7 +1331,8 @@ static void update_test_data(void)
 	grow = 0;
 	shrink = 1;
 	/* Drop to less than 50% full */
-	for (;;) {
+	n = operation_count / 10;
+	while (n--) {
 		uint64_t free;
 		uint64_t total;
 		for (i = 0; i < 10; ++i)
@@ -1342,7 +1345,8 @@ static void update_test_data(void)
 	grow = 0;
 	shrink = 0;
 	full = 0;
-	for (i = 0; i < operation_count * 2; ++i)
+	n = operation_count * 2;
+	for (i = 0; i < n; ++i)
 		do_an_operation();
 }
 
