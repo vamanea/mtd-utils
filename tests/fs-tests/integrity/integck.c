@@ -29,6 +29,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <dirent.h>
+#include <sys/mman.h>
 
 #include "tests.h"
 
@@ -106,6 +107,13 @@ static uint64_t operation_count = 0; /* Number of operations used to fill
 static uint64_t initial_free_space = 0; /* Free space on file system when
 					   test starts */
 static unsigned log10_initial_free_space = 0; /* log10 of initial_free_space */
+
+static int check_nospc_files = 0; /* Also check data in files that incurred a
+				     "no space" error */
+
+static int can_mmap = 0; /* Can write via mmap */
+
+static long mem_page_size; /* Page size for mmap */
 
 static char *copy_string(const char *s)
 {
@@ -422,7 +430,7 @@ static void file_info_display(struct file_info *file)
 		(file->deleted == 0) ? "false" : "true");
 	fprintf(stderr, "    File was out of space: %s\n",
 		(file->no_space_error == 0) ? "false" : "true");
-	fprintf(stderr, "    Write Info:\n");
+	fprintf(stderr, "    File Data:\n");
 	wcnt = 0;
 	w = file->writes;
 	while (w) {
@@ -437,7 +445,7 @@ static void file_info_display(struct file_info *file)
 	}
 	fprintf(stderr, "    %u writes\n", wcnt);
 	fprintf(stderr, "    ============================================\n");
-	fprintf(stderr, "    Raw Write Info:\n");
+	fprintf(stderr, "    Write Info:\n");
 	wcnt = 0;
 	w = file->raw_writes;
 	while (w) {
@@ -461,11 +469,13 @@ static void file_info_display(struct file_info *file)
 
 static struct fd_info *file_open(struct file_info *file)
 {
-	int fd;
+	int fd, flags = O_RDWR;
 	char *path;
 
 	path = dir_path(file->parent, file->name);
-	fd = open(path, O_RDWR);
+	if (tests_random_no(100) == 1)
+		flags |= O_SYNC;
+	fd = open(path, flags);
 	CHECK(fd != -1);
 	free(path);
 	return fd_new(file, fd);
@@ -654,7 +664,7 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 		CHECK(errno = ENOSPC);
 		file->no_space_error = 1;
 		/* Delete errored files */
-		if (!file->deleted) {
+		if (!check_nospc_files && !file->deleted) {
 			struct fd_info *fdi;
 
 			fdi = file->fds;
@@ -669,12 +679,82 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 	return 1;
 }
 
+static void file_mmap_write(struct file_info *file)
+{
+	size_t write_cnt = 0, r, i, len, size;
+	struct write_info *w = file->writes;
+	void *addr;
+	char *waddr;
+	off_t offs, offset;
+	unsigned seed;
+	uint64_t free_space;
+	int fd;
+	char *path;
+
+	free_space = tests_get_free_space();
+	if (!free_space)
+		return;
+	/* Randomly pick a written area of the file */
+	if (!w)
+		return;
+	while (w) {
+		write_cnt += 1;
+		w = w->next;
+	}
+	r = tests_random_no(write_cnt);
+	w = file->writes;
+	for (i = 0; w && w->next && i < r; i++)
+		w = w->next;
+
+	offs = (w->offset / mem_page_size) * mem_page_size;
+	len = w->size + (w->offset - offs);
+	if (len > 1 << 24)
+		len = 1 << 24;
+
+	/* Open it */
+	path = dir_path(file->parent, file->name);
+	fd = open(path, O_RDWR);
+	CHECK(fd != -1);
+	free(path);
+
+	/* mmap it */
+	addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offs);
+	CHECK(close(fd) != -1);
+	CHECK(addr != MAP_FAILED);
+
+	/* Randomly select a part of the mmapped area to write */
+	size = tests_random_no(w->size);
+	if (size > free_space)
+		size = free_space;
+	if (size == 0)
+		size = 1;
+	offset = w->offset + tests_random_no(w->size - size);
+
+	/* Write it */
+	seed = tests_random_no(10000000);
+	srand(seed);
+	waddr = addr + (offset - offs);
+	for (i = 0; i < size; i++)
+		waddr[i] = rand();
+
+	/* Unmap it */
+	CHECK(munmap(addr, len) != -1);
+
+	/* Record what was written */
+	file_write_info(file, offset, size, seed);
+}
+
 static void file_write(struct file_info *file, int fd)
 {
 	off_t offset;
 	size_t size, actual;
 	unsigned seed;
 	int truncate = 0;
+
+	if (can_mmap && !full && !file->deleted && tests_random_no(100) == 1) {
+		file_mmap_write(file);
+		return;
+	}
 
 	get_offset_and_size(file, &offset, &size);
 	seed = tests_random_no(10000000);
@@ -690,7 +770,7 @@ static void file_write(struct file_info *file, int fd)
 		file_write_info(file, offset, actual, seed);
 
 	/* Delete errored files */
-	if (file->no_space_error) {
+	if (!check_nospc_files && file->no_space_error) {
 		if (!file->deleted) {
 			struct fd_info *fdi;
 
@@ -867,7 +947,7 @@ static void save_file(int fd, struct file_info *file)
 
 	/* Start at the beginning */
 	CHECK(lseek(fd, 0, SEEK_SET) != (off_t) -1);
-	
+
 	for (;;) {
 		ssize_t r = read(fd, buf, BUFFER_SIZE);
 		CHECK(r != -1);
@@ -966,7 +1046,7 @@ static void file_check(struct file_info *file, int fd)
 	struct write_info *w;
 
 	/* Do not check files that have errored */
-	if (file->no_space_error)
+	if (!check_nospc_files && file->no_space_error)
 		return;
 	if (fd == -1)
 		open_and_close = 1;
@@ -1135,7 +1215,15 @@ static char *make_name(struct dir_info *dir)
 
 	do {
 		found = 0;
-		sprintf(name, "%u", (unsigned) tests_random_no(1000000));
+		if (tests_random_no(5) == 1) {
+			int i, n = tests_random_no(255) + 1;
+
+			CHECK(n > 0 && n < 256);
+			for (i = 0; i < n; i++)
+				name[i] = 'a' + tests_random_no(26);
+			name[i] = '\0';
+		} else
+			sprintf(name, "%u", (unsigned) tests_random_no(1000000));
 		for (entry = dir->first; entry; entry = entry->next) {
 			if (strcmp(dir_entry_name(entry), name) == 0) {
 				found = 1;
@@ -1221,6 +1309,9 @@ static void operate_on_file(struct file_info *file)
 	}
 	/* Mostly just write */
 	file_write_file(file);
+	/* Once in a while check it too */
+	if (tests_random_no(100) == 1)
+		file_check(file, -1);
 }
 
 /* Randomly select something to do with an open file */
@@ -1235,8 +1326,15 @@ static void operate_on_open_file(struct fd_info *fdi)
 		file_close(fdi);
 	else if (shrink && r < 121 && !fdi->file->deleted)
 		file_delete(fdi->file);
-	else
+	else {
 		file_write(fdi->file, fdi->fd);
+		if (r >= 999) {
+			if (tests_random_no(100) >= 50)
+				CHECK(fsync(fdi->fd) != -1);
+			else
+				CHECK(fdatasync(fdi->fd) != -1);
+		}
+	}
 }
 
 /* Select an open file at random */
@@ -1257,16 +1355,18 @@ static void operate_on_an_open_file(void)
 		}
 	}
 	/* Close any open files that have errored */
-	ofi = open_files;
-	while (ofi) {
-		if (ofi->fdi->file->no_space_error) {
-			struct fd_info *fdi;
+	if (!check_nospc_files) {
+		ofi = open_files;
+		while (ofi) {
+			if (ofi->fdi->file->no_space_error) {
+				struct fd_info *fdi;
 
-			fdi = ofi->fdi;
-			ofi = ofi->next;
-			file_close(fdi);
-		} else
-			ofi = ofi->next;
+				fdi = ofi->fdi;
+				ofi = ofi->next;
+				file_close(fdi);
+			} else
+				ofi = ofi->next;
+		}
 	}
 	r = tests_random_no(open_files_count);
 	for (ofi = open_files; ofi; ofi = ofi->next, --r)
@@ -1357,6 +1457,9 @@ void integck(void)
 	uint64_t z;
 	char dir_name[256];
 
+	/* Get memory page size for mmap */
+	mem_page_size = sysconf(_SC_PAGE_SIZE);
+	CHECK(mem_page_size > 0);
 	/* Make our top directory */
 	pid = getpid();
 	printf("pid is %u\n", (unsigned) pid);
@@ -1449,6 +1552,14 @@ int main(int argc, char *argv[])
 		return 1;
 	/* Change directory to the file system and check it is ok for testing */
 	tests_check_test_file_system();
+	/*
+	 * We expect accurate file size from ubifs even after "no space"
+	 * errors. And we can mmap.
+	 */
+	if (strcmp(tests_file_system_type, "ubifs") == 0) {
+		check_nospc_files = 1;
+		can_mmap = 1;
+	}
 	/* Do the actual test */
 	integck();
 	return 0;
