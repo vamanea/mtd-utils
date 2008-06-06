@@ -1251,6 +1251,8 @@ static void operate_on_entry(struct dir_entry_info *entry)
 	/* If shrinking, 1 time in 10, remove a file */
 	if (entry->type == 'f') {
 		if (shrink && tests_random_no(10) == 0) {
+			while (entry->entry.file->fds)
+				file_close(entry->entry.file->fds);
 			file_delete(entry->entry.file);
 			return;
 		}
