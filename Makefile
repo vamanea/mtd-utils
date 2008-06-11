@@ -1,13 +1,15 @@
 
 # -*- sh -*-
 
-OPTFLAGS := -O2 -Wall
 SBINDIR=/usr/sbin
 MANDIR=/usr/share/man
 INCLUDEDIR=/usr/include
+
 #CROSS=arm-linux-
 CC := $(CROSS)gcc
-CFLAGS := -I./include $(OPTFLAGS)
+CFLAGS ?= -O2 -g
+CFLAGS += -Wall
+CPPFLAGS += -I./include
 
 ifeq ($(origin CROSS),undefined)
   BUILDDIR := .
@@ -17,7 +19,7 @@ else
 endif
 
 ifeq ($(WITHOUT_XATTR), 1)
-  CFLAGS += -DWITHOUT_XATTR
+  CPPFLAGS += -DWITHOUT_XATTR
 endif
 
 RAWTARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
@@ -38,7 +40,7 @@ SYMLINKS =
 
 $(BUILDDIR)/%.o: %.c
 	mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,$(BUILDDIR)/.$(<F).dep
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,$(BUILDDIR)/.$(<F).dep
 
 .SUFFIXES:
 

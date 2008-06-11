@@ -2,7 +2,6 @@
 # Makefile for ubi-utils
 #
 
-OPTFLAGS := -O2 -g -Wall
 KERNELHDR := ../include
 DESTDIR := /usr/local
 SBINDIR=/usr/sbin
@@ -10,8 +9,10 @@ MANDIR=/usr/share/man
 INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
-CFLAGS := -I./inc -I./src -I$(KERNELHDR) $(OPTFLAGS) -Werror \
-	-Wwrite-strings -W -std=gnu99 -DPACKAGE_VERSION=\"1.0\"
+CFLAGS ?= -O2 -g -Werror
+CFLAGS += -Wall -Wwrite-strings -W
+CPPFLAGS += -I./inc -I./src -I$(KERNELHDR) \
+	-std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi ubicrc32.pl
 
@@ -26,7 +27,7 @@ vpath   %.c ./src
 	$(CC) $(LDFLAGS) -g -o $@ $^
 
 %.o: %.c
-	$(CC) $(CFLAGS) -g -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
 
 all: $(TARGETS)
 	make -C new-utils
