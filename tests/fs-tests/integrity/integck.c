@@ -87,6 +87,7 @@ struct dir_entry_info /* Each entry in a directory has one of these */
 	{
 		struct file_info *file;
 		struct dir_info *dir;
+		void *target;
 	} entry;
 };
 
@@ -292,6 +293,8 @@ static void add_dir_entry(struct dir_info *parent, char type, const char *name,
 
 		entry->entry.dir = dir;
 		dir->entry = entry;
+		dir->name = copy_string(name);
+		dir->parent = parent;
 	}
 }
 
@@ -315,6 +318,8 @@ static void remove_dir_entry(struct dir_entry_info *entry)
 		if (file->links == entry)
 			file->links = entry->next_link;
 		file->link_count -= 1;
+		if (file->link_count == 0)
+			file->deleted = 1;
 	}
 
 	free(entry->name);
@@ -1354,12 +1359,153 @@ static struct file_info *pick_file(void)
 	}
 }
 
+static struct dir_info *pick_dir(void)
+{
+	struct dir_info *dir = top_dir;
+
+	if (tests_random_no(40) >= 30)
+		return dir;
+	for (;;) {
+		struct dir_entry_info *entry;
+		size_t r;
+
+		r = tests_random_no(dir->number_of_entries);
+		entry = dir->first;
+		while (entry && r) {
+			entry = entry->next;
+			--r;
+		}
+		for (;;) {
+			if (!entry)
+				break;
+			if (entry->type == 'd')
+				break;
+			entry = entry->next;
+		}
+		if (!entry) {
+			entry = dir->first;
+			for (;;) {
+				if (!entry)
+					break;
+				if (entry->type == 'd')
+					break;
+				entry = entry->next;
+			}
+		}
+		if (!entry)
+			return dir;
+		dir = entry->entry.dir;
+		if (tests_random_no(40) >= 30)
+			return dir;
+	}
+}
+
+static char *pick_rename_name(struct dir_info **parent,
+			      struct dir_entry_info **rename_entry, int isdir)
+{
+	struct dir_info *dir = pick_dir();
+	struct dir_entry_info *entry;
+	size_t r;
+
+	*parent = dir;
+	*rename_entry = NULL;
+
+	if (grow || tests_random_no(20) < 10)
+		return copy_string(make_name(dir));
+
+	r = tests_random_no(dir->number_of_entries);
+	entry = dir->first;
+	while (entry && r) {
+		entry = entry->next;
+		--r;
+	}
+	if (!entry)
+		entry = dir->first;
+	if (!entry ||
+	    (entry->type == 'd' && entry->entry.dir->number_of_entries != 0))
+		return copy_string(make_name(dir));
+
+	if ((isdir && entry->type != 'd') ||
+	    (!isdir && entry->type == 'd'))
+		return copy_string(make_name(dir));
+
+	*rename_entry = entry;
+	return copy_string(entry->name);
+}
+
+static void rename_entry(struct dir_entry_info *entry)
+{
+	struct dir_entry_info *rename_entry = NULL;
+	struct dir_info *parent;
+	char *path, *to, *name;
+	int ret, isdir, retry;
+
+	if (!entry->parent)
+		return;
+
+	for (retry = 0; retry < 3; retry++) {
+		path = dir_path(entry->parent, entry->name);
+		isdir = entry->type == 'd' ? 1 : 0;
+		name = pick_rename_name(&parent, &rename_entry, isdir);
+		to = dir_path(parent, name);
+		/*
+		 * Check we are not trying to move a directory to a subdirectory
+		 * of itself.
+		 */
+		if (isdir) {
+			struct dir_info *p;
+
+			for (p = parent; p; p = p->parent)
+				if (p == entry->entry.dir)
+					break;
+			if (p == entry->entry.dir) {
+				free(path);
+				free(name);
+				free(to);
+				continue;
+			}
+		}
+		break;
+	}
+
+	ret = rename(path, to);
+	if (ret == -1) {
+		if (errno == ENOSPC)
+			full = 1;
+		CHECK(errno == ENOSPC || errno == EBUSY);
+		free(path);
+		free(name);
+		free(to);
+		return;
+	}
+
+	free(path);
+	free(to);
+
+	if (rename_entry && rename_entry->type == entry->type &&
+	    rename_entry->entry.target == entry->entry.target) {
+		free(name);
+		return;
+	}
+
+	add_dir_entry(parent, entry->type, name, entry->entry.target);
+	if (rename_entry)
+		remove_dir_entry(rename_entry);
+	remove_dir_entry(entry);
+	free(name);
+}
+
 static void operate_on_dir(struct dir_info *dir);
 static void operate_on_file(struct file_info *file);
 
 /* Randomly select something to do with a directory entry */
 static void operate_on_entry(struct dir_entry_info *entry)
 {
+	/* 1 time in 1000 rename */
+	if (tests_random_no(1000) == 0) {
+		rename_entry(entry);
+		return;
+	}
 	if (entry->type == 'd') {
 		/* If shrinking, 1 time in 50, remove a directory */
 		if (shrink && tests_random_no(50) == 0) {
