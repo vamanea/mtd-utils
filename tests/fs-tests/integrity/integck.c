@@ -1144,6 +1144,7 @@ static void file_check(struct file_info *file, int fd)
 	off_t pos;
 	struct write_info *w;
 	struct dir_entry_info *entry;
+	struct stat st;
 
 	/* Do not check files that have errored */
 	if (!check_nospc_files && file->no_space_error)
@@ -1181,6 +1182,8 @@ static void file_check(struct file_info *file, int fd)
 	}
 	if (file->length > pos)
 		file_check_hole(file, fd, pos, file->length - pos);
+	CHECK(fstat(fd, &st) != -1);
+	CHECK(file->link_count == st.st_nlink);
 	if (open_and_close) {
 		CHECK(close(fd) != -1);
 		free(path);
@@ -1232,6 +1235,8 @@ static void dir_check(struct dir_info *dir)
 	struct dirent *ent;
 	unsigned checked = 0;
 	char *path;
+	int link_count = 2; /* Parent and dot */
+	struct stat st;
 
 	/* Create an array of entries */
 	sz = sizeof(struct dir_entry_info *);
@@ -1270,21 +1275,25 @@ static void dir_check(struct dir_info *dir)
 	}
 	CHECK(closedir(d) != -1);
 	CHECK(checked == dir->number_of_entries);
-	free(path);
 
 	/* Now check each entry */
 	entry = dir->first;
 	while (entry) {
-		if (entry->type == 'd')
+		if (entry->type == 'd') {
 			dir_check(entry->entry.dir);
-		else if (entry->type == 'f')
+			link_count += 1; /* <subdir>/.. */
+		} else if (entry->type == 'f')
 			file_check(entry->entry.file, -1);
 		else
 			CHECK(0);
 		entry = entry->next;
 	}
 
+	CHECK(stat(path, &st) != -1);
+	CHECK(link_count == st.st_nlink);
+
 	free(entry_array);
+	free(path);
 }
 
 static void check_deleted_files(void)
