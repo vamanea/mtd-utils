@@ -46,17 +46,21 @@ struct write_info /* Record of random data written into a file */
 	int trunc; /* Records a truncation (raw_writes only) */
 };
 
+struct dir_entry_info;
+
 struct file_info /* Each file has one of these */
 {
-	char *name;
-	struct dir_info *parent; /* Parent directory */
+	char *name; /* Original name */
 	struct write_info *writes; /* Record accumulated writes to the file */
 	struct write_info *raw_writes;
 				/* Record in order all writes to the file */
 	struct fd_info *fds; /* All open file descriptors for this file */
+	struct dir_entry_info *links;
+	int link_count;
 	off_t length;
 	int deleted; /* File has been deleted but is still open */
 	int no_space_error; /* File has incurred a ENOSPC error */
+	uint64_t check_run_no; /* Run number used when checking */
 };
 
 struct dir_info /* Each directory has one of these */
@@ -66,12 +70,18 @@ struct dir_info /* Each directory has one of these */
 					for our top directory */
 	unsigned number_of_entries;
 	struct dir_entry_info *first;
+	struct dir_entry_info *entry; /* Dir entry of this dir */
 };
 
 struct dir_entry_info /* Each entry in a directory has one of these */
 {
-	struct dir_entry_info *next;
-	char type; /* f => file, d=> dir */
+	struct dir_entry_info *next; /* List of entries in directory */
+	struct dir_entry_info *prev; /* List of entries in directory */
+	struct dir_entry_info *next_link; /* List of hard links for same file */
+	struct dir_entry_info *prev_link; /* List of hard links for same file */
+	char *name;
+	struct dir_info *parent; /* Parent directory */
+	char type; /* f => file, d => dir */
 	int checked; /* Temporary flag used when checking */
 	union entry_
 	{
@@ -114,6 +124,8 @@ static int check_nospc_files = 0; /* Also check data in files that incurred a
 static int can_mmap = 0; /* Can write via mmap */
 
 static long mem_page_size; /* Page size for mmap */
+
+static uint64_t check_run_no;
 
 static char *copy_string(const char *s)
 {
@@ -195,18 +207,6 @@ static char *dir_path(struct dir_info *parent, const char *name)
 	return path;
 }
 
-static struct dir_entry_info *dir_entry_new(void)
-{
-	struct dir_entry_info *entry;
-	size_t sz;
-
-	sz = sizeof(struct dir_entry_info);
-	entry = (struct dir_entry_info *) malloc(sz);
-	CHECK(entry != NULL);
-	memset(entry, 0, sz);
-	return entry;
-}
-
 static void open_file_add(struct fd_info *fdi)
 {
 	struct open_file_info *ofi;
@@ -240,7 +240,7 @@ static void open_file_remove(struct fd_info *fdi)
 	CHECK(0); /* We are trying to remove something that is not there */
 }
 
-static struct fd_info *fd_new(struct file_info *file, int fd)
+static struct fd_info *add_fd(struct file_info *file, int fd)
 {
 	struct fd_info *fdi;
 	size_t sz;
@@ -255,6 +255,70 @@ static struct fd_info *fd_new(struct file_info *file, int fd)
 	file->fds = fdi;
 	open_file_add(fdi);
 	return fdi;
+}
+
+static void add_dir_entry(struct dir_info *parent, char type, const char *name,
+			  void *target)
+{
+	struct dir_entry_info *entry;
+	size_t sz;
+
+	sz = sizeof(struct dir_entry_info);
+	entry = (struct dir_entry_info *) malloc(sz);
+	CHECK(entry != NULL);
+	memset(entry, 0, sz);
+
+	entry->type = type;
+	entry->name = copy_string(name);
+	entry->parent = parent;
+
+	entry->next = parent->first;
+	if (parent->first)
+		parent->first->prev = entry;
+	parent->first = entry;
+	parent->number_of_entries += 1;
+
+	if (entry->type == 'f') {
+		struct file_info *file = target;
+
+		entry->entry.file = file;
+		entry->next_link = file->links;
+		if (file->links)
+			file->links->prev_link = entry;
+		file->links = entry;
+		file->link_count += 1;
+	} else if (entry->type == 'd') {
+		struct dir_info *dir = target;
+
+		entry->entry.dir = dir;
+		dir->entry = entry;
+	}
+}
+
+static void remove_dir_entry(struct dir_entry_info *entry)
+{
+	entry->parent->number_of_entries -= 1;
+	if (entry->parent->first == entry)
+		entry->parent->first = entry->next;
+	if (entry->prev)
+		entry->prev->next = entry->next;
+	if (entry->next)
+		entry->next->prev = entry->prev;
+
+	if (entry->type == 'f') {
+		struct file_info *file = entry->entry.file;
+
+		if (entry->prev_link)
+			entry->prev_link->next_link = entry->next_link;
+		if (entry->next_link)
+			entry->next_link->prev_link = entry->prev_link;
+		if (file->links == entry)
+			file->links = entry->next_link;
+		file->link_count -= 1;
+	}
+
+	free(entry->name);
+	free(entry);
 }
 
 static struct dir_info *dir_new(struct dir_info *parent, const char *name)
@@ -278,27 +342,17 @@ static struct dir_info *dir_new(struct dir_info *parent, const char *name)
 	memset(dir, 0, sz);
 	dir->name = copy_string(name);
 	dir->parent = parent;
-	if (parent) {
-		struct dir_entry_info *entry;
-
-		entry = dir_entry_new();
-		entry->type = 'd';
-		entry->entry.dir = dir;
-		entry->next = parent->first;
-		parent->first = entry;
-		parent->number_of_entries += 1;
-	}
+	if (parent)
+		add_dir_entry(parent, 'd', name, dir);
 	return dir;
 }
 
 static void file_delete(struct file_info *file);
+static void file_unlink(struct dir_entry_info *entry);
 
 static void dir_remove(struct dir_info *dir)
 {
 	char *path;
-	struct dir_entry_info *entry;
-	struct dir_entry_info **prev;
-	int found;
 
 	/* Remove directory contents */
 	while (dir->first) {
@@ -308,27 +362,16 @@ static void dir_remove(struct dir_info *dir)
 		if (entry->type == 'd')
 			dir_remove(entry->entry.dir);
 		else if (entry->type == 'f')
-			file_delete(entry->entry.file);
+			file_unlink(entry);
 		else
 			CHECK(0); /* Invalid struct dir_entry_info */
 	}
 	/* Remove entry from parent directory */
-	found = 0;
-	prev = &dir->parent->first;
-	for (entry = dir->parent->first; entry; entry = entry->next) {
-		if (entry->type == 'd' && entry->entry.dir == dir) {
-			dir->parent->number_of_entries -= 1;
-			*prev = entry->next;
-			free(entry);
-			found = 1;
-			break;
-		}
-		prev = &entry->next;
-	}
-	CHECK(found); /* Check the file is in the parent directory */
+	remove_dir_entry(dir->entry);
 	/* Remove directory itself */
 	path = dir_path(dir->parent, dir->name);
 	CHECK(rmdir(path) != -1);
+	free(dir);
 }
 
 static struct file_info *file_new(struct dir_info *parent, const char *name)
@@ -338,7 +381,6 @@ static struct file_info *file_new(struct dir_info *parent, const char *name)
 	mode_t mode;
 	int fd;
 	size_t sz;
-	struct dir_entry_info *entry;
 
 	CHECK(parent != NULL);
 
@@ -358,49 +400,72 @@ static struct file_info *file_new(struct dir_info *parent, const char *name)
 	CHECK(file != NULL);
 	memset(file, 0, sz);
 	file->name = copy_string(name);
-	file->parent = parent;
 
-	fd_new(file, fd);
+	add_dir_entry(parent, 'f', name, file);
 
-	entry = dir_entry_new();
-	entry->type = 'f';
-	entry->entry.file = file;
-	entry->next = parent->first;
-	parent->first = entry;
-	parent->number_of_entries += 1;
+	add_fd(file, fd);
 
 	return file;
 }
 
-static void file_delete(struct file_info *file)
+static void link_new(struct dir_info *parent, const char *name,
+		     struct file_info *file)
 {
-	char *path;
 	struct dir_entry_info *entry;
-	struct dir_entry_info **prev;
-	int found;
+	char *path, *target;
+	int ret;
+
+	if (!file)
+		return;
+	entry = file->links;
+	if (!entry)
+		return;
+	path = dir_path(parent, name);
+	target = dir_path(entry->parent, entry->name);
+	ret = link(target, path);
+	if (ret == -1) {
+		CHECK(errno == ENOSPC);
+		free(target);
+		free(path);
+		full = 1;
+		return;
+	}
+	free(target);
+	free(path);
+
+	add_dir_entry(parent, 'f', name, file);
+}
+
+static void file_close(struct fd_info *fdi);
+
+static void file_close_all(struct file_info *file)
+{
+	struct fd_info *fdi = file->fds;
+
+	while (fdi) {
+		struct fd_info *next = fdi->next;
+
+		file_close(fdi);
+		fdi = next;
+	}
+}
+
+static void file_unlink(struct dir_entry_info *entry)
+{
+	struct file_info *file = entry->entry.file;
+	char *path;
+
+	path = dir_path(entry->parent, entry->name);
 
 	/* Remove file entry from parent directory */
-	found = 0;
-	prev = &file->parent->first;
-	for (entry = file->parent->first; entry; entry = entry->next) {
-		if (entry->type == 'f' && entry->entry.file == file) {
-			file->parent->number_of_entries -= 1;
-			*prev = entry->next;
-			free(entry);
-			found = 1;
-			break;
-		}
-		prev = &entry->next;
-	}
-	CHECK(found); /* Check the file is in the parent directory */
+	remove_dir_entry(entry);
 
-	/* Delete the file */
-	path = dir_path(file->parent, file->name);
+	/* Unlink the file */
 	CHECK(unlink(path) != -1);
 	free(path);
 
-	/* Free struct file_info if file is not open */
-	if (!file->fds) {
+	/* Free struct file_info if file is not open and not linked */
+	if (!file->fds && !file->links) {
 		struct write_info *w, *next;
 
 		free(file->name);
@@ -411,18 +476,63 @@ static void file_delete(struct file_info *file)
 			w = next;
 		}
 		free(file);
-	} else
+	} else if (!file->links)
 		file->deleted = 1;
+}
+
+static struct dir_entry_info *pick_entry(struct file_info *file)
+{
+	struct dir_entry_info *entry;
+	size_t r;
+
+	if (!file->link_count)
+		return NULL;
+	r = tests_random_no(file->link_count);
+	entry = file->links;
+	while (entry && r--)
+		entry = entry->next_link;
+	return entry;
+}
+
+static void file_unlink_file(struct file_info *file)
+{
+	struct dir_entry_info *entry;
+
+	entry = pick_entry(file);
+	if (!entry)
+		return;
+	file_unlink(entry);
+}
+
+static void file_delete(struct file_info *file)
+{
+	struct dir_entry_info *entry = file->links;
+
+	file_close_all(file);
+	while (entry) {
+		struct dir_entry_info *next = entry->next_link;
+
+		file_unlink(entry);
+		entry = next;
+	}
 }
 
 static void file_info_display(struct file_info *file)
 {
+	struct dir_entry_info *entry;
 	struct write_info *w;
 	unsigned wcnt;
 
 	fprintf(stderr, "File Info:\n");
-	fprintf(stderr, "    Name: %s\n", file->name);
-	fprintf(stderr, "    Directory: %s\n", file->parent->name);
+	fprintf(stderr, "    Original name: %s\n", file->name);
+	fprintf(stderr, "    Link count: %d\n", file->link_count);
+	fprintf(stderr, "    Links:\n");
+	entry = file->links;
+	while (entry) {
+		fprintf(stderr, "      Name: %s\n", entry->name);
+		fprintf(stderr, "      Directory: %s\n", entry->parent->name);
+		entry = entry->next_link;
+	}
 	fprintf(stderr, "    Length: %u\n", (unsigned) file->length);
 	fprintf(stderr, "    File was open: %s\n",
 		(file->fds == NULL) ? "false" : "true");
@@ -472,13 +582,13 @@ static struct fd_info *file_open(struct file_info *file)
 	int fd, flags = O_RDWR;
 	char *path;
 
-	path = dir_path(file->parent, file->name);
+	path = dir_path(file->links->parent, file->links->name);
 	if (tests_random_no(100) == 1)
 		flags |= O_SYNC;
 	fd = open(path, flags);
 	CHECK(fd != -1);
 	free(path);
-	return fd_new(file, fd);
+	return add_fd(file, fd);
 }
 
 #define BUFFER_SIZE 32768
@@ -656,7 +766,6 @@ static void get_offset_and_size(struct file_info *file,
 }
 
 static void file_truncate_info(struct file_info *file, size_t new_length);
-static void file_close(struct fd_info *fdi);
 
 static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 {
@@ -664,16 +773,8 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 		CHECK(errno = ENOSPC);
 		file->no_space_error = 1;
 		/* Delete errored files */
-		if (!check_nospc_files && !file->deleted) {
-			struct fd_info *fdi;
-
-			fdi = file->fds;
-			while (fdi) {
-				file_close(fdi);
-				fdi = file->fds;
-			}
+		if (!check_nospc_files)
 			file_delete(file);
-		}
 		return 0;
 	}
 	return 1;
@@ -691,6 +792,8 @@ static void file_mmap_write(struct file_info *file)
 	int fd;
 	char *path;
 
+	if (!file->links)
+		return;
 	free_space = tests_get_free_space();
 	if (!free_space)
 		return;
@@ -712,7 +815,7 @@ static void file_mmap_write(struct file_info *file)
 		len = 1 << 24;
 
 	/* Open it */
-	path = dir_path(file->parent, file->name);
+	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_RDWR);
 	CHECK(fd != -1);
 	free(path);
@@ -771,16 +874,7 @@ static void file_write(struct file_info *file, int fd)
 
 	/* Delete errored files */
 	if (!check_nospc_files && file->no_space_error) {
-		if (!file->deleted) {
-			struct fd_info *fdi;
-
-			fdi = file->fds;
-			while (fdi) {
-				file_close(fdi);
-				fdi = file->fds;
-			}
-			file_delete(file);
-		}
+		file_delete(file);
 		return;
 	}
 
@@ -796,7 +890,7 @@ static void file_write_file(struct file_info *file)
 	int fd;
 	char *path;
 
-	path = dir_path(file->parent, file->name);
+	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_WRONLY);
 	CHECK(fd != -1);
 	file_write(file, fd);
@@ -855,7 +949,7 @@ static void file_truncate_file(struct file_info *file)
 	int fd;
 	char *path;
 
-	path = dir_path(file->parent, file->name);
+	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_WRONLY);
 	CHECK(fd != -1);
 	file_truncate(file, fd);
@@ -1040,19 +1134,24 @@ static void file_check_data(	struct file_info *file,
 
 static void file_check(struct file_info *file, int fd)
 {
-	int open_and_close = 0;
+	int open_and_close = 0, link_count = 0;
 	char *path = NULL;
 	off_t pos;
 	struct write_info *w;
+	struct dir_entry_info *entry;
 
 	/* Do not check files that have errored */
 	if (!check_nospc_files && file->no_space_error)
 		return;
+	/* Do not check the same file twice */
+	if (file->check_run_no == check_run_no)
+		return;
+	file->check_run_no = check_run_no;
 	if (fd == -1)
 		open_and_close = 1;
 	if (open_and_close) {
 		/* Open file */
-		path = dir_path(file->parent, file->name);
+		path = dir_path(file->links->parent, file->links->name);
 		fd = open(path, O_RDONLY);
 		CHECK(fd != -1);
 	}
@@ -1081,26 +1180,19 @@ static void file_check(struct file_info *file, int fd)
 		CHECK(close(fd) != -1);
 		free(path);
 	}
-}
-
-static const char *dir_entry_name(const struct dir_entry_info *entry)
-{
-	CHECK(entry != NULL);
-	if (entry->type == 'd')
-		return entry->entry.dir->name;
-	else if (entry->type == 'f')
-		return entry->entry.file->name;
-	else {
-		CHECK(0);
-		return NULL;
+	entry = file->links;
+	while (entry) {
+		link_count += 1;
+		entry = entry->next_link;
 	}
+	CHECK(link_count == file->link_count);
 }
 
 static int search_comp(const void *pa, const void *pb)
 {
 	const struct dirent *a = (const struct dirent *) pa;
 	const struct dir_entry_info *b = * (const struct dir_entry_info **) pb;
-	return strcmp(a->d_name, dir_entry_name(b));
+	return strcmp(a->d_name, b->name);
 }
 
 static void dir_entry_check(struct dir_entry_info **entry_array,
@@ -1123,7 +1215,7 @@ static int sort_comp(const void *pa, const void *pb)
 {
 	const struct dir_entry_info *a = * (const struct dir_entry_info **) pa;
 	const struct dir_entry_info *b = * (const struct dir_entry_info **) pb;
-	return strcmp(dir_entry_name(a), dir_entry_name(b));
+	return strcmp(a->name, b->name);
 }
 
 static void dir_check(struct dir_info *dir)
@@ -1225,7 +1317,7 @@ static char *make_name(struct dir_info *dir)
 		} else
 			sprintf(name, "%u", (unsigned) tests_random_no(1000000));
 		for (entry = dir->first; entry; entry = entry->next) {
-			if (strcmp(dir_entry_name(entry), name) == 0) {
+			if (strcmp(entry->name, name) == 0) {
 				found = 1;
 				break;
 			}
@@ -1234,26 +1326,58 @@ static char *make_name(struct dir_info *dir)
 	return name;
 }
 
+static struct file_info *pick_file(void)
+{
+	struct dir_info *dir = top_dir;
+
+	for (;;) {
+		struct dir_entry_info *entry;
+		size_t r;
+
+		r = tests_random_no(dir->number_of_entries);
+		entry = dir->first;
+		while (entry && r) {
+			entry = entry->next;
+			--r;
+		}
+		for (;;) {
+			if (!entry)
+				return NULL;
+			if (entry->type == 'f')
+				return entry->entry.file;
+			if (entry->type == 'd')
+				if (entry->entry.dir->number_of_entries != 0)
+					break;
+			entry = entry->next;
+		}
+		dir = entry->entry.dir;
+	}
+}
+
 static void operate_on_dir(struct dir_info *dir);
 static void operate_on_file(struct file_info *file);
 
 /* Randomly select something to do with a directory entry */
 static void operate_on_entry(struct dir_entry_info *entry)
 {
-	/* If shrinking, 1 time in 50, remove a directory */
 	if (entry->type == 'd') {
+		/* If shrinking, 1 time in 50, remove a directory */
 		if (shrink && tests_random_no(50) == 0) {
 			dir_remove(entry->entry.dir);
 			return;
 		}
 		operate_on_dir(entry->entry.dir);
 	}
-	/* If shrinking, 1 time in 10, remove a file */
 	if (entry->type == 'f') {
+		/* If shrinking, 1 time in 10, remove a file */
 		if (shrink && tests_random_no(10) == 0) {
-			while (entry->entry.file->fds)
-				file_close(entry->entry.file->fds);
 			file_delete(entry->entry.file);
+			return;
+		}
+		/* If not growing, 1 time in 10, unlink a file with links > 1 */
+		if (!grow && entry->entry.file->link_count > 1 &&
+		    tests_random_no(10) == 0) {
+			file_unlink_file(entry->entry.file);
 			return;
 		}
 		operate_on_file(entry->entry.file);
@@ -1265,6 +1389,7 @@ static void operate_on_dir(struct dir_info *dir)
 {
 	size_t r;
 	struct dir_entry_info *entry;
+	struct file_info *file;
 
 	r = tests_random_no(12);
 	if (r == 0 && grow)
@@ -1273,6 +1398,9 @@ static void operate_on_dir(struct dir_info *dir)
 	else if (r == 1 && grow)
 		/* When growing, 1 time in 12 create a directory */
 		dir_new(dir, make_name(dir));
+	else if (r == 2 && grow && (file = pick_file()) != NULL)
+		/* When growing, 1 time in 12 create a hard link */
+		link_new(dir, make_name(dir), file);
 	else {
 		/* Otherwise randomly select an entry to operate on */
 		r = tests_random_no(dir->number_of_entries);
@@ -1312,8 +1440,18 @@ static void operate_on_file(struct file_info *file)
 	/* Mostly just write */
 	file_write_file(file);
 	/* Once in a while check it too */
-	if (tests_random_no(100) == 1)
-		file_check(file, -1);
+	if (tests_random_no(100) == 1) {
+		int fd = -2;
+
+		if (file->links)
+			fd = -1;
+		else if (file->fds)
+			fd = file->fds->fd;
+		if (fd != -2) {
+			check_run_no += 1;
+			file_check(file, fd);
+		}
+	}
 }
 
 /* Randomly select something to do with an open file */
@@ -1491,6 +1629,7 @@ void integck(void)
 	}
 
 	/* Check everything */
+	check_run_no += 1;
 	dir_check(top_dir);
 	check_deleted_files();
 
@@ -1504,6 +1643,7 @@ void integck(void)
 		}
 
 		/* Check everything */
+		check_run_no += 1;
 		dir_check(top_dir);
 		check_deleted_files();
 	}
