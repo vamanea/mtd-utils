@@ -63,6 +63,12 @@ struct file_info /* Each file has one of these */
 	uint64_t check_run_no; /* Run number used when checking */
 };
 
+struct symlink_info /* Each symlink has one of these */
+{
+	char *target_pathname;
+	struct dir_entry_info *entry; /* dir entry of this symlink */
+};
+
 struct dir_info /* Each directory has one of these */
 {
 	char *name;
@@ -81,12 +87,13 @@ struct dir_entry_info /* Each entry in a directory has one of these */
 	struct dir_entry_info *prev_link; /* List of hard links for same file */
 	char *name;
 	struct dir_info *parent; /* Parent directory */
-	char type; /* f => file, d => dir */
+	char type; /* f => file, d => dir, s => symlink */
 	int checked; /* Temporary flag used when checking */
 	union entry_
 	{
 		struct file_info *file;
 		struct dir_info *dir;
+		struct symlink_info *symlink;
 		void *target;
 	} entry;
 };
@@ -295,6 +302,11 @@ static void add_dir_entry(struct dir_info *parent, char type, const char *name,
 		dir->entry = entry;
 		dir->name = copy_string(name);
 		dir->parent = parent;
+	} else if (entry->type == 's') {
+		struct symlink_info *symlink = target;
+
+		entry->entry.symlink = symlink;
+		symlink->entry = entry;
 	}
 }
 
@@ -354,6 +366,7 @@ static struct dir_info *dir_new(struct dir_info *parent, const char *name)
 
 static void file_delete(struct file_info *file);
 static void file_unlink(struct dir_entry_info *entry);
+static void symlink_remove(struct symlink_info *symlink);
 
 static void dir_remove(struct dir_info *dir)
 {
@@ -368,6 +381,8 @@ static void dir_remove(struct dir_info *dir)
 			dir_remove(entry->entry.dir);
 		else if (entry->type == 'f')
 			file_unlink(entry);
+		else if (entry->type == 's')
+			symlink_remove(entry->entry.symlink);
 		else
 			CHECK(0); /* Invalid struct dir_entry_info */
 	}
@@ -1196,6 +1211,55 @@ static void file_check(struct file_info *file, int fd)
 	CHECK(link_count == file->link_count);
 }
 
+static char *symlink_path(const char *path, const char *target_pathname)
+{
+	char *p;
+	size_t len, totlen, tarlen;
+
+	if (target_pathname[0] == '/')
+		return copy_string(target_pathname);
+	p = strrchr(path, '/');
+	len = p - path;
+	len += 1;
+	tarlen = strlen(target_pathname);
+	totlen = len + tarlen + 1;
+	p = malloc(totlen);
+	CHECK(p != NULL);
+	strncpy(p, path, len);
+	p[len] = '\0';
+	strcat(p, target_pathname);
+	return p;
+}
+
+void symlink_check(const struct symlink_info *symlink)
+{
+	char *path, buf[8192], *target;
+	struct stat st1, st2;
+	ssize_t len;
+	int ret1, ret2;
+
+	path = dir_path(symlink->entry->parent, symlink->entry->name);
+	CHECK(lstat(path, &st1) != -1);
+	CHECK(S_ISLNK(st1.st_mode));
+	CHECK(st1.st_nlink == 1);
+	len = readlink(path, buf, 8192);
+	CHECK(len > 0 && len < 8192);
+	buf[len] = '\0';
+	CHECK(strlen(symlink->target_pathname) == len);
+	CHECK(strncmp(symlink->target_pathname, buf, len) == 0);
+	/* Check symlink points where it should */
+	ret1 = stat(path, &st1);
+	target = symlink_path(path, symlink->target_pathname);
+	ret2 = stat(target, &st2);
+	CHECK(ret1 == ret2);
+	if (ret1 != -1) {
+		CHECK(st1.st_dev == st2.st_dev);
+		CHECK(st1.st_ino == st2.st_ino);
+	}
+	free(target);
+	free(path);
+}
+
 static int search_comp(const void *pa, const void *pb)
 {
 	const struct dirent *a = (const struct dirent *) pa;
@@ -1284,6 +1348,8 @@ static void dir_check(struct dir_info *dir)
 			link_count += 1; /* <subdir>/.. */
 		} else if (entry->type == 'f')
 			file_check(entry->entry.file, -1);
+		else if (entry->type == 's')
+			symlink_check(entry->entry.symlink);
 		else
 			CHECK(0);
 		entry = entry->next;
@@ -1504,6 +1570,117 @@ static void rename_entry(struct dir_entry_info *entry)
 	free(name);
 }
 
+static size_t str_count(const char *s, char c)
+{
+	size_t count = 0;
+	char cc;
+
+	while ((cc = *s++) != '\0')
+		if (cc == c)
+			count += 1;
+	return count;
+}
+
+static char *relative_path(const char *path1, const char *path2)
+{
+	const char *p1, *p2;
+	char *rel;
+	size_t up, len, len2, i;
+
+	p1 = path1;
+	p2 = path2;
+	while (*p1 == *p2 && *p1) {
+		p1 += 1;
+		p2 += 1;
+	}
+	len2 = strlen(p2);
+	up = str_count(p1, '/');
+	if (up == 0 && len2 != 0)
+		return copy_string(p2);
+	if (up == 0 && len2 == 0) {
+		p2 = strrchr(path2, '/');
+		return copy_string(p2);
+	}
+	if (up == 1 && len2 == 0)
+		return copy_string(".");
+	if (len2 == 0)
+		up -= 1;
+	len = up * 3 + len2 + 1;
+	rel = malloc(len);
+	CHECK(rel != NULL);
+	rel[0] = '\0';
+	if (up) {
+		strcat(rel, "..");
+		for (i = 1; i < up; i++)
+			strcat(rel, "/..");
+		if (len2)
+			strcat(rel, "/");
+	}
+	if (len2)
+		strcat(rel, p2);
+	return rel;
+}
+
+static char *pick_symlink_target(const char *symlink_path)
+{
+	struct dir_info *dir;
+	struct dir_entry_info *entry;
+	size_t r;
+	char *path, *rel_path;
+
+	dir = pick_dir();
+
+	if (tests_random_no(100) < 10)
+		return dir_path(dir, make_name(dir));
+
+	r = tests_random_no(dir->number_of_entries);
+	entry = dir->first;
+	while (entry && r) {
+		entry = entry->next;
+		--r;
+	}
+	if (!entry)
+		entry = dir->first;
+	if (!entry)
+		return dir_path(dir, make_name(dir));
+	path = dir_path(dir, entry->name);
+	if (tests_random_no(20) < 10)
+		return path;
+	rel_path = relative_path(symlink_path, path);
+	free(path);
+	return rel_path;
+}
+
+static void symlink_new(struct dir_info *dir, const char *name)
+{
+	struct symlink_info *s;
+	char *path;
+	size_t sz;
+
+	sz = sizeof(struct symlink_info);
+	s = malloc(sz);
+	CHECK(s != NULL);
+	memset(s, 0, sz);
+	add_dir_entry(dir, 's', name, s);
+
+	path = dir_path(dir, name);
+	s->target_pathname = pick_symlink_target(path);
+	CHECK(symlink(s->target_pathname, path) != -1);
+	free(path);
+}
+
+static void symlink_remove(struct symlink_info *symlink)
+{
+	char *path;
+
+	path = dir_path(symlink->entry->parent, symlink->entry->name);
+
+	remove_dir_entry(symlink->entry);
+
+	CHECK(unlink(path) != -1);
+	free(path);
+}
+
 static void operate_on_dir(struct dir_info *dir);
 static void operate_on_file(struct file_info *file);
 
@@ -1513,6 +1690,13 @@ static void operate_on_entry(struct dir_entry_info *entry)
 	/* 1 time in 1000 rename */
 	if (tests_random_no(1000) == 0) {
 		rename_entry(entry);
+		return;
+	}
+	if (entry->type == 's') {
+		symlink_check(entry->entry.symlink);
+		/* If shrinking, 1 time in 50, remove a symlink */
+		if (shrink && tests_random_no(50) == 0)
+			symlink_remove(entry->entry.symlink);
 		return;
 	}
 	if (entry->type == 'd') {
@@ -1546,16 +1730,19 @@ static void operate_on_dir(struct dir_info *dir)
 	struct dir_entry_info *entry;
 	struct file_info *file;
 
-	r = tests_random_no(12);
+	r = tests_random_no(14);
 	if (r == 0 && grow)
-		/* When growing, 1 time in 12 create a file */
+		/* When growing, 1 time in 14 create a file */
 		file_new(dir, make_name(dir));
 	else if (r == 1 && grow)
-		/* When growing, 1 time in 12 create a directory */
+		/* When growing, 1 time in 14 create a directory */
 		dir_new(dir, make_name(dir));
 	else if (r == 2 && grow && (file = pick_file()) != NULL)
-		/* When growing, 1 time in 12 create a hard link */
+		/* When growing, 1 time in 14 create a hard link */
 		link_new(dir, make_name(dir), file);
+	else if (r == 3 && grow && tests_random_no(5) == 0)
+		/* When growing, 1 time in 70 create a symbolic link */
+		symlink_new(dir, make_name(dir));
 	else {
 		/* Otherwise randomly select an entry to operate on */
 		r = tests_random_no(dir->number_of_entries);
