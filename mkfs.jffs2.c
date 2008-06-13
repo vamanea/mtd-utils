@@ -544,8 +544,11 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 		case 'b':
 			mode |= S_IFBLK;
 			break;
+		case 'l':
+			mode |= S_IFLNK;
+			break;
 		default:
-			error_msg_and_die("Unsupported file type");
+			error_msg_and_die("Unsupported file type '%c'", type);
 	}
 	entry = find_filesystem_entry(root, name, mode);
 	if (entry) {
@@ -604,7 +607,7 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 				}
 				break;
 			default:
-				error_msg_and_die("Unsupported file type");
+				error_msg_and_die("Unsupported file type '%c'", type);
 		}
 	}
 	free(name);

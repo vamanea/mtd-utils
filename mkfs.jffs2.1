@@ -241,6 +241,14 @@ Display version information.
 Generate an appendage image for FILE. If FILE is written to flash and flash
 is appended with the output, then it seems as if it was one thing.
 
+.SH LIMITATIONS
+The format and grammar of the device table file does not allow it to
+create symbolic links when the symbolic links are not already present
+in the root working directory.
+
+However, symbolic links may be specified in the device table file
+using the \fIl\fR type for the purposes of setting their permissions
+and ownership.
 .SH BUGS
 JFFS2 limits device major and minor numbers to 8 bits each.  Some
 consider this a bug.
