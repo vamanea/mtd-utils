@@ -1537,11 +1537,15 @@ static void rename_entry(struct dir_entry_info *entry)
 				free(path);
 				free(name);
 				free(to);
+				path = NULL;
 				continue;
 			}
 		}
 		break;
 	}
+
+	if (!path)
+		return;
 
 	ret = rename(path, to);
 	if (ret == -1) {
