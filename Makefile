@@ -1,15 +1,17 @@
 
 # -*- sh -*-
 
-SBINDIR=/usr/sbin
-MANDIR=/usr/share/man
-INCLUDEDIR=/usr/include
+PREFIX=/usr
+EXEC_PREFIX=$(PREFIX)
+SBINDIR=$(EXEC_PREFIX)/sbin
+MANDIR=$(PREFIX)/share/man
+INCLUDEDIR=$(PREFIX)/include
 
 #CROSS=arm-linux-
 CC := $(CROSS)gcc
 CFLAGS ?= -O2 -g
 CFLAGS += -Wall
-CPPFLAGS += -I./include
+CPPFLAGS += -I./include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 
 ifeq ($(origin CROSS),undefined)
   BUILDDIR := .
@@ -65,13 +67,13 @@ $(BUILDDIR)/mkfs.jffs2: $(BUILDDIR)/crc32.o \
 			$(BUILDDIR)/compr_lzo.o \
 			$(BUILDDIR)/compr.o \
 			$(BUILDDIR)/rbtree.o
-	$(CC) $(LDFLAGS) -o $@ $^ -lz -llzo2
+	$(CC) $(LDFLAGS) -o $@ $^ $(ZLIBLDFLAGS) -lz $(LZOLDFLAGS) -llzo2
 
 $(BUILDDIR)/flash_eraseall: $(BUILDDIR)/crc32.o $(BUILDDIR)/flash_eraseall.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 $(BUILDDIR)/jffs2reader: $(BUILDDIR)/jffs2reader.o
-	$(CC) $(LDFLAGS) -o $@ $^ -lz
+	$(CC) $(LDFLAGS) -o $@ $^ $(ZLIBLDFLAGS) -lz
 
 $(BUILDDIR)/jffs2dump: $(BUILDDIR)/jffs2dump.o $(BUILDDIR)/crc32.o
 	$(CC) $(LDFLAGS) -o $@ $^
