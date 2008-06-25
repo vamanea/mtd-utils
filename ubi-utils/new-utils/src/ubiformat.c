@@ -675,12 +675,13 @@ int main(int argc, char * const argv[])
 				"which is different to calculated offsets %d and %d",
 				si->vid_hdr_offs, si->data_offs, ui.vid_hdr_offs,
 				ui.data_offs);
-			normsg_cont("use old offsets %d and %d? (yes/no)  ",
+			normsg_cont("use new offsets %d and %d? (yes/no)  ",
 				    si->vid_hdr_offs, si->data_offs);
 		}
 		if (args.yes || answer_is_yes()) {
 			if (args.yes && !args.quiet)
 				printf("yes\n");
+		} else {
 			ui.vid_hdr_offs = si->vid_hdr_offs;
 			ui.data_offs = si->data_offs;
 		}
