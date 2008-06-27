@@ -48,6 +48,8 @@ struct args {
 	int devn;
 	char dev_name[256];
 	int broken_update;
+	int size;
+	int use_stdin;
 };
 
 static struct args args = {
@@ -62,6 +64,7 @@ static const char *optionsstr =
 "-t, --truncate             truncate volume (wipe it out)\n"
 "-h, --help                 print help message\n"
 "-V, --version              print program version\n\n"
+"-s, --size=<bytes>         bytes in input, if not reading from file\n"
 "The following are compatibility options which are deprecated, do not use them\n"
 "-d, --devn=<devn>          UBI device number - may be used instead of the UBI\n"
 "                           device node name in which case the utility assumes\n"
@@ -69,7 +72,7 @@ static const char *optionsstr =
 "-B, --broken-update        broken update, this is for testing";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " <UBI volume node file name> [-t] [-h] [-V] [--truncate] [--help]\n"
+"Usage: " PROGRAM_NAME " <UBI volume node file name> [-t] [-h] [-V] [--truncate] [--size=x] [--help]\n"
 "\t\t\t[--version] <image file>\n\n"
 "Example 1: " PROGRAM_NAME " /dev/ubi0_1 fs.img - write file \"fs.img\" to UBI volume /dev/ubi0_1\n"
 "Example 2: " PROGRAM_NAME " /dev/ubi0_1 -t - wipe out UBI volume /dev/ubi0_1";
@@ -78,6 +81,7 @@ struct option long_options[] = {
 	{ .name = "truncate", .has_arg = 0, .flag = NULL, .val = 't' },
 	{ .name = "help",     .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",  .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ .name = "size",     .has_arg = 1, .flag = NULL, .val = 's' },
 	/* Deprecated -d and -B options */
 	{ .name = "devn",     .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ .name = "broken-update", .has_arg = 1, .flag = NULL, .val = 'B' },
@@ -88,14 +92,21 @@ static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
 		int key;
+		char *endp;
 
-		key = getopt_long(argc, argv, "n:th?Vd:", long_options, NULL);
+		key = getopt_long(argc, argv, "n:th?Vd:s:", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
 		case 't':
 			args.truncate = 1;
+			break;
+
+		case 's':
+			args.size = strtoul(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg || args.size < 0)
+				return errmsg("bad size: " "\"%s\"", optarg);
 			break;
 
 		case 'h':
@@ -106,16 +117,12 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'd':
-		{
-			char *endp;
-
 			/* Handle deprecated -d option */
 			warnmsg("-d is depricated and will be removed, do not use it");
 			args.devn = strtoul(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || args.devn < 0)
 				return errmsg("bad UBI device number: " "\"%s\"", optarg);
 			break;
-		}
 
 		case 'B':
 			/* Handle deprecated -B option */
@@ -150,6 +157,11 @@ static int parse_opt(int argc, char * const argv[])
 
 	args.node = argv[optind];
 	args.img  = argv[optind + 1];
+
+	if (strcmp(args.img, "-") == 0)
+		args.use_stdin = 1;
+	if (args.use_stdin && !args.size)
+		return errmsg("file size must be specified if input is stdin");
 
 	return 0;
 }
@@ -202,20 +214,25 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 {
 	int err, fd, ifd;
 	long long bytes;
-	struct stat st;
 	char *buf;
+	int leb_size = vol_info->leb_size;
 
-	buf = malloc(vol_info->leb_size);
+	buf = malloc(leb_size);
 	if (!buf)
-		return errmsg("cannot allocate %d bytes of memory", vol_info->leb_size);
+		return errmsg("cannot allocate %d bytes of memory", leb_size);
 
-	err = stat(args.img, &st);
-	if (err < 0) {
-		errmsg("stat failed on \"%s\"", args.img);
-		goto out_free;
-	}
+	if (!args.size) {
+		struct stat st;
+		err = stat(args.img, &st);
+		if (err < 0) {
+			errmsg("stat failed on \"%s\"", args.img);
+			goto out_free;
+		}
 
-	bytes = st.st_size;
+		bytes = st.st_size;
+	} else
+		bytes = args.size;
+
 	if (bytes > vol_info->rsvd_bytes) {
 		errmsg("\"%s\" (size %lld) will not fit volume \"%s\" (size %lld)",
 		       args.img, bytes, args.node, vol_info->rsvd_bytes);
@@ -232,10 +249,14 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 		goto out_free;
 	}
 
-	ifd = open(args.img, O_RDONLY);
-	if (ifd == -1) {
-		sys_errmsg("cannot open \"%s\"", args.img);
-		goto out_close1;
+	if (args.use_stdin)
+		ifd = STDIN_FILENO;
+	else {
+		ifd = open(args.img, O_RDONLY);
+		if (ifd == -1) {
+			sys_errmsg("cannot open \"%s\"", args.img);
+			goto out_close1;
+		}
 	}
 
 	err = ubi_update_start(libubi, fd, bytes);
@@ -245,27 +266,27 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	}
 
 	while (bytes) {
-		int tocopy = vol_info->leb_size;
+		int ret;
 
-		if (tocopy > bytes)
-			tocopy = bytes;
+		if (leb_size > bytes)
+			leb_size = bytes;
 
-		err = read(ifd, buf, tocopy);
-		if (err != tocopy) {
+		ret = read(ifd, buf, leb_size);
+		if (ret <= 0) {
 			if (errno == EINTR) {
 				warnmsg("do not interrupt me!");
 				continue;
 			} else {
 				sys_errmsg("cannot read %d bytes from \"%s\"",
-					   tocopy, args.img);
+						leb_size, args.img);
 				goto out_close;
 			}
 		}
 
-		err = ubi_write(fd, buf, tocopy);
+		err = ubi_write(fd, buf, ret);
 		if (err)
 			goto out_close;
-		bytes -= tocopy;
+		bytes -= ret;
 	}
 
 	close(ifd);
