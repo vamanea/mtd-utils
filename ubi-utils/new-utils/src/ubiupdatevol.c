@@ -215,11 +215,10 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	int err, fd, ifd;
 	long long bytes;
 	char *buf;
-	int leb_size = vol_info->leb_size;
 
-	buf = malloc(leb_size);
+	buf = malloc(vol_info->leb_size);
 	if (!buf)
-		return errmsg("cannot allocate %d bytes of memory", leb_size);
+		return errmsg("cannot allocate %d bytes of memory", vol_info->leb_size);
 
 	if (!args.size) {
 		struct stat st;
@@ -266,19 +265,19 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	}
 
 	while (bytes) {
-		int ret;
+		int ret, to_copy = vol_info->leb_size;
 
-		if (leb_size > bytes)
-			leb_size = bytes;
+		if (to_copy > bytes)
+			to_copy = bytes;
 
-		ret = read(ifd, buf, leb_size);
+		ret = read(ifd, buf, to_copy);
 		if (ret <= 0) {
 			if (errno == EINTR) {
 				warnmsg("do not interrupt me!");
 				continue;
 			} else {
 				sys_errmsg("cannot read %d bytes from \"%s\"",
-						leb_size, args.img);
+						to_copy, args.img);
 				goto out_close;
 			}
 		}
