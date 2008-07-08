@@ -461,6 +461,14 @@ int main(int argc, char * const argv[])
 		goto out_dict;
 	}
 
+	if (sects > ui.max_volumes) {
+		errmsg("too many sections (%d) in the ini-file \"%s\"",
+		       sects, args.f_in);
+		normsg("each section corresponds to an UBI volume, maximum "
+		       "count of volumes is %d", ui.max_volumes);
+		goto out_dict;
+	}
+
 	/*
 	 * Skip 2 PEBs at the beginning of the file for the volume table which
 	 * will be written later.
@@ -523,11 +531,11 @@ int main(int argc, char * const argv[])
 		}
 
 		/*
-		 * Make sure the image size is not larger then the volume size.
+		 * Make sure the image size is not larger than the volume size.
 		 */
 		if (st.st_size > vi.bytes) {
 			errmsg("error in section \"%s\": size of the image file \"%s\" "
-			       "is %lld, which is larger then the volume size %lld",
+			       "is %lld, which is larger than the volume size %lld",
 			       sname, img, (long long)st.st_size, vi.bytes);
 			goto out_dict;
 		}
