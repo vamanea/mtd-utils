@@ -38,7 +38,7 @@
 #include <libiniparser.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubinize"
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -419,6 +419,7 @@ int main(int argc, char * const argv[])
 	int err = -1, sects, i, volumes, autoresize_was_already = 0;
 	struct ubigen_info ui;
 	struct ubi_vtbl_record *vtbl;
+	struct ubigen_vol_info *vi;
 	off_t seek;
 
 	err = parse_opt(argc, argv);
@@ -469,6 +470,12 @@ int main(int argc, char * const argv[])
 		goto out_dict;
 	}
 
+	vi = malloc(sizeof(struct ubigen_vol_info) * sects);
+	if (!vi) {
+		errmsg("cannot allocate memory");
+		goto out_dict;
+	}
+
 	/*
 	 * Skip 2 PEBs at the beginning of the file for the volume table which
 	 * will be written later.
@@ -476,50 +483,68 @@ int main(int argc, char * const argv[])
 	seek = ui.peb_size * 2;
 	if (lseek(args.out_fd, seek, SEEK_SET) != seek) {
 		sys_errmsg("cannot seek file \"%s\"", args.f_out);
-		goto out_dict;
+		goto out_free;
 	}
 
 	for (i = 0; i < sects; i++) {
 		const char *sname = iniparser_getsecname(args.dict, i);
-		struct ubigen_vol_info vi;
 		const char *img = NULL;
 		struct stat st;
-		int fd;
+		int fd, j;
 
 		if (!sname) {
 			errmsg("ini-file parsing error (iniparser_getsecname)");
-			goto out_dict;
+			goto out_free;
 		}
 
 		if (args.verbose)
 			printf("\n");
 		verbose(args.verbose, "parsing section \"%s\"", sname);
 
-		err = read_section(sname, &vi, &img);
+		err = read_section(sname, &vi[i], &img);
 		if (err == -1)
-			goto out_dict;
+			goto out_free;
 		if (!err)
 			volumes += 1;
-		init_vol_info(&ui, &vi);
+		init_vol_info(&ui, &vi[i]);
 
-		if (vi.id >= ui.max_volumes)
+		if (vi[i].id >= ui.max_volumes)
 			return errmsg("too high volume ID %d, max. is %d",
-				      vi.id, ui.max_volumes);
+				      vi[i].id, ui.max_volumes);
 
-		verbose(args.verbose, "adding volume %d", vi.id);
+		verbose(args.verbose, "adding volume %d", vi[i].id);
 
-		/* Make sure only one volume has auto-resize flag */
-		if (vi.flags & UBI_VTBL_AUTORESIZE_FLG) {
+		/*
+		 * Make sure that volume ID and name is unique and that only
+		 * one volume has auto-resize flag
+		 */
+		for (j = 0; j < i; j++) {
+			if (vi[i].id == vi[j].id) {
+				errmsg("volume IDs must be unique, but ID %d "
+				       "in section \"%s\" is not",
+				       vi[i].id, sname);
+				goto out_free;
+			}
+
+			if (!strcmp(vi[i].name, vi[j].name)) {
+				errmsg("volume name must be unique, but name "
+				       "\"%s\" in section \"%s\" is not",
+				       vi[i].name, sname);
+				goto out_free;
+			}
+		}
+
+		if (vi[i].flags & UBI_VTBL_AUTORESIZE_FLG) {
 			if (autoresize_was_already)
 				return errmsg("only one volume is allowed "
 					      "to have auto-resize flag");
 			autoresize_was_already = 1;
 		}
 
-		err = ubigen_add_volume(&ui, &vi, vtbl);
+		err = ubigen_add_volume(&ui, &vi[i], vtbl);
 		if (err) {
 			errmsg("cannot add volume for section \"%s\"", sname);
-			goto out_dict;
+			goto out_free;
 		}
 
 		if (!img)
@@ -527,33 +552,33 @@ int main(int argc, char * const argv[])
 
 		if (stat(img, &st)) {
 			sys_errmsg("cannot stat \"%s\"", img);
-			goto out_dict;
+			goto out_free;
 		}
 
 		/*
 		 * Make sure the image size is not larger than the volume size.
 		 */
-		if (st.st_size > vi.bytes) {
+		if (st.st_size > vi[i].bytes) {
 			errmsg("error in section \"%s\": size of the image file \"%s\" "
 			       "is %lld, which is larger than the volume size %lld",
-			       sname, img, (long long)st.st_size, vi.bytes);
-			goto out_dict;
+			       sname, img, (long long)st.st_size, vi[i].bytes);
+			goto out_free;
 		}
 
 		fd = open(img, O_RDONLY);
 		if (fd == -1) {
 			sys_errmsg("cannot open \"%s\"", img);
-			goto out_dict;
+			goto out_free;
 		}
 
-		verbose(args.verbose, "writing volume %d", vi.id);
+		verbose(args.verbose, "writing volume %d", vi[i].id);
 		verbose(args.verbose, "image file: %s", img);
 
-		err = ubigen_write_volume(&ui, &vi, args.ec, st.st_size, fd, args.out_fd);
+		err = ubigen_write_volume(&ui, &vi[i], args.ec, st.st_size, fd, args.out_fd);
 		close(fd);
 		if (err) {
 			errmsg("cannot write volume for section \"%s\"", sname);
-			goto out_dict;
+			goto out_free;
 		}
 
 		if (args.verbose)
@@ -565,16 +590,19 @@ int main(int argc, char * const argv[])
 	err = ubigen_write_layout_vol(&ui, 0, 1, args.ec, args.ec, vtbl, args.out_fd);
 	if (err) {
 		errmsg("cannot write layout volume");
-		goto out_dict;
+		goto out_free;
 	}
 
 	verbose(args.verbose, "done");
 
+	free(vi);
 	iniparser_freedict(args.dict);
 	free(vtbl);
 	close(args.out_fd);
 	return 0;
 
+out_free:
+	free(vi);
 out_dict:
 	iniparser_freedict(args.dict);
 out_vtbl:
