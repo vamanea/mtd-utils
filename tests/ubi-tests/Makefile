@@ -9,16 +9,13 @@ CC := $(CROSS)gcc
 TESTS=io_update volrefcnt integ io_paral io_read io_basic \
           mkvol_basic mkvol_bad mkvol_paral rsvol
 
-HELPER_NAMES=ubiupdatevol
-HELPERS=$(addprefix helpers/, $(HELPER_NAMES))
-
 # Because of implicite rules we use make treats .o files as intermediate, thus
 # it removes the. If you want to prevent the removal, uncomment the below
 #.SECONDARY: $(addsuffix .o, $(TESTS)) $(addsuffix .o, $(HELPERS))
 
 CFLAGS += -Wall -I$(LIBUBI_HEADER_PATH) -I $(UBI_HEADERS_PATH) -L. -O2
 
-all: ubi-utils libubi $(TESTS) $(HELPERS)
+all: ubi-utils libubi $(TESTS)
 
 # Compile ubilib with the udevsettle hack
 libubi: $(LIBUBI_SRC_PATH)/libubi.c  $(LIBUBI_HEADER_PATH)/libubi.h  $(LIBUBI_SRC_PATH)/libubi_int.h
