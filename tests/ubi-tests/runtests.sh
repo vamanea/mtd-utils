@@ -7,7 +7,7 @@ io_paral volrefcnt"
 if test -z "$ubidev";
 then
 	echo "Usage:"
-	echo "$0 <UBI device> <ubi module load command>"
+	echo "$0 <UBI device>"
 	exit 1
 fi
 
