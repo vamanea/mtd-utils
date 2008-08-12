@@ -202,4 +202,7 @@ extern int tests_hole_flag;
 /* Program name from argv[0] */
 extern char *program_name;
 
+/* Maximum file name length of test file system (from statfs) */
+extern long tests_max_fname_len;
+
 #endif

@@ -83,6 +83,9 @@ int tests_hole_flag = 0;
 /* Whether it is ok to test on the root file system */
 static int rootok = 0;
 
+/* Maximum file name length of test file system (from statfs) */
+long tests_max_fname_len = 255;
+
 /* Function invoked by the CHECK macro */
 void tests_test(int test,const char *msg,const char *file,unsigned line)
 {
@@ -370,6 +373,7 @@ void tests_check_test_file_system(void)
 			"TEST_FILE_SYSTEM_MOUNT_DIR\n");
 		CHECK(0);
 	}
+	tests_max_fname_len = fs_info.f_namelen;
 	if (strcmp(tests_file_system_type, "jffs2") == 0 &&
 			fs_info.f_type != JFFS2_SUPER_MAGIC) {
 		fprintf(stderr,	"File system type is not jffs2\n");

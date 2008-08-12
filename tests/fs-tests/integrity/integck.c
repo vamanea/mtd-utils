@@ -1388,7 +1388,7 @@ static char *make_name(struct dir_info *dir)
 	do {
 		found = 0;
 		if (tests_random_no(5) == 1) {
-			int i, n = tests_random_no(255) + 1;
+			int i, n = tests_random_no(tests_max_fname_len) + 1;
 
 			CHECK(n > 0 && n < 256);
 			for (i = 0; i < n; i++)
