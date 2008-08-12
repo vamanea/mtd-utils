@@ -1655,22 +1655,31 @@ static char *pick_symlink_target(const char *symlink_path)
 	return rel_path;
 }
 
-static void symlink_new(struct dir_info *dir, const char *name)
+static void symlink_new(struct dir_info *dir, const char *name_)
 {
 	struct symlink_info *s;
-	char *path;
+	char *path, *target, *name = copy_string(name_);
 	size_t sz;
+
+	path = dir_path(dir, name);
+	target = pick_symlink_target(path);
+	if (symlink(target, path) == -1) {
+		CHECK(errno == ENOSPC);
+		full = 1;
+		free(target);
+		free(path);
+		free(name);
+		return;
+	}
+	free(path);
 
 	sz = sizeof(struct symlink_info);
 	s = malloc(sz);
 	CHECK(s != NULL);
 	memset(s, 0, sz);
 	add_dir_entry(dir, 's', name, s);
-
-	path = dir_path(dir, name);
-	s->target_pathname = pick_symlink_target(path);
-	CHECK(symlink(s->target_pathname, path) != -1);
-	free(path);
+	s->target_pathname = target;
+	free(name);
 }
 
 static void symlink_remove(struct symlink_info *symlink)
