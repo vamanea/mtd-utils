@@ -1664,8 +1664,9 @@ static void symlink_new(struct dir_info *dir, const char *name_)
 	path = dir_path(dir, name);
 	target = pick_symlink_target(path);
 	if (symlink(target, path) == -1) {
-		CHECK(errno == ENOSPC);
-		full = 1;
+		CHECK(errno == ENOSPC || errno == ENAMETOOLONG);
+		if (errno == ENOSPC)
+			full = 1;
 		free(target);
 		free(path);
 		free(name);
