@@ -22,7 +22,7 @@
 
 #include "mkfs.ubifs.h"
 
-#define PROGRAM_VERSION "0.7"
+#define PROGRAM_VERSION "1.0"
 
 /* Size (prime number) of hash table for link counting */
 #define HASH_TABLE_SIZE 10099
