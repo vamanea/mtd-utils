@@ -30,18 +30,18 @@ vpath   %.c ./src
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
 
 all: $(TARGETS)
-	make -C new-utils
+	$(MAKE) -C new-utils
 
 IGNORE=${wildcard .*.c.dep}
 -include ${IGNORE}
 
 $(NTARGETS):
-	make -C new-utils $@
+	$(MAKE) -C new-utils $@
 	mv new-utils/$@ $@
 
 clean:
 	rm -rf *.o $(TARGETS) .*.c.dep
-	make -C new-utils clean
+	$(MAKE) -C new-utils clean
 
 pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
 		libubi.o crc32.o

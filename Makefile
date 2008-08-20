@@ -47,8 +47,8 @@ $(BUILDDIR)/%.o: %.c
 .SUFFIXES:
 
 all: $(TARGETS)
-	make -C $(BUILDDIR)/ubi-utils
-	make -C $(BUILDDIR)/mkfs.ubifs
+	$(MAKE) -C $(BUILDDIR)/ubi-utils
+	$(MAKE) -C $(BUILDDIR)/mkfs.ubifs
 
 IGNORE=${wildcard $(BUILDDIR)/.*.c.dep}
 -include ${IGNORE}
