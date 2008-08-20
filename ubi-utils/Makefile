@@ -30,7 +30,6 @@ vpath   %.c ./src
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
 
 all: $(TARGETS)
-	$(MAKE) -C new-utils
 
 IGNORE=${wildcard .*.c.dep}
 -include ${IGNORE}

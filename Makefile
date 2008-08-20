@@ -56,8 +56,8 @@ IGNORE=${wildcard $(BUILDDIR)/.*.c.dep}
 clean:
 	rm -f $(BUILDDIR)/*.o $(TARGETS) $(BUILDDIR)/.*.c.dep $(SYMLINKS)
 	if [ "$(BUILDDIR)x" != ".x" ]; then rm -rf $(BUILDDIR); fi
-	make -C $(BUILDDIR)/ubi-utils clean
-	make -C $(BUILDDIR)/mkfs.ubifs clean
+	$(MAKE) -C $(BUILDDIR)/ubi-utils clean
+	$(MAKE) -C $(BUILDDIR)/mkfs.ubifs clean
 
 $(SYMLINKS):
 	ln -sf ../fs/jffs2/$@ $@
@@ -99,5 +99,5 @@ install: ${TARGETS}
 	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -9c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
-	make -C $(BUILDDIR)/ubi-utils install
-	make -C $(BUILDDIR)/mkfs.ubifs install
+	$(MAKE) -C $(BUILDDIR)/ubi-utils install
+	$(MAKE) -C $(BUILDDIR)/mkfs.ubifs install
