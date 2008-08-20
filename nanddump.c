@@ -159,8 +159,8 @@ void process_options (int argc, char *argv[])
 /*
  * Buffers for reading data from flash
  */
-unsigned char readbuf[2048];
-unsigned char oobbuf[64];
+unsigned char readbuf[4096];
+unsigned char oobbuf[128];
 
 /*
  * Main program
@@ -194,7 +194,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Make sure device page sizes are valid */
-	if (!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
+	if (!(meminfo.oobsize == 128 && meminfo.writesize == 4096) &&
+			!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
 			!(meminfo.oobsize == 32 && meminfo.writesize == 1024) &&
 			!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
 			!(meminfo.oobsize == 8 && meminfo.writesize == 256)) {

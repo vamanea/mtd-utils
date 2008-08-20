@@ -39,8 +39,8 @@
 #define PROGRAM "nandwrite"
 #define VERSION "$Revision: 1.32 $"
 
-#define MAX_PAGE_SIZE	2048
-#define MAX_OOB_SIZE	64
+#define MAX_PAGE_SIZE	4096
+#define MAX_OOB_SIZE	128
 
 /*
  * Buffer array used for writing data
@@ -248,7 +248,8 @@ int main(int argc, char **argv)
 	/* Make sure device page sizes are valid */
 	if (!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
 			!(meminfo.oobsize == 8 && meminfo.writesize == 256) &&
-			!(meminfo.oobsize == 64 && meminfo.writesize == 2048)) {
+			!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
+			!(meminfo.oobsize == 128 && meminfo.writesize == 4096)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
 		exit(1);
