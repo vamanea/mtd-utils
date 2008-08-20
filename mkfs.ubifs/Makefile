@@ -1,8 +1,9 @@
 DESTDIR := /usr/local
 SBINDIR=/usr/sbin
 ALL_SOURCES=*.[ch] hashtable/*.[ch]
-CFLAGS := $(CFLAGS) -Wall -O0 -ggdb
-LDFLAGS := $(LDFLAGS) -lz -llzo2 -lm -luuid
+CFLAGS ?= -O0 -ggdb
+CFLAGS += -Wall
+LDLIBS += -lz -llzo2 -lm -luuid
 TARGETS = mkfs.ubifs
 
 all: $(TARGETS)
