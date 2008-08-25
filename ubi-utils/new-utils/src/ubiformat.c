@@ -92,7 +92,8 @@ static const char *usage =
 "\t\t\t[-x <num>] [-E <value>] [-s <bytes>] [-O <offs>] [-n]\n"
 "\t\t\t[--help] [--version] [--yes] [--verbose] [--quiet]\n"
 "\t\t\t[--ec=<value>] [--vid-hdr-offset=<offs>]\n"
-"\t\t\t[--ubi-ver=<num>] [--no-volume-table]\n\n"
+"\t\t\t[--ubi-ver=<num>] [--no-volume-table]\n"
+"\t\t\t[--flash-image=<file>]\n\n"
 
 "Example 1: " PROGRAM_NAME " /dev/mtd0 -y - format MTD device number 0 and do\n"
 "           not ask questions.\n"
@@ -103,7 +104,7 @@ static const struct option long_options[] = {
 	{ .name = "sub-page-size",   .has_arg = 1, .flag = NULL, .val = 's' },
 	{ .name = "vid-hdr-offset",  .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "no-volume-table", .has_arg = 0, .flag = NULL, .val = 'n' },
-	{ .name = "flash-image",     .has_arg = 0, .flag = NULL, .val = 'f' },
+	{ .name = "flash-image",     .has_arg = 1, .flag = NULL, .val = 'f' },
 	{ .name = "yes",             .has_arg = 0, .flag = NULL, .val = 'y' },
 	{ .name = "erase-counter",   .has_arg = 1, .flag = NULL, .val = 'e' },
 	{ .name = "quiet",           .has_arg = 0, .flag = NULL, .val = 'q' },
