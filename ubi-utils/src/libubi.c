@@ -754,20 +754,20 @@ static char *mkpath(const char *path, const char *name)
  */
 static int find_dev_num(struct libubi *lib, const char *node)
 {
-	struct stat stat;
+	struct stat st;
 	struct ubi_info info;
 	int i, major, minor;
 
-	if (lstat(node, &stat))
+	if (stat(node, &st))
 		return -1;
 
-	if (!S_ISCHR(stat.st_mode)) {
+	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	major = major(stat.st_rdev);
-	minor = minor(stat.st_rdev);
+	major = major(st.st_rdev);
+	minor = minor(st.st_rdev);
 
 	if (minor != 0) {
 		errno = -EINVAL;
@@ -811,21 +811,21 @@ static int find_dev_num(struct libubi *lib, const char *node)
  */
 static int find_dev_num_vol(struct libubi *lib, const char *node)
 {
-	struct stat stat;
+	struct stat st;
 	struct ubi_info info;
 	int i, major;
 
-	if (lstat(node, &stat))
+	if (stat(node, &st))
 		return -1;
 
-	if (!S_ISCHR(stat.st_mode)) {
+	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	major = major(stat.st_rdev);
+	major = major(st.st_rdev);
 
-	if (minor(stat.st_rdev) == 0) {
+	if (minor(st.st_rdev) == 0) {
 		errno = -EINVAL;
 		return -1;
 	}
@@ -868,20 +868,20 @@ static int find_dev_num_vol(struct libubi *lib, const char *node)
  */
 static int find_vol_num(struct libubi *lib, int dev_num, const char *node)
 {
-	struct stat stat;
+	struct stat st;
 	struct ubi_dev_info info;
 	int i, major, minor;
 
-	if (lstat(node, &stat))
+	if (stat(node, &st))
 		return -1;
 
-	if (!S_ISCHR(stat.st_mode)) {
+	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	major = major(stat.st_rdev);
-	minor = minor(stat.st_rdev);
+	major = major(st.st_rdev);
+	minor = minor(st.st_rdev);
 
 	if (minor == 0) {
 		errno = -EINVAL;

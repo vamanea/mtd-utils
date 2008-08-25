@@ -456,7 +456,7 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (lstat(myargs.arg1, &file_info) != 0) {
+	if (stat(myargs.arg1, &file_info) != 0) {
 		perror("Cannot fetch file size from input file.\n");
 		exit(EXIT_FAILURE);
 	}
