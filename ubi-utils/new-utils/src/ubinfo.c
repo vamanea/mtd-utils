@@ -196,6 +196,7 @@ static int print_vol_info(libubi_t libubi, int dev_num, int vol_id)
 	if (vol_info.type == UBI_STATIC_VOLUME) {
 		printf("Data bytes:  ");
 		ubiutils_print_bytes(vol_info.data_bytes, 1);
+		printf("\n");
 	}
 	printf("State:       %s\n", vol_info.corrupted ? "corrupted" : "OK");
 	printf("Name:        %s\n", vol_info.name);
