@@ -63,7 +63,7 @@ static const char *optionsstr =
 "-V, --version                   print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME "<UBI control device node file name> [-m <MTD device number>] [-d <UBI device number>]\n"
+"Usage: " PROGRAM_NAME " <UBI control device node file name> [-m <MTD device number>] [-d <UBI device number>]\n"
 "\t\t[--mtdn=<MTD device number>] [--devn <UBI device number>]\n"
 "Example 1: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 - attach MTD device 0 (mtd0) to UBI\n"
 "Example 2: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 -d 3 - attach MTD device 0 (mtd0) to UBI and\n"
