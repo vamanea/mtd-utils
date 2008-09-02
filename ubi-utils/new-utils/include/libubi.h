@@ -94,8 +94,8 @@ struct ubi_info
 /**
  * struct ubi_dev_info - UBI device information.
  * @vol_count: count of volumes on this UBI device
- * @lowest_vol_num: lowest volume number
- * @highest_vol_num: highest volume number
+ * @lowest_vol_id: lowest volume ID
+ * @highest_vol_id: highest volume ID
  * @major: major number of corresponding character device
  * @minor: minor number of corresponding character device
  * @total_lebs: total number of logical eraseblocks on this UBI device
@@ -115,8 +115,8 @@ struct ubi_dev_info
 {
 	int dev_num;
 	int vol_count;
-	int lowest_vol_num;
-	int highest_vol_num;
+	int lowest_vol_id;
+	int highest_vol_id;
 	int major;
 	int minor;
 	int total_lebs;
@@ -331,7 +331,7 @@ int ubi_get_vol_info(libubi_t desc, const char *node,
  * @info: pointer to the &struct ubi_vol_info object to fill
  *
  * This function is identical to 'ubi_get_vol_info()' except that it accepts UBI
- * volume number, not UBI volume character device.
+ * volume ID, not UBI volume character device.
  */
 int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 		      struct ubi_vol_info *info);

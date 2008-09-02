@@ -240,8 +240,8 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 		return 0;
 
 	printf("Present volumes:                         ");
-	for (i = dev_info.lowest_vol_num;
-	     i <= dev_info.highest_vol_num; i++) {
+	for (i = dev_info.lowest_vol_id;
+	     i <= dev_info.highest_vol_id; i++) {
 		err = ubi_get_vol_info1(libubi, dev_info.dev_num, i, &vol_info);
 		if (err == -1) {
 			if (errno == ENOENT)
@@ -266,8 +266,8 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 	first = 1;
 	printf("\n");
 
-	for (i = dev_info.lowest_vol_num;
-	     i <= dev_info.highest_vol_num; i++) {
+	for (i = dev_info.lowest_vol_id;
+	     i <= dev_info.highest_vol_id; i++) {
 		if(!first)
 			printf("-----------------------------------\n");
 		err = ubi_get_vol_info1(libubi, dev_info.dev_num, i, &vol_info);

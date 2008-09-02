@@ -999,7 +999,7 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	if (!sysfs_ubi)
 		return -1;
 
-	info->lowest_vol_num = INT_MAX;
+	info->lowest_vol_id = INT_MAX;
 
 	while (1) {
 		int vol_id, ret, devno;
@@ -1019,10 +1019,10 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 		ret = sscanf(dirent->d_name, UBI_VOL_NAME_PATT"%s", &devno, &vol_id, tmp_buf);
 		if (ret == 2 && devno == dev_num) {
 			info->vol_count += 1;
-			if (vol_id > info->highest_vol_num)
-				info->highest_vol_num = vol_id;
-			if (vol_id < info->lowest_vol_num)
-				info->lowest_vol_num = vol_id;
+			if (vol_id > info->highest_vol_id)
+				info->highest_vol_id = vol_id;
+			if (vol_id < info->lowest_vol_id)
+				info->lowest_vol_id = vol_id;
 		}
 	}
 
@@ -1034,8 +1034,8 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	if (closedir(sysfs_ubi))
 		return sys_errmsg("closedir failed on \"%s\"", lib->sysfs_ubi);
 
-	if (info->lowest_vol_num == INT_MAX)
-		info->lowest_vol_num = 0;
+	if (info->lowest_vol_id == INT_MAX)
+		info->lowest_vol_id = 0;
 
 	if (dev_get_major(lib, dev_num, &info->major, &info->minor))
 		return -1;
