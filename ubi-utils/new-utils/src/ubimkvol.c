@@ -43,7 +43,6 @@ struct args {
 	int lebs;
 	int alignment;
 	const char *name;
-	int nlen;
 	const char *node;
 	int maxavs;
 	/* For deprecated -d option handling */
@@ -182,7 +181,6 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'N':
 			args.name = optarg;
-			args.nlen = strlen(args.name);
 			break;
 
 		case 'h':

@@ -39,6 +39,7 @@
 struct args {
 	int vol_id;
 	const char *node;
+	const char *name;
 	/* For deprecated -d option handling */
 	int devn;
 	char dev_name[256];
@@ -54,6 +55,7 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 
 static const char *optionsstr =
 "-n, --vol_id=<volume id>   volume ID to remove\n"
+"-N, --name=<volume name>   volume name to remove\n"
 "-h, -?, --help             print help message\n"
 "-V, --version              print program version\n\n"
 "The following is a compatibility option which is deprecated, do not use it\n"
@@ -62,12 +64,16 @@ static const char *optionsstr =
 "                           that the device node is \"/dev/ubi<devn>\"";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " <UBI device node file name> [-n <volume id>] [--vol_id=<volume id>] [-h] [--help]\n\n"
+"Usage: " PROGRAM_NAME " <UBI device node file name> [-n <volume id>] [--vol_id=<volume id>]\n\n"
+"         [-N <volume name>] [--name=<volume name>] [-h] [--help]\n\n"
 "Example: " PROGRAM_NAME "/dev/ubi0 -n 1 - remove UBI volume 1 from UBI device corresponding\n"
-"         to the node file /dev/ubi0.";
+"         to /dev/ubi0\n"
+"         " PROGRAM_NAME "/dev/ubi0 -N my_vol - remove UBI named \"my_vol\" from UBI device\n"
+"         corresponding to /dev/ubi0";
 
 static const struct option long_options[] = {
 	{ .name = "vol_id",  .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "name",    .has_arg = 1, .flag = NULL, .val = 'N' },
 	{ .name = "help",    .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
 	/* Deprecated -d option */
@@ -77,8 +83,13 @@ static const struct option long_options[] = {
 
 static int param_sanity_check(void)
 {
-	if (args.vol_id == -1) {
-		errmsg("volume ID is was not specified");
+	if (args.vol_id == -1 && !args.name) {
+		errmsg("please, specify either volume ID or volume name");
+		return -1;
+	}
+
+	if (args.vol_id != -1 && args.name) {
+		errmsg("please, specify either volume ID or volume name, not both");
 		return -1;
 	}
 
@@ -91,7 +102,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "n:h?Vd:", long_options, NULL);
+		key = getopt_long(argc, argv, "n:N:h?Vd:", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -103,6 +114,10 @@ static int parse_opt(int argc, char * const argv[])
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}
+			break;
+
+		case 'N':
+			args.name = optarg;
 			break;
 
 		case 'h':
@@ -150,7 +165,6 @@ static int parse_opt(int argc, char * const argv[])
 		args.node = argv[optind];
 	}
 
-
 	if (param_sanity_check())
 		return -1;
 
@@ -178,6 +192,27 @@ int main(int argc, char * const argv[])
 	} else if (err < 0) {
 		errmsg("\"%s\" is not an UBI device node", args.node);
 		goto out_libubi;
+	}
+
+	if (args.name) {
+		struct ubi_dev_info dev_info;
+		struct ubi_vol_info vol_info;
+
+		err = ubi_get_dev_info(libubi, args.node, &dev_info);
+		if (err) {
+			sys_errmsg("cannot get information about UBI device \"%s\"",
+				   args.node);
+			goto out_libubi;
+		}
+
+		err = ubi_get_vol_info1_nm(libubi, dev_info.dev_num,
+					   args.name, &vol_info);
+		if (err) {
+			sys_errmsg("cannot find UBI volume \"%s\"", args.name);
+			goto out_libubi;
+		}
+
+		args.vol_id = vol_info.vol_id;
 	}
 
 	err = ubi_rmvol(libubi, args.node, args.vol_id);

@@ -337,6 +337,19 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 		      struct ubi_vol_info *info);
 
 /**
+ * ubi_get_vol_info1_nm - get UBI volume information by volume name.
+ * @desc: UBI library descriptor
+ * @dev_num: UBI device number
+ * @vol_id: ID of the UBI volume to fetch information about
+ * @info: pointer to the &struct ubi_vol_info object to fill
+ *
+ * This function is identical to 'ubi_get_vol_info()' except that it accepts UBI
+ * volume name, not UBI volume ID.
+ */
+int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
+			 struct ubi_vol_info *info);
+
+/**
  * ubi_update_start - start UBI volume update.
  * @desc: UBI library descriptor
  * @fd: volume character devie file descriptor

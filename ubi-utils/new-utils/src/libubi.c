@@ -1147,3 +1147,36 @@ int ubi_get_vol_info(libubi_t desc, const char *node, struct ubi_vol_info *info)
 
 	return ubi_get_vol_info1(desc, dev_num, vol_id, info);
 }
+
+int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
+			 struct ubi_vol_info *info)
+{
+	int i, err, nlen = strlen(name);
+	struct ubi_dev_info dev_info;
+
+	if (nlen == 0) {
+		errmsg("bad \"name\" input parameter");
+		errno = EINVAL;
+		return -1;
+	}
+
+	err = ubi_get_dev_info1(desc, dev_num, &dev_info);
+	if (err)
+		return err;
+
+	for (i = dev_info.lowest_vol_id;
+	     i <= dev_info.highest_vol_id; i++) {
+		err = ubi_get_vol_info1(desc, dev_num, i, info);
+		if (err == -1) {
+			if (errno == ENOENT)
+				continue;
+			return -1;
+		}
+
+		if (nlen == strlen(info->name) && !strcmp(name, info->name))
+			return 0;
+	}
+
+	errno = ENOENT;
+	return -1;
+}
