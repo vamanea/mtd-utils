@@ -60,7 +60,6 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to write data to UBI volumes.";
 
 static const char *optionsstr =
-"-n, --vol_id=<volume id>   ID of UBI volume to update\n"
 "-t, --truncate             truncate volume (wipe it out)\n"
 "-h, --help                 print help message\n"
 "-V, --version              print program version\n\n"
