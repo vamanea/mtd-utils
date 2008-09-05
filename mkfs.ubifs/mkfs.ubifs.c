@@ -437,6 +437,7 @@ static int get_options(int argc, char**argv)
 	c->lsave_cnt = 256;
 	c->leb_size = -1;
 	c->min_io_size = -1;
+	c->max_leb_cnt = -1;
 	c->max_bud_bytes = -1;
 	c->log_lebs = -1;
 
@@ -562,6 +563,10 @@ static int get_options(int argc, char**argv)
 
 	if (c->leb_size == -1)
 		return err_msg("LEB size was not specified (use -h for help)");
+
+	if (c->max_leb_cnt == -1)
+		return err_msg("Maximum count of LEBs was not specified "
+			       "(use -h for help)");
 
 	if (c->max_bud_bytes == -1) {
 		int lebs;
