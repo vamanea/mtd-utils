@@ -45,32 +45,32 @@
 /*
  * Buffer array used for writing data
  */
-unsigned char writebuf[MAX_PAGE_SIZE];
-unsigned char oobbuf[MAX_OOB_SIZE];
-unsigned char oobreadbuf[MAX_OOB_SIZE];
+static unsigned char writebuf[MAX_PAGE_SIZE];
+static unsigned char oobbuf[MAX_OOB_SIZE];
+static unsigned char oobreadbuf[MAX_OOB_SIZE];
 
 // oob layouts to pass into the kernel as default
-struct nand_oobinfo none_oobinfo = {
+static struct nand_oobinfo none_oobinfo = {
 	.useecc = MTD_NANDECC_OFF,
 };
 
-struct nand_oobinfo jffs2_oobinfo = {
+static struct nand_oobinfo jffs2_oobinfo = {
 	.useecc = MTD_NANDECC_PLACE,
 	.eccbytes = 6,
 	.eccpos = { 0, 1, 2, 3, 6, 7 }
 };
 
-struct nand_oobinfo yaffs_oobinfo = {
+static struct nand_oobinfo yaffs_oobinfo = {
 	.useecc = MTD_NANDECC_PLACE,
 	.eccbytes = 6,
 	.eccpos = { 8, 9, 10, 13, 14, 15}
 };
 
-struct nand_oobinfo autoplace_oobinfo = {
+static struct nand_oobinfo autoplace_oobinfo = {
 	.useecc = MTD_NANDECC_AUTOPLACE
 };
 
-void display_help (void)
+static void display_help (void)
 {
 	printf("Usage: nandwrite [OPTION] MTD_DEVICE INPUTFILE\n"
 			"Writes to the specified MTD device.\n"
@@ -91,7 +91,7 @@ void display_help (void)
 	exit(0);
 }
 
-void display_version (void)
+static void display_version (void)
 {
 	printf(PROGRAM " " VERSION "\n"
 			"\n"
@@ -106,20 +106,20 @@ void display_version (void)
 	exit(0);
 }
 
-char	*mtd_device, *img;
-int	mtdoffset = 0;
-int	quiet = 0;
-int	writeoob = 0;
-int	markbad = 0;
-int	autoplace = 0;
-int	forcejffs2 = 0;
-int	forceyaffs = 0;
-int	forcelegacy = 0;
-int	noecc = 0;
-int	pad = 0;
-int	blockalign = 1; /*default to using 16K block size */
+static const char	*mtd_device, *img;
+static int		mtdoffset = 0;
+static int		quiet = 0;
+static int		writeoob = 0;
+static int		markbad = 0;
+static int		autoplace = 0;
+static int		forcejffs2 = 0;
+static int		forceyaffs = 0;
+static int		forcelegacy = 0;
+static int		noecc = 0;
+static int		pad = 0;
+static int		blockalign = 1; /*default to using 16K block size */
 
-void process_options (int argc, char *argv[])
+static void process_options (int argc, char * const argv[])
 {
 	int error = 0;
 
@@ -209,7 +209,7 @@ void process_options (int argc, char *argv[])
 /*
  * Main program
  */
-int main(int argc, char **argv)
+int main(int argc, char * const argv[])
 {
 	int cnt, fd, ifd, imglen = 0, pagelen, baderaseblock, blockstart = -1;
 	struct mtd_info_user meminfo;
