@@ -32,11 +32,11 @@
 #define PROGRAM "nanddump"
 #define VERSION "$Revision: 1.29 $"
 
-struct nand_oobinfo none_oobinfo = {
+static struct nand_oobinfo none_oobinfo = {
 	.useecc = MTD_NANDECC_OFF,
 };
 
-void display_help (void)
+static void display_help (void)
 {
 	printf("Usage: nanddump [OPTIONS] MTD-device\n"
 			"Dumps the contents of a nand mtd partition.\n"
@@ -54,7 +54,7 @@ void display_help (void)
 	exit(0);
 }
 
-void display_version (void)
+static void display_version (void)
 {
 	printf(PROGRAM " " VERSION "\n"
 			"\n"
@@ -69,17 +69,17 @@ void display_version (void)
 
 // Option variables
 
-int	ignoreerrors;		// ignore errors
-int	pretty_print;		// print nice in ascii
-int	noecc;			// don't error correct
-int	omitoob;		// omit oob data
-unsigned long	start_addr;	// start address
-unsigned long	length;		// dump length
-char    *mtddev;		// mtd device name
-char    *dumpfile;		// dump file name
-int	omitbad;
+static int		ignoreerrors;	// ignore errors
+static int		pretty_print;	// print nice in ascii
+static int		noecc;		// don't error correct
+static int		omitoob;	// omit oob data
+static unsigned long	start_addr;	// start address
+static unsigned long	length;		// dump length
+static const char	*mtddev;	// mtd device name
+static const char	*dumpfile;	// dump file name
+static int		omitbad;
 
-void process_options (int argc, char *argv[])
+static void process_options (int argc, char * const argv[])
 {
 	int error = 0;
 
@@ -159,13 +159,13 @@ void process_options (int argc, char *argv[])
 /*
  * Buffers for reading data from flash
  */
-unsigned char readbuf[4096];
-unsigned char oobbuf[128];
+static unsigned char readbuf[4096];
+static unsigned char oobbuf[128];
 
 /*
  * Main program
  */
-int main(int argc, char **argv)
+int main(int argc, char * const argv[])
 {
 	unsigned long ofs, end_addr = 0;
 	unsigned long long blockstart = 1;
