@@ -103,7 +103,7 @@ static void display_version (void)
 			"You may redistribute copies of " PROGRAM "\n"
 			"under the terms of the GNU General Public Licence.\n"
 			"See the file `COPYING' for more information.\n");
-	exit(0);
+	exit (EXIT_SUCCESS);
 }
 
 static const char	*mtd_device, *img;
@@ -225,20 +225,20 @@ int main(int argc, char * const argv[])
 
 	if (pad && writeoob) {
 		fprintf(stderr, "Can't pad when oob data is present.\n");
-		exit(1);
+		exit (EXIT_FAILURE);
 	}
 
 	/* Open the device */
 	if ((fd = open(mtd_device, O_RDWR)) == -1) {
 		perror("open flash");
-		exit(1);
+		exit (EXIT_FAILURE);
 	}
 
 	/* Fill in MTD device capability structure */
 	if (ioctl(fd, MEMGETINFO, &meminfo) != 0) {
 		perror("MEMGETINFO");
 		close(fd);
-		exit(1);
+		exit (EXIT_FAILURE);
 	}
 
 	/* Set erasesize to specified number of blocks - to match jffs2
@@ -252,7 +252,7 @@ int main(int argc, char * const argv[])
 			!(meminfo.oobsize == 128 && meminfo.writesize == 4096)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
-		exit(1);
+		exit (EXIT_FAILURE);
 	}
 
 	if (autoplace) {
@@ -260,7 +260,7 @@ int main(int argc, char * const argv[])
 		if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
 			perror ("MEMGETOOBSEL");
 			close (fd);
-			exit (1);
+			exit (EXIT_FAILURE);
 		}
 
 		// autoplace ECC ?
@@ -269,7 +269,7 @@ int main(int argc, char * const argv[])
 			if (ioctl (fd, MEMSETOOBSEL, &autoplace_oobinfo) != 0) {
 				perror ("MEMSETOOBSEL");
 				close (fd);
-				exit (1);
+				exit (EXIT_FAILURE);
 			}
 			oobinfochanged = 1;
 		}
@@ -285,19 +285,19 @@ int main(int argc, char * const argv[])
 				if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
 					perror ("MEMGETOOBSEL");
 					close (fd);
-					exit (1);
+					exit (EXIT_FAILURE);
 				}
 				if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
 					perror ("MEMSETOOBSEL");
 					close (fd);
-					exit (1);
+					exit (EXIT_FAILURE);
 				}
 				oobinfochanged = 1;
 				break;
 			default:
 				perror ("MTDFILEMODE");
 				close (fd);
-				exit (1);
+				exit (EXIT_FAILURE);
 			}
 		}
 	}
@@ -506,7 +506,7 @@ restoreoob:
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
 			perror ("MEMSETOOBSEL");
 			close (fd);
-			exit (1);
+			exit (EXIT_FAILURE);
 		}
 	}
 
@@ -514,9 +514,9 @@ restoreoob:
 
 	if (imglen > 0) {
 		perror ("Data was only partially written due to error\n");
-		exit (1);
+		exit (EXIT_FAILURE);
 	}
 
 	/* Return happy */
-	return 0;
+	return EXIT_SUCCESS;
 }
