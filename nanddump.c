@@ -51,7 +51,7 @@ static void display_help (void)
 			"-b         --omitbad            omit bad blocks from the dump\n"
 			"-p         --prettyprint        print nice (hexdump)\n"
 			"-s addr    --startaddress=addr  start address\n");
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 static void display_version (void)
@@ -64,7 +64,7 @@ static void display_version (void)
 			"You may redistribute copies of " PROGRAM "\n"
 			"under the terms of the GNU General Public Licence.\n"
 			"See the file `COPYING' for more information.\n");
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 // Option variables
@@ -126,7 +126,7 @@ static void process_options (int argc, char * const argv[])
 			case 'f':
 				if (!(dumpfile = strdup(optarg))) {
 					perror("stddup");
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				break;
 			case 'i':
@@ -183,14 +183,14 @@ int main(int argc, char * const argv[])
 	/* Open MTD device */
 	if ((fd = open(mtddev, O_RDONLY)) == -1) {
 		perror("open flash");
-		exit (1);
+		exit (EXIT_FAILURE);
 	}
 
 	/* Fill in MTD device capability structure */
 	if (ioctl(fd, MEMGETINFO, &meminfo) != 0) {
 		perror("MEMGETINFO");
 		close(fd);
-		exit (1);
+		exit (EXIT_FAILURE);
 	}
 
 	/* Make sure device page sizes are valid */
@@ -201,7 +201,7 @@ int main(int argc, char * const argv[])
 			!(meminfo.oobsize == 8 && meminfo.writesize == 256)) {
 		fprintf(stderr, "Unknown flash (not normal NAND)\n");
 		close(fd);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	/* Read the real oob length */
 	oob.length = meminfo.oobsize;
@@ -216,19 +216,19 @@ int main(int argc, char * const argv[])
 				if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
 					perror ("MEMGETOOBSEL");
 					close (fd);
-					exit (1);
+					exit (EXIT_FAILURE);
 				}
 				if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
 					perror ("MEMSETOOBSEL");
 					close (fd);
-					exit (1);
+					exit (EXIT_FAILURE);
 				}
 				oobinfochanged = 1;
 				break;
 			default:
 				perror ("MTDFILEMODE");
 				close (fd);
-				exit (1);
+				exit (EXIT_FAILURE);
 			}
 		}
 	} else {
@@ -251,7 +251,7 @@ int main(int argc, char * const argv[])
 	} else if ((ofd = open(dumpfile, O_WRONLY | O_TRUNC | O_CREAT, 0644))== -1) {
 		perror ("open outfile");
 		close(fd);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* Initialize start/end addresses and block size */
@@ -379,7 +379,7 @@ int main(int argc, char * const argv[])
 			perror ("MEMSETOOBSEL");
 			close(fd);
 			close(ofd);
-			return 1;
+			return EXIT_FAILURE;
 		}
 	}
 	/* Close the output file and MTD device */
@@ -387,7 +387,7 @@ int main(int argc, char * const argv[])
 	close(ofd);
 
 	/* Exit happy */
-	return 0;
+	return EXIT_SUCCESS;
 
 closeall:
 	/* The new mode change is per file descriptor ! */
@@ -398,5 +398,5 @@ closeall:
 	}
 	close(fd);
 	close(ofd);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
