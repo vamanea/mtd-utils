@@ -73,23 +73,26 @@ static struct nand_oobinfo autoplace_oobinfo = {
 
 static void display_help (void)
 {
-	printf("Usage: nandwrite [OPTION] MTD_DEVICE INPUTFILE\n"
-			"Writes to the specified MTD device.\n"
-			"\n"
-			"  -a, --autoplace	Use auto oob layout\n"
-			"  -j, --jffs2		force jffs2 oob layout (legacy support)\n"
-			"  -y, --yaffs		force yaffs oob layout (legacy support)\n"
-			"  -f, --forcelegacy	force legacy support on autoplacement enabled mtd device\n"
-			"  -m, --markbad		mark blocks bad if write fails\n"
-			"  -n, --noecc		write without ecc\n"
-			"  -o, --oob		image contains oob data\n"
-			"  -s addr, --start=addr set start address (default is 0)\n"
-			"  -p, --pad             pad to page size\n"
-			"  -b, --blockalign=1|2|4 set multiple of eraseblocks to align to\n"
-			"  -q, --quiet		don't display progress messages\n"
-			"      --help		display this help and exit\n"
-			"      --version		output version information and exit\n");
-	exit(0);
+	printf(
+"Usage: nandwrite [OPTION] MTD_DEVICE INPUTFILE\n"
+"Writes to the specified MTD device.\n"
+"\n"
+"  -a, --autoplace         Use auto oob layout\n"
+"  -j, --jffs2             Force jffs2 oob layout (legacy support)\n"
+"  -y, --yaffs             Force yaffs oob layout (legacy support)\n"
+"  -f, --forcelegacy       Force legacy support on autoplacement-enabled mtd\n"
+"                          device\n"
+"  -m, --markbad           Mark blocks bad if write fails\n"
+"  -n, --noecc             Write without ecc\n"
+"  -o, --oob               Image contains oob data\n"
+"  -s addr, --start=addr   Set start address (default is 0)\n"
+"  -p, --pad               Pad to page size\n"
+"  -b, --blockalign=1|2|4  Set multiple of eraseblocks to align to\n"
+"  -q, --quiet             Don't display progress messages\n"
+"      --help              Display this help and exit\n"
+"      --version           Output version information and exit\n"
+	);
+	exit (EXIT_SUCCESS);
 }
 
 static void display_version (void)
