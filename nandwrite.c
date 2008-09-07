@@ -230,7 +230,7 @@ int main(int argc, char * const argv[])
 
 	/* Open the device */
 	if ((fd = open(mtd_device, O_RDWR)) == -1) {
-		perror("open flash");
+		perror(mtd_device);
 		exit (EXIT_FAILURE);
 	}
 
@@ -337,7 +337,7 @@ int main(int argc, char * const argv[])
 
 	/* Open the input file */
 	if ((ifd = open(img, O_RDONLY)) == -1) {
-		perror("open input file");
+		perror(img);
 		goto restoreoob;
 	}
 
