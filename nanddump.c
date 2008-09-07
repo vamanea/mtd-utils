@@ -39,19 +39,21 @@ static struct nand_oobinfo none_oobinfo = {
 
 static void display_help (void)
 {
-	printf("Usage: nanddump [OPTIONS] MTD-device\n"
-			"Dumps the contents of a nand mtd partition.\n"
-			"\n"
-			"           --help	        display this help and exit\n"
-			"           --version	        output version information and exit\n"
-			"-f file    --file=file          dump to file\n"
-			"-i         --ignoreerrors       ignore errors\n"
-			"-l length  --length=length      length\n"
-			"-n         --noecc              read without error correction\n"
-			"-o         --omitoob            omit oob data\n"
-			"-b         --omitbad            omit bad blocks from the dump\n"
-			"-p         --prettyprint        print nice (hexdump)\n"
-			"-s addr    --startaddress=addr  start address\n");
+	printf(
+"Usage: nanddump [OPTIONS] MTD-device\n"
+"Dumps the contents of a nand mtd partition.\n"
+"\n"
+"           --help               Display this help and exit\n"
+"           --version            Output version information and exit\n"
+"-f file    --file=file          Dump to file\n"
+"-i         --ignoreerrors       Ignore errors\n"
+"-l length  --length=length      Length\n"
+"-n         --noecc              Read without error correction\n"
+"-o         --omitoob            Omit oob data\n"
+"-b         --omitbad            Omit bad blocks from the dump\n"
+"-p         --prettyprint        Print nice (hexdump)\n"
+"-s addr    --startaddress=addr  Start address\n"
+	);
 	exit(EXIT_SUCCESS);
 }
 
