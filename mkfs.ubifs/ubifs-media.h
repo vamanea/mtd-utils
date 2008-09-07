@@ -87,7 +87,7 @@
 #define UBIFS_SK_LEN 8
 
 /* Minimum index tree fanout */
-#define UBIFS_MIN_FANOUT 2
+#define UBIFS_MIN_FANOUT 3
 
 /* Maximum number of levels in UBIFS indexing B-tree */
 #define UBIFS_MAX_LEVELS 512
@@ -228,10 +228,10 @@ enum {
 /* Minimum number of orphan area logical eraseblocks */
 #define UBIFS_MIN_ORPH_LEBS 1
 /*
- * Minimum number of main area logical eraseblocks (buds, 2 for the index, 1
+ * Minimum number of main area logical eraseblocks (buds, 3 for the index, 1
  * for GC, 1 for deletions, and at least 1 for committed data).
  */
-#define UBIFS_MIN_MAIN_LEBS (UBIFS_MIN_BUD_LEBS + 5)
+#define UBIFS_MIN_MAIN_LEBS (UBIFS_MIN_BUD_LEBS + 6)
 
 /* Minimum number of logical eraseblocks */
 #define UBIFS_MIN_LEB_CNT (UBIFS_SB_LEBS + UBIFS_MST_LEBS + \
@@ -273,6 +273,7 @@ enum {
  * UBIFS_IMMUTABLE_FL: inode is immutable
  * UBIFS_APPEND_FL: writes to the inode may only append data
  * UBIFS_DIRSYNC_FL: I/O on this directory inode has to be synchronous
+ * UBIFS_XATTR_FL: this inode is the inode for an extended attribute value
  *
  * Note, these are on-flash flags which correspond to ioctl flags
  * (@FS_COMPR_FL, etc). They have the same values now, but generally, do not
@@ -284,6 +285,7 @@ enum {
 	UBIFS_IMMUTABLE_FL = 0x04,
 	UBIFS_APPEND_FL    = 0x08,
 	UBIFS_DIRSYNC_FL   = 0x10,
+	UBIFS_XATTR_FL     = 0x20,
 };
 
 /* Inode flag bits used by UBIFS */
@@ -433,10 +435,11 @@ union ubifs_dev_desc {
  * @data_len: inode data length
  * @xattr_cnt: count of extended attributes this inode has
  * @xattr_size: summarized size of all extended attributes in bytes
+ * @padding1: reserved for future, zeroes
  * @xattr_names: sum of lengths of all extended attribute names belonging to
  *               this inode
  * @compr_type: compression type used for this inode
- * @padding: reserved for future, zeroes
+ * @padding2: reserved for future, zeroes
  * @data: data attached to the inode
  *
  * Note, even though inode compression type is defined by @compr_type, some
@@ -465,10 +468,11 @@ struct ubifs_ino_node {
 	__le32 flags;
 	__le32 data_len;
 	__le32 xattr_cnt;
-	__le64 xattr_size;
+	__le32 xattr_size;
+	__u8 padding1[4]; /* Watch 'zero_ino_node_unused()' if changing! */
 	__le32 xattr_names;
 	__le16 compr_type;
-	__u8 padding[26]; /* Watch 'zero_ino_node_unused()' if changing! */
+	__u8 padding2[26]; /* Watch 'zero_ino_node_unused()' if changing! */
 	__u8 data[];
 } __attribute__ ((packed));
 
