@@ -182,7 +182,7 @@ int main(int argc, char * const argv[])
 
 	/* Open MTD device */
 	if ((fd = open(mtddev, O_RDONLY)) == -1) {
-		perror("open flash");
+		perror(mtddev);
 		exit (EXIT_FAILURE);
 	}
 
@@ -249,7 +249,7 @@ int main(int argc, char * const argv[])
 	if (!dumpfile) {
 		ofd = STDOUT_FILENO;
 	} else if ((ofd = open(dumpfile, O_WRONLY | O_TRUNC | O_CREAT, 0644))== -1) {
-		perror ("open outfile");
+		perror (dumpfile);
 		close(fd);
 		exit(EXIT_FAILURE);
 	}
