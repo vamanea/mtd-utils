@@ -1035,7 +1035,13 @@ static void tests_mnt(int mnt)
 		target = tests_file_system_mount_dir;
 		filesystemtype = tests_file_system_type;
 		mountflags = 0;
-		data = NULL;
+		data = mount_info.mnt_opts;
+		if (data) {
+			if (strcmp(data, "rw") == 0)
+				data = NULL;
+			else if (strncmp(data, "rw,", 3) == 0)
+				data += 3;
+		}
 		CHECK(mount(source, target, filesystemtype, mountflags, data)
 			!= -1);
 		CHECK(chdir(cwd) != -1);
