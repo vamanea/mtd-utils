@@ -561,20 +561,22 @@ int main(int argc, char * const argv[])
 			goto out_free;
 		}
 
-		fd = open(img, O_RDONLY);
-		if (fd == -1) {
-			sys_errmsg("cannot open \"%s\"", img);
-			goto out_free;
-		}
+		if (img) {
+			fd = open(img, O_RDONLY);
+			if (fd == -1) {
+				sys_errmsg("cannot open \"%s\"", img);
+				goto out_free;
+			}
 
-		verbose(args.verbose, "writing volume %d", vi[i].id);
-		verbose(args.verbose, "image file: %s", img);
+			verbose(args.verbose, "writing volume %d", vi[i].id);
+			verbose(args.verbose, "image file: %s", img);
 
-		err = ubigen_write_volume(&ui, &vi[i], args.ec, st.st_size, fd, args.out_fd);
-		close(fd);
-		if (err) {
-			errmsg("cannot write volume for section \"%s\"", sname);
-			goto out_free;
+			err = ubigen_write_volume(&ui, &vi[i], args.ec, st.st_size, fd, args.out_fd);
+			close(fd);
+			if (err) {
+				errmsg("cannot write volume for section \"%s\"", sname);
+				goto out_free;
+			}
 		}
 
 		if (args.verbose)
