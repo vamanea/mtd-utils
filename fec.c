@@ -47,19 +47,6 @@
 #include <string.h>
 
 /*
- * compatibility stuff
- */
-#ifdef MSDOS	/* but also for others, e.g. sun... */
-#define NEED_BCOPY
-#define bcmp(a,b,n) memcmp(a,b,n)
-#endif
-
-#ifdef NEED_BCOPY
-#define bcopy(s, d, siz)        memcpy((d), (s), (siz))
-#define bzero(d, siz)   memset((d), '\0', (siz))
-#endif
-
-/*
  * stuff used for testing purposes only
  */
 
@@ -433,7 +420,7 @@ invert_mat(gf *src, int k)
     gf *id_row = NEW_GF_MATRIX(1, k);
     gf *temp_row = NEW_GF_MATRIX(1, k);
 
-    bzero(id_row, k*sizeof(gf));
+    memset(id_row, '\0', k*sizeof(gf));
     DEB( pivloops=0; pivswaps=0 ; /* diagnostic */ )
     /*
      * ipiv marks elements already used as pivots.
@@ -513,7 +500,7 @@ found_piv:
 	 * we can optimize the addmul).
 	 */
 	id_row[icol] = 1;
-	if (bcmp(pivot_row, id_row, k*sizeof(gf)) != 0) {
+	if (memcmp(pivot_row, id_row, k*sizeof(gf)) != 0) {
 	    for (p = src, ix = 0 ; ix < k ; ix++, p += k ) {
 		if (ix != icol) {
 		    c = p[icol] ;
@@ -704,7 +691,7 @@ fec_new(int k, int n)
     /*
      * the upper matrix is I so do not bother with a slow multiply
      */
-    bzero(retval->enc_matrix, k*k*sizeof(gf) );
+    memset(retval->enc_matrix, '\0', k*k*sizeof(gf) );
     for (p = retval->enc_matrix, col = 0 ; col < k ; col++, p += k+1 )
 	*p = 1 ;
     free(tmp_m);
@@ -731,10 +718,10 @@ fec_encode(struct fec_parms *code, gf *src[], gf *fec, int index, int sz)
 	sz /= 2 ;
 
     if (index < k)
-         bcopy(src[index], fec, sz*sizeof(gf) ) ;
+         memcpy(fec, src[index], sz*sizeof(gf) ) ;
     else if (index < code->n) {
 	p = &(code->enc_matrix[index*k] );
-	bzero(fec, sz*sizeof(gf));
+	memset(fec, '\0', sz*sizeof(gf));
 	for (i = 0; i < k ; i++)
 	    addmul(fec, src[i], p[i], sz ) ;
     } else
@@ -751,10 +738,10 @@ void fec_encode_linear(struct fec_parms *code, gf *src, gf *fec, int index, int 
 	sz /= 2 ;
 
     if (index < k)
-	    bcopy(src + (index * sz), fec, sz*sizeof(gf) ) ;
+	    memcpy(fec, src + (index * sz), sz*sizeof(gf) ) ;
     else if (index < code->n) {
 	p = &(code->enc_matrix[index*k] );
-	bzero(fec, sz*sizeof(gf));
+	memset(fec, '\0', sz*sizeof(gf));
 	for (i = 0; i < k ; i++)
 	    addmul(fec, src + (i * sz), p[i], sz ) ;
     } else
@@ -814,12 +801,12 @@ build_decode_matrix(struct fec_parms *code, gf *pkt[], int index[])
     for (i = 0, p = matrix ; i < k ; i++, p += k ) {
 #if 1 /* this is simply an optimization, not very useful indeed */
 	if (index[i] < k) {
-	    bzero(p, k*sizeof(gf) );
+	    memset(p, '\0', k*sizeof(gf) );
 	    p[i] = 1 ;
 	} else
 #endif
 	if (index[i] < code->n )
-	    bcopy( &(code->enc_matrix[index[i]*k]), p, k*sizeof(gf) ); 
+	    memcpy(p,  &(code->enc_matrix[index[i]*k]), k*sizeof(gf) ); 
 	else {
 	    fprintf(stderr, "decode: invalid index %d (max %d)\n",
 		index[i], code->n - 1 );
@@ -870,7 +857,7 @@ fec_decode(struct fec_parms *code, gf *pkt[], int index[], int sz)
     for (row = 0 ; row < k ; row++ ) {
 	if (index[row] >= k) {
 	    new_pkt[row] = my_malloc (sz * sizeof (gf), "new pkt buffer" );
-	    bzero(new_pkt[row], sz * sizeof(gf) ) ;
+	    memset(new_pkt[row], '\0', sz * sizeof(gf) ) ;
 	    for (col = 0 ; col < k ; col++ )
 		addmul(new_pkt[row], pkt[col], m_dec[row*k + col], sz) ;
 	}
@@ -880,7 +867,7 @@ fec_decode(struct fec_parms *code, gf *pkt[], int index[], int sz)
      */
     for (row = 0 ; row < k ; row++ ) {
 	if (index[row] >= k) {
-	    bcopy(new_pkt[row], pkt[row], sz*sizeof(gf));
+	    memcpy(pkt[row], new_pkt[row], sz*sizeof(gf));
 	    free(new_pkt[row]);
 	}
     }
