@@ -48,7 +48,7 @@ static int zlib_deflate(void *in_buf, size_t in_len, void *out_buf,
 	strm.zfree = NULL;
 
 	/*
-	 * Match exactly the zlib parameters used by the linux kernel crypto
+	 * Match exactly the zlib parameters used by the Linux kernel crypto
 	 * API.
 	 */
         if (deflateInit2(&strm, DEFLATE_DEF_LEVEL, Z_DEFLATED,
@@ -108,29 +108,82 @@ static int no_compress(void *in_buf, size_t in_len, void *out_buf,
 	return 0;
 }
 
+static char *zlib_buf;
+
+static int favor_lzo_compress(void *in_buf, size_t in_len, void *out_buf,
+			       size_t *out_len, int *type)
+{
+	int lzo_ret, zlib_ret;
+	size_t lzo_len, zlib_len;
+
+	lzo_len = zlib_len = *out_len;
+	lzo_ret = lzo_compress(in_buf, in_len, out_buf, &lzo_len);
+	zlib_ret = zlib_deflate(in_buf, in_len, zlib_buf, &zlib_len);
+
+	if (lzo_ret && zlib_ret)
+		/* Both compressors failed */
+		return -1;
+
+	if (!lzo_ret && !zlib_ret) {
+		double percent;
+
+		/* Both compressors succeeded */
+		if (lzo_len <= zlib_len )
+			goto select_lzo;
+
+		percent = (double)zlib_len / (double)lzo_len;
+		percent *= 100;
+		if (percent > 100 - c->favor_lzo)
+			goto select_lzo;
+		goto select_zlib;
+	}
+
+	if (lzo_ret)
+		/* Only zlib compressor succeeded */
+		goto select_zlib;
+
+	/* Only LZO compressor succeeded */
+
+select_lzo:
+	*out_len = lzo_len;
+	*type = MKFS_UBIFS_COMPR_LZO;
+	return 0;
+
+select_zlib:
+	*out_len = zlib_len;
+	*type = MKFS_UBIFS_COMPR_ZLIB;
+	memcpy(out_buf, zlib_buf, zlib_len);
+	return 0;
+}
+
 int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 		  int type)
 {
-	int ret = 1;
+	int ret;
 
 	if (in_len < UBIFS_MIN_COMPR_LEN) {
 		no_compress(in_buf, in_len, out_buf, out_len);
 		return MKFS_UBIFS_COMPR_NONE;
 	}
 
-	switch (type) {
-	case MKFS_UBIFS_COMPR_LZO:
-		ret = lzo_compress(in_buf, in_len, out_buf, out_len);
-		break;
-	case MKFS_UBIFS_COMPR_ZLIB:
-		ret = zlib_deflate(in_buf, in_len, out_buf, out_len);
-		break;
-	case MKFS_UBIFS_COMPR_NONE:
-		ret = 1;
-		break;
-	default:
-		errcnt += 1;
-		break;
+	if (c->favor_lzo)
+		ret = favor_lzo_compress(in_buf, in_len, out_buf, out_len, &type);
+	else {
+		switch (type) {
+		case MKFS_UBIFS_COMPR_LZO:
+			ret = lzo_compress(in_buf, in_len, out_buf, out_len);
+			break;
+		case MKFS_UBIFS_COMPR_ZLIB:
+			ret = zlib_deflate(in_buf, in_len, out_buf, out_len);
+			break;
+		case MKFS_UBIFS_COMPR_NONE:
+			ret = 1;
+			break;
+		default:
+			errcnt += 1;
+			ret = 1;
+			break;
+		}
 	}
 	if (ret || *out_len >= in_len) {
 		no_compress(in_buf, in_len, out_buf, out_len);
@@ -144,11 +197,19 @@ int init_compression(void)
 	lzo_mem = malloc(LZO1X_999_MEM_COMPRESS);
 	if (!lzo_mem)
 		return -1;
+
+	zlib_buf = malloc(UBIFS_BLOCK_SIZE * WORST_COMPR_FACTOR);
+	if (!zlib_buf) {
+		free(lzo_mem);
+		return -1;
+	}
+
 	return 0;
 }
 
 void destroy_compression(void)
 {
+	free(zlib_buf);
 	free(lzo_mem);
 	if (errcnt)
 		fprintf(stderr, "%llu compression errors occurred\n", errcnt);
