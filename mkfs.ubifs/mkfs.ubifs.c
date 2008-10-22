@@ -93,7 +93,8 @@ struct inum_mapping {
  * Because we copy functions from the kernel, we use a subset of the UBIFS
  * file-system description object struct ubifs_info.
  */
-static struct ubifs_info info_, *c = &info_;
+static struct ubifs_info info_;
+struct ubifs_info *c = &info_;
 
 /* Debug levels are: 0 (none), 1 (statistics), 2 (files) ,3 (more details) */
 int debug_level;

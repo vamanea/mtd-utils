@@ -124,6 +124,8 @@ struct name_htbl_element {
 	dev_t dev;
 };
 
+extern struct ubifs_info *c;
+
 struct hashtable_itr;
 
 int write_leb(int lnum, int len, void *buf);
