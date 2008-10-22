@@ -272,6 +272,8 @@ struct ubifs_znode
  * @main_lebs: count of LEBs in the main area
  * @main_first: first LEB of the main area
  * @default_compr: default compression type
+ * @favor_lzo: favor LZO compression method
+ * @favor_percent: lzo vs. zlib threshold used in case favor LZO
  *
  * @key_hash_type: type of the key hash
  * @key_hash: direntry key hash function
@@ -342,6 +344,8 @@ struct ubifs_info
 	int main_lebs;
 	int main_first;
 	int default_compr;
+	int favor_lzo;
+	int favor_percent;
 
 	uint8_t key_hash_type;
 	uint32_t (*key_hash)(const char *str, int len);

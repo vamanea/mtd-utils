@@ -128,7 +128,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:j:l:j:U";
+static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:X:j:l:j:U";
 
 static const struct option longopts[] = {
 	{"root",          1, NULL, 'r'},
@@ -143,6 +143,7 @@ static const struct option longopts[] = {
 	{"debug-level",   1, NULL, 'g'},
 	{"jrn-size",      1, NULL, 'j'},
 	{"compr",         1, NULL, 'x'},
+	{"favor-percent", 1, NULL, 'X'},
 	{"fanout",        1, NULL, 'f'},
 	{"keyhash",       1, NULL, 'k'},
 	{"log-lebs",      1, NULL, 'l'},
@@ -161,8 +162,11 @@ static const char *helptext =
 "-c, --max-leb-cnt=COUNT  maximum logical erase block count\n"
 "-o, --output=FILE        output to FILE\n"
 "-j, --jrn-size=SIZE      journal size\n"
-"-x, --compr=TYPE         compression type - \"lzo\", \"zlib\" or \"none\"\n"
-"                         (default: \"lzo\")\n"
+"-x, --compr=TYPE         compression type - \"lzo\", \"favor_lzo\", \"zlib\" or\n"
+"                         \"none\" (default: \"lzo\")\n"
+"-X, --favor-percent      may only be used with favor LZO compression and defines\n"
+"                         how many percent better zlib should compress to make\n"
+"                         mkfs.ubifs use zlib instead of LZO (default 20%)\n"
 "-f, --fanout=NUM         fanout NUM (default: 8)\n"
 "-k, --keyhash=TYPE       key hash type - \"r5\" or \"test\" (default: \"r5\")\n"
 "-p, --orph-lebs=COUNT    count of erase blocks for orphans (default: 1)\n"
@@ -176,7 +180,15 @@ static const char *helptext =
 "                         2 - files, 3 - more details)\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
-"Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n";
+"Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
+"If you specify \"lzo\" or \"zlib\" compressors, mkfs.ubifs will use this compressor\n"
+"for all data. The \"none\" disables any data compression. The \"favor_lzo\" is not\n"
+"really a separate compressor. It is just a method of combining \"lzo\" and \"zlib\"\n"
+"compressors. Namely, mkfs.ubifs tries to compress data with both \"lzo\" and \"zlib\"\n"
+"compressors, then it compares which compressor is better. If \"zlib\" compresses 20\n"
+"or more percent better than \"lzo\", mkfs.ubifs chooses \"lzo\", otherwise it chooses\n"
+"\"zlib\". The \"--favor-percent\" may specify arbitrary threshold instead of the\n"
+"default 20%.\n";
 
 /**
  * make_path - make a path name from a directory and a name.
@@ -437,6 +449,7 @@ static int get_options(int argc, char**argv)
 	c->key_hash = key_r5_hash;
 	c->key_len = UBIFS_SK_LEN;
 	c->default_compr = UBIFS_COMPR_LZO;
+	c->favor_percent = 20;
 	c->lsave_cnt = 256;
 	c->leb_size = -1;
 	c->min_io_size = -1;
@@ -540,14 +553,21 @@ static int get_options(int argc, char**argv)
 				return err_msg("bad key hash");
 			break;
 		case 'x':
-			if (strcmp(optarg, "lzo") == 0)
-				c->default_compr = UBIFS_COMPR_LZO;
+			if (strcmp(optarg, "favor_lzo") == 0)
+				c->favor_lzo = 1;
 			else if (strcmp(optarg, "zlib") == 0)
 				c->default_compr = UBIFS_COMPR_ZLIB;
 			else if (strcmp(optarg, "none") == 0)
 				c->default_compr = UBIFS_COMPR_NONE;
-			else
+			else if (strcmp(optarg, "lzo") != 0)
 				return err_msg("bad compressor name");
+			break;
+		case 'X':
+			c->favor_percent = strtol(optarg, &endp, 0);
+			if (*endp != '\0' || endp == optarg ||
+			    c->favor_percent <= 0 || c->favor_percent >= 100)
+				return err_msg("bad favor LZO percent '%s'",
+					       optarg);
 			break;
 		case 'j':
 			c->max_bud_bytes = get_bytes(optarg);
