@@ -30,6 +30,7 @@
 
 #include "compr.h"
 #include "ubifs-media.h"
+#include "mkfs.ubifs.h"
 
 static void *lzo_mem;
 static unsigned long long errcnt = 0;
