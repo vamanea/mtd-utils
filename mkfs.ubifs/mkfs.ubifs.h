@@ -124,7 +124,7 @@ struct name_htbl_element {
 	dev_t dev;
 };
 
-extern struct ubifs_info *c;
+extern struct ubifs_info info_;
 
 struct hashtable_itr;
 

@@ -34,6 +34,7 @@
 
 static void *lzo_mem;
 static unsigned long long errcnt = 0;
+static struct ubifs_info *c = &info_;
 
 #define DEFLATE_DEF_LEVEL     Z_DEFAULT_COMPRESSION
 #define DEFLATE_DEF_WINBITS   11
@@ -133,7 +134,7 @@ static int favor_lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 
 		percent = (double)zlib_len / (double)lzo_len;
 		percent *= 100;
-		if (percent > 100 - c->favor_lzo)
+		if (percent > 100 - c->favor_percent)
 			goto select_lzo;
 		goto select_zlib;
 	}
