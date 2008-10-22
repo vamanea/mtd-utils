@@ -23,6 +23,14 @@
 #ifndef __UBIFS_COMPRESS_H__
 #define __UBIFS_COMPRESS_H__
 
+/*
+ * Compressors may end-up with more data in the output buffer than in the input
+ * buffer. This constant defined the worst case factor, i.e. we assume that the
+ * output buffer may be at max. WORST_COMPR_FACTOR times larger than input
+ * buffer.
+ */
+#define WORST_COMPR_FACTOR 4
+
 enum compression_type
 {
 	MKFS_UBIFS_COMPR_NONE,

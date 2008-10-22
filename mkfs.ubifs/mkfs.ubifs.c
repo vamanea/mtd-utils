@@ -28,7 +28,8 @@
 #define HASH_TABLE_SIZE 10099
 
 /* The node buffer must allow for worst case compression */
-#define NODE_BUFFER_SIZE (UBIFS_DATA_NODE_SZ + UBIFS_BLOCK_SIZE * 4)
+#define NODE_BUFFER_SIZE (UBIFS_DATA_NODE_SZ + \
+			  UBIFS_BLOCK_SIZE * WORST_COMPR_FACTOR)
 
 /* Default time granularity in nanoseconds */
 #define DEFAULT_TIME_GRAN 1000000000
