@@ -454,7 +454,7 @@ int main(int argc, char * const argv[])
 	verbose(args.verbose, "LEB size:      %d", ui.leb_size);
 	verbose(args.verbose, "PEB size:      %d", ui.peb_size);
 	verbose(args.verbose, "min. I/O size: %d", ui.min_io_size);
-	verbose(args.verbose, "sub-page size: %d", ui.min_io_size);
+	verbose(args.verbose, "sub-page size: %d", args.subpage_size);
 	verbose(args.verbose, "VID offset:    %d", ui.vid_hdr_offs);
 	verbose(args.verbose, "data offset:   %d", ui.data_offs);
 
@@ -491,7 +491,7 @@ int main(int argc, char * const argv[])
 		goto out_dict;
 	}
 
-	vi = malloc(sizeof(struct ubigen_vol_info) * sects);
+	vi = calloc(sizeof(struct ubigen_vol_info), sects);
 	if (!vi) {
 		errmsg("cannot allocate memory");
 		goto out_dict;
