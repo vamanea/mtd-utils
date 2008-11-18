@@ -49,6 +49,7 @@ static int quiet;		/* true -- don't output progress */
 static int jffs2;		// format for jffs2 usage
 
 static void process_options (int argc, char *argv[]);
+void show_progress (mtd_info_t *meminfo, erase_info_t *erase);
 static void display_help (void);
 static void display_version (void);
 static struct jffs2_unknown_node cleanmarker;
@@ -63,16 +64,15 @@ int main (int argc, char *argv[])
 
 	process_options(argc, argv);
 
-
 	if ((fd = open(mtd_device, O_RDWR)) < 0) {
 		fprintf(stderr, "%s: %s: %s\n", exe_name, mtd_device, strerror(errno));
-		exit(1);
+		return 1;
 	}
 
 
 	if (ioctl(fd, MEMGETINFO, &meminfo) != 0) {
 		fprintf(stderr, "%s: %s: unable to get MTD device info\n", exe_name, mtd_device);
-		exit(1);
+		return 1;
 	}
 
 	erase.length = meminfo.erasesize;
@@ -88,7 +88,7 @@ int main (int argc, char *argv[])
 
 			if (ioctl(fd, MEMGETOOBSEL, &oobinfo) != 0) {
 				fprintf(stderr, "%s: %s: unable to get NAND oobinfo\n", exe_name, mtd_device);
-				exit(1);
+				return 1;
 			}
 
 			/* Check for autoplacement */
@@ -96,7 +96,7 @@ int main (int argc, char *argv[])
 				/* Get the position of the free bytes */
 				if (!oobinfo.oobfree[0][1]) {
 					fprintf (stderr, " Eeep. Autoplacement selected and no empty space in oob\n");
-					exit(1);
+					return 1;
 				}
 				clmpos = oobinfo.oobfree[0][0];
 				clmlen = oobinfo.oobfree[0][1];
@@ -137,23 +137,17 @@ int main (int argc, char *argv[])
 					bbtest = 0;
 					if (isNAND) {
 						fprintf(stderr, "%s: %s: Bad block check not available\n", exe_name, mtd_device);
-						exit(1);
+						return 1;
 					}
 				} else {
 					fprintf(stderr, "\n%s: %s: MTD get bad block failed: %s\n", exe_name, mtd_device, strerror(errno));
-					exit(1);
+					return 1;
 				}
 			}
 		}
 
-		if (!quiet) {
-			printf
-				("\rErasing %d Kibyte @ %x -- %2llu %% complete.",
-				 meminfo.erasesize / 1024, erase.start,
-				 (unsigned long long)
-				 erase.start * 100 / meminfo.size);
-		}
-		fflush(stdout);
+		if (!quiet)
+			show_progress(&meminfo, &erase);
 
 		if (ioctl(fd, MEMERASE, &erase) != 0) {
 			fprintf(stderr, "\n%s: %s: MTD Erase failure: %s\n", exe_name, mtd_device, strerror(errno));
@@ -187,8 +181,10 @@ int main (int argc, char *argv[])
 		if (!quiet)
 			printf (" Cleanmarker written at %x.", erase.start);
 	}
-	if (!quiet)
+	if (!quiet) {
+		show_progress(&meminfo, &erase);
 		printf("\n");
+	}
 
 	return 0;
 }
@@ -254,6 +250,13 @@ void process_options (int argc, char *argv[])
 	mtd_device = argv[optind];
 }
 
+void show_progress (mtd_info_t *meminfo, erase_info_t *erase)
+{
+	printf("\rErasing %d Kibyte @ %x -- %2llu %% complete.",
+		meminfo->erasesize / 1024, erase->start,
+		(unsigned long long) erase->start * 100 / meminfo->size);
+	fflush(stdout);
+}
 
 void display_help (void)
 {
