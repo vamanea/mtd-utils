@@ -2,7 +2,6 @@
 # Makefile for ubi-utils
 #
 
-OPTFLAGS := -O2 -Wall
 KERNELHDR := ../../include
 DESTDIR := /usr/local
 SBINDIR=/usr/sbin
@@ -10,7 +9,8 @@ MANDIR=/usr/man
 INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
-CFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(OPTFLAGS) -Werror -Wall
+CFLAGS ?= -O2 -Wall
+CPPFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(CFLAGS) -Werror -Wall
 
 LIBS = libubi libmtd libubigen libiniparser libscan
 UTILS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
@@ -26,7 +26,7 @@ all: $(UTILS)
 
 # The below is the rule to get an .o file from a .c file
 %.o: %.c
-	$(CC) $(CFLAGS) $< -c -o $@
+	$(CC) $(CPPFLAGS) $< -c -o $@
 
 # And the below is the rule to get final executable from its .o and common.o
 %: libubi.a %.o common.o
