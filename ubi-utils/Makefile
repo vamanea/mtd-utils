@@ -75,7 +75,7 @@ pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
 
 install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)
 
 uninstall:

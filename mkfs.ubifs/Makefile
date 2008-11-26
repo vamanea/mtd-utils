@@ -20,4 +20,4 @@ cscope:
 
 install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/

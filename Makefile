@@ -96,7 +96,7 @@ $(BUILDDIR)/fectest: $(BUILDDIR)/fectest.o $(BUILDDIR)/crc32.o $(BUILDDIR)/fec.o
 
 install: ${TARGETS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -9c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
 	$(MAKE) -C $(BUILDDIR)/ubi-utils install

@@ -66,7 +66,7 @@ clean:
 
 install: ${UTILS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m0755 ${UTILS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${UTILS} ${DESTDIR}/${SBINDIR}/
 
 uninstall:
 	for file in ${UTILS}; do \
