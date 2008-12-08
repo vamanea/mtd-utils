@@ -225,7 +225,10 @@ static int want_exit(void)
 
 	while (1) {
 		normsg_cont("continue? (yes/no)  ");
-		scanf("%3s", buf);
+		if (scanf("%3s", buf) == EOF) {
+			sys_errmsg("scanf returned unexpected EOF, assume \"yes\"");
+			return 1;
+		}
 		if (!strncmp(buf, "yes", 3) || !strncmp(buf, "y", 1))
 			return 0;
 		if (!strncmp(buf, "no", 2) || !strncmp(buf, "n", 1))
@@ -238,7 +241,10 @@ static int answer_is_yes(void)
 	char buf[4];
 
 	while (1) {
-		scanf("%3s", buf);
+		if (scanf("%3s", buf) == EOF) {
+			sys_errmsg("scanf returned unexpected EOF, assume \"no\"");
+			return 0;
+		}
 		if (!strncmp(buf, "yes", 3) || !strncmp(buf, "y", 1))
 			return 1;
 		if (!strncmp(buf, "no", 2) || !strncmp(buf, "n", 1))

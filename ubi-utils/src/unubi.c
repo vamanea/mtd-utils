@@ -895,7 +895,7 @@ unubi_volumes(FILE* fpin, uint32_t *vols, size_t vc, struct args *a)
 	free(cur);
 
 	if (a->analyze) {
-		char fname[PATH_MAX];
+		char fname[PATH_MAX + 1];
 		FILE *fp;
 
 		unubi_analyze(&head, first, a->odir_path);

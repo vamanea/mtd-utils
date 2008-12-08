@@ -136,7 +136,7 @@ skip_raw_volumes(FILE* pfi, list_t pfi_raws,
 	}
 
  err:
-	EBUF(PFIFLASH_ERRSTR[-rc]);
+	EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 	return rc;
 }
 
@@ -173,7 +173,7 @@ my_ubi_mkvol(int devno, int s, pfi_ubi_t u,
 	ulib = libubi_open();
 	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -239,7 +239,7 @@ my_ubi_rmvol(int devno, uint32_t id,
 	ulib = libubi_open();
 	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -323,7 +323,7 @@ read_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	ulib = libubi_open();
 	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -342,7 +342,7 @@ read_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	rc = bootenv_read(fp_in, bootenv_old, BOOTENV_MAXSIZE);
 	if (rc != 0) {
 		rc = -PFIFLASH_ERR_BOOTENV_READ;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -421,7 +421,7 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	ulib = libubi_open();
 	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -442,7 +442,7 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	rc = bootenv_read_crc(fp_in, bootenv_new, fp_in_size, &crc);
 	if (rc != 0) {
 		rc = -PFIFLASH_ERR_BOOTENV_READ;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	} else if (crc != pfi_crc) {
 		rc = -PFIFLASH_ERR_CRC_CHECK;
@@ -464,7 +464,7 @@ write_bootenv_volume(int devno, uint32_t id, bootenv_t bootenv_old,
 	rc = bootenv_size(bootenv_res, &update_size);
 	if (rc != 0) {
 		rc = -PFIFLASH_ERR_BOOTENV_SIZE;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -554,7 +554,7 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 	ulib = libubi_open();
 	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -586,13 +586,13 @@ write_normal_volume(int devno, uint32_t id, size_t update_size, FILE* fp_in,
 			bytes_left : sizeof buf;
 		if (fread(buf, 1, to_rw, fp_in) != to_rw) {
 			rc = -PFIFLASH_ERR_EOF;
-			EBUF(PFIFLASH_ERRSTR[-rc]);
+			EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 			goto err;
 		}
 		crc = clc_crc32(crc32_table, crc, buf, to_rw);
 		if (fwrite(buf, 1, to_rw, fp_out) != to_rw) {
 			rc = -PFIFLASH_ERR_FIO;
-			EBUF(PFIFLASH_ERRSTR[-rc]);
+			EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 			goto err;
 		}
 		bytes_left -= to_rw;
@@ -770,7 +770,7 @@ static int compare_volumes(int devno, pfi_ubi_t u, FILE *fp_pfi,
 
 err:
 	if (rc < 0)
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 
 	for (i = 0; i < u->ids_size; i++)
 		fclose(fp_flash[i]);
@@ -877,11 +877,11 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 			int c = fgetc(pfi);
 			if (c == EOF) {
 				rc = -PFIFLASH_ERR_EOF;
-				EBUF(PFIFLASH_ERRSTR[-rc]);
+				EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 				goto err;
 			} else if (ferror(pfi)) {
 				rc = -PFIFLASH_ERR_FIO;
-				EBUF(PFIFLASH_ERRSTR[-rc]);
+				EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 				goto err;
 			}
 			pfi_data[j] = (char)c;
@@ -906,7 +906,7 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 		for (j = 0; j < r->starts_size; j++) {
 			rc = erase_mtd_region(mtd, r->starts[j], r->data_size);
 			if (rc) {
-				EBUF(PFIFLASH_ERRSTR[-rc]);
+				EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 				goto err;
 			}
 
@@ -916,7 +916,7 @@ process_raw_volumes(FILE* pfi, list_t pfi_raws, const char* rawdev,
 				if (c == EOF) {
 					fclose(mtd);
 					rc = -PFIFLASH_ERR_EOF;
-					EBUF(PFIFLASH_ERRSTR[-rc]);
+					EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 					goto err;
 				}
 				if ((char)c != pfi_data[k]) {
@@ -1100,7 +1100,7 @@ process_ubi_volumes(FILE* pfi, int seqnum, list_t pfi_ubis,
 			break;
 		default:
 			rc = -PFIFLASH_ERR_UBI_UNKNOWN;
-			EBUF(PFIFLASH_ERRSTR[-rc]);
+			EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 			goto err;
 		}
 	}
@@ -1137,7 +1137,7 @@ mirror_ubi_volumes(uint32_t devno, list_t pfi_ubis,
 	ulib = libubi_open();
 	if (ulib == NULL) {
 		rc = -PFIFLASH_ERR_UBI_OPEN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
@@ -1259,7 +1259,7 @@ pfiflash_with_options(FILE* pfi, int complete, int seqnum, int compare,
 		pdd_f = pdd_funcs[pdd_handling];
 	else {
 		rc = -PFIFLASH_ERR_PDD_UNKNOWN;
-		EBUF(PFIFLASH_ERRSTR[-rc]);
+		EBUF("%s", PFIFLASH_ERRSTR[-rc]);
 		goto err;
 	}
 
