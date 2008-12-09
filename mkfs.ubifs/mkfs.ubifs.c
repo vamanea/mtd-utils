@@ -339,7 +339,7 @@ static int validate_options(void)
 	if (c->leb_size < c->min_io_size)
 		return err_msg("min. I/O unit cannot be larger than LEB size");
 	if (c->leb_size < UBIFS_MIN_LEB_SZ)
-		return err_msg("too smal LEB size %d, minimum is %d",
+		return err_msg("too small LEB size %d, minimum is %d",
 			       c->min_io_size, UBIFS_MIN_LEB_SZ);
 	if (c->leb_size % c->min_io_size)
 		return err_msg("LEB should be multiple of min. I/O units");
