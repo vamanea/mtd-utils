@@ -342,14 +342,14 @@ static int read_all(int fd, void *buf, size_t len)
 	while (len > 0) {
 		ssize_t l = read(fd, buf, len);
 		if (l == 0)
-			return errmsg("eof reached; %d bytes remaining", len);
+			return errmsg("eof reached; %zu bytes remaining", len);
 		else if (l > 0) {
 			buf += l;
 			len -= l;
 		} else if (errno == EINTR || errno == EAGAIN)
 			continue;
 		else
-			return sys_errmsg("reading failed; %d bytes remaining", len);
+			return sys_errmsg("reading failed; %zu bytes remaining", len);
 	}
 
 	return 0;
