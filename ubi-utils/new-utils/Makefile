@@ -9,8 +9,12 @@ MANDIR=/usr/man
 INCLUDEDIR=/usr/include
 
 CC := $(CROSS)gcc
-CFLAGS ?= -O2 -Wall
-CPPFLAGS := -Iinclude -Isrc -I$(KERNELHDR) $(CFLAGS) -Werror -Wall
+AR := $(CROSS)ar
+RANLIB := $(CROSS)ranlib
+CFLAGS ?= -O2
+CFLAGS += -Werror -Wall
+CPPFLAGS += -Iinclude -Isrc -I$(KERNELHDR)
+LDFLAGS += -L.
 
 LIBS = libubi libmtd libubigen libiniparser libscan
 UTILS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
@@ -26,40 +30,40 @@ all: $(UTILS)
 
 # The below is the rule to get an .o file from a .c file
 %.o: %.c
-	$(CC) $(CPPFLAGS) $< -c -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 # And the below is the rule to get final executable from its .o and common.o
 %: libubi.a %.o common.o
-	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o, $^) -lubi -o $@
 
 ubicrc32: ubicrc32.o crc32.o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 ubinize: ubinize.o common.o crc32.o libiniparser.a libubigen.a
-	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o, $^) -liniparser -lubigen -o $@
 
 ubiformat: ubiformat.o common.o crc32.o libmtd.a libscan.a libubi.a libubigen.a
-	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lscan -lubi -lubigen -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o, $^) -lmtd -lscan -lubi -lubigen -o $@
 
 libubi.a: libubi.o
 	$(AR) crv $@ $^
-	ranlib $@
+	$(RANLIB) $@
 
 libmtd.a: libmtd.o
 	$(AR) crv $@ $^
-	ranlib $@
+	$(RANLIB) $@
 
 libubigen.a: libubigen.o
 	$(AR) crv $@ $^
-	ranlib $@
+	$(RANLIB) $@
 
 libiniparser.a: libiniparser.o dictionary.o
 	$(AR) crv $@ $^
-	ranlib $@
+	$(RANLIB) $@
 
 libscan.a: libscan.o crc32.o
 	$(AR) crv $@ $^
-	ranlib $@
+	$(RANLIB) $@
 
 clean:
 	rm -rf *.o $(addsuffix .a, $(LIBS)) $(UTILS) .*.c.dep
