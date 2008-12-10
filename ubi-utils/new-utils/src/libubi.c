@@ -80,7 +80,7 @@ static int read_positive_ll(const char *file, long long *value)
 
 	fd = open(file, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", file);
 
 	rd = read(fd, buf, 50);
 	if (rd == -1) {
@@ -159,7 +159,7 @@ static int read_data(const char *file, void *buf, int buf_len)
 
 	fd = open(file, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", file);
 
 	rd = read(fd, buf, buf_len);
 	if (rd == -1) {
@@ -366,7 +366,8 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
 	char file[strlen(lib->ubi_vol) + 100];
 
 	if (stat(node, &st))
-		return -1;
+		return sys_errmsg("cannot get information about \"%s\"",
+				  node);
 
 	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;
@@ -432,7 +433,8 @@ static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 	int i, major, minor;
 
 	if (stat(node, &st))
-		return -1;
+		return sys_errmsg("cannot get information about \"%s\"",
+				  node);
 
 	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;
@@ -691,7 +693,7 @@ int ubi_attach_mtd(libubi_t desc, const char *node,
 
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", node);
 
 	ret = ioctl(fd, UBI_IOCATT, &r);
 	close(fd);
@@ -701,8 +703,6 @@ int ubi_attach_mtd(libubi_t desc, const char *node,
 	req->dev_num = r.ubi_num;
 
 #ifdef UDEV_SETTLE_HACK
-	if (system("udevsettle") == -1)
-		return -1;
 	if (system("udevsettle") == -1)
 		return -1;
 #endif
@@ -731,7 +731,7 @@ int ubi_remove_dev(libubi_t desc, const char *node, int ubi_dev)
 
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", node);
 	ret = ioctl(fd, UBI_IOCDET, &ubi_dev);
 	if (ret == -1)
 		goto out_close;
@@ -755,9 +755,11 @@ int ubi_node_type(libubi_t desc, const char *node)
 	char file[strlen(lib->ubi_vol) + 100];
 
 	if (stat(node, &st))
-		return -1;
+		return sys_errmsg("cannot get information about \"%s\"",
+				  node);
 
 	if (!S_ISCHR(st.st_mode)) {
+		errmsg("\"%s\" is not a character device", node);
 		errno = EINVAL;
 		return -1;
 	}
@@ -775,6 +777,8 @@ int ubi_node_type(libubi_t desc, const char *node)
 		if (ret) {
 			if (errno == ENOENT)
 				continue;
+			if (!errno)
+				goto out_not_ubi;
 			return -1;
 		}
 
@@ -782,16 +786,8 @@ int ubi_node_type(libubi_t desc, const char *node)
 			break;
 	}
 
-	if (i > info.highest_dev_num) {
-		/*
-		 * The character device node does not correspond to any
-		 * existing UBI device or volume, but we do not want to return
-		 * any error number in this case, to indicate the fact that it
-		 * could be a UBI device/volume, but it doesn't.
-		 */
-		errno = 0;
-		return -1;
-	}
+	if (i > info.highest_dev_num)
+		goto out_not_ubi;
 
 	if (minor == 0)
 		return 1;
@@ -800,11 +796,17 @@ int ubi_node_type(libubi_t desc, const char *node)
 	sprintf(file, lib->ubi_vol, i, minor - 1);
 	fd = open(file, O_RDONLY);
 	if (fd == -1) {
-		errno = 0;
+		sys_errmsg("cannot open \"%s\"", node);
 		return -1;
 	}
 
 	return 2;
+
+out_not_ubi:
+	errmsg("\"%s\" has major:minor %d:%d, but this does not correspond to "
+	       "any UBI device or volume", node, major, minor);
+	errno = 0;
+	return -1;
 }
 
 int ubi_get_info(libubi_t desc, struct ubi_info *info)
@@ -904,7 +906,7 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", node);
 
 	ret = ioctl(fd, UBI_IOCMKVOL, &r);
 	if (ret == -1)
@@ -929,7 +931,7 @@ int ubi_rmvol(libubi_t desc, const char *node, int vol_id)
 	desc = desc;
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", node);
 
 	ret = ioctl(fd, UBI_IOCRMVOL, &vol_id);
 	if (ret == -1)
@@ -953,7 +955,7 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
 	desc = desc;
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
-		return -1;
+		return sys_errmsg("cannot open \"%s\"", node);
 
 	req.bytes = bytes;
 	req.vol_id = vol_id;
