@@ -260,6 +260,7 @@ int main(int argc, char * const argv[])
 	int ret, readlen;
 	int oobinfochanged = 0;
 	struct nand_oobinfo old_oobinfo;
+	int readcnt = 0;
 
 	process_options(argc, argv);
 
@@ -477,6 +478,8 @@ int main(int argc, char * const argv[])
 		readlen = meminfo.writesize;
 
 		if (ifd != STDIN_FILENO) {
+			int tinycnt = 0;
+
 			if (pad && (imglen < readlen))
 			{
 				readlen = imglen;
@@ -484,11 +487,15 @@ int main(int argc, char * const argv[])
 			}
 
 			/* Read Page Data from input file */
-			if ((cnt = read(ifd, writebuf, readlen)) != readlen) {
-				if (cnt == 0)	// EOF
+			while(tinycnt < readlen) {
+				cnt = read(ifd, writebuf + tinycnt, readlen - tinycnt);
+				if (cnt == 0) { // EOF
 					break;
-				perror ("File I/O error on input file");
-				goto closeall;
+				} else if (cnt < 0) {
+					perror ("File I/O error on input file");
+					goto closeall;
+				}
+				tinycnt += cnt;
 			}
 		} else {
 			int tinycnt = 0;
@@ -522,11 +529,19 @@ int main(int argc, char * const argv[])
 		}
 
 		if (writeoob) {
-			/* Read OOB data from input file, exit on failure */
-			if ((cnt = read(ifd, oobreadbuf, meminfo.oobsize)) != meminfo.oobsize) {
-				perror ("File I/O error on input file");
-				goto closeall;
+			int tinycnt = 0;
+
+			while(tinycnt < readlen) {
+				cnt = read(ifd, oobreadbuf + tinycnt, meminfo.oobsize - tinycnt);
+				if (cnt == 0) { // EOF
+					break;
+				} else if (cnt < 0) {
+					perror ("File I/O error on input file");
+					goto closeall;
+				}
+				tinycnt += cnt;
 			}
+
 			if (!noecc) {
 				int i, start, len;
 				/*
