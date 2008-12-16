@@ -80,7 +80,7 @@ static int read_positive_ll(const char *file, long long *value)
 
 	fd = open(file, O_RDONLY);
 	if (fd == -1)
-		return sys_errmsg("cannot open \"%s\"", file);
+		return -1;
 
 	rd = read(fd, buf, 50);
 	if (rd == -1) {
@@ -159,7 +159,7 @@ static int read_data(const char *file, void *buf, int buf_len)
 
 	fd = open(file, O_RDONLY);
 	if (fd == -1)
-		return sys_errmsg("cannot open \"%s\"", file);
+		return -1;
 
 	rd = read(fd, buf, buf_len);
 	if (rd == -1) {
@@ -833,7 +833,7 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 	 */
 	sysfs_ubi = opendir(lib->sysfs_ubi);
 	if (!sysfs_ubi)
-		return sys_errmsg("cannot open %s", lib->sysfs_ubi);
+		return -1;
 
 	info->lowest_dev_num = INT_MAX;
 	while (1) {
