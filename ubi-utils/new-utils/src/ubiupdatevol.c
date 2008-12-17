@@ -157,10 +157,15 @@ static int parse_opt(int argc, char * const argv[])
 	args.node = argv[optind];
 	args.img  = argv[optind + 1];
 
-	if (strcmp(args.img, "-") == 0)
-		args.use_stdin = 1;
-	if (args.use_stdin && !args.size)
-		return errmsg("file size must be specified if input is stdin");
+	if (args.img && args.truncate)
+		return errmsg("You can't truncate and specify an image (use -h for help)");
+
+	if (args.img && !args.truncate) {
+		if (strcmp(args.img, "-") == 0)
+			args.use_stdin = 1;
+		if (args.use_stdin && !args.size)
+			return errmsg("file size must be specified if input is stdin");
+	}
 
 	return 0;
 }
