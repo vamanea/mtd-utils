@@ -3,77 +3,54 @@
 #
 
 KERNELHDR := ../include
-DESTDIR := /usr/local
-SBINDIR=/usr/sbin
-MANDIR=/usr/share/man
-INCLUDEDIR=/usr/include
 
-CC := $(CROSS)gcc
 CFLAGS ?= -O2 -g -Werror
-CFLAGS += -Wall -Wwrite-strings -W
 CPPFLAGS += -I./inc -I./src -I$(KERNELHDR) \
 	-std=gnu99 -DPACKAGE_VERSION=\"1.0\"
 
 PERLPROGS = mkpfi ubicrc32.pl
 
-NTARGETS = ubiattach ubicrc32 ubidetach ubimkvol ubinfo ubinize \
-	ubirmvol ubiupdatevol ubiformat
+SUBDIRS = new-utils
+
 TARGETS = pfiflash pddcustomize ubimirror bin2nand nand2bin ubigen \
-	mkbootenv unubi pfi2bin $(NTARGETS)
+	mkbootenv unubi pfi2bin
 
 vpath   %.c ./src
 
-%: %.o
-	$(CC) $(LDFLAGS) -g -o $@ $^
+include ../common.mk
 
-%.o: %.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,.$(shell basename $<).dep
+$(BUILDDIR)/pddcustomize: $(addprefix $(BUILDDIR)/,\
+	pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
+	libubi.o crc32.o)
 
-all: $(TARGETS)
+$(BUILDDIR)/pfiflash: $(addprefix $(BUILDDIR)/,\
+	pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
+	bootenv.o hashmap.o pfi.o libubi.o crc32.o)
 
-IGNORE=${wildcard .*.c.dep}
--include ${IGNORE}
+$(BUILDDIR)/ubimirror: $(addprefix $(BUILDDIR)/,\
+	ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
+	libubi.o crc32.o)
 
-$(NTARGETS):
-	$(MAKE) -C new-utils $@
-	mv new-utils/$@ $@
+$(BUILDDIR)/nand2bin: $(addprefix $(BUILDDIR)/,\
+	nand2bin.o nandecc.o nandcorr.o)
 
-clean:
-	rm -rf *.o $(TARGETS) .*.c.dep
-	$(MAKE) -C new-utils clean
+$(BUILDDIR)/bin2nand: $(addprefix $(BUILDDIR)/,\
+	bin2nand.o error.o nandecc.o)
 
-pddcustomize: pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
+$(BUILDDIR)/ubigen: $(addprefix $(BUILDDIR)/,\
+	ubigen.o libubigen.o crc32.o)
 
-pfiflash: pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
-		bootenv.o hashmap.o pfi.o libubi.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
+$(BUILDDIR)/mkbootenv: $(addprefix $(BUILDDIR)/,\
+	mkbootenv.o bootenv.o hashmap.o error.o crc32.o)
 
-ubimirror: ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
-		libubi.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
+$(BUILDDIR)/unubi: $(addprefix $(BUILDDIR)/,\
+	unubi.o crc32.o unubi_analyze.o eb_chain.o)
 
-nand2bin: nand2bin.o nandecc.o nandcorr.o
-	$(CC) $(LDFLAGS) -o $@ $^
+$(BUILDDIR)/pfi2bin: $(addprefix $(BUILDDIR)/,\
+	pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
+	hashmap.o reader.o pfi.o)
 
-bin2nand: bin2nand.o error.o nandecc.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-ubigen: ubigen.o libubigen.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-mkbootenv: mkbootenv.o bootenv.o hashmap.o error.o crc32.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-unubi: unubi.o crc32.o unubi_analyze.o eb_chain.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-pfi2bin: pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
-		hashmap.o reader.o pfi.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-install: ${TARGETS}
+install::
 	mkdir -p ${DESTDIR}/${SBINDIR}
 	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)

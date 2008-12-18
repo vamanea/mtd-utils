@@ -3,76 +3,55 @@
 #
 
 KERNELHDR := ../../include
-DESTDIR := /usr/local
-SBINDIR=/usr/sbin
-MANDIR=/usr/man
-INCLUDEDIR=/usr/include
 
-CC := $(CROSS)gcc
-AR := $(CROSS)ar
-RANLIB := $(CROSS)ranlib
-CFLAGS ?= -O2
-CFLAGS += -Werror -Wall
+#CFLAGS += -Werror
 CPPFLAGS += -Iinclude -Isrc -I$(KERNELHDR)
-LDFLAGS += -L.
 
 LIBS = libubi libmtd libubigen libiniparser libscan
-UTILS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-        ubidetach ubinize ubiformat
+TARGETS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
+          ubidetach ubinize ubiformat
 
 vpath %.c src
 
-all: $(UTILS)
-
-# The below cancels existing implicite rule to make programs from .c files,
-# in order to force make using our rule defined below
-%: %.c
-
-# The below is the rule to get an .o file from a .c file
-%.o: %.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
+include ../../common.mk
 
 # And the below is the rule to get final executable from its .o and common.o
-%: libubi.a %.o common.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o, $^) -lubi -o $@
+$(TARGETS): $(addprefix $(BUILDDIR)/,\
+	libubi.a common.o)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
 
-ubicrc32: ubicrc32.o crc32.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+$(BUILDDIR)/ubicrc32: $(addprefix $(BUILDDIR)/,\
+	ubicrc32.o crc32.o)
+#	$(CC) $(CFLAGS) -o $@ $^
 
-ubinize: ubinize.o common.o crc32.o libiniparser.a libubigen.a
-	$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o, $^) -liniparser -lubigen -o $@
+$(BUILDDIR)/ubinize: $(addprefix $(BUILDDIR)/,\
+	ubinize.o common.o crc32.o libiniparser.a libubigen.a)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
-ubiformat: ubiformat.o common.o crc32.o libmtd.a libscan.a libubi.a libubigen.a
-	$(CC) $(CFLAGS) $(LDFLAGS) $(filter %.o, $^) -lmtd -lscan -lubi -lubigen -o $@
+$(BUILDDIR)/ubiformat: $(addprefix $(BUILDDIR)/,\
+	ubiformat.o common.o crc32.o libmtd.a libscan.a libubi.a libubigen.a)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lscan -lubi -lubigen -o $@
 
-libubi.a: libubi.o
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+$(BUILDDIR)/libubi.a: $(BUILDDIR)/libubi.o
 
-libmtd.a: libmtd.o
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+$(BUILDDIR)/libmtd.a: $(BUILDDIR)/libmtd.o
 
-libubigen.a: libubigen.o
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+$(BUILDDIR)/libubigen.a: $(BUILDDIR)/libubigen.o
 
-libiniparser.a: libiniparser.o dictionary.o
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+$(BUILDDIR)/libiniparser.a: $(addprefix $(BUILDDIR)/,\
+	libiniparser.o dictionary.o)
 
-libscan.a: libscan.o crc32.o
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+$(BUILDDIR)/libscan.a: $(addprefix $(BUILDDIR)/,\
+	libscan.o crc32.o)
 
-clean:
-	rm -rf *.o $(addsuffix .a, $(LIBS)) $(UTILS) .*.c.dep
+clean::
+	rm -f $(addsuffix .a, $(LIBS))
 
-install: ${UTILS}
+install::
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m 0755 ${UTILS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
 
 uninstall:
-	for file in ${UTILS}; do \
+	for file in ${TARGETS}; do \
 		$(RM) ${DESTDIR}/${SBINDIR}/$$file; \
 	done
