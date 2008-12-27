@@ -273,6 +273,11 @@ static struct filesystem_entry *find_filesystem_entry(
 	struct filesystem_entry *e = dir;
 
 	if (S_ISDIR(dir->sb.st_mode)) {
+		/* If this is the first call, and we actually want this
+		 * directory, then return it now */
+		if (strcmp(fullname, e->fullname) == 0)
+			return e;
+
 		e = dir->files;
 	}
 	while (e) {
