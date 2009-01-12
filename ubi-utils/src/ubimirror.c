@@ -203,7 +203,7 @@ main(int argc, char **argv) {
 		       err_buf, sizeof(err_buf));
 	if( rc ){
 		err_buf[sizeof err_buf - 1] = '\0';
-		fprintf(stderr, err_buf);
+		fprintf(stderr, "%s", err_buf);
 		if( rc < 0 )
 			rc = -rc;
 	}
