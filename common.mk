@@ -19,6 +19,7 @@ else
   BUILDDIR := $(PWD)/$(CROSS:-=)
 endif
 endif
+override BUILDDIR := $(patsubst %/,%,$(BUILDDIR))
 
 override TARGETS := $(addprefix $(BUILDDIR)/,$(TARGETS))
 
@@ -33,7 +34,7 @@ clean:: $(SUBDIRS_CLEAN)
 
 install:: $(TARGETS) $(SUBDIRS_INSTALL)
 
-$(BUILDDIR)/%: $(BUILDDIR)/%.o
+%: %.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_$(notdir $@)) -g -o $@ $^ $(LDLIBS) $(LDLIBS_$(notdir $@))
 
 $(BUILDDIR)/%.a:
@@ -41,7 +42,9 @@ $(BUILDDIR)/%.a:
 	$(RANLIB) $@
 
 $(BUILDDIR)/%.o: %.c
+ifneq ($(BUILDDIR),$(CURDIR))
 	mkdir -p $(dir $@)
+endif
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,$(BUILDDIR)/.$(<F).dep
 
 subdirs_%:
