@@ -87,7 +87,7 @@ static const char *usage =
 "\t\t\t[--alignment=<alignment>][--vol_id=<volume ID>] [--name=<name>]\n"
 "\t\t\t[--size=<bytes>] [--lebs=<LEBs>] [--type=<static|dynamic>] [--help]\n"
 "\t\t\t[--version] [--maxavsize]\n\n"
-"Example: " PROGRAM_NAME "/dev/ubi0 -s 20MiB -N config_data - create a 20 Megabytes volume\n"
+"Example: " PROGRAM_NAME " /dev/ubi0 -s 20MiB -N config_data - create a 20 Megabytes volume\n"
 "         named \"config_data\" on UBI device /dev/ubi0.";
 
 static const struct option long_options[] = {
