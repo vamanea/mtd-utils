@@ -506,6 +506,8 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 
 		err = mtd_erase(mtd, eb);
 		if (err) {
+			if (!args.quiet)
+				printf("\n");
 			sys_errmsg("failed to erase eraseblock %d", eb);
 			goto out_free;
 		}
@@ -530,6 +532,8 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 
 		err = mtd_write(mtd, eb, 0, hdr, write_size);
 		if (err) {
+			if (!args.quiet && !args.verbose)
+				printf("\n");
 			sys_errmsg("cannot write EC header (%d bytes buffer) to eraseblock %d",
 				   write_size, eb);
 			if (args.subpage_size != mtd->min_io_size)
