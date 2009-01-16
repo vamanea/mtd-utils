@@ -211,7 +211,7 @@ static int test_update(int type)
 	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	struct ubi_vol_info vol_info;
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
 		int leb_size;

@@ -93,7 +93,7 @@ remove:
  */
 static int test_aligned(int type)
 {
-	int i, ebsz;
+	unsigned int i, ebsz;
 	struct ubi_mkvol_request req;
 	const char *name = TESTNAME ":test_aligned()";
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];

@@ -203,8 +203,7 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 /**
  * __check_vol_patt - check that volume contains certain data
  *
- * @libubi    libubi descriptor
- * @dev_info  UBI device description
+ * @libubi  libubi descriptor
  * @test    test name
  * @func    function name
  * @line    line number
@@ -214,9 +213,8 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
  * This function returns %0 if the volume contains only @byte bytes, and %-1 if
  * not.
  */
-int __check_vol_patt(libubi_t libubi, struct ubi_dev_info *dev_info,
-		     const char *test, const char *func, int line,
-		     const char *node, uint8_t byte)
+int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
+		     int line, const char *node, uint8_t byte)
 {
 	int ret, fd;
 	long long bytes = 0;

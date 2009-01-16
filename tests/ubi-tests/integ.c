@@ -81,7 +81,7 @@ static uint64_t total_written = 0;
 static uint64_t total_space = 0;
 
 static struct open_volume_fd *open_volumes;
-static size_t open_volume_count = 0;
+static int open_volume_count = 0;
 
 static const char *ubi_module_load_string;
 
@@ -237,7 +237,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 		if (w->offset + w->size < gap_end) {
 			/* There is a gap. Check all 0xff */
 			off64_t gap_start = w->offset + w->size;
-			size_t size = gap_end - gap_start;
+			ssize_t size = gap_end - gap_start;
 			if (lseek64(fd, gap_start, SEEK_SET) != gap_start)
 				error_exit("lseek64 failed");
 			memset(read_buffer, 0 , size);
@@ -273,7 +273,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 	if (gap_end > erase_block->offset) {
 		/* Check all 0xff */
 		off64_t gap_start = erase_block->offset;
-		size_t size = gap_end - gap_start;
+		ssize_t size = gap_end - gap_start;
 		if (lseek64(fd, gap_start, SEEK_SET) != gap_start)
 			error_exit("lseek64 failed");
 		memset(read_buffer, 0 , size);
@@ -535,7 +535,7 @@ static void get_ubi_devices_info(void)
 {
 	int i, ubi_pos = 0;
 	char dev_name[1024];
-	size_t buf_size = 1024 * 128;
+	ssize_t buf_size = 1024 * 128;
 
 	if (ubi_get_info(libubi, &info))
 		error_exit("ubi_get_info failed");

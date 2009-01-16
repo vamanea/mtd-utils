@@ -60,7 +60,7 @@ static long long memory_limit(void)
  *
  * @ptr  thread number
  */
-static void * the_thread(void *ptr)
+static void *the_thread(void *ptr)
 {
 	int fd, iter = iterations, vol_id = (int)ptr;
 	unsigned char *wbuf, *rbuf;
@@ -219,7 +219,7 @@ int main(int argc, char * const argv[])
 	}
 
 	for (i = 0; i < THREADS_NUM; i++) {
-		ret = pthread_create(&threads[i], NULL, &the_thread, (void*)i);
+		ret = pthread_create(&threads[i], NULL, &the_thread, (void *)i);
 		if (ret) {
 			failed("pthread_create");
 			goto remove;

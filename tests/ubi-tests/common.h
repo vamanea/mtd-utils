@@ -49,8 +49,7 @@ extern "C" {
 		       __LINE__, vol_id, req)
 
 #define check_vol_patt(node, byte)                                             \
-	__check_vol_patt(libubi, &dev_info, TESTNAME, __FUNCTION__, __LINE__,  \
-			 node, byte)
+	__check_vol_patt(libubi, TESTNAME, __FUNCTION__, __LINE__, node, byte)
 
 #define update_vol_patt(node, bytes, byte)                                     \
 	__update_vol_patt(libubi, TESTNAME, __FUNCTION__, __LINE__,            \
@@ -89,9 +88,8 @@ int __initial_check(const char *test, int argc, char * const argv[]);
 int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 		   const char *test, const char *func, int line, int vol_id,
 		   const struct ubi_mkvol_request *req);
-int __check_vol_patt(libubi_t libubi, struct ubi_dev_info *dev_info,
-		     const char *test, const char *func, int line,
-		     const char *node, uint8_t byte);
+int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
+		     int line, const char *node, uint8_t byte);
 int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
 		      int line, const char *node, long long bytes,
 		      uint8_t byte);
