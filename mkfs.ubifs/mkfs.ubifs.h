@@ -129,7 +129,7 @@ extern struct ubifs_info info_;
 struct hashtable_itr;
 
 int write_leb(int lnum, int len, void *buf);
-int parse_devtable(const char *root, const char *tbl_file);
+int parse_devtable(const char *tbl_file);
 struct path_htbl_element *devtbl_find_path(const char *path);
 struct name_htbl_element *devtbl_find_name(struct path_htbl_element *ph_elt,
 					   const char *name);

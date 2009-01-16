@@ -125,7 +125,7 @@ static int separate_last(const char *buf, int len, char **path, char **name)
 	return 0;
 }
 
-static int interpret_table_entry(const char *root, const char *line)
+static int interpret_table_entry(const char *line)
 {
 	char buf[1024], type, *path = NULL, *name = NULL;
 	int len;
@@ -193,7 +193,7 @@ static int interpret_table_entry(const char *root, const char *line)
 		dbg_msg(3, "inserting '%s' into path hash table", path);
 		ph_elt = malloc(sizeof(struct path_htbl_element));
 		if (!ph_elt) {
-			err_msg("cannot allocate %d bytes of memory",
+			err_msg("cannot allocate %zd bytes of memory",
 				sizeof(struct path_htbl_element));
 			goto out_free;
 		}
@@ -226,7 +226,7 @@ static int interpret_table_entry(const char *root, const char *line)
 		/* This entry does not require any iterating */
 		nh_elt = malloc(sizeof(struct name_htbl_element));
 		if (!nh_elt) {
-			err_msg("cannot allocate %d bytes of memory",
+			err_msg("cannot allocate %zd bytes of memory",
 				sizeof(struct name_htbl_element));
 			goto out_free;
 		}
@@ -254,7 +254,7 @@ static int interpret_table_entry(const char *root, const char *line)
 		for (i = start; i < num; i++) {
 			nh_elt = malloc(sizeof(struct name_htbl_element));
 			if (!nh_elt) {
-				err_msg("cannot allocate %d bytes of memory",
+				err_msg("cannot allocate %zd bytes of memory",
 					sizeof(struct name_htbl_element));
 				goto out_free;
 			}
@@ -311,7 +311,7 @@ out_free:
  * Returns zero in case of success and a negative error code in case of
  * failure.
  */
-int parse_devtable(const char *root, const char *tbl_file)
+int parse_devtable(const char *tbl_file)
 {
 	FILE *f;
 	char *line = NULL;
@@ -358,7 +358,7 @@ int parse_devtable(const char *root, const char *tbl_file)
 
 		/* If this is not a comment line, try to interpret it */
 		if (len && *line != '#') {
-			if (interpret_table_entry(root, line)) {
+			if (interpret_table_entry(line)) {
 				err_msg("cannot parse '%s'", line);
 				goto out_close;
 			}

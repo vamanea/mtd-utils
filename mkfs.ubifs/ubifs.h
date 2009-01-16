@@ -424,15 +424,4 @@ struct ubifs_branch *ubifs_idx_branch(const struct ubifs_info *c,
 				       (UBIFS_BRANCH_SZ + c->key_len) * bnum);
 }
 
-/**
- * ubifs_idx_key - return pointer to an index key.
- * @c: the UBIFS file-system description object
- * @idx: index node
- */
-static inline void *ubifs_idx_key(const struct ubifs_info *c,
-				  const struct ubifs_idx_node *idx)
-{
-	return (void *)((struct ubifs_branch *)idx->branches)->key;
-}
-
 #endif /* __UBIFS_H__ */

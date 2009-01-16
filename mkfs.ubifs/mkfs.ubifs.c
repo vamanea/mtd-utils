@@ -650,7 +650,7 @@ static int get_options(int argc, char**argv)
 	if (validate_options())
 		return -1;
 
-	if (tbl_file && parse_devtable(root, tbl_file))
+	if (tbl_file && parse_devtable(tbl_file))
 		return err_msg("cannot parse device table file '%s'", tbl_file);
 
 	return 0;
@@ -687,13 +687,14 @@ int write_leb(int lnum, int len, void *buf)
 
 	dbg_msg(3, "LEB %d len %d", lnum, len);
 	if (lseek64(out_fd, pos, SEEK_SET) != pos)
-		return sys_err_msg("lseek64 failed seeking %lld", pos);
+		return sys_err_msg("lseek64 failed seeking %lld",
+				   (long long)pos);
 
 	memset(buf + len, 0xff, c->leb_size - len);
 
 	if (write(out_fd, buf, c->leb_size) != c->leb_size)
 		return sys_err_msg("write failed writing %d bytes at pos %lld",
-				   c->leb_size, pos);
+				   c->leb_size, (long long)pos);
 
 	return 0;
 }
@@ -721,7 +722,7 @@ static int do_pad(void *buf, int len)
 	pad_len = wlen - alen;
 	dbg_msg(3, "len %d pad_len %d", len, pad_len);
 	buf += alen;
-	if (pad_len >= UBIFS_PAD_NODE_SZ) {
+	if (pad_len >= (int)UBIFS_PAD_NODE_SZ) {
 		struct ubifs_ch *ch = buf;
 		struct ubifs_pad_node *pad_node = buf;
 
@@ -788,7 +789,7 @@ static int calc_dark(struct ubifs_info *c, int spc)
 	 * anyway safely assume it we'll be able to write a node of the
 	 * smallest size there.
 	 */
-	if (spc - c->dark_wm < MIN_WRITE_SZ)
+	if (spc - c->dark_wm < (int)MIN_WRITE_SZ)
 		return spc - MIN_WRITE_SZ;
 
 	return c->dark_wm;
@@ -954,9 +955,9 @@ static int add_inode_with_data(struct stat *st, ino_t inum, void *data,
 
 	memset(ino, 0, UBIFS_INO_NODE_SZ);
 
-	ino_key_init(c, &key, inum);
+	ino_key_init(&key, inum);
 	ino->ch.node_type = UBIFS_INO_NODE;
-	key_write(c, &key, &ino->key);
+	key_write(&key, &ino->key);
 	ino->creat_sqnum = cpu_to_le64(creat_sqnum);
 	ino->size       = cpu_to_le64(st->st_size);
 	ino->nlink      = cpu_to_le32(st->st_nlink);
@@ -1092,7 +1093,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	dent->ch.node_type = UBIFS_DENT_NODE;
 
 	dent_key_init(c, &key, dir_inum, &dname);
-	key_write(c, &key, dent->key);
+	key_write(&key, dent->key);
 	dent->inum = cpu_to_le64(inum);
 	dent->padding1 = 0;
 	dent->type = type;
@@ -1202,9 +1203,9 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		}
 		/* Make data node */
 		memset(dn, 0, UBIFS_DATA_NODE_SZ);
-		data_key_init(c, &key, inum, block_no++);
+		data_key_init(&key, inum, block_no++);
 		dn->ch.node_type = UBIFS_DATA_NODE;
-		key_write(c, &key, &dn->key);
+		key_write(&key, &dn->key);
 		dn->size = cpu_to_le32(bytes_read);
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
@@ -1578,7 +1579,7 @@ static int cmp_idx(const void *a, const void *b)
 	const struct idx_entry *e2 = *(const struct idx_entry **)b;
 	int cmp;
 
-	cmp = keys_cmp(c, &e1->key, &e2->key);
+	cmp = keys_cmp(&e1->key, &e2->key);
 	if (cmp)
 		return cmp;
 	return namecmp(e1->name, e2->name);
@@ -1628,7 +1629,7 @@ static int write_index(void)
 	struct ubifs_branch *br;
 	int child_cnt, j, level, blnum, boffs, blen, blast_len, err;
 
-	dbg_msg(1, "leaf node count: %d", idx_cnt);
+	dbg_msg(1, "leaf node count: %zd", idx_cnt);
 
 	/* Reset the head for the index */
 	head_flags = LPROPS_INDEX;
@@ -1677,7 +1678,7 @@ static int write_index(void)
 		idx->level = cpu_to_le16(0);
 		for (j = 0; j < child_cnt; j++, p++) {
 			br = ubifs_idx_branch(c, idx, j);
-			key_write_idx(c, &(*p)->key, &br->key);
+			key_write_idx(&(*p)->key, &br->key);
 			br->lnum = cpu_to_le32((*p)->lnum);
 			br->offs = cpu_to_le32((*p)->offs);
 			br->len = cpu_to_le32((*p)->len);
@@ -1749,7 +1750,7 @@ static int write_index(void)
 				 * of the index node from the level below.
 				 */
 				br = ubifs_idx_branch(c, idx, j);
-				key_write_idx(c, &(*p)->key, &br->key);
+				key_write_idx(&(*p)->key, &br->key);
 				br->lnum = cpu_to_le32(blnum);
 				br->offs = cpu_to_le32(boffs);
 				br->len = cpu_to_le32(blen);
