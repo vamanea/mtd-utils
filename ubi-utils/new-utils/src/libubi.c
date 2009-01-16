@@ -1153,7 +1153,8 @@ int ubi_get_vol_info(libubi_t desc, const char *node, struct ubi_vol_info *info)
 int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
 			 struct ubi_vol_info *info)
 {
-	int i, err, nlen = strlen(name);
+	int i, err;
+	unsigned int nlen = strlen(name);
 	struct ubi_dev_info dev_info;
 
 	if (nlen == 0) {

@@ -261,7 +261,7 @@ static int parse_opt(int argc, char * const argv[])
 		return errmsg("output file was not specified (use -h for help)");
 
 	if (args.vid_hdr_offs) {
-		if (args.vid_hdr_offs + UBI_VID_HDR_SIZE >= args.peb_size)
+		if (args.vid_hdr_offs + (int)UBI_VID_HDR_SIZE >= args.peb_size)
 			return errmsg("bad VID header position");
 		if (args.vid_hdr_offs % 8)
 			return errmsg("VID header offset has to be multiple of min. I/O unit size");

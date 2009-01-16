@@ -55,7 +55,8 @@ extern "C" {
 
 /* System error messages */
 #define sys_errmsg(fmt, ...)  ({                                            \
-	int _err = errno, _i;                                               \
+	int _err = errno;                                                   \
+	size_t _i;                                                           \
 	fprintf(stderr, PROGRAM_NAME ": error!: " fmt "\n", ##__VA_ARGS__); \
 	for (_i = 0; _i < sizeof(PROGRAM_NAME) + 1; _i++)                   \
 		fprintf(stderr, " ");                                       \

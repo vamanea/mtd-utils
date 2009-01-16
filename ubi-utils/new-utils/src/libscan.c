@@ -154,7 +154,7 @@ int ubi_scan(struct mtd_info *mtd, struct ubi_scan_info **info, int verbose)
 
 			}
 		} else {
-			if (be32_to_cpu(hdr.vid_hdr_offset) != si->vid_hdr_offs) {
+			if ((int)be32_to_cpu(hdr.vid_hdr_offset) != si->vid_hdr_offs) {
 				if (pr)
 					printf("\n");
 				if (v)
@@ -168,7 +168,7 @@ int ubi_scan(struct mtd_info *mtd, struct ubi_scan_info **info, int verbose)
 				si->ec[eb] = EB_CORRUPTED;
 				continue;
 			}
-			if (be32_to_cpu(hdr.data_offset) != si->data_offs) {
+			if ((int)be32_to_cpu(hdr.data_offset) != si->data_offs) {
 				if (pr)
 					printf("\n");
 				if (v)

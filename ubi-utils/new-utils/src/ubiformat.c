@@ -309,8 +309,7 @@ static int drop_ffs(const struct mtd_info *mtd, const void *buf, int len)
         return len;
 }
 
-static int open_file(const struct mtd_info *mtd, struct ubi_scan_info *si,
-		     off_t *sz)
+static int open_file(off_t *sz)
 {
 	int fd;
 
@@ -355,13 +354,12 @@ static int read_all(int fd, void *buf, size_t len)
 	return 0;
 }
 
-static int flash_image(const struct mtd_info *mtd, const struct ubigen_info *ui,
-		       struct ubi_scan_info *si)
+static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 {
 	int fd, img_ebs, eb, written_ebs = 0, divisor;
 	off_t st_size;
 
-	fd = open_file(mtd, si, &st_size);
+	fd = open_file(&st_size);
 	if (fd < 0)
 		return fd;
 
@@ -608,7 +606,7 @@ int main(int argc, char * const argv[])
 			errmsg("VID header offset has to be multiple of min. I/O unit size");
 			goto out_close;
 		}
-		if (args.vid_hdr_offs + UBI_VID_HDR_SIZE > mtd.eb_size) {
+		if (args.vid_hdr_offs + (int)UBI_VID_HDR_SIZE > mtd.eb_size) {
 			errmsg("bad VID header offset");
 			goto out_close;
 		}
@@ -757,7 +755,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (args.image) {
-		err = flash_image(&mtd, &ui, si);
+		err = flash_image(&mtd, si);
 		if (err < 0)
 			goto out_free;
 
