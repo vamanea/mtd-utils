@@ -128,7 +128,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:X:j:l:j:U";
+static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:X:j:R:l:j:U:";
 
 static const struct option longopts[] = {
 	{"root",          1, NULL, 'r'},
@@ -142,6 +142,7 @@ static const struct option longopts[] = {
 	{"version",       0, NULL, 'V'},
 	{"debug-level",   1, NULL, 'g'},
 	{"jrn-size",      1, NULL, 'j'},
+	{"reserved",      1, NULL, 'R'},
 	{"compr",         1, NULL, 'x'},
 	{"favor-percent", 1, NULL, 'X'},
 	{"fanout",        1, NULL, 'f'},
@@ -162,6 +163,7 @@ static const char *helptext =
 "-c, --max-leb-cnt=COUNT  maximum logical erase block count\n"
 "-o, --output=FILE        output to FILE\n"
 "-j, --jrn-size=SIZE      journal size\n"
+"-R, --reserved=SIZE      how much space should be reserved for the super-user\n"
 "-x, --compr=TYPE         compression type - \"lzo\", \"favor_lzo\", \"zlib\" or\n"
 "                         \"none\" (default: \"lzo\")\n"
 "-X, --favor-percent      may only be used with favor LZO compression and defines\n"
@@ -188,7 +190,8 @@ static const char *helptext =
 "compressors, then it compares which compressor is better. If \"zlib\" compresses 20\n"
 "or more percent better than \"lzo\", mkfs.ubifs chooses \"lzo\", otherwise it chooses\n"
 "\"zlib\". The \"--favor-percent\" may specify arbitrary threshold instead of the\n"
-"default 20%.\n";
+"default 20%.\n\n"
+"The -R parameter specifies amount of bytes reserved for the super-user.\n";
 
 /**
  * make_path - make a path name from a directory and a name.
@@ -318,6 +321,32 @@ static int calc_min_log_lebs(unsigned long long max_bud_bytes)
 	return log_lebs;
 }
 
+/**
+ * add_space_overhead - add UBIFS overhead.
+ * @size: flash space which should be visible to the user
+ *
+ * UBIFS has overhead, and if we need to reserve @size bytes for the user data,
+ * we have to reserve more flash space, to compensate the overhead. This
+ * function calculates and returns the amount of physical flash space which
+ * should be reserved to provide @size bytes for the user.
+ */
+static long long add_space_overhead(long long size)
+{
+        int divisor, factor, f, max_idx_node_sz;
+
+        /*
+	 * Do the opposite to what the 'ubifs_reported_space()' kernel UBIFS
+	 * function does.
+         */
+	max_idx_node_sz =  ubifs_idx_node_sz(c, c->fanout);
+        f = c->fanout > 3 ? c->fanout >> 1 : 2;
+        divisor = UBIFS_BLOCK_SIZE;
+        factor = UBIFS_MAX_DATA_NODE_SZ;
+        factor += (max_idx_node_sz * 3) / (f - 1);
+        size *= factor;
+        return size / divisor;
+}
+
 static inline int is_power_of_2(unsigned long long n)
 {
                 return (n != 0 && ((n & (n - 1)) == 0));
@@ -376,8 +405,9 @@ static int validate_options(void)
 			       "least %d", tmp);
 	tmp = calc_min_log_lebs(c->max_bud_bytes);
 	if (c->log_lebs < calc_min_log_lebs(c->max_bud_bytes))
-		return err_msg("too few log LEBs, expected at least %d",
-			       tmp);
+		return err_msg("too few log LEBs, expected at least %d", tmp);
+	if (c->rp_size >= ((long long)c->leb_size * c->max_leb_cnt) / 2)
+		return err_msg("too much reserved space %lld", c->rp_size);
 	return 0;
 }
 
@@ -574,6 +604,11 @@ static int get_options(int argc, char**argv)
 			if (c->max_bud_bytes <= 0)
 				return err_msg("bad maximum amount of buds");
 			break;
+		case 'R':
+			c->rp_size = get_bytes(optarg);
+			if (c->rp_size < 0)
+				return err_msg("bad reserved bytes count");
+			break;
 		case 'U':
 			squash_owner = 1;
 			break;
@@ -619,6 +654,10 @@ static int get_options(int argc, char**argv)
 		c->log_lebs += 2;
 	}
 
+	if (c->min_io_size < 8)
+		c->min_io_size = 8;
+	c->rp_size = add_space_overhead(c->rp_size);
+
 	if (verbose) {
 		printf("mkfs.ubifs\n");
 		printf("\troot:         %s\n", root);
@@ -627,6 +666,7 @@ static int get_options(int argc, char**argv)
 		printf("\tmax_leb_cnt:  %d\n", c->max_leb_cnt);
 		printf("\toutput:       %s\n", output);
 		printf("\tjrn_size:     %llu\n", c->max_bud_bytes);
+		printf("\treserved:     %llu\n", c->rp_size);
 		switch (c->default_compr) {
 		case UBIFS_COMPR_LZO:
 			printf("\tcompr:        lzo\n");
@@ -643,9 +683,6 @@ static int get_options(int argc, char**argv)
 		printf("\tfanout:       %d\n", c->fanout);
 		printf("\torph_lebs:    %d\n", c->orph_lebs);
 	}
-
-	if (c->min_io_size < 8)
-		c->min_io_size = 8;
 
 	if (validate_options())
 		return -1;
@@ -1859,6 +1896,7 @@ static int write_super(void)
 	sup.lsave_cnt     = cpu_to_le32(c->lsave_cnt);
 	sup.fmt_version   = cpu_to_le32(UBIFS_FORMAT_VERSION);
 	sup.default_compr = cpu_to_le16(c->default_compr);
+	sup.rp_size       = cpu_to_le64(c->rp_size);
 	sup.time_gran     = cpu_to_le32(DEFAULT_TIME_GRAN);
 	uuid_generate_random(sup.uuid);
 	if (verbose) {

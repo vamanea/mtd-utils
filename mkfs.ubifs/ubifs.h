@@ -293,6 +293,8 @@ struct ubifs_znode
  * @dark_wm: LEB dark space watermark
  *
  * @gc_lnum: LEB number used for garbage collection
+ * @rp_size: reserved pool size
+ *
  * @space_bits: number of bits needed to record free or dirty space
  * @lpt_lnum_bits: number of bits needed to record a LEB number in the LPT
  * @lpt_offs_bits: number of bits needed to record an offset in the LPT
@@ -365,6 +367,7 @@ struct ubifs_info
 	int dark_wm;
 
 	int gc_lnum;
+	long long rp_size;
 
 	int space_bits;
 	int lpt_lnum_bits;
