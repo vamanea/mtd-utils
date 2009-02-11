@@ -2,7 +2,7 @@ CC := $(CROSS)gcc
 AR := $(CROSS)ar
 RANLIB := $(CROSS)ranlib
 CFLAGS ?= -O2 -g
-CFLAGS += -Wall -Wwrite-strings -W
+CFLAGS += -Wall -Wwrite-strings -W -D_FILE_OFFSET_BITS=64
 
 DESTDIR ?= /usr/local
 PREFIX=/usr

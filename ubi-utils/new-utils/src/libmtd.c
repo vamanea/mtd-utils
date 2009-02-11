@@ -189,7 +189,7 @@ int mtd_is_bad(const struct mtd_info *mtd, int eb)
 	if (!mtd->allows_bb)
 		return 0;
 
-	seek = eb * mtd->eb_size;
+	seek = (loff_t)eb * mtd->eb_size;
 	ret = ioctl(mtd->fd, MEMGETBADBLOCK, &seek);
 	if (ret == -1) {
 		sys_errmsg("MEMGETBADBLOCK ioctl failed for "
@@ -231,7 +231,7 @@ int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 	}
 
 	/* Seek to the beginning of the eraseblock */
-	seek = eb * mtd->eb_size + offs;
+	seek = (off_t)eb * mtd->eb_size + offs;
 	if (lseek(mtd->fd, seek, SEEK_SET) != seek) {
 		sys_errmsg("cannot seek mtd%d to offset %llu",
 			   mtd->num, (unsigned long long)seek);
@@ -296,7 +296,7 @@ int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 #endif
 
 	/* Seek to the beginning of the eraseblock */
-	seek = eb * mtd->eb_size + offs;
+	seek = (off_t)eb * mtd->eb_size + offs;
 	if (lseek(mtd->fd, seek, SEEK_SET) != seek) {
 		sys_errmsg("cannot seek mtd%d to offset %llu",
 			   mtd->num, (unsigned long long)seek);
