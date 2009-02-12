@@ -248,7 +248,8 @@ static int do_openat(int fd, const char *path, int flags)
 	ret = fchdir(fd);
 	if (ret != -1)
 		ret = open(path, flags);
-	chdir(cwd);
+	if (chdir(cwd) && !ret)
+		ret = -1;
 	free(cwd);
 	return ret;
 }
@@ -539,7 +540,7 @@ static int get_options(int argc, char**argv)
 			break;
 		case 'h':
 		case '?':
-			printf(helptext);
+			printf("%s", helptext);
 			exit(0);
 		case 'v':
 			verbose = 1;

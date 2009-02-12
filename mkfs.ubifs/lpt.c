@@ -549,7 +549,7 @@ int create_lpt(struct ubifs_info *c)
 	c->nhead_lnum = lnum;
 	c->nhead_offs = ALIGN(len, c->min_io_size);
 
-	dbg_msg(1, "lpt_sz:         %d", c->lpt_sz);
+	dbg_msg(1, "lpt_sz:         %lld", c->lpt_sz);
 	dbg_msg(1, "space_bits:     %d", c->space_bits);
 	dbg_msg(1, "lpt_lnum_bits:  %d", c->lpt_lnum_bits);
 	dbg_msg(1, "lpt_offs_bits:  %d", c->lpt_offs_bits);
