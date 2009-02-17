@@ -255,8 +255,9 @@ int main (int argc,char *argv[])
 #warning "Check for smaller erase regions"
 
 	erase.start = 0;
-	erase.length = filestat.st_size & ~(mtd.erasesize - 1);
-	if (filestat.st_size % mtd.erasesize) erase.length += mtd.erasesize;
+	erase.length = (filestat.st_size + mtd.erasesize - 1) / mtd.erasesize;
+	erase.length *= mtd.erasesize;
+
 	if (flags & FLAG_VERBOSE)
 	{
 		/* if the user wants verbose output, erase 1 block at a time and show him/her what's going on */
