@@ -9,7 +9,7 @@ CPPFLAGS += -Iinclude -Isrc -I$(KERNELHDR)
 
 LIBS = libubi libmtd libubigen libiniparser libscan
 TARGETS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-          ubidetach ubinize ubiformat
+          ubidetach ubinize ubiformat ubirename
 
 vpath %.c src
 

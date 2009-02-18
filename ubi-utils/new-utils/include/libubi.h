@@ -264,6 +264,18 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req);
  */
 int ubi_rmvol(libubi_t desc, const char *node, int vol_id);
 
+
+/**
+ * ubi_rnvols - rename UBI volumes.
+ * @desc: UBI library descriptor
+ * @node: name of the UBI character device to remove a volume from
+ * @rnvol: description of volumes to rename
+ *
+ * This function removes volume @vol_id from UBI device @node and returns %0 in
+ * case of success and %-1 in case of failure.
+ */
+int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol);
+
 /**
  * ubi_rsvol - re-size UBI volume.
  * @desc: UBI library descriptor

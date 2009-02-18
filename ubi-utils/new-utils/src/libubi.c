@@ -947,6 +947,27 @@ out_close:
 	return ret;
 }
 
+int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol)
+{
+	int fd, ret;
+
+	fd = open(node, O_RDONLY);
+	if (fd == -1)
+		return -1;
+	ret = ioctl(fd, UBI_IOCRNVOL, rnvol);
+	if (ret == -1)
+		goto out_close;
+
+#ifdef UDEV_SETTLE_HACK
+	if (system("udevsettle") == -1)
+		return -1;
+#endif
+
+out_close:
+	close(fd);
+	return ret;
+}
+
 int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
 {
 	int fd, ret;
