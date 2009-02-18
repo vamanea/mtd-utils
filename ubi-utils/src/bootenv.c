@@ -30,7 +30,7 @@
 #include "hashmap.h"
 #include "error.h"
 
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 #include "crc32.h"
 
 #define ubi_unused __attribute__((unused))

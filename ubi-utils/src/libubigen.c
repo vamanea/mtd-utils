@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 #include <mtd_swab.h>
 
 #include "config.h"

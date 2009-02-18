@@ -33,7 +33,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 #include <libubigen.h>
 #include <libiniparser.h>
 #include "common.h"

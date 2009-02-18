@@ -52,7 +52,7 @@
 #include "bootenv.h"
 
 /* ubi-header.h and crc32.h needed for CRC checking */
-#include <mtd/ubi-header.h>	/* FIXME Is this ok here? */
+#include <mtd/ubi-media.h>	/* FIXME Is this ok here? */
 #include "crc32.h"
 
 #define ubi_unused __attribute__((unused))

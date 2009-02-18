@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <mtd/ubi-user.h>
 #include <ctype.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 
 #ifdef __cplusplus
 extern "C" {

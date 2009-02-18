@@ -31,7 +31,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 
 #include "ubigen.h"
 #include "config.h"

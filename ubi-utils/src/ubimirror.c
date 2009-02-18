@@ -29,7 +29,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 
 #include "config.h"
 #include "error.h"

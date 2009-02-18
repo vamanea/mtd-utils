@@ -48,7 +48,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 
 #define FN_EH_STAT      "analysis_blocks.txt"
 #define FN_EH_DATA	"analysis_ec_hdr.data"

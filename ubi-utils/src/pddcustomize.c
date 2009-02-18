@@ -38,7 +38,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 
 #include "config.h"
 #include "bootenv.h"

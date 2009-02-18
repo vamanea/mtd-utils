@@ -49,7 +49,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <mtd/ubi-header.h>
+#include <mtd/ubi-media.h>
 #include <mtd_swab.h>
 
 #include "crc32.h"
