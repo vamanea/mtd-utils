@@ -48,7 +48,7 @@ static void *lzo_compress_buf;
 static int jffs2_lzo_cmpr(unsigned char *data_in, unsigned char *cpage_out,
 			  uint32_t *sourcelen, uint32_t *dstlen, void *model)
 {
-	uint32_t compress_size;
+	lzo_uint compress_size;
 	int ret;
 
 	ret = lzo1x_999_compress(data_in, *sourcelen, lzo_compress_buf, &compress_size, lzo_mem);
@@ -69,7 +69,7 @@ static int jffs2_lzo_decompress(unsigned char *data_in, unsigned char *cpage_out
 				 uint32_t srclen, uint32_t destlen, void *model)
 {
 	int ret;
-	uint32_t dl;
+	lzo_uint dl;
 
 	ret = lzo1x_decompress_safe(data_in,srclen,cpage_out,&dl,NULL);
 
