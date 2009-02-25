@@ -15,6 +15,35 @@
 *~
 
 #
+# Our programs
+#
+/doc_loadbios
+/docfdisk
+/flash_erase
+/flash_eraseall
+/flash_info
+/flash_lock
+/flash_otp_dump
+/flash_otp_info
+/flash_unlock
+/flashcp
+/ftl_check
+/ftl_format
+/jffs2dump
+/mkfs.jffs2
+/mtd_debug
+/nanddump
+/nandtest
+/nandwrite
+/nftl_format
+/nftldump
+/recv_image
+/rfddump
+/rfdformat
+/serve_image
+/sumtool
+
+#
 # Top-level generic files
 #
 
@@ -24,3 +53,4 @@
 
 # stgit generated dirs
 patches-*
+*.patch
