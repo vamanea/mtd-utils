@@ -1,8 +1,18 @@
 CC := $(CROSS)gcc
 AR := $(CROSS)ar
 RANLIB := $(CROSS)ranlib
+
+# Stolen from Linux build system
+try-run = $(shell set -e; ($(1)) >/dev/null 2>&1 && echo "$(2)" || echo "$(3)")
+cc-option = $(call try-run, $(CC) $(1) -c -xc /dev/null -o /dev/null,$(1),$(2))
+
 CFLAGS ?= -O2 -g
-CFLAGS += -Wall -Wextra -Wwrite-strings -Wno-sign-compare -D_FILE_OFFSET_BITS=64
+WFLAGS := -Wall \
+	$(call cc-option,-Wextra) \
+	$(call cc-option,-Wwrite-strings) \
+	$(call cc-option,-Wno-sign-compare)
+CFLAGS += $(WFLAGS)
+CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 DESTDIR ?= /usr/local
 PREFIX=/usr
