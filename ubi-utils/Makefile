@@ -4,58 +4,56 @@
 
 KERNELHDR := ../include
 
-CFLAGS ?= -O2 -g -Werror
-CPPFLAGS += -I./inc -I./src -I$(KERNELHDR) \
-	-std=gnu99 -DPACKAGE_VERSION=\"1.0\"
+SUBDIRS = old-utils
 
-PERLPROGS = mkpfi ubicrc32.pl
+#CFLAGS += -Werror
+CPPFLAGS += -Iinclude -Isrc -I$(KERNELHDR)
 
-SUBDIRS = new-utils
+LIBS = libubi libmtd libubigen libiniparser libscan
+TARGETS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
+          ubidetach ubinize ubiformat ubirename
 
-TARGETS = pfiflash pddcustomize ubimirror bin2nand nand2bin ubigen \
-	mkbootenv unubi pfi2bin
-
-vpath   %.c ./src
+vpath %.c src
 
 include ../common.mk
 
-$(BUILDDIR)/pddcustomize: $(addprefix $(BUILDDIR)/,\
-	pddcustomize.o error.o libubimirror.o bootenv.o hashmap.o \
-	libubi.o crc32.o)
+# And the below is the rule to get final executable from its .o and common.o
+$(TARGETS): $(addprefix $(BUILDDIR)/,\
+	libubi.a common.o)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
 
-$(BUILDDIR)/pfiflash: $(addprefix $(BUILDDIR)/,\
-	pfiflash.o libpfiflash.o list.o reader.o error.o libubimirror.o \
-	bootenv.o hashmap.o pfi.o libubi.o crc32.o)
+$(BUILDDIR)/ubicrc32: $(addprefix $(BUILDDIR)/,\
+	ubicrc32.o crc32.o)
+#	$(CC) $(CFLAGS) -o $@ $^
 
-$(BUILDDIR)/ubimirror: $(addprefix $(BUILDDIR)/,\
-	ubimirror.o error.o libubimirror.o bootenv.o hashmap.o \
-	libubi.o crc32.o)
+$(BUILDDIR)/ubinize: $(addprefix $(BUILDDIR)/,\
+	ubinize.o common.o crc32.o libiniparser.a libubigen.a)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
-$(BUILDDIR)/nand2bin: $(addprefix $(BUILDDIR)/,\
-	nand2bin.o nandecc.o nandcorr.o)
+$(BUILDDIR)/ubiformat: $(addprefix $(BUILDDIR)/,\
+	ubiformat.o common.o crc32.o libmtd.a libscan.a libubi.a libubigen.a)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lscan -lubi -lubigen -o $@
 
-$(BUILDDIR)/bin2nand: $(addprefix $(BUILDDIR)/,\
-	bin2nand.o error.o nandecc.o)
+$(BUILDDIR)/libubi.a: $(BUILDDIR)/libubi.o
 
-$(BUILDDIR)/ubigen: $(addprefix $(BUILDDIR)/,\
-	ubigen.o libubigen.o crc32.o)
+$(BUILDDIR)/libmtd.a: $(BUILDDIR)/libmtd.o
 
-$(BUILDDIR)/mkbootenv: $(addprefix $(BUILDDIR)/,\
-	mkbootenv.o bootenv.o hashmap.o error.o crc32.o)
+$(BUILDDIR)/libubigen.a: $(BUILDDIR)/libubigen.o
 
-$(BUILDDIR)/unubi: $(addprefix $(BUILDDIR)/,\
-	unubi.o crc32.o unubi_analyze.o eb_chain.o)
+$(BUILDDIR)/libiniparser.a: $(addprefix $(BUILDDIR)/,\
+	libiniparser.o dictionary.o)
 
-$(BUILDDIR)/pfi2bin: $(addprefix $(BUILDDIR)/,\
-	pfi2bin.o peb.o error.o list.o crc32.o libubigen.o bootenv.o \
-	hashmap.o reader.o pfi.o)
+$(BUILDDIR)/libscan.a: $(addprefix $(BUILDDIR)/,\
+	libscan.o crc32.o)
+
+clean::
+	rm -f $(addsuffix .a, $(LIBS))
 
 install::
 	mkdir -p ${DESTDIR}/${SBINDIR}
 	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
-	(cd perl && install ${PERLPROGS} ${DESTDIR}/${SBINDIR}/)
 
 uninstall:
-	for file in ${TARGETS} ${PERLPROGS}; do \
+	for file in ${TARGETS}; do \
 		$(RM) ${DESTDIR}/${SBINDIR}/$$file; \
 	done
