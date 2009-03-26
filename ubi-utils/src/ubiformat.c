@@ -22,6 +22,13 @@
  * Author: Artem Bityutskiy
  */
 
+/*
+ * Maximum amount of consequtive eraseblocks which are considered as normal by
+ * this utility. Otherwise it is assume that something is wrong with the flash
+ * or the driver, and eraseblocks are stopped being marked as bad.
+ */
+#define MAX_CONSECUTIVE_BAD_BLOCKS 4
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -38,7 +45,7 @@
 #include "crc32.h"
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubiformat"
 
 /* The variables below are set by command line arguments */
@@ -354,6 +361,67 @@ static int read_all(int fd, void *buf, size_t len)
 	return 0;
 }
 
+/*
+ * Returns %-1 if consecutive bad blocks exceeds the
+ * MAX_CONSECUTIVE_BAD_BLOCKS and returns %0 otherwise.
+ */
+static int consecutive_bad_check(int eb)
+{
+	static int consecutive_bad_blocks = 1;
+	static int prev_bb = -1;
+
+	if (prev_bb == -1)
+		prev_bb = eb;
+
+	if (eb == prev_bb + 1)
+		consecutive_bad_blocks += 1;
+	else
+		consecutive_bad_blocks = 1;
+
+	prev_bb = eb;
+
+	if (consecutive_bad_blocks >= MAX_CONSECUTIVE_BAD_BLOCKS) {
+		if (!args.quiet)
+			printf("\n");
+		return errmsg("consecutive bad blocks exceed limit: %d, bad flash?",
+		              MAX_CONSECUTIVE_BAD_BLOCKS);
+	}
+
+	return 0;
+}
+
+static int mark_bad(const struct mtd_info *mtd, struct ubi_scan_info *si, int eb)
+{
+	int err;
+
+	if (!args.yes) {
+		normsg_cont("mark it as bad? Continue (yes/no) ");
+		if (!answer_is_yes())
+			return -1;
+	}
+
+	if (!args.quiet)
+		normsg_cont("marking block %d bad", eb);
+
+	if (!args.quiet)
+		printf("\n");
+
+	if (!mtd->allows_bb) {
+		if (!args.quiet)
+			printf("\n");
+		return errmsg("bad blocks not supported by this flash");
+	}
+
+	err = mtd_mark_bad(mtd, eb);
+	if (err)
+		return err;
+
+	si->bad_cnt += 1;
+	si->ec[eb] = EB_BAD;
+
+	return consecutive_bad_check(eb);
+}
+
 static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 {
 	int fd, img_ebs, eb, written_ebs = 0, divisor;
@@ -372,7 +440,7 @@ static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 	}
 
 	if (st_size % mtd->eb_size) {
-		return sys_errmsg("file \"%s\" (size %lld bytes) is not multiple of eraseblock size (%d bytes)",
+		return sys_errmsg("file \"%s\" (size %lld bytes) is not multiple of ""eraseblock size (%d bytes)",
 				  args.image, (long long)st_size, mtd->eb_size);
 		goto out_close;
 	}
@@ -402,8 +470,18 @@ static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 
 		err = mtd_erase(mtd, eb);
 		if (err) {
+			if (!args.quiet)
+				printf("\n");
 			sys_errmsg("failed to erase eraseblock %d", eb);
-			goto out_close;
+
+			if (errno != EIO)
+				goto out_close;
+
+			if (mark_bad(mtd, si, eb))
+				goto out_close;
+
+			divisor += 1;
+			continue;
 		}
 
 		err = read_all(fd, buf, mtd->eb_size);
@@ -442,8 +520,21 @@ static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 
 		err = mtd_write(mtd, eb, 0, buf, new_len);
 		if (err) {
+			if (!args.quiet)
+				printf("\n");
 			sys_errmsg("cannot write eraseblock %d", eb);
-			goto out_close;
+
+			if (errno != EIO)
+				goto out_close;
+
+
+			if (mark_bad(mtd, si, eb)) {
+				normsg("operation incomplete");
+				goto out_close;
+			}
+
+			divisor += 1;
+			continue;
 		}
 		if (++written_ebs >= img_ebs)
 			break;
@@ -460,7 +551,7 @@ out_close:
 }
 
 static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
-		  const struct ubi_scan_info *si, int start_eb, int novtbl)
+		  struct ubi_scan_info *si, int start_eb, int novtbl)
 {
 	int eb, err, write_size;
 	struct ubi_ec_hdr *hdr;
@@ -506,8 +597,14 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 		if (err) {
 			if (!args.quiet)
 				printf("\n");
+
 			sys_errmsg("failed to erase eraseblock %d", eb);
-			goto out_free;
+			if (errno != EIO)
+				goto out_free;
+
+			if (mark_bad(mtd, si, eb))
+				goto out_free;
+			continue;
 		}
 
 		if ((eb1 == -1 || eb2 == -1) && !novtbl) {
@@ -534,9 +631,20 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 				printf("\n");
 			sys_errmsg("cannot write EC header (%d bytes buffer) to eraseblock %d",
 				   write_size, eb);
-			if (args.subpage_size != mtd->min_io_size)
-				normsg("may be %d is incorrect?", args.subpage_size);
-			goto out_free;
+
+			if (errno != EIO) {
+				if (args.subpage_size != mtd->min_io_size)
+					normsg("may be %d is incorrect?",
+							args.subpage_size);
+				goto out_free;
+			}
+
+			if (mark_bad(mtd, si, eb)) {
+				normsg("operation incomplete");
+				goto out_free;
+			}
+			continue;
+
 		}
 	}
 

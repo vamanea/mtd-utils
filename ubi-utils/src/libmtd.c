@@ -191,13 +191,43 @@ int mtd_is_bad(const struct mtd_info *mtd, int eb)
 
 	seek = (loff_t)eb * mtd->eb_size;
 	ret = ioctl(mtd->fd, MEMGETBADBLOCK, &seek);
-	if (ret == -1) {
-		sys_errmsg("MEMGETBADBLOCK ioctl failed for "
-			   "eraseblock %d (mtd%d)", eb, mtd->num);
+	if (ret == -1)
+		return sys_errmsg("MEMGETBADBLOCK ioctl failed for "
+				  "eraseblock %d (mtd%d)", eb, mtd->num);
+	return 0;
+}
+
+/**
+ * mtd_mark_bad - marks the block as bad.
+ * @mtd: MTD device description object
+ * @eb: eraseblock to mark bad
+ *
+ * This function marks the eraseblock @eb as bad. Returns %0 if success
+ * %-1 if failure
+ */
+int mtd_mark_bad(const struct mtd_info *mtd, int eb)
+{
+	int ret;
+	loff_t seek;
+
+	if (!mtd->allows_bb) {
+		errno = EINVAL;
 		return -1;
 	}
 
-	return ret;
+	if (eb < 0 || eb >= mtd->eb_cnt) {
+		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
+		       eb, mtd->num, mtd->eb_cnt);
+		errno = EINVAL;
+		return -1;
+	}
+
+	seek = (loff_t)eb * mtd->eb_size;
+	ret = ioctl(mtd->fd, MEMSETBADBLOCK, &seek);
+	if (ret == -1)
+		return sys_errmsg("MEMSETBADBLOCK ioctl failed for "
+			          "eraseblock %d (mtd%d)", eb, mtd->num);
+	return 0;
 }
 
 /**
@@ -232,19 +262,15 @@ int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 
 	/* Seek to the beginning of the eraseblock */
 	seek = (off_t)eb * mtd->eb_size + offs;
-	if (lseek(mtd->fd, seek, SEEK_SET) != seek) {
-		sys_errmsg("cannot seek mtd%d to offset %llu",
-			   mtd->num, (unsigned long long)seek);
-		return -1;
-	}
+	if (lseek(mtd->fd, seek, SEEK_SET) != seek)
+		return sys_errmsg("cannot seek mtd%d to offset %llu",
+				  mtd->num, (unsigned long long)seek);
 
 	while (rd < len) {
 		ret = read(mtd->fd, buf, len);
-		if (ret < 0) {
-			sys_errmsg("cannot read %d bytes from mtd%d (eraseblock %d, offset %d)",
-				   len, mtd->num, eb, offs);
-			return -1;
-		}
+		if (ret < 0)
+			return sys_errmsg("cannot read %d bytes from mtd%d (eraseblock %d, offset %d)",
+					  len, mtd->num, eb, offs);
 		rd += ret;
 	}
 
@@ -297,18 +323,14 @@ int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 
 	/* Seek to the beginning of the eraseblock */
 	seek = (off_t)eb * mtd->eb_size + offs;
-	if (lseek(mtd->fd, seek, SEEK_SET) != seek) {
-		sys_errmsg("cannot seek mtd%d to offset %llu",
-			   mtd->num, (unsigned long long)seek);
-		return -1;
-	}
+	if (lseek(mtd->fd, seek, SEEK_SET) != seek)
+		return sys_errmsg("cannot seek mtd%d to offset %llu",
+				  mtd->num, (unsigned long long)seek);
 
 	ret = write(mtd->fd, buf, len);
-	if (ret != len) {
-		sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
-			   len, mtd->num, eb, offs);
-		return -1;
-	}
+	if (ret != len)
+		return sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
+				  len, mtd->num, eb, offs);
 
 	return 0;
 }

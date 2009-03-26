@@ -63,6 +63,7 @@ struct mtd_info
 int mtd_get_info(const char *node, struct mtd_info *mtd);
 int mtd_erase(const struct mtd_info *mtd, int eb);
 int mtd_is_bad(const struct mtd_info *mtd, int eb);
+int mtd_mark_bad(const struct mtd_info *mtd, int eb);
 int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len);
 int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len);
 
