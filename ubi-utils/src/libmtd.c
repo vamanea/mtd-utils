@@ -194,7 +194,7 @@ int mtd_is_bad(const struct mtd_info *mtd, int eb)
 	if (ret == -1)
 		return sys_errmsg("MEMGETBADBLOCK ioctl failed for "
 				  "eraseblock %d (mtd%d)", eb, mtd->num);
-	return 0;
+	return ret;
 }
 
 /**
