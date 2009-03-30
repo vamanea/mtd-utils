@@ -287,7 +287,7 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 {
 	int ret;
 	struct ubigen_vol_info vi;
-	char outbuf[ui->peb_size];
+	char *outbuf;
 	struct ubi_vid_hdr *vid_hdr;
 	off_t seek;
 
@@ -302,6 +302,11 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 	vi.name_len = strlen(UBI_LAYOUT_VOLUME_NAME);
 	vi.compat = UBI_LAYOUT_VOLUME_COMPAT;
 
+	outbuf = malloc(ui->peb_size);
+	if (!outbuf)
+		return sys_errmsg("failed to allocate %d bytes",
+				  ui->peb_size);
+
 	memset(outbuf, 0xFF, ui->data_offs);
 	vid_hdr = (struct ubi_vid_hdr *)(&outbuf[ui->vid_hdr_offs]);
 	memcpy(outbuf + ui->data_offs, vtbl, ui->vtbl_size);
@@ -309,22 +314,36 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 	       ui->peb_size - ui->data_offs - ui->vtbl_size);
 
 	seek = peb1 * ui->peb_size;
-	if (lseek(fd, seek, SEEK_SET) != seek)
-		return sys_errmsg("cannot seek output file");
+	if (lseek(fd, seek, SEEK_SET) != seek) {
+		sys_errmsg("cannot seek output file");
+		goto out_free;
+	}
+
 	ubigen_init_ec_hdr(ui, (struct ubi_ec_hdr *)outbuf, ec1);
 	init_vid_hdr(ui, &vi, vid_hdr, 0, NULL, 0);
 	ret = write(fd, outbuf, ui->peb_size);
-	if (ret != ui->peb_size)
-		return sys_errmsg("cannot write %d bytes", ui->peb_size);
+	if (ret != ui->peb_size) {
+		sys_errmsg("cannot write %d bytes", ui->peb_size);
+		goto out_free;
+	}
 
 	seek = peb2 * ui->peb_size;
-	if (lseek(fd, seek, SEEK_SET) != seek)
-		return sys_errmsg("cannot seek output file");
+	if (lseek(fd, seek, SEEK_SET) != seek) {
+		sys_errmsg("cannot seek output file");
+		goto out_free;
+	}
 	ubigen_init_ec_hdr(ui, (struct ubi_ec_hdr *)outbuf, ec2);
 	init_vid_hdr(ui, &vi, vid_hdr, 1, NULL, 0);
 	ret = write(fd, outbuf, ui->peb_size);
-	if (ret != ui->peb_size)
-		return sys_errmsg("cannot write %d bytes", ui->peb_size);
+	if (ret != ui->peb_size) {
+		sys_errmsg("cannot write %d bytes", ui->peb_size);
+		goto out_free;
+	}
 
+	free(outbuf);
 	return 0;
+
+out_free:
+	free(outbuf);
+	return -1;
 }
