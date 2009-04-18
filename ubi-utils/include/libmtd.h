@@ -41,7 +41,6 @@ extern "C" {
  * @subpage_size: sub-page size (not set by 'mtd_get_info()'!!!)
  * @rdonly: non-zero if the device is read-only
  * @allows_bb: non-zero if the MTD device may have bad eraseblocks
- * @fd: descriptor of the opened MTD character device node
  */
 struct mtd_info
 {
@@ -57,7 +56,6 @@ struct mtd_info
 	int subpage_size;
 	unsigned int rdonly:1;
 	unsigned int allows_bb:1;
-	int fd;
 };
 
 /**
@@ -74,36 +72,40 @@ int mtd_get_info(const char *node, struct mtd_info *mtd);
 /**
  * mtd_erase - erase an eraseblock.
  * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
  * @eb: eraseblock to erase
  *
- * This function erases the eraseblock and returns %0 in case of success and
- * %-1 in case of failure.
+ * This function erases eraseblock @eb of MTD device decribed by @fd. Returns
+ * %0 in case of success and %-1 in case of failure.
  */
-int mtd_erase(const struct mtd_info *mtd, int eb);
+int mtd_erase(const struct mtd_info *mtd, int fd, int eb);
 
 /**
  * mtd_is_bad - check if eraseblock is bad.
  * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
  * @eb: eraseblock to check
  *
  * This function checks if eraseblock @eb is bad. Returns %0 if not, %1 if yes,
  * and %-1 in case of failure.
  */
-int mtd_is_bad(const struct mtd_info *mtd, int eb);
+int mtd_is_bad(const struct mtd_info *mtd, int fd, int eb);
 
 /**
  * mtd_mark_bad - marks the block as bad.
  * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
  * @eb: eraseblock to mark bad
  *
  * This function marks the eraseblock @eb as bad. Returns %0 if success
  * %-1 if failure
  */
-int mtd_mark_bad(const struct mtd_info *mtd, int eb);
+int mtd_mark_bad(const struct mtd_info *mtd, int fd, int eb);
 
 /**
  * mtd_read - read data from an MTD device.
  * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
  * @eb: eraseblock to read from
  * @offs: offset withing the eraseblock to read from
  * @buf: buffer to read data to
@@ -113,11 +115,13 @@ int mtd_mark_bad(const struct mtd_info *mtd, int eb);
  * of the MTD device defined by @mtd and stores the read data at buffer @buf.
  * Returns %0 in case of success and %-1 in case of failure.
  */
-int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len);
+int mtd_read(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
+	     int len);
 
 /**
  * mtd_write - write data to an MTD device.
  * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
  * @eb: eraseblock to write to
  * @offs: offset withing the eraseblock to write to
  * @buf: buffer to write
@@ -127,7 +131,8 @@ int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len);
  * of the MTD device defined by @mtd. Returns %0 in case of success and %-1 in
  * case of failure.
  */
-int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len);
+int mtd_write(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
+	      int len);
 
 #ifdef __cplusplus
 }

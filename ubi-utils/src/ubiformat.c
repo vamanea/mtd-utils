@@ -62,6 +62,7 @@ struct args {
 	long long ec;
 	const char *image;
 	const char *node;
+	int node_fd;
 };
 
 static struct args args =
@@ -412,7 +413,7 @@ static int mark_bad(const struct mtd_info *mtd, struct ubi_scan_info *si, int eb
 		return errmsg("bad blocks not supported by this flash");
 	}
 
-	err = mtd_mark_bad(mtd, eb);
+	err = mtd_mark_bad(mtd, args.node_fd, eb);
 	if (err)
 		return err;
 
@@ -468,7 +469,7 @@ static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 			fflush(stdout);
 		}
 
-		err = mtd_erase(mtd, eb);
+		err = mtd_erase(mtd, args.node_fd, eb);
 		if (err) {
 			if (!args.quiet)
 				printf("\n");
@@ -518,7 +519,7 @@ static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
 
 		new_len = drop_ffs(mtd, buf, mtd->eb_size);
 
-		err = mtd_write(mtd, eb, 0, buf, new_len);
+		err = mtd_write(mtd, args.node_fd, eb, 0, buf, new_len);
 		if (err) {
 			if (!args.quiet)
 				printf("\n");
@@ -565,7 +566,6 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 	hdr = malloc(write_size);
 	if (!hdr)
 		return sys_errmsg("cannot allocate %d bytes of memory", write_size);
-
 	memset(hdr, 0xFF, write_size);
 
 	for (eb = start_eb; eb < mtd->eb_cnt; eb++) {
@@ -593,7 +593,7 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 			fflush(stdout);
 		}
 
-		err = mtd_erase(mtd, eb);
+		err = mtd_erase(mtd, args.node_fd, eb);
 		if (err) {
 			if (!args.quiet)
 				printf("\n");
@@ -625,7 +625,7 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 			fflush(stdout);
 		}
 
-		err = mtd_write(mtd, eb, 0, hdr, write_size);
+		err = mtd_write(mtd, args.node_fd, eb, 0, hdr, write_size);
 		if (err) {
 			if (!args.quiet && !args.verbose)
 				printf("\n");
@@ -662,7 +662,8 @@ static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
 		if (!vtbl)
 			goto out_free;
 
-		err = ubigen_write_layout_vol(ui, eb1, eb2, ec1,  ec2, vtbl, mtd->fd);
+		err = ubigen_write_layout_vol(ui, eb1, eb2, ec1,  ec2, vtbl,
+					      args.node_fd);
 		free(vtbl);
 		if (err) {
 			errmsg("cannot write layout volume");
@@ -694,17 +695,21 @@ int main(int argc, char * const argv[])
 	if (err)
 		return errmsg("cannot get information about \"%s\"", args.node);
 
+	args.node_fd = open(args.node, O_RDWR);
+	if (args.node_fd == -1)
+		return sys_errmsg("cannot open \"%s\"", args.node);
+
 	if (args.subpage_size == 0)
 		args.subpage_size = mtd.min_io_size;
 	else {
 		if (args.subpage_size > mtd.min_io_size) {
 			errmsg("sub-page cannot be larger than min. I/O unit");
-			goto out_close;
+			goto out;
 		}
 
 		if (mtd.min_io_size % args.subpage_size) {
 			errmsg("min. I/O unit size should be multiple of sub-page size");
-			goto out_close;
+			goto out;
 		}
 	}
 
@@ -712,11 +717,11 @@ int main(int argc, char * const argv[])
 	if (args.vid_hdr_offs != 0) {
 		if (args.vid_hdr_offs % 8) {
 			errmsg("VID header offset has to be multiple of min. I/O unit size");
-			goto out_close;
+			goto out;
 		}
 		if (args.vid_hdr_offs + (int)UBI_VID_HDR_SIZE > mtd.eb_size) {
 			errmsg("bad VID header offset");
-			goto out_close;
+			goto out;
 		}
 	}
 
@@ -729,7 +734,7 @@ int main(int argc, char * const argv[])
 
 	if (mtd.rdonly) {
 		errmsg("mtd%d (%s) is a read-only device", mtd.num, args.node);
-		goto out_close;
+		goto out;
 	}
 
 	/* Make sure this MTD device is not attached to UBI */
@@ -742,7 +747,7 @@ int main(int argc, char * const argv[])
 		if (!err) {
 			errmsg("please, first detach mtd%d (%s) from ubi%d",
 			       mtd.num, args.node, ubi_dev_num);
-			goto out_close;
+			goto out;
 		}
 	}
 
@@ -760,10 +765,10 @@ int main(int argc, char * const argv[])
 		verbose = 2;
 	else
 		verbose = 1;
-	err = ubi_scan(&mtd, &si, verbose);
+	err = ubi_scan(&mtd, args.node_fd, &si, verbose);
 	if (err) {
 		errmsg("failed to scan mtd%d (%s)", mtd.num, args.node);
-		goto out_close;
+		goto out;
 	}
 
 	if (si->good_cnt == 0) {
@@ -877,12 +882,12 @@ int main(int argc, char * const argv[])
 	}
 
 	ubi_scan_free(si);
-	close(mtd.fd);
+	close(args.node_fd);
 	return 0;
 
 out_free:
 	ubi_scan_free(si);
-out_close:
-	close(mtd.fd);
+out:
+	close(args.node_fd);
 	return -1;
 }

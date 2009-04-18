@@ -37,7 +37,7 @@ int mtd_get_info(const char *node, struct mtd_info *mtd)
 {
 	struct stat st;
 	struct mtd_info_user ui;
-	int ret;
+	int fd, ret;
 	loff_t offs = 0;
 
 	if (stat(node, &st))
@@ -60,16 +60,16 @@ int mtd_get_info(const char *node, struct mtd_info *mtd)
 	mtd->num = mtd->minor / 2;
 	mtd->rdonly = mtd->minor & 1;
 
-	mtd->fd = open(node, O_RDWR);
-	if (mtd->fd == -1)
+	fd = open(node, O_RDWR);
+	if (fd == -1)
 		return sys_errmsg("cannot open \"%s\"", node);
 
-	if (ioctl(mtd->fd, MEMGETINFO, &ui)) {
+	if (ioctl(fd, MEMGETINFO, &ui)) {
 		sys_errmsg("MEMGETINFO ioctl request failed");
 		goto out_close;
 	}
 
-	ret = ioctl(mtd->fd, MEMGETBADBLOCK, &offs);
+	ret = ioctl(fd, MEMGETBADBLOCK, &offs);
 	if (ret == -1) {
 		if (errno != EOPNOTSUPP) {
 			sys_errmsg("MEMGETBADBLOCK ioctl failed");
@@ -133,23 +133,24 @@ int mtd_get_info(const char *node, struct mtd_info *mtd)
 	if (!(ui.flags & MTD_WRITEABLE))
 		mtd->rdonly = 1;
 
+	close(fd);
 	return 0;
 
 out_close:
-	close(mtd->fd);
+	close(fd);
 	return -1;
 }
 
-int mtd_erase(const struct mtd_info *mtd, int eb)
+int mtd_erase(const struct mtd_info *mtd, int fd, int eb)
 {
 	struct erase_info_user ei;
 
 	ei.start = eb * mtd->eb_size;;
 	ei.length = mtd->eb_size;
-	return ioctl(mtd->fd, MEMERASE, &ei);
+	return ioctl(fd, MEMERASE, &ei);
 }
 
-int mtd_is_bad(const struct mtd_info *mtd, int eb)
+int mtd_is_bad(const struct mtd_info *mtd, int fd, int eb)
 {
 	int ret;
 	loff_t seek;
@@ -165,14 +166,14 @@ int mtd_is_bad(const struct mtd_info *mtd, int eb)
 		return 0;
 
 	seek = (loff_t)eb * mtd->eb_size;
-	ret = ioctl(mtd->fd, MEMGETBADBLOCK, &seek);
+	ret = ioctl(fd, MEMGETBADBLOCK, &seek);
 	if (ret == -1)
 		return sys_errmsg("MEMGETBADBLOCK ioctl failed for "
 				  "eraseblock %d (mtd%d)", eb, mtd->num);
 	return ret;
 }
 
-int mtd_mark_bad(const struct mtd_info *mtd, int eb)
+int mtd_mark_bad(const struct mtd_info *mtd, int fd, int eb)
 {
 	int ret;
 	loff_t seek;
@@ -190,14 +191,15 @@ int mtd_mark_bad(const struct mtd_info *mtd, int eb)
 	}
 
 	seek = (loff_t)eb * mtd->eb_size;
-	ret = ioctl(mtd->fd, MEMSETBADBLOCK, &seek);
+	ret = ioctl(fd, MEMSETBADBLOCK, &seek);
 	if (ret == -1)
 		return sys_errmsg("MEMSETBADBLOCK ioctl failed for "
 			          "eraseblock %d (mtd%d)", eb, mtd->num);
 	return 0;
 }
 
-int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
+int mtd_read(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
+	     int len)
 {
 	int ret, rd = 0;
 	off_t seek;
@@ -217,12 +219,12 @@ int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 
 	/* Seek to the beginning of the eraseblock */
 	seek = (off_t)eb * mtd->eb_size + offs;
-	if (lseek(mtd->fd, seek, SEEK_SET) != seek)
+	if (lseek(fd, seek, SEEK_SET) != seek)
 		return sys_errmsg("cannot seek mtd%d to offset %llu",
 				  mtd->num, (unsigned long long)seek);
 
 	while (rd < len) {
-		ret = read(mtd->fd, buf, len);
+		ret = read(fd, buf, len);
 		if (ret < 0)
 			return sys_errmsg("cannot read %d bytes from mtd%d (eraseblock %d, offset %d)",
 					  len, mtd->num, eb, offs);
@@ -232,7 +234,8 @@ int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 	return 0;
 }
 
-int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
+int mtd_write(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
+	      int len)
 {
 	int ret;
 	off_t seek;
@@ -266,11 +269,11 @@ int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 
 	/* Seek to the beginning of the eraseblock */
 	seek = (off_t)eb * mtd->eb_size + offs;
-	if (lseek(mtd->fd, seek, SEEK_SET) != seek)
+	if (lseek(fd, seek, SEEK_SET) != seek)
 		return sys_errmsg("cannot seek mtd%d to offset %llu",
 				  mtd->num, (unsigned long long)seek);
 
-	ret = write(mtd->fd, buf, len);
+	ret = write(fd, buf, len);
 	if (ret != len)
 		return sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
 				  len, mtd->num, eb, offs);

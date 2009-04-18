@@ -48,7 +48,7 @@ static int all_ff(const void *buf, int len)
 	return 1;
 }
 
-int ubi_scan(struct mtd_info *mtd, struct ubi_scan_info **info, int verbose)
+int ubi_scan(struct mtd_info *mtd, int fd, struct ubi_scan_info **info, int verbose)
 {
 	int eb, v = (verbose == 2), pr = (verbose == 1);
 	struct ubi_scan_info *si;
@@ -85,7 +85,7 @@ int ubi_scan(struct mtd_info *mtd, struct ubi_scan_info **info, int verbose)
 			fflush(stdout);
 		}
 
-		ret = mtd_is_bad(mtd, eb);
+		ret = mtd_is_bad(mtd, fd, eb);
 		if (ret == -1)
 			goto out_ec;
 		if (ret) {
@@ -96,7 +96,7 @@ int ubi_scan(struct mtd_info *mtd, struct ubi_scan_info **info, int verbose)
 			continue;
 		}
 
-		ret = mtd_read(mtd, eb, 0, &hdr, sizeof(struct ubi_ec_hdr));;
+		ret = mtd_read(mtd, fd, eb, 0, &hdr, sizeof(struct ubi_ec_hdr));
 		if (ret < 0)
 			goto out_ec;
 
