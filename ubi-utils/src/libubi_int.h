@@ -23,9 +23,6 @@
 #ifndef __LIBUBI_INT_H__
 #define __LIBUBI_INT_H__
 
-#include <string.h>
-#include <errno.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
