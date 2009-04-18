@@ -33,15 +33,6 @@
 #define PROGRAM_NAME "libmtd"
 #define MTD_DEV_MAJOR 90
 
-/**
- * mtd_get_info - get information about an MTD device.
- * @node: name of the MTD device node
- * @mtd: the MTD device information is returned here
- *
- * This function gets information about MTD device defined by the @node device
- * node file and saves this information in the @mtd object. Returns %0 in case
- * of success and %-1 in case of failure.
- */
 int mtd_get_info(const char *node, struct mtd_info *mtd)
 {
 	struct stat st;
@@ -149,14 +140,6 @@ out_close:
 	return -1;
 }
 
-/**
- * mtd_erase - erase an eraseblock.
- * @mtd: MTD device description object
- * @eb: eraseblock to erase
- *
- * This function erases the eraseblock and returns %0 in case of success and
- * %-1 in case of failure.
- */
 int mtd_erase(const struct mtd_info *mtd, int eb)
 {
 	struct erase_info_user ei;
@@ -166,14 +149,6 @@ int mtd_erase(const struct mtd_info *mtd, int eb)
 	return ioctl(mtd->fd, MEMERASE, &ei);
 }
 
-/**
- * mtd_is_bad - check if eraseblock is bad.
- * @mtd: MTD device description object
- * @eb: eraseblock to check
- *
- * This function checks if eraseblock @eb is bad. Returns %0 if not, %1 if yes,
- * and %-1 in case of failure.
- */
 int mtd_is_bad(const struct mtd_info *mtd, int eb)
 {
 	int ret;
@@ -197,14 +172,6 @@ int mtd_is_bad(const struct mtd_info *mtd, int eb)
 	return ret;
 }
 
-/**
- * mtd_mark_bad - marks the block as bad.
- * @mtd: MTD device description object
- * @eb: eraseblock to mark bad
- *
- * This function marks the eraseblock @eb as bad. Returns %0 if success
- * %-1 if failure
- */
 int mtd_mark_bad(const struct mtd_info *mtd, int eb)
 {
 	int ret;
@@ -230,18 +197,6 @@ int mtd_mark_bad(const struct mtd_info *mtd, int eb)
 	return 0;
 }
 
-/**
- * mtd_read - read data from an MTD device.
- * @mtd: MTD device description object
- * @eb: eraseblock to read from
- * @offs: offset withing the eraseblock to read from
- * @buf: buffer to read data to
- * @len: how many bytes to read
- *
- * This function reads @len bytes of data from eraseblock @eb and offset @offs
- * of the MTD device defined by @mtd and stores the read data at buffer @buf.
- * Returns %0 in case of success and %-1 in case of failure.
- */
 int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 {
 	int ret, rd = 0;
@@ -277,18 +232,6 @@ int mtd_read(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 	return 0;
 }
 
-/**
- * mtd_write - write data to an MTD device.
- * @mtd: MTD device description object
- * @eb: eraseblock to write to
- * @offs: offset withing the eraseblock to write to
- * @buf: buffer to write
- * @len: how many bytes to write
- *
- * This function writes @len bytes of data to eraseblock @eb and offset @offs
- * of the MTD device defined by @mtd. Returns %0 in case of success and %-1 in
- * case of failure.
- */
 int mtd_write(const struct mtd_info *mtd, int eb, int offs, void *buf, int len)
 {
 	int ret;
