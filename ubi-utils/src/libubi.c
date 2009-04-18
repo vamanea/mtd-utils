@@ -516,7 +516,6 @@ libubi_t libubi_open(int required)
 	if (!lib)
 		return NULL;
 
-	/* TODO: this must be discovered instead */
 	lib->sysfs = strdup("/sys");
 	if (!lib->sysfs)
 		goto out_error;
