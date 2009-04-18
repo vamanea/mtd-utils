@@ -852,19 +852,19 @@ int main(int argc, char * const argv[])
 		 */
 		if (!args.yes || !args.quiet) {
 			warnmsg("VID header and data offsets on flash are %d and %d, "
-				"which is different to calculated offsets %d and %d",
+				"which is different to requested offsets %d and %d",
 				si->vid_hdr_offs, si->data_offs, ui.vid_hdr_offs,
 				ui.data_offs);
 			normsg_cont("use new offsets %d and %d? (yes/no)  ",
-				    si->vid_hdr_offs, si->data_offs);
+				    ui.vid_hdr_offs, ui.data_offs);
 		}
 		if (args.yes || answer_is_yes()) {
 			if (args.yes && !args.quiet)
 				printf("yes\n");
-		} else {
-			ui.vid_hdr_offs = si->vid_hdr_offs;
-			ui.data_offs = si->data_offs;
-		}
+		} else
+			ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, 0,
+					 si->vid_hdr_offs, args.ubi_ver);
+		normsg("use offsets %d and %d",  ui.vid_hdr_offs, ui.data_offs);
 	}
 
 	if (args.image) {
