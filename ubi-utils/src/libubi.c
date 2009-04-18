@@ -516,11 +516,7 @@ libubi_t libubi_open(int required)
 	if (!lib)
 		return NULL;
 
-	lib->sysfs = strdup("/sys");
-	if (!lib->sysfs)
-		goto out_error;
-
-	lib->sysfs_ctrl = mkpath(lib->sysfs, SYSFS_CTRL);
+	lib->sysfs_ctrl = mkpath("/sys", SYSFS_CTRL);
 	if (!lib->sysfs_ctrl)
 		goto out_error;
 
@@ -528,7 +524,7 @@ libubi_t libubi_open(int required)
 	if (!lib->ctrl_dev)
 		goto out_error;
 
-	lib->sysfs_ubi = mkpath(lib->sysfs, SYSFS_UBI);
+	lib->sysfs_ubi = mkpath("/sys", SYSFS_UBI);
 	if (!lib->sysfs_ubi)
 		goto out_error;
 
@@ -673,7 +669,6 @@ void libubi_close(libubi_t desc)
 	free(lib->sysfs_ubi);
 	free(lib->ctrl_dev);
 	free(lib->sysfs_ctrl);
-	free(lib->sysfs);
 	free(lib);
 }
 
