@@ -39,8 +39,8 @@ extern "C" {
 typedef void * libubi_t;
 
 /**
- * struct ubi_attach_request - MTD device attachement request.
- * @dev_num: number to assigne to the newly created UBI device
+ * struct ubi_attach_request - MTD device attachment request.
+ * @dev_num: number to assign to the newly created UBI device
  *           (%UBI_DEV_NUM_AUTO should be used to automatically assign the
  *           number)
  * @mtd_num: MTD device number to attach
@@ -140,7 +140,7 @@ struct ubi_dev_info
  * @dev_major: major number of corresponding UBI device character device
  * @dev_minor: minor number of corresponding UBI device character device
  * @type: volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
- * @alignment: alignemnt of this volume
+ * @alignment: alignment of this volume
  * @data_bytes: how many data bytes are stored on this volume (equivalent to
  *              @rsvd_bytes for dynamic volumes)
  * @rsvd_bytes: how many bytes are reserved for this volume
@@ -180,7 +180,7 @@ libubi_t libubi_open(int required);
 
 /**
  * libubi_close - close UBI library.
- * @desc UBI library descriptor
+ * @desc: UBI library descriptor
  */
 void libubi_close(libubi_t desc);
 
@@ -364,26 +364,26 @@ int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
 /**
  * ubi_update_start - start UBI volume update.
  * @desc: UBI library descriptor
- * @fd: volume character devie file descriptor
+ * @fd: volume character device file descriptor
  * @bytes: how many bytes will be written to the volume
  *
  * This function initiates UBI volume update and returns %0 in case of success
  * and %-1 in case of error. The caller is assumed to write @bytes data to the
- * volume @fd afterwards.
+ * volume @fd afterward.
  */
 int ubi_update_start(libubi_t desc, int fd, long long bytes);
 
 /**
  * ubi_leb_change_start - start atomic LEB change.
  * @desc: UBI library descriptor
- * @fd: volume character devie file descriptor
+ * @fd: volume character device file descriptor
  * @lnum: LEB number to change
  * @bytes: how many bytes of new data will be written to the LEB
  * @dtype: data type (%UBI_LONGTERM, %UBI_SHORTTERM, %UBI_UNKNOWN)
  *
  * This function initiates atomic LEB change operation and returns %0 in case
  * of success and %-1 in case of error. he caller is assumed to write @bytes
- * data to the volume @fd afterwards.
+ * data to the volume @fd afterward.
  */
 int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype);
 
