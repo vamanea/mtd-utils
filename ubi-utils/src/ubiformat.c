@@ -45,7 +45,7 @@
 #include "crc32.h"
 #include "common.h"
 
-#define PROGRAM_VERSION "1.1"
+#define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubiformat"
 
 /* The variables below are set by command line arguments */

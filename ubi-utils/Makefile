@@ -6,7 +6,7 @@ KERNELHDR := ../include
 
 SUBDIRS = old-utils
 
-#CFLAGS += -Werror
+CFLAGS += -g -O0
 CPPFLAGS += -Iinclude -Isrc -I$(KERNELHDR)
 
 LIBS = libubi libmtd libubigen libiniparser libscan
