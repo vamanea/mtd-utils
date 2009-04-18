@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <limits.h>
-#include "libubi.h"
+#include <libubi.h>
 #include "libubi_int.h"
 #include "common.h"
 
