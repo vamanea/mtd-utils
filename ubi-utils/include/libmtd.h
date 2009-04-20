@@ -38,7 +38,7 @@ extern "C" {
  * @eb_cnt: count of eraseblocks
  * @eb_size: eraseblock size
  * @min_io_size: minimum input/output unit size
- * @subpage_size: sub-page size (not set by 'mtd_get_info()'!!!)
+ * @subpage_size: sub-page size
  * @rdonly: non-zero if the device is read-only
  * @allows_bb: non-zero if the MTD device may have bad eraseblocks
  */
@@ -59,7 +59,7 @@ struct mtd_info
 };
 
 /**
- * mtd_get_info - get information about an MTD device.
+ * mtd_get_dev_info - get information about an MTD device.
  * @node: name of the MTD device node
  * @mtd: the MTD device information is returned here
  *
@@ -67,7 +67,7 @@ struct mtd_info
  * node file and saves this information in the @mtd object. Returns %0 in case
  * of success and %-1 in case of failure.
  */
-int mtd_get_info(const char *node, struct mtd_info *mtd);
+int mtd_get_dev_info(const char *node, struct mtd_info *mtd);
 
 /**
  * mtd_erase - erase an eraseblock.

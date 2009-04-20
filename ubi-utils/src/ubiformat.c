@@ -691,7 +691,7 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	err = mtd_get_info(args.node, &mtd);
+	err = mtd_get_dev_info(args.node, &mtd);
 	if (err)
 		return errmsg("cannot get information about \"%s\"", args.node);
 
@@ -726,7 +726,7 @@ int main(int argc, char * const argv[])
 	}
 
 	/*
-	 * Because of MTD interface limitations 'mtd_get_info()' cannot get
+	 * Because of MTD interface limitations 'mtd_get_dev_info()' cannot get
 	 * sub-page so we force the user to pass it via the command line. Let's
 	 * hope the user passed us something sane.
 	 */

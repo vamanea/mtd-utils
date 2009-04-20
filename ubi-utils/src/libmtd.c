@@ -33,7 +33,7 @@
 #define PROGRAM_NAME "libmtd"
 #define MTD_DEV_MAJOR 90
 
-int mtd_get_info(const char *node, struct mtd_info *mtd)
+int mtd_get_dev_info(const char *node, struct mtd_info *mtd)
 {
 	struct stat st;
 	struct mtd_info_user ui;
