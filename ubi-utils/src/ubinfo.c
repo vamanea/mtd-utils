@@ -21,8 +21,8 @@
  * Author: Artem Bityutskiy
  */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
@@ -363,9 +363,6 @@ int main(int argc, char * const argv[])
 	err = parse_opt(argc, argv);
 	if (err)
 		return -1;
-
-	if (!args.node && args.devn != -1)
-		return errmsg("specify either device number or node file (use -h for help)");
 
 	libubi = libubi_open(1);
 	if (libubi == NULL)
