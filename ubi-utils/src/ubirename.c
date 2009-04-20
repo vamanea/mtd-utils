@@ -96,7 +96,7 @@ int main(int argc, char * const argv[])
 	if (!libubi)
 		return sys_errmsg("cannot open libubi");
 
-	err = ubi_node_type(libubi, node);
+	err = ubi_probe_node(libubi, node);
 	if (err == 2) {
 		errmsg("\"%s\" is an UBI volume node, not an UBI device node",
 		       node);

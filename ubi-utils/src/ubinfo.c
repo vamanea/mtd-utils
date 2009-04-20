@@ -140,7 +140,7 @@ static int translate_dev(libubi_t libubi, const char *node)
 {
 	int err;
 
-	err = ubi_node_type(libubi, node);
+	err = ubi_probe_node(libubi, node);
 	if (err == -1) {
 		if (errno)
 			return errmsg("unrecognized device node \"%s\"", node);

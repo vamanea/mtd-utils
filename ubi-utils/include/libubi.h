@@ -289,7 +289,7 @@ int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol);
 int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes);
 
 /**
- * ubi_node_type - test UBI node type.
+ * ubi_probe_node - test UBI node.
  * @desc: UBI library descriptor
  * @node: the node to test
  *
@@ -298,7 +298,7 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes);
  * this is not an UBI node or if an error occurred (the latter is indicated by
  * a non-zero errno).
  */
-int ubi_node_type(libubi_t desc, const char *node);
+int ubi_probe_node(libubi_t desc, const char *node);
 
 /**
  * ubi_get_dev_info - get UBI device information.

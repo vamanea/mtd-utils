@@ -322,7 +322,7 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
-	err = ubi_node_type(libubi, args.node);
+	err = ubi_probe_node(libubi, args.node);
 	if (err == 1) {
 		errmsg("\"%s\" is an UBI device node, not an UBI volume node",
 		       args.node);

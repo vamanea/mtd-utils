@@ -740,7 +740,7 @@ out_close:
 	return ret;
 }
 
-int ubi_node_type(libubi_t desc, const char *node)
+int ubi_probe_node(libubi_t desc, const char *node)
 {
 	struct stat st;
 	struct ubi_info info;
