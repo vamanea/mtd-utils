@@ -33,7 +33,7 @@
 #define PROGRAM_NAME "libmtd"
 #define MTD_DEV_MAJOR 90
 
-int mtd_get_dev_info(const char *node, struct mtd_info *mtd)
+int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 {
 	struct stat st;
 	struct mtd_info_user ui;
@@ -141,7 +141,7 @@ out_close:
 	return -1;
 }
 
-int mtd_erase(const struct mtd_info *mtd, int fd, int eb)
+int mtd_erase(const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	struct erase_info_user ei;
 
@@ -150,7 +150,7 @@ int mtd_erase(const struct mtd_info *mtd, int fd, int eb)
 	return ioctl(fd, MEMERASE, &ei);
 }
 
-int mtd_is_bad(const struct mtd_info *mtd, int fd, int eb)
+int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	int ret;
 	loff_t seek;
@@ -173,7 +173,7 @@ int mtd_is_bad(const struct mtd_info *mtd, int fd, int eb)
 	return ret;
 }
 
-int mtd_mark_bad(const struct mtd_info *mtd, int fd, int eb)
+int mtd_mark_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	int ret;
 	loff_t seek;
@@ -198,8 +198,8 @@ int mtd_mark_bad(const struct mtd_info *mtd, int fd, int eb)
 	return 0;
 }
 
-int mtd_read(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
-	     int len)
+int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
+	     void *buf, int len)
 {
 	int ret, rd = 0;
 	off_t seek;
@@ -234,8 +234,8 @@ int mtd_read(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
 	return 0;
 }
 
-int mtd_write(const struct mtd_info *mtd, int fd, int eb, int offs, void *buf,
-	      int len)
+int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
+	      void *buf, int len)
 {
 	int ret;
 	off_t seek;

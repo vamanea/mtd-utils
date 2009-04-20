@@ -260,7 +260,7 @@ static int answer_is_yes(void)
 	}
 }
 
-static void print_bad_eraseblocks(const struct mtd_info *mtd,
+static void print_bad_eraseblocks(const struct mtd_dev_info *mtd,
 				  const struct ubi_scan_info *si)
 {
 	int first = 1, eb;
@@ -302,7 +302,7 @@ static int change_ec(struct ubi_ec_hdr *hdr, long long ec)
 	return 0;
 }
 
-static int drop_ffs(const struct mtd_info *mtd, const void *buf, int len)
+static int drop_ffs(const struct mtd_dev_info *mtd, const void *buf, int len)
 {
 	int i;
 
@@ -391,7 +391,7 @@ static int consecutive_bad_check(int eb)
 	return 0;
 }
 
-static int mark_bad(const struct mtd_info *mtd, struct ubi_scan_info *si, int eb)
+static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, int eb)
 {
 	int err;
 
@@ -423,7 +423,7 @@ static int mark_bad(const struct mtd_info *mtd, struct ubi_scan_info *si, int eb
 	return consecutive_bad_check(eb);
 }
 
-static int flash_image(const struct mtd_info *mtd, struct ubi_scan_info *si)
+static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 {
 	int fd, img_ebs, eb, written_ebs = 0, divisor;
 	off_t st_size;
@@ -551,7 +551,7 @@ out_close:
 	return -1;
 }
 
-static int format(const struct mtd_info *mtd, const struct ubigen_info *ui,
+static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
 		  struct ubi_scan_info *si, int start_eb, int novtbl)
 {
 	int eb, err, write_size;
@@ -682,7 +682,7 @@ out_free:
 int main(int argc, char * const argv[])
 {
 	int err, verbose;
-	struct mtd_info mtd;
+	struct mtd_dev_info mtd;
 	libubi_t libubi;
 	struct ubigen_info ui;
 	struct ubi_scan_info *si;

@@ -48,7 +48,8 @@ static int all_ff(const void *buf, int len)
 	return 1;
 }
 
-int ubi_scan(struct mtd_info *mtd, int fd, struct ubi_scan_info **info, int verbose)
+int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
+	     int verbose)
 {
 	int eb, v = (verbose == 2), pr = (verbose == 1);
 	struct ubi_scan_info *si;

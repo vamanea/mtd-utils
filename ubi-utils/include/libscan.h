@@ -87,7 +87,7 @@ struct ubi_scan_info
 	int data_offs;
 };
 
-struct mtd_info;
+struct mtd_dev_info;
 
 /**
  * ubi_scan - scan an MTD device.
@@ -97,7 +97,7 @@ struct mtd_info;
  * @verbose: verbose mode: %0 - be silent, %1 - output progress information,
  *           2 - debugging output mode
  */
-int ubi_scan(struct mtd_info *mtd, int fd, struct ubi_scan_info **info,
+int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 	     int verbose);
 
 /**
