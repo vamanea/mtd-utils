@@ -54,3 +54,7 @@
 # stgit generated dirs
 patches-*
 *.patch
+
+# cscope files
+cscope.*
+ncscope.*
