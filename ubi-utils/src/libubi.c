@@ -507,7 +507,7 @@ int mtd_num2ubi_dev(libubi_t desc, int mtd_num, int *dev_num)
 	return -1;
 }
 
-libubi_t libubi_open(int required)
+libubi_t libubi_open(void)
 {
 	int fd, version;
 	struct libubi *lib;
@@ -531,9 +531,7 @@ libubi_t libubi_open(int required)
 	/* Make sure UBI is present */
 	fd = open(lib->sysfs_ubi, O_RDONLY);
 	if (fd == -1) {
-		if (required)
-			errmsg("cannot open \"%s\", UBI does not seem to "
-			       "exist in system", lib->sysfs_ubi);
+		errno = 0;
 		goto out_error;
 	}
 
@@ -945,6 +943,7 @@ int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol)
 {
 	int fd, ret;
 
+	desc = desc;
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return -1;

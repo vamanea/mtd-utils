@@ -170,13 +170,13 @@ struct ubi_vol_info
 
 /**
  * libubi_open - open UBI library.
- * @required: if non-zero, libubi will print an error messages if this UBI is
- *            not present in the system
  *
  * This function initializes and opens the UBI library and returns UBI library
- * descriptor in case of success and %NULL in case of failure.
+ * descriptor in case of success and %NULL in case of failure. In case of
+ * failure, errno contains the error code or zero if UBI is not present in the
+ * system.
  */
-libubi_t libubi_open(int required);
+libubi_t libubi_open(void);
 
 /**
  * libubi_close - close UBI library.

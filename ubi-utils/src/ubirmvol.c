@@ -180,9 +180,12 @@ int main(int argc, char * const argv[])
 	if (err)
 		return -1;
 
-	libubi = libubi_open(1);
-	if (libubi == NULL)
+	libubi = libubi_open();
+	if (!libubi) {
+		if (errno == 0)
+			return errmsg("UBI is not present in the system");
 		return sys_errmsg("cannot open libubi");
+	}
 
 	err = ubi_probe_node(libubi, args.node);
 	if (err == 2) {

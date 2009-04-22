@@ -92,9 +92,12 @@ int main(int argc, char * const argv[])
 	}
 
 	node = argv[1];
-	libubi = libubi_open(1);
-	if (!libubi)
+	libubi = libubi_open();
+	if (!libubi) {
+		if (errno == 0)
+			return errmsg("UBI is not present in the system");
 		return sys_errmsg("cannot open libubi");
+	}
 
 	err = ubi_probe_node(libubi, node);
 	if (err == 2) {
