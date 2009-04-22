@@ -105,7 +105,10 @@ int main(int argc, char * const argv[])
 		       node);
 		goto out_libubi;
 	} else if (err < 0) {
-		errmsg("\"%s\" is not an UBI device node", node);
+		if (errno == ENODEV)
+			errmsg("\"%s\" is not an UBI device node", node);
+		else
+			sys_errmsg("error while probing \"%s\"", node);
 		goto out_libubi;
 	}
 

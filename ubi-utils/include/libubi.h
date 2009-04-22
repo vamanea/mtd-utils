@@ -295,8 +295,8 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes);
  *
  * This function tests whether @node is a UBI device or volume node and returns
  * %1 if this is an UBI device node, %2 if this is a volume node, and %-1 if
- * this is not an UBI node or if an error occurred (the latter is indicated by
- * a non-zero errno).
+ * this is not an UBI device or volume node (errno is ENODEV in this case) or
+ * if an error occurred.
  */
 int ubi_probe_node(libubi_t desc, const char *node);
 
@@ -307,7 +307,8 @@ int ubi_probe_node(libubi_t desc, const char *node);
  * @info: pointer to the &struct ubi_dev_info object to fill
  *
  * This function fills the passed @info object with UBI device information and
- * returns %0 in case of success and %-1 in case of failure.
+ * returns %0 in case of success and %-1 in case of failure. If the UBI device
+ * corresponding to @node does not exist, errno is set to @ENODEV.
  */
 int ubi_get_dev_info(libubi_t desc, const char *node,
 		     struct ubi_dev_info *info);
@@ -319,7 +320,8 @@ int ubi_get_dev_info(libubi_t desc, const char *node,
  * @info: pointer to the &struct ubi_dev_info object to fill
  *
  * This function is identical to 'ubi_get_dev_info()' except that it accepts UBI
- * device number, not UBI character device.
+ * device number, not UBI character device. If the UBI device @dev_num does not
+ * exist, errno is set to @ENODEV.
  */
 int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info);
 
@@ -330,7 +332,8 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info);
  * @info: pointer to the &struct ubi_vol_info object to fill
  *
  * This function fills the passed @info object with UBI volume information and
- * returns %0 in case of success and %-1 in case of failure.
+ * returns %0 in case of success and %-1 in case of failure. If the UBI volume
+ * corresponding to @node does not exist, errno is set to @ENODEV.
  */
 int ubi_get_vol_info(libubi_t desc, const char *node,
 		     struct ubi_vol_info *info);
@@ -343,7 +346,9 @@ int ubi_get_vol_info(libubi_t desc, const char *node,
  * @info: pointer to the &struct ubi_vol_info object to fill
  *
  * This function is identical to 'ubi_get_vol_info()' except that it accepts UBI
- * volume ID, not UBI volume character device.
+ * volume ID, not UBI volume character device. If the UBI device @dev_num does
+ * not exist, or if the UBI volume @vol_id does not exist, errno is set to
+ * @ENODEV.
  */
 int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 		      struct ubi_vol_info *info);
@@ -352,11 +357,12 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
  * ubi_get_vol_info1_nm - get UBI volume information by volume name.
  * @desc: UBI library descriptor
  * @dev_num: UBI device number
- * @vol_id: ID of the UBI volume to fetch information about
+ * @name: name of the UBI volume to fetch information about
  * @info: pointer to the &struct ubi_vol_info object to fill
  *
  * This function is identical to 'ubi_get_vol_info()' except that it accepts UBI
- * volume name, not UBI volume ID.
+ * volume name, not UBI volume ID. If the UBI device @dev_num does not exist,
+ * or if the UBI volume @name does not exist, errno is set to @ENODEV.
  */
 int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
 			 struct ubi_vol_info *info);

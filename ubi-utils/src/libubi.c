@@ -787,17 +787,15 @@ int ubi_probe_node(libubi_t desc, const char *node)
 	/* This is supposdely an UBI volume device node */
 	sprintf(file, lib->ubi_vol, i, minor - 1);
 	fd = open(file, O_RDONLY);
-	if (fd == -1) {
-		sys_errmsg("cannot open \"%s\"", node);
-		return -1;
-	}
+	if (fd == -1)
+		goto out_not_ubi;
 
 	return 2;
 
 out_not_ubi:
 	errmsg("\"%s\" has major:minor %d:%d, but this does not correspond to "
-	       "any UBI device or volume", node, major, minor);
-	errno = 0;
+	       "any existing UBI device or volume", node, major, minor);
+	errno = ENODEV;
 	return -1;
 }
 
@@ -1002,6 +1000,22 @@ int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype)
 	return 0;
 }
 
+/**
+ * dev_present - check whether an UBI device is present.
+ * @lib: libubi descriptor
+ * @dev_num: UBI device number to check
+ *
+ * This function returns %1 if UBI device is present and %0 if not.
+ */
+static int dev_present(struct libubi *lib, int dev_num)
+{
+	struct stat st;
+	char file[strlen(lib->ubi_dev) + 50];
+
+	sprintf(file, lib->ubi_dev, dev_num);
+	return !stat(file, &st);
+}
+
 int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 {
 	DIR *sysfs_ubi;
@@ -1010,6 +1024,11 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 
 	memset(info, '\0', sizeof(struct ubi_dev_info));
 	info->dev_num = dev_num;
+
+	if (!dev_present(lib, dev_num)) {
+		errno = ENODEV;
+		return -1;
+	}
 
 	sysfs_ubi = opendir(lib->sysfs_ubi);
 	if (!sysfs_ubi)
@@ -1085,8 +1104,14 @@ out_close:
 
 int ubi_get_dev_info(libubi_t desc, const char *node, struct ubi_dev_info *info)
 {
-	int dev_num;
+	int err, dev_num;
 	struct libubi *lib = (struct libubi *)desc;
+
+	err = ubi_probe_node(desc, node);
+	if (err != 1) {
+		errno = ENODEV;
+		return -1;
+	}
 
 	if (dev_node2num(lib, node, &dev_num))
 		return -1;
@@ -1155,8 +1180,14 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 
 int ubi_get_vol_info(libubi_t desc, const char *node, struct ubi_vol_info *info)
 {
-	int vol_id, dev_num;
+	int err, vol_id, dev_num;
 	struct libubi *lib = (struct libubi *)desc;
+
+	err = ubi_probe_node(desc, node);
+	if (err != 2) {
+		errno = ENODEV;
+		return -1;
+	}
 
 	if (vol_node2nums(lib, node, &dev_num, &vol_id))
 		return -1;
