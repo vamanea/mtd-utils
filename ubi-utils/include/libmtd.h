@@ -39,7 +39,7 @@ extern "C" {
  * @eb_size: eraseblock size
  * @min_io_size: minimum input/output unit size
  * @subpage_size: sub-page size
- * @rdonly: non-zero if the device is read-only
+ * @writable: zero if the device is read-only
  * @bb_allowed: non-zero if the MTD device may have bad eraseblocks
  */
 struct mtd_dev_info
@@ -54,7 +54,7 @@ struct mtd_dev_info
 	int eb_size;
 	int min_io_size;
 	int subpage_size;
-	unsigned int rdonly:1;
+	unsigned int writable:1;
 	unsigned int bb_allowed:1;
 };
 

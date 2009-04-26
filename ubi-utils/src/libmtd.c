@@ -58,7 +58,7 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	}
 
 	mtd->num = mtd->minor / 2;
-	mtd->rdonly = mtd->minor & 1;
+	mtd->writable = !(mtd->minor & 1);
 
 	fd = open(node, O_RDWR);
 	if (fd == -1)
@@ -130,8 +130,8 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 		break;
 	}
 
-	if (!(ui.flags & MTD_WRITEABLE))
-		mtd->rdonly = 1;
+	if (ui.flags & MTD_WRITEABLE)
+		mtd->writable = 1;
 
 	close(fd);
 	return 0;

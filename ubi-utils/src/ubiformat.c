@@ -732,7 +732,7 @@ int main(int argc, char * const argv[])
 	 */
 	mtd.subpage_size = args.subpage_size;
 
-	if (mtd.rdonly) {
+	if (!mtd.writable) {
 		errmsg("mtd%d (%s) is a read-only device", mtd.num, args.node);
 		goto out;
 	}
