@@ -108,25 +108,25 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 		       mtd->dev_num, node);
 		goto out_close;
 	case MTD_RAM:
-		mtd->type_str = "RAM-based";
+		strcpy(mtd->type_str, "RAM-based");
 		break;
 	case MTD_ROM:
-		mtd->type_str = "ROM";
+		strcpy(mtd->type_str, "ROM");
 		break;
 	case MTD_NORFLASH:
-		mtd->type_str = "NOR";
+		strcpy(mtd->type_str, "NOR");
 		break;
 	case MTD_NANDFLASH:
-		mtd->type_str = "NAND";
+		strcpy(mtd->type_str, "NAND");
 		break;
 	case MTD_DATAFLASH:
-		mtd->type_str = "DataFlash";
+		strcpy(mtd->type_str, "DataFlash");
 		break;
 	case MTD_UBIVOLUME:
-		mtd->type_str = "UBI-emulated MTD";
+		strcpy(mtd->type_str, "UBI-emulated MTD");
 		break;
 	default:
-		mtd->type_str = "Unknown flash type";
+		strcpy(mtd->type_str, "Unknown flash type");
 		break;
 	}
 

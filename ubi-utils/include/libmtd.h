@@ -27,6 +27,9 @@
 extern "C" {
 #endif
 
+/* Maximum MTD device type string length */
+#define MTD_TYPE_MAX 64
+
 /**
  * struct mtd_dev_info - information about an MTD device.
  * @dev_num: MTD device number
@@ -48,7 +51,7 @@ struct mtd_dev_info
 	int major;
 	int minor;
 	int type;
-	const char *type_str;
+	const char type_str[MTD_TYPE_MAX];
 	long long size;
 	int eb_cnt;
 	int eb_size;
