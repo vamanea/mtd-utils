@@ -26,6 +26,7 @@
 #define __LIBUBIGEN_H__
 
 #include <stdint.h>
+#include <mtd/ubi-media.h>
 
 #ifdef __cplusplus
 extern "C" {
