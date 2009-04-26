@@ -76,9 +76,9 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 			goto out_close;
 		}
 		errno = 0;
-		mtd->allows_bb = 0;
+		mtd->bb_allowed = 0;
 	} else
-		mtd->allows_bb = 1;
+		mtd->bb_allowed = 1;
 
 	mtd->type = ui.type;
 	mtd->size = ui.size;
@@ -162,7 +162,7 @@ int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 		return -1;
 	}
 
-	if (!mtd->allows_bb)
+	if (!mtd->bb_allowed)
 		return 0;
 
 	seek = (loff_t)eb * mtd->eb_size;
@@ -178,7 +178,7 @@ int mtd_mark_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 	int ret;
 	loff_t seek;
 
-	if (!mtd->allows_bb) {
+	if (!mtd->bb_allowed) {
 		errno = EINVAL;
 		return -1;
 	}

@@ -407,7 +407,7 @@ static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, in
 	if (!args.quiet)
 		printf("\n");
 
-	if (!mtd->allows_bb) {
+	if (!mtd->bb_allowed) {
 		if (!args.quiet)
 			printf("\n");
 		return errmsg("bad blocks not supported by this flash");
