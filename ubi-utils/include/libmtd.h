@@ -29,7 +29,7 @@ extern "C" {
 
 /**
  * struct mtd_dev_info - information about an MTD device.
- * @num: MTD device number
+ * @dev_num: MTD device number
  * @major: major number of corresponding character device
  * @minor: minor number of corresponding character device
  * @type: flash type (constants like %MTD_NANDFLASH defined in mtd-abi.h)
@@ -44,7 +44,7 @@ extern "C" {
  */
 struct mtd_dev_info
 {
-	int num;
+	int dev_num;
 	int major;
 	int minor;
 	int type;

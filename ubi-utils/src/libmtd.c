@@ -57,7 +57,7 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 			      "major %d", node, mtd->major, MTD_DEV_MAJOR);
 	}
 
-	mtd->num = mtd->minor / 2;
+	mtd->dev_num = mtd->minor / 2;
 	mtd->writable = !(mtd->minor & 1);
 
 	fd = open(node, O_RDWR);
@@ -87,17 +87,17 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 
 	if (mtd->min_io_size <= 0) {
 		errmsg("mtd%d (%s) has insane min. I/O unit size %d",
-		       mtd->num, node, mtd->min_io_size);
+		       mtd->dev_num, node, mtd->min_io_size);
 		goto out_close;
 	}
 	if (mtd->eb_size <= 0 || mtd->eb_size < mtd->min_io_size) {
 		errmsg("mtd%d (%s) has insane eraseblock size %d",
-		       mtd->num, node, mtd->eb_size);
+		       mtd->dev_num, node, mtd->eb_size);
 		goto out_close;
 	}
 	if (mtd->size <= 0 || mtd->size < mtd->eb_size) {
 		errmsg("mtd%d (%s) has insane size %lld",
-		       mtd->num, node, mtd->size);
+		       mtd->dev_num, node, mtd->size);
 		goto out_close;
 	}
 	mtd->eb_cnt = mtd->size / mtd->eb_size;
@@ -105,7 +105,7 @@ int mtd_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	switch(mtd->type) {
 	case MTD_ABSENT:
 		errmsg("mtd%d (%s) is removable and is not present",
-		       mtd->num, node);
+		       mtd->dev_num, node);
 		goto out_close;
 	case MTD_RAM:
 		mtd->type_str = "RAM-based";
@@ -157,7 +157,7 @@ int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 
 	if (eb < 0 || eb >= mtd->eb_cnt) {
 		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->num, mtd->eb_cnt);
+		       eb, mtd->dev_num, mtd->eb_cnt);
 		errno = EINVAL;
 		return -1;
 	}
@@ -169,7 +169,7 @@ int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 	ret = ioctl(fd, MEMGETBADBLOCK, &seek);
 	if (ret == -1)
 		return sys_errmsg("MEMGETBADBLOCK ioctl failed for "
-				  "eraseblock %d (mtd%d)", eb, mtd->num);
+				  "eraseblock %d (mtd%d)", eb, mtd->dev_num);
 	return ret;
 }
 
@@ -185,7 +185,7 @@ int mtd_mark_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 
 	if (eb < 0 || eb >= mtd->eb_cnt) {
 		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->num, mtd->eb_cnt);
+		       eb, mtd->dev_num, mtd->eb_cnt);
 		errno = EINVAL;
 		return -1;
 	}
@@ -194,7 +194,7 @@ int mtd_mark_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 	ret = ioctl(fd, MEMSETBADBLOCK, &seek);
 	if (ret == -1)
 		return sys_errmsg("MEMSETBADBLOCK ioctl failed for "
-			          "eraseblock %d (mtd%d)", eb, mtd->num);
+			          "eraseblock %d (mtd%d)", eb, mtd->dev_num);
 	return 0;
 }
 
@@ -206,13 +206,13 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 
 	if (eb < 0 || eb >= mtd->eb_cnt) {
 		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->num, mtd->eb_cnt);
+		       eb, mtd->dev_num, mtd->eb_cnt);
 		errno = EINVAL;
 		return -1;
 	}
 	if (offs < 0 || offs + len > mtd->eb_size) {
 		errmsg("bad offset %d or length %d, mtd%d eraseblock size is %d",
-		       offs, len, mtd->num, mtd->eb_size);
+		       offs, len, mtd->dev_num, mtd->eb_size);
 		errno = EINVAL;
 		return -1;
 	}
@@ -221,13 +221,13 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	seek = (off_t)eb * mtd->eb_size + offs;
 	if (lseek(fd, seek, SEEK_SET) != seek)
 		return sys_errmsg("cannot seek mtd%d to offset %llu",
-				  mtd->num, (unsigned long long)seek);
+				  mtd->dev_num, (unsigned long long)seek);
 
 	while (rd < len) {
 		ret = read(fd, buf, len);
 		if (ret < 0)
 			return sys_errmsg("cannot read %d bytes from mtd%d (eraseblock %d, offset %d)",
-					  len, mtd->num, eb, offs);
+					  len, mtd->dev_num, eb, offs);
 		rd += ret;
 	}
 
@@ -242,26 +242,26 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 
 	if (eb < 0 || eb >= mtd->eb_cnt) {
 		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->num, mtd->eb_cnt);
+		       eb, mtd->dev_num, mtd->eb_cnt);
 		errno = EINVAL;
 		return -1;
 	}
 	if (offs < 0 || offs + len > mtd->eb_size) {
 		errmsg("bad offset %d or length %d, mtd%d eraseblock size is %d",
-		       offs, len, mtd->num, mtd->eb_size);
+		       offs, len, mtd->dev_num, mtd->eb_size);
 		errno = EINVAL;
 		return -1;
 	}
 #if 0
 	if (offs % mtd->subpage_size) {
 		errmsg("write offset %d is not aligned to mtd%d min. I/O size %d",
-		       offs, mtd->num, mtd->subpage_size);
+		       offs, mtd->dev_num, mtd->subpage_size);
 		errno = EINVAL;
 		return -1;
 	}
 	if (len % mtd->subpage_size) {
 		errmsg("write length %d is not aligned to mtd%d min. I/O size %d",
-		       len, mtd->num, mtd->subpage_size);
+		       len, mtd->dev_num, mtd->subpage_size);
 		errno = EINVAL;
 		return -1;
 	}
@@ -271,12 +271,12 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	seek = (off_t)eb * mtd->eb_size + offs;
 	if (lseek(fd, seek, SEEK_SET) != seek)
 		return sys_errmsg("cannot seek mtd%d to offset %llu",
-				  mtd->num, (unsigned long long)seek);
+				  mtd->dev_num, (unsigned long long)seek);
 
 	ret = write(fd, buf, len);
 	if (ret != len)
 		return sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
-				  len, mtd->num, eb, offs);
+				  len, mtd->dev_num, eb, offs);
 
 	return 0;
 }
