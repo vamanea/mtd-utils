@@ -30,7 +30,7 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubinfo"
 
 /* The variables below are set by command line arguments */
@@ -131,7 +131,7 @@ static int parse_opt(int argc, char * const argv[])
 	if (optind == argc - 1)
 		args.node = argv[optind];
 	else if (optind < argc)
-		return errmsg("more then one UBI devices specified (use -h for help)");
+		return errmsg("more then one UBI device specified (use -h for help)");
 
 	return 0;
 }
@@ -216,9 +216,11 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 	if (err)
 		return sys_errmsg("cannot get information about UBI device %d", dev_num);
 
-	printf("ubi%d:\n", dev_info.dev_num);
+	printf("ubi%d\n", dev_info.dev_num);
 	printf("Volumes count:                           %d\n", dev_info.vol_count);
-	printf("Logical eraseblock size:                 %d\n", dev_info.leb_size);
+	printf("Logical eraseblock size:                 ");
+	ubiutils_print_bytes(dev_info.leb_size, 0);
+	printf("\n");
 
 	printf("Total amount of logical eraseblocks:     %d (", dev_info.total_lebs);
 	ubiutils_print_bytes(dev_info.total_bytes, 0);
@@ -232,7 +234,8 @@ static int print_dev_info(libubi_t libubi, int dev_num, int all)
 	printf("Count of bad physical eraseblocks:       %d\n", dev_info.bad_count);
 	printf("Count of reserved physical eraseblocks:  %d\n", dev_info.bad_rsvd);
 	printf("Current maximum erase counter value:     %lld\n", dev_info.max_ec);
-	printf("Minimum input/output unit size:          %d bytes\n", dev_info.min_io_size);
+	printf("Minimum input/output unit size:          %d %s\n",
+	       dev_info.min_io_size, dev_info.min_io_size > 1 ? "bytes" : "byte");
 	printf("Character device major/minor:            %d:%d\n",
 	       dev_info.major, dev_info.minor);
 
@@ -317,6 +320,7 @@ static int print_general_info(libubi_t libubi, int all)
 			if (errno == ENOENT)
 				continue;
 
+			printf("\n");
 			return sys_errmsg("libubi failed to probe UBI device %d", i);
 		}
 
@@ -339,15 +343,7 @@ static int print_general_info(libubi_t libubi, int all)
 	     i <= ubi_info.highest_dev_num; i++) {
 		if(!first)
 			printf("\n===================================\n\n");
-		err = ubi_get_dev_info1(libubi, i, &dev_info);
-		if (err == -1) {
-			if (errno == ENOENT)
-				continue;
-
-			return sys_errmsg("libubi failed to probe UBI device %d", i);
-		}
 		first = 0;
-
 		err = print_dev_info(libubi, i, all);
 		if (err)
 			return err;

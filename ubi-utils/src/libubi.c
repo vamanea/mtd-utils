@@ -24,12 +24,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
 #include <limits.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <libubi.h>
 #include "libubi_int.h"
 #include "common.h"
@@ -94,7 +94,6 @@ static int read_positive_ll(const char *file, long long *value)
 	}
 
 	if (sscanf(buf, "%lld\n", value) != 1) {
-		/* This must be a UBI bug */
 		errmsg("cannot read integer from \"%s\"\n", file);
 		errno = EINVAL;
 		goto out_error;
@@ -227,7 +226,7 @@ static int read_major(const char *file, int *major, int *minor)
 /**
  * dev_read_int - read a positive 'int' value from an UBI device sysfs file.
  * @patt: file pattern to read from
- * @dev_num:  UBI device number
+ * @dev_num: UBI device number
  * @value: the result is stored here
  *
  * This function returns %0 in case of success and %-1 in case of failure.
@@ -422,9 +421,9 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
  * dev_node2num - find UBI device number by its character device node.
  * @lib: UBI library descriptor
  * @node: UBI character device node name
+ * @dev_num: UBI device number is returned here
  *
- * This function returns positive UBI device number in case of success and %-1
- * in case of failure.
+ * This function returns %0 in case of success and %-1 in case of failure.
  */
 static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 {
@@ -433,8 +432,7 @@ static int dev_node2num(struct libubi *lib, const char *node, int *dev_num)
 	int i, major, minor;
 
 	if (stat(node, &st))
-		return sys_errmsg("cannot get information about \"%s\"",
-				  node);
+		return sys_errmsg("cannot get information about \"%s\"", node);
 
 	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;
@@ -749,8 +747,7 @@ int ubi_probe_node(libubi_t desc, const char *node)
 	char file[strlen(lib->ubi_vol) + 100];
 
 	if (stat(node, &st))
-		return sys_errmsg("cannot get information about \"%s\"",
-				  node);
+		return sys_errmsg("cannot get information about \"%s\"", node);
 
 	if (!S_ISCHR(st.st_mode)) {
 		errmsg("\"%s\" is not a character device", node);
@@ -837,9 +834,10 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info)
 		if (!dirent)
 			break;
 
-		if (strlen(dirent->d_name) > 256) {
+		if (strlen(dirent->d_name) >= 255) {
 			errmsg("invalid entry in %s: \"%s\"",
 			       lib->sysfs_ubi, dirent->d_name);
+			errno = EINVAL;
 			goto out_close;
 		}
 
@@ -896,6 +894,7 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 	strncpy(r.name, req->name, UBI_MAX_VOLUME_NAME + 1);
 	r.name_len = n;
 
+	desc = desc;
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return sys_errmsg("cannot open \"%s\"", node);
@@ -1036,10 +1035,8 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	memset(info, '\0', sizeof(struct ubi_dev_info));
 	info->dev_num = dev_num;
 
-	if (!dev_present(lib, dev_num)) {
-		errno = ENODEV;
+	if (!dev_present(lib, dev_num))
 		return -1;
-	}
 
 	sysfs_ubi = opendir(lib->sysfs_ubi);
 	if (!sysfs_ubi)
@@ -1056,7 +1053,7 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 		if (!dirent)
 			break;
 
-		if (strlen(dirent->d_name) > 256) {
+		if (strlen(dirent->d_name) >= 255) {
 			errmsg("invalid entry in %s: \"%s\"",
 			       lib->sysfs_ubi, dirent->d_name);
 			goto out_close;
@@ -1120,7 +1117,8 @@ int ubi_get_dev_info(libubi_t desc, const char *node, struct ubi_dev_info *info)
 
 	err = ubi_probe_node(desc, node);
 	if (err != 1) {
-		errno = ENODEV;
+		if (err == 2)
+			errno = ENODEV;
 		return -1;
 	}
 
@@ -1196,7 +1194,8 @@ int ubi_get_vol_info(libubi_t desc, const char *node, struct ubi_vol_info *info)
 
 	err = ubi_probe_node(desc, node);
 	if (err != 2) {
-		errno = ENODEV;
+		if (err == 1)
+			errno = ENODEV;
 		return -1;
 	}
 

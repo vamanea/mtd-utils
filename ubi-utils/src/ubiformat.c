@@ -45,7 +45,7 @@
 #include "crc32.h"
 #include "common.h"
 
-#define PROGRAM_VERSION "1.2"
+#define PROGRAM_VERSION "1.3"
 #define PROGRAM_NAME    "ubiformat"
 
 /* The variables below are set by command line arguments */
@@ -55,6 +55,7 @@ struct args {
 	unsigned int verbose:1;
 	unsigned int override_ec:1;
 	unsigned int novtbl:1;
+	unsigned int manual_subpage;
 	int subpage_size;
 	int vid_hdr_offs;
 	int ubi_ver;
@@ -633,9 +634,9 @@ static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
 				   write_size, eb);
 
 			if (errno != EIO) {
-				if (args.subpage_size != mtd->min_io_size)
-					normsg("may be %d is incorrect?",
-							args.subpage_size);
+				if (!args.subpage_size != mtd->min_io_size)
+					normsg("may be sub-page size is "
+					       "incorrect?");
 				goto out_free;
 			}
 
@@ -682,59 +683,91 @@ out_free:
 int main(int argc, char * const argv[])
 {
 	int err, verbose;
+	libmtd_t libmtd;
+	struct mtd_info mtd_info;
 	struct mtd_dev_info mtd;
 	libubi_t libubi;
 	struct ubigen_info ui;
 	struct ubi_scan_info *si;
 
+	libmtd = libmtd_open();
+	if (!libmtd)
+		return errmsg("MTD subsystem is not present");
+
 	err = parse_opt(argc, argv);
 	if (err)
-		return -1;
+		goto out_close_mtd;
 
-	err = mtd_get_dev_info(args.node, &mtd);
-	if (err)
-		return errmsg("cannot get information about \"%s\"", args.node);
+	err = mtd_get_info(libmtd, &mtd_info);
+	if (err) {
+		if (errno == ENODEV)
+			errmsg("MTD is not present");
+		sys_errmsg("cannot get MTD information");
+		goto out_close_mtd;
+	}
 
-	args.node_fd = open(args.node, O_RDWR);
-	if (args.node_fd == -1)
-		return sys_errmsg("cannot open \"%s\"", args.node);
+	err = mtd_get_dev_info(libmtd, args.node, &mtd);
+	if (err) {
+		sys_errmsg("cannot get information about \"%s\"", args.node);
+		goto out_close_mtd;
+	}
 
-	if (args.subpage_size == 0)
-		args.subpage_size = mtd.min_io_size;
-	else {
+	if (!mtd_info.sysfs_supported) {
+		/*
+		 * Linux kernels older than 2.6.30 did not support sysfs
+		 * interface, and it is impossible to find out sub-page
+		 * size in these kernels. This is why users should
+		 * provide -s option.
+		 */
+		if (args.subpage_size == 0) {
+			warnmsg("your MTD system is old and it is impossible "
+				"to detect sub-page size. Use -s to get rid "
+				"of this warning");
+			normsg("assume sub-page to be %d", mtd.subpage_size);
+		} else {
+			mtd.subpage_size = args.subpage_size;
+			args.manual_subpage = 1;
+		}
+	} else if (args.subpage_size && args.subpage_size != mtd.subpage_size) {
+		mtd.subpage_size = args.subpage_size;
+		args.manual_subpage = 1;
+	}
+
+	if (args.manual_subpage) {
+		/* Do some sanity check */
 		if (args.subpage_size > mtd.min_io_size) {
 			errmsg("sub-page cannot be larger than min. I/O unit");
-			goto out;
+			goto out_close;
 		}
 
 		if (mtd.min_io_size % args.subpage_size) {
-			errmsg("min. I/O unit size should be multiple of sub-page size");
-			goto out;
+			errmsg("min. I/O unit size should be multiple of "
+			       "sub-page size");
+			goto out_close;
 		}
+	}
+
+	args.node_fd = open(args.node, O_RDWR);
+	if (args.node_fd == -1) {
+		sys_errmsg("cannot open \"%s\"", args.node);
+		goto out_close_mtd;
 	}
 
 	/* Validate VID header offset if it was specified */
 	if (args.vid_hdr_offs != 0) {
 		if (args.vid_hdr_offs % 8) {
 			errmsg("VID header offset has to be multiple of min. I/O unit size");
-			goto out;
+			goto out_close;
 		}
 		if (args.vid_hdr_offs + (int)UBI_VID_HDR_SIZE > mtd.eb_size) {
 			errmsg("bad VID header offset");
-			goto out;
+			goto out_close;
 		}
 	}
 
-	/*
-	 * Because of MTD interface limitations 'mtd_get_dev_info()' cannot get
-	 * sub-page so we force the user to pass it via the command line. Let's
-	 * hope the user passed us something sane.
-	 */
-	mtd.subpage_size = args.subpage_size;
-
 	if (!mtd.writable) {
 		errmsg("mtd%d (%s) is a read-only device", mtd.dev_num, args.node);
-		goto out;
+		goto out_close;
 	}
 
 	/* Make sure this MTD device is not attached to UBI */
@@ -747,14 +780,14 @@ int main(int argc, char * const argv[])
 		if (!err) {
 			errmsg("please, first detach mtd%d (%s) from ubi%d",
 			       mtd.dev_num, args.node, ubi_dev_num);
-			goto out;
+			goto out_close;
 		}
 	}
 
 	if (!args.quiet) {
 		normsg_cont("mtd%d (%s), size ", mtd.dev_num, mtd.type_str);
 		ubiutils_print_bytes(mtd.size, 1);
-		printf(", %d eraseblocks of ", mtd.eb_size);
+		printf(", %d eraseblocks of ", mtd.eb_cnt);
 		ubiutils_print_bytes(mtd.eb_size, 1);
 		printf(", min. I/O size %d bytes\n", mtd.min_io_size);
 	}
@@ -768,7 +801,7 @@ int main(int argc, char * const argv[])
 	err = ubi_scan(&mtd, args.node_fd, &si, verbose);
 	if (err) {
 		errmsg("failed to scan mtd%d (%s)", mtd.dev_num, args.node);
-		goto out;
+		goto out_close;
 	}
 
 	if (si->good_cnt == 0) {
@@ -777,7 +810,8 @@ int main(int argc, char * const argv[])
 	}
 
 	if (si->good_cnt < 2 && (!args.novtbl || args.image)) {
-		errmsg("too few non-bad eraseblocks (%d) on mtd%d", si->good_cnt, mtd.dev_num);
+		errmsg("too few non-bad eraseblocks (%d) on mtd%d",
+		       si->good_cnt, mtd.dev_num);
 		goto out_free;
 	}
 
@@ -842,7 +876,7 @@ int main(int argc, char * const argv[])
 	if (!args.quiet && args.override_ec)
 		normsg("use erase counter %lld for all eraseblocks", args.ec);
 
-	ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, args.subpage_size,
+	ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, mtd.subpage_size,
 			 args.vid_hdr_offs, args.ubi_ver);
 
 	if (si->vid_hdr_offs != -1 && ui.vid_hdr_offs != si->vid_hdr_offs) {
@@ -883,11 +917,14 @@ int main(int argc, char * const argv[])
 
 	ubi_scan_free(si);
 	close(args.node_fd);
+	libmtd_close(libmtd);
 	return 0;
 
 out_free:
 	ubi_scan_free(si);
-out:
+out_close:
 	close(args.node_fd);
+out_close_mtd:
+	libmtd_close(libmtd);
 	return -1;
 }

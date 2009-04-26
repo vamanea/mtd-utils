@@ -6,12 +6,12 @@ KERNELHDR := ../include
 
 SUBDIRS = old-utils
 
-#CFLAGS += -Werror
+# CFLAGS += -Werror
 CPPFLAGS += -Iinclude -Isrc -I$(KERNELHDR)
 
 LIBS = libubi libmtd libubigen libiniparser libscan
 TARGETS = ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-          ubidetach ubinize ubiformat ubirename
+          ubidetach ubinize ubiformat ubirename mtdinfo
 
 VPATH = src
 
@@ -30,13 +30,17 @@ $(BUILDDIR)/ubinize: $(addprefix $(BUILDDIR)/,\
 	ubinize.o common.o crc32.o libiniparser.a libubigen.a)
 #	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
+$(BUILDDIR)/mtdinfo: $(addprefix $(BUILDDIR)/,\
+	libmtd.a libubigen.a crc32.o common.o)
+#	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lubigen -o $@
+
 $(BUILDDIR)/ubiformat: $(addprefix $(BUILDDIR)/,\
 	ubiformat.o common.o crc32.o libmtd.a libscan.a libubi.a libubigen.a)
 #	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lscan -lubi -lubigen -o $@
 
 $(BUILDDIR)/libubi.a: $(BUILDDIR)/libubi.o
 
-$(BUILDDIR)/libmtd.a: $(BUILDDIR)/libmtd.o
+$(BUILDDIR)/libmtd.a: $(BUILDDIR)/libmtd.o $(BUILDDIR)/libmtd_legacy.o
 
 $(BUILDDIR)/libubigen.a: $(BUILDDIR)/libubigen.o
 
