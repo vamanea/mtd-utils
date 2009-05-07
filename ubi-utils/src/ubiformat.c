@@ -738,7 +738,7 @@ int main(int argc, char * const argv[])
 	}
 
 	/* Make sure this MTD device is not attached to UBI */
-	libubi = libubi_open(0);
+	libubi = libubi_open();
 	if (libubi) {
 		int ubi_dev_num;
 
