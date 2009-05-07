@@ -220,7 +220,7 @@ int main(int argc, char * const argv[])
 
 	node = argv[1];
 
-	libubi = libubi_open(1);
+	libubi = libubi_open();
 	if (libubi == NULL) {
 		failed("libubi_open");
 		return 1;

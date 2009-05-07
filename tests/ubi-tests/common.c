@@ -57,7 +57,7 @@ int __initial_check(const char *test, int argc, char * const argv[])
 		return -1;
 	}
 
-	libubi = libubi_open(1);
+	libubi = libubi_open();
 	if (libubi == NULL) {
 		__failed(test, __FUNCTION__, __LINE__, "libubi_open");
 		return -1;
