@@ -404,6 +404,16 @@ int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype);
  */
 int ubi_set_property(int fd, uint8_t property, uint64_t value);
 
+/**
+ * ubi_leb_unmap - unmap a logical eraseblock.
+ * @fd: volume character device file descriptor
+ * @lnum: logical eraseblock to unmap
+ *
+ * This function unmaps LEB @lnum and returns zero in case of success and a
+ * negative error code in case of error.
+ */
+int ubi_leb_unmap(int fd, int lnum);
+
 #ifdef __cplusplus
 }
 #endif

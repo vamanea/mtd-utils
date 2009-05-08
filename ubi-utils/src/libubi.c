@@ -1250,3 +1250,8 @@ int ubi_set_property(int fd, uint8_t property, uint64_t value)
 
 	return ioctl(fd, UBI_IOCSETPROP, &r);
 }
+
+int ubi_leb_unmap(int fd, int lnum)
+{
+	return ioctl(fd, UBI_IOCEBUNMAP, &lnum);
+}
