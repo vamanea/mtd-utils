@@ -1239,3 +1239,14 @@ int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
 	errno = ENOENT;
 	return -1;
 }
+
+int ubi_set_property(int fd, uint8_t property, uint64_t value)
+{
+	struct ubi_set_prop_req r;
+
+	memset(&r, sizeof(struct ubi_set_prop_req), '\0');
+	r.property = property;
+	r.value = value;
+
+	return ioctl(fd, UBI_IOCSETPROP, &r);
+}

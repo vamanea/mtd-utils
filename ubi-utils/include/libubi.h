@@ -393,6 +393,17 @@ int ubi_update_start(libubi_t desc, int fd, long long bytes);
  */
 int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype);
 
+/**
+ * ubi_set_property - set volume propety.
+ * @fd: volume character device file descriptor
+ * @property: the property to change (%UBI_PROP_DIRECT_WRITE, etc)
+ * @value: new value of the changed property
+ *
+ * This function changes a property of a volume. Returns zero in case of
+ * success and a negative error code in case of error.
+ */
+int ubi_set_property(int fd, uint8_t property, uint64_t value);
+
 #ifdef __cplusplus
 }
 #endif
