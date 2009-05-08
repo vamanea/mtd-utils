@@ -695,8 +695,9 @@ int ubi_attach_mtd(libubi_t desc, const char *node,
 	req->dev_num = r.ubi_num;
 
 #ifdef UDEV_SETTLE_HACK
-	if (system("udevsettle") == -1)
-		return -1;
+//	if (system("udevsettle") == -1)
+//		return -1;
+	usleep(100000);
 #endif
 
 	return ret;
@@ -729,8 +730,9 @@ int ubi_remove_dev(libubi_t desc, const char *node, int ubi_dev)
 		goto out_close;
 
 #ifdef UDEV_SETTLE_HACK
-	if (system("udevsettle") == -1)
-		return -1;
+//	if (system("udevsettle") == -1)
+//		return -1;
+	usleep(100000);
 #endif
 
 out_close:
@@ -899,19 +901,21 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 		return sys_errmsg("cannot open \"%s\"", node);
 
 	ret = ioctl(fd, UBI_IOCMKVOL, &r);
-	if (ret == -1)
-		goto out_close;
+	if (ret == -1) {
+		close(fd);
+		return ret;
+	}
 
+	close(fd);
 	req->vol_id = r.vol_id;
 
 #ifdef UDEV_SETTLE_HACK
-	if (system("udevsettle") == -1)
-		return -1;
+//	if (system("udevsettle") == -1)
+//		return -1;
+	usleep(100000);
 #endif
 
-out_close:
-	close(fd);
-	return ret;
+	return 0;
 }
 
 int ubi_rmvol(libubi_t desc, const char *node, int vol_id)
@@ -924,17 +928,20 @@ int ubi_rmvol(libubi_t desc, const char *node, int vol_id)
 		return sys_errmsg("cannot open \"%s\"", node);
 
 	ret = ioctl(fd, UBI_IOCRMVOL, &vol_id);
-	if (ret == -1)
-		goto out_close;
+	if (ret == -1) {
+		close(fd);
+		return ret;
+	}
+
+	close(fd);
 
 #ifdef UDEV_SETTLE_HACK
-	if (system("udevsettle") == -1)
-		return -1;
+//	if (system("udevsettle") == -1)
+//		return -1;
+	usleep(100000);
 #endif
 
-out_close:
-	close(fd);
-	return ret;
+	return 0;
 }
 
 int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol)
@@ -945,18 +952,22 @@ int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol)
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return -1;
+
 	ret = ioctl(fd, UBI_IOCRNVOL, rnvol);
-	if (ret == -1)
-		goto out_close;
+	if (ret == -1) {
+		close(fd);
+		return ret;
+	}
+
+	close(fd);
 
 #ifdef UDEV_SETTLE_HACK
-	if (system("udevsettle") == -1)
-		return -1;
+//	if (system("udevsettle") == -1)
+//		return -1;
+	usleep(100000);
 #endif
 
-out_close:
-	close(fd);
-	return ret;
+	return 0;
 }
 
 int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
