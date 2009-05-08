@@ -43,7 +43,7 @@ static int iterations = ITERATIONS;
  */
 static void * the_thread(void *ptr)
 {
-	int n = (int)ptr, iter = iterations;
+	int n = (long)ptr, iter = iterations;
 	struct ubi_mkvol_request req;
 	const char *name =  TESTNAME ":the_thread()";
 	char nm[strlen(name) + 50];
@@ -91,7 +91,7 @@ int main(int argc, char * const argv[])
 	}
 
 	for (i = 0; i < THREADS_NUM; i++) {
-		ret = pthread_create(&threads[i], NULL, &the_thread, (void*)i);
+		ret = pthread_create(&threads[i], NULL, &the_thread, (void*)(long)i);
 		if (ret) {
 			failed("pthread_create");
 			goto close;

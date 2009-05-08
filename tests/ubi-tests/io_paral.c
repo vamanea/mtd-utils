@@ -33,131 +33,130 @@
 #define TESTNAME "io_paral"
 #include "common.h"
 
-#define THREADS_NUM 3
-#define ITERATIONS  10
+#define THREADS_NUM 4
+#define ITERATIONS  409
 
 static libubi_t libubi;
 static struct ubi_dev_info dev_info;
-const char *node;
-static int iterations = ITERATIONS;
-int total_bytes;
+static const char *node;
+static int vol_size;
 
-static long long memory_limit(void)
+static struct ubi_mkvol_request reqests[THREADS_NUM];
+static char vol_name[THREADS_NUM][100];
+static char vol_nodes[THREADS_NUM][strlen(UBI_VOLUME_PATTERN) + 100];
+static unsigned char *wbufs[THREADS_NUM];
+static unsigned char *rbufs[THREADS_NUM];
+
+static int update_volume(int vol_id, int bytes)
 {
-	long long result = 0;
-	FILE *f;
+	int i, fd, ret, written = 0, rd = 0;
+	char *vol_node = vol_nodes[vol_id];
+	unsigned char *wbuf = wbufs[vol_id];
+	unsigned char *rbuf = rbufs[vol_id];
 
-	f = fopen("/proc/meminfo", "r");
-	if (!f)
-		return 0;
-	fscanf(f, "%*s %lld", &result);
-	fclose(f);
-	return result * 1024 / 4;
+	fd = open(vol_node, O_RDWR);
+	if (fd == -1) {
+		failed("open");
+		err_msg("cannot open \"%s\"\n", vol_node);
+		return -1;
+	}
+
+	for (i = 0; i < bytes; i++)
+		wbuf[i] = random() % 255;
+	memset(rbuf, '\0', bytes);
+
+	do {
+		ret = ubi_update_start(libubi, fd, bytes);
+		if (ret && errno != EBUSY) {
+			failed("ubi_update_start");
+			err_msg("volume id is %d", vol_id);
+			goto err_close;
+		}
+	} while (ret);
+
+	while (written < bytes) {
+		int to_write = random() % (bytes - written);
+
+		if (to_write == 0)
+			to_write = 1;
+
+		ret = write(fd, wbuf, to_write);
+		if (ret != to_write) {
+			failed("write");
+			err_msg("failed to write %d bytes at offset %d "
+				"of volume %d", to_write, written,
+				vol_id);
+			err_msg("update: %d bytes", bytes);
+			goto err_close;
+		}
+
+		written += to_write;
+	}
+
+	close(fd);
+
+	fd = open(vol_node, O_RDONLY);
+	if (fd == -1) {
+		failed("open");
+		err_msg("cannot open \"%s\"\n", node);
+		return -1;
+	}
+
+	/* read data back and check */
+	while (rd < bytes) {
+		int to_read = random() % (bytes - rd);
+
+		if (to_read == 0)
+			to_read = 1;
+
+		ret = read(fd, rbuf, to_read);
+		if (ret != to_read) {
+			failed("read");
+			err_msg("failed to read %d bytes at offset %d "
+				"of volume %d", to_read, rd, vol_id);
+			goto err_close;
+		}
+
+		rd += to_read;
+	}
+
+	close(fd);
+	return 0;
+
+err_close:
+	close(fd);
+	return -1;
 }
 
-/**
- * the_thread - the testing thread.
- *
- * @ptr  thread number
- */
-static void *the_thread(void *ptr)
+static void *update_thread(void *ptr)
 {
-	int fd, iter = iterations, vol_id = (int)ptr;
-	unsigned char *wbuf, *rbuf;
-	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
+	int vol_id = (long)ptr, i;
 
-	wbuf = malloc(total_bytes);
-	rbuf = malloc(total_bytes);
-	if (!wbuf || !rbuf) {
-		failed("malloc");
-		goto free;
+	for (i = 0; i < ITERATIONS; i++) {
+		int ret, bytes = (random() % (vol_size - 1)) + 1;
+		int remove = !(random() % 16);
+
+		/* From time to time remove the volume */
+		if (remove) {
+			ret = ubi_rmvol(libubi, node, vol_id);
+			if (ret) {
+				failed("ubi_rmvol");
+				err_msg("cannot remove volume %d", vol_id);
+				return NULL;
+			}
+			ret = ubi_mkvol(libubi, node, &reqests[vol_id]);
+			if (ret) {
+				failed("ubi_mkvol");
+				err_msg("cannot create volume %d", vol_id);
+				return NULL;
+			}
+		}
+
+		ret = update_volume(vol_id, bytes);
+		if (ret)
+			return NULL;
 	}
 
-	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num, vol_id);
-
-	while (iter--) {
-		int i, ret, written = 0, rd = 0;
-		int bytes = (random() % (total_bytes - 1)) + 1;
-
-		fd = open(vol_node, O_RDWR);
-		if (fd == -1) {
-			failed("open");
-			err_msg("cannot open \"%s\"\n", node);
-			goto free;
-		}
-
-		for (i = 0; i < bytes; i++)
-			wbuf[i] = random() % 255;
-		memset(rbuf, '\0', bytes);
-
-		do {
-			ret = ubi_update_start(libubi, fd, bytes);
-			if (ret && errno != EBUSY) {
-				failed("ubi_update_start");
-				err_msg("vol_id %d", vol_id);
-				goto close;
-			}
-		} while (ret);
-
-		while (written < bytes) {
-			int to_write = random() % (bytes - written);
-
-			if (to_write == 0)
-				to_write = 1;
-
-			ret = write(fd, wbuf, to_write);
-			if (ret != to_write) {
-				failed("write");
-				err_msg("failed to write %d bytes at offset %d "
-					"of volume %d", to_write, written,
-					vol_id);
-				err_msg("update: %d bytes", bytes);
-				goto close;
-			}
-
-			written += to_write;
-		}
-
-		close(fd);
-
-		fd = open(vol_node, O_RDONLY);
-		if (fd == -1) {
-			failed("open");
-			err_msg("cannot open \"%s\"\n", node);
-			goto free;
-		}
-
-		/* read data back and check */
-		while (rd < bytes) {
-			int to_read = random() % (bytes - rd);
-
-			if (to_read == 0)
-				to_read = 1;
-
-			ret = read(fd, rbuf, to_read);
-			if (ret != to_read) {
-				failed("read");
-				err_msg("failed to read %d bytes at offset %d "
-					"of volume %d", to_read, rd, vol_id);
-				goto close;
-			}
-
-			rd += to_read;
-		}
-
-		close(fd);
-
-	}
-
-	free(wbuf);
-	free(rbuf);
-	return NULL;
-
-close:
-	close(fd);
-free:
-	free(wbuf);
-	free(rbuf);
 	return NULL;
 }
 
@@ -165,8 +164,6 @@ int main(int argc, char * const argv[])
 {
 	int i, ret;
 	pthread_t threads[THREADS_NUM];
-	struct ubi_mkvol_request req;
-	long long mem_limit;
 
 	if (initial_check(argc, argv))
 		return 1;
@@ -184,42 +181,39 @@ int main(int argc, char * const argv[])
 		goto close;
 	}
 
-	req.alignment = 1;
-	mem_limit = memory_limit();
-	if (mem_limit && mem_limit < dev_info.avail_bytes)
-		total_bytes = req.bytes =
-				(mem_limit / dev_info.leb_size / THREADS_NUM)
-				* dev_info.leb_size;
-	else
-		total_bytes = req.bytes =
-				((dev_info.avail_lebs - 3) / THREADS_NUM)
-				* dev_info.leb_size;
-	for (i = 0; i < THREADS_NUM; i++) {
-		char name[100];
+	/*
+	 * Create 1 volume more than threads count. The last volume
+	 * will not change to let WL move more stuff.
+	 */
+	vol_size = dev_info.leb_size * 10;
+	for (i = 0; i < THREADS_NUM + 1; i++) {
+		reqests[i].alignment = 1;
+		reqests[i].bytes = vol_size;
+		reqests[i].vol_id = i;
+		sprintf(vol_name[i], TESTNAME":%d", i);
+		reqests[i].name = vol_name[i];
+		reqests[i].vol_type = (i & 1) ? UBI_STATIC_VOLUME : UBI_DYNAMIC_VOLUME;
+		sprintf(vol_nodes[i], UBI_VOLUME_PATTERN, dev_info.dev_num, i);
 
-		req.vol_id = i;
-		sprintf(name, TESTNAME":%d", i);
-		req.name = name;
-		req.vol_type = (i & 1) ? UBI_STATIC_VOLUME : UBI_DYNAMIC_VOLUME;
-
-		if (ubi_mkvol(libubi, node, &req)) {
+		if (ubi_mkvol(libubi, node, &reqests[i])) {
 			failed("ubi_mkvol");
 			goto remove;
 		}
-	}
 
-	/* Create one volume with static data to make WL work more */
-	req.vol_id = THREADS_NUM;
-	req.name = TESTNAME ":static";
-	req.vol_type = UBI_DYNAMIC_VOLUME;
-	req.bytes = 3*dev_info.leb_size;
-	if (ubi_mkvol(libubi, node, &req)) {
-		failed("ubi_mkvol");
-		goto remove;
+		wbufs[i] = malloc(vol_size);
+		rbufs[i] = malloc(vol_size);
+		if (!wbufs[i] || !rbufs[i]) {
+			failed("malloc");
+			goto remove;
+		}
+
+		ret = update_volume(i, vol_size);
+		if (ret)
+			goto remove;
 	}
 
 	for (i = 0; i < THREADS_NUM; i++) {
-		ret = pthread_create(&threads[i], NULL, &the_thread, (void *)i);
+		ret = pthread_create(&threads[i], NULL, &update_thread, (void *)(long)i);
 		if (ret) {
 			failed("pthread_create");
 			goto remove;
@@ -234,14 +228,27 @@ int main(int argc, char * const argv[])
 			failed("ubi_rmvol");
 			goto remove;
 		}
+		if (wbufs[i])
+			free(wbufs[i]);
+		if (rbufs[i])
+			free(rbufs[i]);
+		wbufs[i] = NULL;
+		rbufs[i] = NULL;
 	}
 
 	libubi_close(libubi);
 	return 0;
 
 remove:
-	for (i = 0; i <= THREADS_NUM; i++)
+	for (i = 0; i <= THREADS_NUM; i++) {
 		ubi_rmvol(libubi, node, i);
+		if (wbufs[i])
+			free(wbufs[i]);
+		if (rbufs[i])
+			free(rbufs[i]);
+		wbufs[i] = NULL;
+		rbufs[i] = NULL;
+	}
 
 close:
 	libubi_close(libubi);
