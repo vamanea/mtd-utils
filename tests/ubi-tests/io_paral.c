@@ -20,6 +20,7 @@
  * This test does a lot of I/O to volumes in parallel.
  */
 
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -34,18 +35,19 @@
 #include "common.h"
 
 #define THREADS_NUM 4
-#define ITERATIONS  409
+#define ITERATIONS  (1024 * 1)
+#define VOL_LEBS    10
 
 static libubi_t libubi;
 static struct ubi_dev_info dev_info;
 static const char *node;
 static int vol_size;
 
-static struct ubi_mkvol_request reqests[THREADS_NUM];
-static char vol_name[THREADS_NUM][100];
-static char vol_nodes[THREADS_NUM][strlen(UBI_VOLUME_PATTERN) + 100];
-static unsigned char *wbufs[THREADS_NUM];
-static unsigned char *rbufs[THREADS_NUM];
+static struct ubi_mkvol_request reqests[THREADS_NUM + 1];
+static char vol_name[THREADS_NUM + 1][100];
+static char vol_nodes[THREADS_NUM + 1][strlen(UBI_VOLUME_PATTERN) + 100];
+static unsigned char *wbufs[THREADS_NUM + 1];
+static unsigned char *rbufs[THREADS_NUM + 1];
 
 static int update_volume(int vol_id, int bytes)
 {
@@ -65,14 +67,12 @@ static int update_volume(int vol_id, int bytes)
 		wbuf[i] = random() % 255;
 	memset(rbuf, '\0', bytes);
 
-	do {
-		ret = ubi_update_start(libubi, fd, bytes);
-		if (ret && errno != EBUSY) {
-			failed("ubi_update_start");
-			err_msg("volume id is %d", vol_id);
-			goto err_close;
-		}
-	} while (ret);
+	ret = ubi_update_start(libubi, fd, bytes);
+	if (ret) {
+		failed("ubi_update_start");
+		err_msg("volume id is %d", vol_id);
+		goto err_close;
+	}
 
 	while (written < bytes) {
 		int to_write = random() % (bytes - written);
@@ -80,7 +80,7 @@ static int update_volume(int vol_id, int bytes)
 		if (to_write == 0)
 			to_write = 1;
 
-		ret = write(fd, wbuf, to_write);
+		ret = write(fd, wbuf + written, to_write);
 		if (ret != to_write) {
 			failed("write");
 			err_msg("failed to write %d bytes at offset %d "
@@ -109,7 +109,7 @@ static int update_volume(int vol_id, int bytes)
 		if (to_read == 0)
 			to_read = 1;
 
-		ret = read(fd, rbuf, to_read);
+		ret = read(fd, rbuf + rd, to_read);
 		if (ret != to_read) {
 			failed("read");
 			err_msg("failed to read %d bytes at offset %d "
@@ -118,6 +118,11 @@ static int update_volume(int vol_id, int bytes)
 		}
 
 		rd += to_read;
+	}
+
+	if (memcmp(wbuf, rbuf, bytes)) {
+		err_msg("written and read data are different");
+		goto err_close;
 	}
 
 	close(fd);
@@ -160,6 +165,69 @@ static void *update_thread(void *ptr)
 	return NULL;
 }
 
+static void *write_thread(void *ptr)
+{
+	int ret, fd, vol_id = (long)ptr, i;
+	char *vol_node = vol_nodes[vol_id];
+	unsigned char *wbuf = wbufs[vol_id];
+	unsigned char *rbuf = rbufs[vol_id];
+
+	fd = open(vol_node, O_RDWR);
+	if (fd == -1) {
+		failed("open");
+		err_msg("cannot open \"%s\"\n", vol_node);
+		return NULL;
+	}
+
+	ret = ubi_set_property(fd, UBI_PROP_DIRECT_WRITE, 1);
+	if (ret) {
+		failed("ubi_set_property");
+		err_msg("cannot set property for \"%s\"\n", vol_node);
+	}
+
+	for (i = 0; i < ITERATIONS * VOL_LEBS; i++) {
+		int j, leb = random() % VOL_LEBS;
+		off_t offs = dev_info.leb_size * leb;
+
+		ret = ubi_leb_unmap(fd, leb);
+		if (ret) {
+			failed("ubi_leb_unmap");
+			err_msg("cannot unmap LEB %d", leb);
+			break;
+		}
+
+		for (j = 0; j < dev_info.leb_size; j++)
+			wbuf[j] = random() % 255;
+		memset(rbuf, '\0', dev_info.leb_size);
+
+		ret = pwrite(fd, wbuf, dev_info.leb_size, offs);
+		if (ret != dev_info.leb_size) {
+			failed("pwrite");
+			err_msg("cannot write %d bytes to offs %lld, wrote %d",
+				dev_info.leb_size, offs, ret);
+			break;
+		}
+
+		/* read data back and check */
+		ret = pread(fd, rbuf, dev_info.leb_size, offs);
+		if (ret != dev_info.leb_size) {
+			failed("read");
+			err_msg("failed to read %d bytes at offset %d "
+				"of volume %d", dev_info.leb_size, offs,
+				vol_id);
+			break;
+		}
+
+		if (memcmp(wbuf, rbuf, dev_info.leb_size)) {
+			err_msg("written and read data are different");
+			break;
+		}
+	}
+
+	close(fd);
+	return NULL;
+}
+
 int main(int argc, char * const argv[])
 {
 	int i, ret;
@@ -185,14 +253,16 @@ int main(int argc, char * const argv[])
 	 * Create 1 volume more than threads count. The last volume
 	 * will not change to let WL move more stuff.
 	 */
-	vol_size = dev_info.leb_size * 10;
-	for (i = 0; i < THREADS_NUM + 1; i++) {
+	vol_size = dev_info.leb_size * VOL_LEBS;
+	for (i = 0; i <= THREADS_NUM; i++) {
 		reqests[i].alignment = 1;
 		reqests[i].bytes = vol_size;
 		reqests[i].vol_id = i;
 		sprintf(vol_name[i], TESTNAME":%d", i);
 		reqests[i].name = vol_name[i];
-		reqests[i].vol_type = (i & 1) ? UBI_STATIC_VOLUME : UBI_DYNAMIC_VOLUME;
+		reqests[i].vol_type = UBI_DYNAMIC_VOLUME;
+		if (i == THREADS_NUM)
+			reqests[i].vol_type = UBI_STATIC_VOLUME;
 		sprintf(vol_nodes[i], UBI_VOLUME_PATTERN, dev_info.dev_num, i);
 
 		if (ubi_mkvol(libubi, node, &reqests[i])) {
@@ -212,7 +282,15 @@ int main(int argc, char * const argv[])
 			goto remove;
 	}
 
-	for (i = 0; i < THREADS_NUM; i++) {
+	for (i = 0; i < THREADS_NUM / 2; i++) {
+		ret = pthread_create(&threads[i], NULL, &write_thread, (void *)(long)i);
+		if (ret) {
+			failed("pthread_create");
+			goto remove;
+		}
+	}
+
+	for (i = THREADS_NUM / 2; i < THREADS_NUM; i++) {
 		ret = pthread_create(&threads[i], NULL, &update_thread, (void *)(long)i);
 		if (ret) {
 			failed("pthread_create");
