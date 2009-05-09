@@ -414,6 +414,23 @@ int ubi_set_property(int fd, uint8_t property, uint64_t value);
  */
 int ubi_leb_unmap(int fd, int lnum);
 
+/**
+ * ubi_is_mapped - check if logical eraseblock is mapped.
+ * @fd: volume character device file descriptor
+ * @lnum: logical eraseblock number
+ *
+ * This function checks if logical eraseblock @lnum is mapped to a physical
+ * eraseblock. If a logical eraseblock is un-mapped, this does not necessarily
+ * mean it will still be un-mapped after the UBI device is re-attached. The
+ * logical eraseblock may become mapped to the physical eraseblock it was last
+ * mapped to.
+ *
+ * This function returns %1 if the LEB is mapped, %0 if not, and %-1 in case of
+ * failure. If the volume is damaged because of an interrupted update errno
+ * set with %EBADF error code.
+ */
+int ubi_is_mapped(int fd, int lnum);
+
 #ifdef __cplusplus
 }
 #endif

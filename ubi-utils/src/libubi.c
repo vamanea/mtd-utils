@@ -1254,3 +1254,8 @@ int ubi_leb_unmap(int fd, int lnum)
 {
 	return ioctl(fd, UBI_IOCEBUNMAP, &lnum);
 }
+
+int ubi_is_mapped(int fd, int lnum)
+{
+	return ioctl(fd, UBI_IOCEBISMAP, &lnum);
+}
