@@ -89,6 +89,14 @@ static int read_data(const char *file, void *buf, int buf_len)
 		goto out_error;
 	}
 
+	if (rd == buf_len) {
+		errmsg("contents of \"%s\" is too long", file);
+		errno = EINVAL;
+		goto out_error;
+	}
+
+	((char *)buf)[rd] = '\0';
+
 	/* Make sure all data is read */
 	tmp1 = read(fd, &tmp, 1);
 	if (tmp1 == 1) {
@@ -199,16 +207,17 @@ static int read_hex_ll(const char *file, long long *value)
 	if (fd == -1)
 		return -1;
 
-	rd = read(fd, buf, 50);
+	rd = read(fd, buf, sizeof(buf));
 	if (rd == -1) {
 		sys_errmsg("cannot read \"%s\"", file);
 		goto out_error;
 	}
-	if (rd == 50) {
+	if (rd == sizeof(buf)) {
 		errmsg("contents of \"%s\" is too long", file);
 		errno = EINVAL;
 		goto out_error;
 	}
+	buf[rd] = '\0';
 
 	if (sscanf(buf, "%llx\n", value) != 1) {
 		errmsg("cannot read integer from \"%s\"\n", file);
@@ -571,7 +580,7 @@ int mtd_get_info(libmtd_t desc, struct mtd_info *info)
 	struct dirent *dirent;
 	struct libmtd *lib = (struct libmtd *)desc;
 
-	memset(info, '\0', sizeof(struct mtd_info));
+	memset(info, 0, sizeof(struct mtd_info));
 
 	if (!lib->sysfs_supported)
 		return legacy_mtd_get_info(info);
@@ -643,7 +652,7 @@ int mtd_get_dev_info1(libmtd_t desc, int dev_num, struct mtd_dev_info *mtd)
 	struct stat st;
 	struct libmtd *lib = (struct libmtd *)desc;
 
-	memset(mtd, '\0', sizeof(struct mtd_dev_info));
+	memset(mtd, 0, sizeof(struct mtd_dev_info));
 	mtd->dev_num = dev_num;
 
 	if (!lib->sysfs_supported)
@@ -663,13 +672,13 @@ int mtd_get_dev_info1(libmtd_t desc, int dev_num, struct mtd_dev_info *mtd)
 		return -1;
 
 	ret = dev_read_data(lib->mtd_name, dev_num, &mtd->name,
-			    MTD_NAME_MAX);
+			    MTD_NAME_MAX + 1);
 	if (ret < 0)
 		return -1;
 	((char *)mtd->name)[ret - 1] = '\0';
 
 	ret = dev_read_data(lib->mtd_type, dev_num, &mtd->type_str,
-			    MTD_TYPE_MAX);
+			    MTD_TYPE_MAX + 1);
 	if (ret < 0)
 		return -1;
 	((char *)mtd->type_str)[ret - 1] = '\0';

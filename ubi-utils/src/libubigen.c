@@ -122,7 +122,7 @@ int ubigen_add_volume(const struct ubigen_info *ui,
 		return errmsg("too large alignment %d, max is %d (LEB size)",
 			      vi->alignment, ui->leb_size);
 
-	memset(vtbl_rec, '\0', sizeof(struct ubi_vtbl_record));
+	memset(vtbl_rec, 0, sizeof(struct ubi_vtbl_record));
 	tmp = (vi->bytes + ui->leb_size - 1) / ui->leb_size;
 	vtbl_rec->reserved_pebs = cpu_to_be32(tmp);
 	vtbl_rec->alignment = cpu_to_be32(vi->alignment);
@@ -151,7 +151,7 @@ void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 {
 	uint32_t crc;
 
-	memset(hdr, '\0', sizeof(struct ubi_ec_hdr));
+	memset(hdr, 0, sizeof(struct ubi_ec_hdr));
 
 	hdr->magic = cpu_to_be32(UBI_EC_HDR_MAGIC);
 	hdr->version = ui->ubi_ver;
@@ -183,7 +183,7 @@ static void init_vid_hdr(const struct ubigen_info *ui,
 {
 	uint32_t crc;
 
-	memset(hdr, '\0', sizeof(struct ubi_vid_hdr));
+	memset(hdr, 0, sizeof(struct ubi_vid_hdr));
 
 	hdr->magic = cpu_to_be32(UBI_VID_HDR_MAGIC);
 	hdr->version = ui->ubi_ver;
