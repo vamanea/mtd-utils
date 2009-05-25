@@ -1011,8 +1011,6 @@ static int add_inode_with_data(struct stat *st, ino_t inum, void *data,
 	ino->mtime_nsec = 0;
 	ino->uid        = cpu_to_le32(st->st_uid);
 	ino->gid        = cpu_to_le32(st->st_gid);
-	ino->uid        = cpu_to_le32(st->st_uid);
-	ino->gid        = cpu_to_le32(st->st_gid);
 	ino->mode       = cpu_to_le32(st->st_mode);
 	ino->flags      = cpu_to_le32(use_flags);
 	ino->data_len   = cpu_to_le32(data_len);
