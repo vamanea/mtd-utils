@@ -1,8 +1,11 @@
+
+CPPFLAGS += -I../include -I../ubi-utils/include
+
 ALL_SOURCES=*.[ch] hashtable/*.[ch]
 
 TARGETS = mkfs.ubifs
 
-LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid
+LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid -L../ubi-utils/ -lubi
 
 include ../common.mk
 

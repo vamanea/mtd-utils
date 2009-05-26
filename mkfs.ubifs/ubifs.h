@@ -292,6 +292,9 @@ struct ubifs_znode
  * @dead_wm: LEB dead space watermark
  * @dark_wm: LEB dark space watermark
  *
+ * @di: UBI device information
+ * @vi: UBI volume information
+ *
  * @gc_lnum: LEB number used for garbage collection
  * @rp_size: reserved pool size
  *
@@ -365,6 +368,9 @@ struct ubifs_info
 
 	int dead_wm;
 	int dark_wm;
+
+	struct ubi_dev_info di;
+	struct ubi_vol_info vi;
 
 	int gc_lnum;
 	long long rp_size;

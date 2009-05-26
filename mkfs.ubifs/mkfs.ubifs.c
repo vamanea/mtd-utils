@@ -95,6 +95,7 @@ struct inum_mapping {
  */
 struct ubifs_info info_;
 static struct ubifs_info *c = &info_;
+static libubi_t ubi;
 
 /* Debug levels are: 0 (none), 1 (statistics), 2 (files) ,3 (more details) */
 int debug_level;
@@ -105,6 +106,7 @@ static int root_len;
 static struct stat root_st;
 static char *output;
 static int out_fd;
+static int out_ubi;
 static int squash_owner;
 
 /* The 'head' (position) which nodes are written */
@@ -154,8 +156,15 @@ static const struct option longopts[] = {
 };
 
 static const char *helptext =
-"Usage: mkfs.ubifs [OPTIONS]\n"
+"Usage: mkfs.ubifs [OPTIONS] target\n"
 "Make a UBIFS file system image from an existing directory tree\n\n"
+"Examples:\n"
+"Build file system from directory /opt/img, writting the result in the ubifs.img file\n"
+"\tmkfs.ubifs -m 512 -e 128KiB -c 100 -r /opt/img ubifs.img\n"
+"The same, but writting directly to an UBI volume\n"
+"\tmkfs.ubifs -r /opt/img /dev/ubi0_0\n"
+"Creating an empty UBIFS filesystem on an UBI volume\n"
+"\tmkfs.ubifs /dev/ubi0_0\n\n"
 "Options:\n"
 "-r, -d, --root=DIR       build file system from directory DIR\n"
 "-m, --min-io-size=SIZE   minimum I/O unit size\n"
@@ -357,11 +366,9 @@ static int validate_options(void)
 {
 	int tmp;
 
-	if (!root)
-		return err_msg("root directory was not specified");
 	if (!output)
-		return err_msg("no output file specified");
-	if (in_path(root, output))
+		return err_msg("no output file or UBI volume specified");
+	if (root && in_path(root, output))
 		return err_msg("output file cannot be in the UBIFS root "
 			       "directory");
 	if (!is_power_of_2(c->min_io_size))
@@ -466,6 +473,28 @@ static long long get_bytes(const char *str)
 	}
 
 	return bytes;
+}
+/**
+ * open_ubi - open the UBI volume.
+ * @node: name of the UBI volume character device to fetch information about
+ *
+ * Returns %0 in case of success and %-1 in case of failure
+ */
+static int open_ubi(const char *node)
+{
+	struct stat st;
+
+	if (stat(node, &st) || !S_ISCHR(st.st_mode))
+		return -1;
+
+	ubi = libubi_open();
+	if (!ubi)
+		return -1;
+	if (ubi_get_vol_info(ubi, node, &c->vi))
+		return -1;
+	if (ubi_get_dev_info1(ubi, c->vi.dev_num, &c->di))
+		return -1;
+	return 0;
 }
 
 static int get_options(int argc, char**argv)
@@ -616,6 +645,20 @@ static int get_options(int argc, char**argv)
 		}
 	}
 
+	if (optind != argc && !output)
+		output = strdup(argv[optind]);
+	if (output)
+		out_ubi = !open_ubi(output);
+
+	if (out_ubi) {
+		c->min_io_size = c->di.min_io_size;
+		c->leb_size = c->vi.leb_size;
+		c->max_leb_cnt = c->vi.rsvd_lebs;
+	}
+
+	if (!output)
+		return err_msg("not output device or file specified");
+
 	if (c->min_io_size == -1)
 		return err_msg("min. I/O unit was not specified "
 			       "(use -h for help)");
@@ -714,21 +757,25 @@ static void prepare_node(void *node, int len)
 }
 
 /**
- * write_leb - copy the image of a LEB to the output file.
+ * write_leb - copy the image of a LEB to the output target.
  * @lnum: LEB number
  * @len: length of data in the buffer
  * @buf: buffer (must be at least c->leb_size bytes)
+ * @dtype: expected data type
  */
-int write_leb(int lnum, int len, void *buf)
+int write_leb(int lnum, int len, void *buf, int dtype)
 {
 	off64_t pos = (off64_t)lnum * c->leb_size;
 
 	dbg_msg(3, "LEB %d len %d", lnum, len);
+	memset(buf + len, 0xff, c->leb_size - len);
+	if (out_ubi)
+		if (ubi_leb_change_start(ubi, out_fd, lnum, c->leb_size, dtype))
+			return sys_err_msg("ubi_leb_change_start failed");
+
 	if (lseek64(out_fd, pos, SEEK_SET) != pos)
 		return sys_err_msg("lseek64 failed seeking %lld",
 				   (long long)pos);
-
-	memset(buf + len, 0xff, c->leb_size - len);
 
 	if (write(out_fd, buf, c->leb_size) != c->leb_size)
 		return sys_err_msg("write failed writing %d bytes at pos %lld",
@@ -738,12 +785,13 @@ int write_leb(int lnum, int len, void *buf)
 }
 
 /**
- * write_empty_leb - copy the image of an empty LEB to the output file.
+ * write_empty_leb - copy the image of an empty LEB to the output target.
  * @lnum: LEB number
+ * @dtype: expected data type
  */
-static int write_empty_leb(int lnum)
+static int write_empty_leb(int lnum, int dtype)
 {
-	return write_leb(lnum, 0, leb_buf);
+	return write_leb(lnum, 0, leb_buf, dtype);
 }
 
 /**
@@ -790,8 +838,9 @@ static int do_pad(void *buf, int len)
  * @node: node
  * @len: node length
  * @lnum: LEB number
+ * @dtype: expected data type
  */
-static int write_node(void *node, int len, int lnum)
+static int write_node(void *node, int len, int lnum, int dtype)
 {
 	prepare_node(node, len);
 
@@ -799,7 +848,7 @@ static int write_node(void *node, int len, int lnum)
 
 	len = do_pad(leb_buf, len);
 
-	return write_leb(lnum, len, leb_buf);
+	return write_leb(lnum, len, leb_buf, dtype);
 }
 
 /**
@@ -909,7 +958,7 @@ static int flush_nodes(void)
 	if (!head_offs)
 		return 0;
 	len = do_pad(leb_buf, head_offs);
-	err = write_leb(head_lnum, len, leb_buf);
+	err = write_leb(head_lnum, len, leb_buf, UBI_UNKNOWN);
 	if (err)
 		return err;
 	set_lprops(head_lnum, head_offs, head_flags);
@@ -1581,14 +1630,20 @@ static int write_data(void)
 {
 	int err;
 
-	err = stat(root, &root_st);
-	if (err)
-		return sys_err_msg("bad root file-system directory '%s'", root);
+	if (root) {
+		err = stat(root, &root_st);
+		if (err)
+			return sys_err_msg("bad root file-system directory '%s'",
+					   root);
+	} else {
+		root_st.st_mtime = time(NULL);
+		root_st.st_atime = root_st.st_ctime = root_st.st_mtime;
+	}
 	root_st.st_uid = root_st.st_gid = 0;
 	root_st.st_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
 
 	head_flags = 0;
-	err = add_directory(root, UBIFS_ROOT_INO, &root_st, 0);
+	err = add_directory(root, UBIFS_ROOT_INO, &root_st, !root);
 	if (err)
 		return err;
 	err = add_multi_linked_files();
@@ -1831,7 +1886,7 @@ static int set_gc_lnum(void)
 	int err;
 
 	c->gc_lnum = head_lnum++;
-	err = write_empty_leb(c->gc_lnum);
+	err = write_empty_leb(c->gc_lnum, UBI_LONGTERM);
 	if (err)
 		return err;
 	set_lprops(c->gc_lnum, 0, 0);
@@ -1907,7 +1962,7 @@ static int write_super(void)
 	if (c->big_lpt)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_BIGLPT);
 
-	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM);
+	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM, UBI_LONGTERM);
 }
 
 /**
@@ -1950,11 +2005,13 @@ static int write_master(void)
 	mst.total_dark   = cpu_to_le64(c->lst.total_dark);
 	mst.leb_cnt      = cpu_to_le32(c->leb_cnt);
 
-	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM);
+	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM,
+			 UBI_SHORTTERM);
 	if (err)
 		return err;
 
-	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM + 1);
+	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM + 1,
+			 UBI_SHORTTERM);
 	if (err)
 		return err;
 
@@ -1974,14 +2031,14 @@ static int write_log(void)
 	cs.ch.node_type = UBIFS_CS_NODE;
 	cs.cmt_no = cpu_to_le64(0);
 
-	err = write_node(&cs, UBIFS_CS_NODE_SZ, lnum);
+	err = write_node(&cs, UBIFS_CS_NODE_SZ, lnum, UBI_UNKNOWN);
 	if (err)
 		return err;
 
 	lnum += 1;
 
 	for (i = 1; i < c->log_lebs; i++, lnum++) {
-		err = write_empty_leb(lnum);
+		err = write_empty_leb(lnum, UBI_UNKNOWN);
 		if (err)
 			return err;
 	}
@@ -2002,7 +2059,7 @@ static int write_lpt(void)
 
 	lnum = c->nhead_lnum + 1;
 	while (lnum <= c->lpt_last) {
-		err = write_empty_leb(lnum++);
+		err = write_empty_leb(lnum++, UBI_SHORTTERM);
 		if (err)
 			return err;
 	}
@@ -2019,7 +2076,7 @@ static int write_orphan_area(void)
 
 	lnum = UBIFS_LOG_LNUM + c->log_lebs + c->lpt_lebs;
 	for (i = 0; i < c->orph_lebs; i++, lnum++) {
-		err = write_empty_leb(lnum);
+		err = write_empty_leb(lnum, UBI_SHORTTERM);
 		if (err)
 			return err;
 	}
@@ -2027,24 +2084,76 @@ static int write_orphan_area(void)
 }
 
 /**
- * open_target - open the output file.
+ * check_volume_empty - check if the UBI volume is empty.
+ *
+ * This function checks if the UBI volume is empty by looking if its LEBs are
+ * mapped or not.
+ *
+ * Returns %0 in case of success, %1 is the volume is not empty,
+ * and a negative error code in case of failure.
  */
-static int open_target(void)
+static int check_volume_empty(void)
 {
-	out_fd = open(output, O_CREAT | O_RDWR | O_TRUNC,
-		      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
-	if (out_fd == -1)
-		return sys_err_msg("cannot create output file '%s'", output);
+	int lnum, err;
+
+	for (lnum = 0; lnum < c->vi.rsvd_lebs; lnum++) {
+		err = ubi_is_mapped(out_fd, lnum);
+		if (err < 0)
+			return err;
+		if (err == 1)
+			return 1;
+	}
 	return 0;
 }
 
 /**
- * close_target - close the output file.
+ * open_target - open the output target.
+ *
+ * Open the output target. The target can be an UBI volume
+ * or a file.
+ *
+ * Returns %0 in case of success and %-1 in case of failure.
+ */
+static int open_target(void)
+{
+	if (out_ubi) {
+		out_fd = open(output, O_RDWR | O_EXCL);
+
+		if (out_fd == -1)
+			return sys_err_msg("cannot open the UBI volume '%s'",
+					   output);
+		if (ubi_set_property(out_fd, UBI_PROP_DIRECT_WRITE, 1))
+			return sys_err_msg("ubi_set_property failed");
+
+		if (check_volume_empty())
+			return err_msg("UBI volume is not empty");
+	} else {
+		out_fd = open(output, O_CREAT | O_RDWR | O_TRUNC,
+			      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+		if (out_fd == -1)
+			return sys_err_msg("cannot create output file '%s'",
+					   output);
+	}
+	return 0;
+}
+
+
+/**
+ * close_target - close the output target.
+ *
+ * Close the output target. If the target was an UBI
+ * volume, also close libubi.
+ *
+ * Returns %0 in case of success and %-1 in case of failure.
  */
 static int close_target(void)
 {
-	if (close(out_fd) == -1)
-		return sys_err_msg("cannot close output file '%s'", output);
+	if (ubi)
+		libubi_close(ubi);
+	if (out_fd >= 0 && close(out_fd) == -1)
+		return sys_err_msg("cannot close the target '%s'", output);
+	if (output)
+		free(output);
 	return 0;
 }
 
