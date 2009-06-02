@@ -218,8 +218,13 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	loff_t offs = 0;
 	struct proc_parse_info pi;
 
-	if (stat(node, &st))
-		return sys_errmsg("cannot open \"%s\"", node);
+	if (stat(node, &st)) {
+		sys_errmsg("cannot open \"%s\"", node);
+		if (errno == ENOENT)
+			normsg("MTD subsystem is old and does not support "
+			       "sysfs, so MTD character device nodes have "
+			       "to exist");
+	}
 
 	if (!S_ISCHR(st.st_mode)) {
 		errno = EINVAL;

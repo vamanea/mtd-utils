@@ -238,23 +238,20 @@ static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
 	if (mtd_info->dev_count == 0)
 		return 0;
 
-	printf("Present MTD devices:            ");
 	for (i = mtd_info->lowest_dev_num;
 	     i <= mtd_info->highest_dev_num; i++) {
 		err = mtd_get_dev_info1(libmtd, i, &mtd);
 		if (err == -1) {
 			if (errno == ENODEV)
 				continue;
-
-			printf("\n");
 			return sys_errmsg("libmtd failed get MTD device %d "
-					   "information", i);
+					  "information", i);
 		}
 
 		if (!first)
 			printf(", mtd%d", i);
 		else {
-			printf("mtd%d", i);
+			printf("Present MTD devices:            mtd%d", i);
 			first = 0;
 		}
 	}

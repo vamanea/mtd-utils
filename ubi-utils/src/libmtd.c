@@ -472,9 +472,88 @@ static int dev_node2num(struct libmtd *lib, const char *node, int *dev_num)
 	return -1;
 }
 
+/**
+ * sysfs_is_supported - check whether the MTD sub-system supports MTD.
+ * @lib: MTD library descriptor
+ *
+ * The Linux kernel MTD subsystem gained MTD support starting from kernel
+ * 2.6.30 and libmtd tries to use sysfs interface if possible, because the NAND
+ * sub-page size is available there (and not available at all in pre-sysfs
+ * kernels).
+ *
+ * Very old kernels did not have "/sys/class/mtd" directory. Not very old
+ * kernels (e.g., 2.6.29) did have "/sys/class/mtd/mtdX" directories, by there
+ * were no files there, e.g., the "name" file was not present. So all we can do
+ * is to check for a "/sys/class/mtd/mtdX/name" file. But this is not a
+ * reliable check, because if this is a new system with no MTD devices - we'll
+ * treat it as a pre-sysfs system.
+ */
+static int sysfs_is_supported(struct libmtd *lib)
+{
+	int fd, num = -1;
+	DIR *sysfs_mtd;
+	char file[strlen(lib->mtd_name) + 10];
+
+	sysfs_mtd = opendir(lib->sysfs_mtd);
+	if (!sysfs_mtd) {
+		if (errno == ENOENT) {
+			errno = 0;
+			return 0;
+		}
+		return sys_errmsg("cannot open \"%s\"", lib->sysfs_mtd);
+	}
+
+	/*
+	 * First of all find an "mtdX" directory. This is needed because there
+	 * may be, for example, mtd1 but no mtd0.
+	 */
+	while (1) {
+		int ret, dev_num;
+		char tmp_buf[256];
+		struct dirent *dirent;
+
+		dirent = readdir(sysfs_mtd);
+		if (!dirent)
+			break;
+
+		if (strlen(dirent->d_name) >= 255) {
+			errmsg("invalid entry in %s: \"%s\"",
+			       lib->sysfs_mtd, dirent->d_name);
+			errno = EINVAL;
+			closedir(sysfs_mtd);
+			return -1;
+		}
+
+		ret = sscanf(dirent->d_name, MTD_NAME_PATT"%s",
+			     &dev_num, tmp_buf);
+		if (ret == 1) {
+			num = dev_num;
+			break;
+		}
+	}
+
+	if (closedir(sysfs_mtd))
+		return sys_errmsg("closedir failed on \"%s\"", lib->sysfs_mtd);
+
+	if (num == -1)
+		/* No mtd device, treat this as pre-sysfs system */
+		return 0;
+
+	sprintf(file, lib->mtd_name, num);
+	fd = open(file, O_RDONLY);
+	if (fd == -1)
+		return 0;
+
+	if (close(fd)) {
+		sys_errmsg("close failed on \"%s\"", file);
+		return -1;
+	}
+
+	return 1;
+}
+
 libmtd_t libmtd_open(void)
 {
-	int fd;
 	struct libmtd *lib;
 
 	lib = calloc(1, sizeof(struct libmtd));
@@ -489,27 +568,17 @@ libmtd_t libmtd_open(void)
 	if (!lib->mtd)
 		goto out_error;
 
-	/* Make sure MTD is recent enough and supports sysfs */
-	fd = open(lib->sysfs_mtd, O_RDONLY);
-	if (fd == -1) {
-		free(lib->mtd);
-		free(lib->sysfs_mtd);
-		if (errno != ENOENT || legacy_libmtd_open()) {
-			free(lib);
-			return NULL;
-		}
-		lib->mtd_name = lib->mtd = lib->sysfs_mtd = NULL;
-		return lib;
-	}
-
-	if (close(fd)) {
-		sys_errmsg("close failed on \"%s\"", lib->sysfs_mtd);
-		goto out_error;
-	}
-
 	lib->mtd_name = mkpath(lib->mtd, MTD_NAME);
 	if (!lib->mtd_name)
 		goto out_error;
+
+	if (!sysfs_is_supported(lib)) {
+		free(lib->mtd);
+		free(lib->sysfs_mtd);
+		free(lib->mtd_name);
+		lib->mtd_name = lib->mtd = lib->sysfs_mtd = NULL;
+		return lib;
+	}
 
 	lib->mtd_dev = mkpath(lib->mtd, MTD_DEV);
 	if (!lib->mtd_dev)
