@@ -1640,7 +1640,7 @@ static int write_data(void)
 		root_st.st_atime = root_st.st_ctime = root_st.st_mtime;
 	}
 	root_st.st_uid = root_st.st_gid = 0;
-	root_st.st_mode = S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO;
+	root_st.st_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 
 	head_flags = 0;
 	err = add_directory(root, UBIFS_ROOT_INO, &root_st, !root);
