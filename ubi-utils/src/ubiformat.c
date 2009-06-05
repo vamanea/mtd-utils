@@ -392,6 +392,7 @@ static int consecutive_bad_check(int eb)
 	return 0;
 }
 
+/* TODO: we should actually torture the PEB before marking it as bad */
 static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, int eb)
 {
 	int err;
@@ -528,7 +529,6 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 
 			if (errno != EIO)
 				goto out_close;
-
 
 			if (mark_bad(mtd, si, eb)) {
 				normsg("operation incomplete");
