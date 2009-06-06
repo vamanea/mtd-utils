@@ -531,7 +531,7 @@ int main(int argc, char * const argv[])
 		if (writeoob) {
 			int tinycnt = 0;
 
-			while(tinycnt < readlen) {
+			while(tinycnt < meminfo.oobsize) {
 				cnt = read(ifd, oobreadbuf + tinycnt, meminfo.oobsize - tinycnt);
 				if (cnt == 0) { // EOF
 					break;
