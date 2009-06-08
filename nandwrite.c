@@ -586,6 +586,10 @@ int main(int argc, char * const argv[])
 			erase_info_t erase;
 
 			perror ("pwrite");
+			if (errno != EIO) {
+				goto closeall;
+			}
+
 			/* Must rewind to blockstart if we can */
 			rewind_blocks = (mtdoffset - blockstart) / meminfo.writesize; /* Not including the one we just attempted */
 			rewind_bytes = (rewind_blocks * meminfo.writesize) + readlen;
@@ -602,7 +606,9 @@ int main(int argc, char * const argv[])
 				(long)erase.start, (long)erase.start+erase.length-1);
 			if (ioctl(fd, MEMERASE, &erase) != 0) {
 				perror("MEMERASE");
-				goto closeall;
+				if (errno != EIO) {
+					goto closeall;
+				}
 			}
 
 			if (markbad) {
@@ -610,7 +616,7 @@ int main(int argc, char * const argv[])
 				fprintf(stderr, "Marking block at %08lx bad\n", (long)bad_addr);
 				if (ioctl(fd, MEMSETBADBLOCK, &bad_addr)) {
 					perror("MEMSETBADBLOCK");
-					/* But continue anyway */
+					goto closeall;
 				}
 			}
 			mtdoffset = blockstart + meminfo.erasesize;
