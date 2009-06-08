@@ -261,6 +261,7 @@ int main(int argc, char * const argv[])
 	int oobinfochanged = 0;
 	struct nand_oobinfo old_oobinfo;
 	int readcnt = 0;
+	bool failed = true;
 
 	process_options(argc, argv);
 
@@ -623,6 +624,8 @@ int main(int argc, char * const argv[])
 		mtdoffset += meminfo.writesize;
 	}
 
+	failed = false;
+
 closeall:
 	close(ifd);
 
@@ -637,7 +640,7 @@ restoreoob:
 
 	close(fd);
 
-	if ((ifd != STDIN_FILENO) && (imglen > 0)) {
+	if (failed || ((ifd != STDIN_FILENO) && (imglen > 0))) {
 		perror ("Data was only partially written due to error\n");
 		exit (EXIT_FAILURE);
 	}
