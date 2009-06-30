@@ -154,7 +154,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'e':
 			args.ec = strtoull(optarg, &endp, 0);
-			if (args.ec <= 0 || *endp != '\0' || endp == optarg)
+			if (args.ec < 0 || *endp != '\0' || endp == optarg)
 				return errmsg("bad erase counter value: \"%s\"", optarg);
 			if (args.ec >= EC_MAX)
 				return errmsg("too high erase %llu, counter, max is %u", args.ec, EC_MAX);
