@@ -5,8 +5,8 @@
 KERNELHDR := ../../include
 
 CFLAGS ?= -O2 -g -Werror
-CPPFLAGS += -I./inc -I./src -I$(KERNELHDR) \
-	-std=gnu99 -DPACKAGE_VERSION=\"1.0\"
+CPPFLAGS := -I./inc -I./src -I$(KERNELHDR) \
+	-std=gnu99 -DPACKAGE_VERSION=\"1.0\" $(CPPFLAGS)
 
 PERLPROGS = mkpfi ubicrc32.pl
 
