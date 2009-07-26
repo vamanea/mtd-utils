@@ -522,8 +522,6 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 
 		err = mtd_write(mtd, args.node_fd, eb, 0, buf, new_len);
 		if (err) {
-			if (!args.quiet)
-				printf("\n");
 			sys_errmsg("cannot write eraseblock %d", eb);
 
 			if (errno != EIO)
