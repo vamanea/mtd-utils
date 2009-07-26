@@ -483,7 +483,6 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 			if (mark_bad(mtd, si, eb))
 				goto out_close;
 
-			divisor += 1;
 			continue;
 		}
 
@@ -536,7 +535,6 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 					normsg("operation incomplete");
 					goto out_close;
 				}
-				divisor += 1;
 			}
 			continue;
 		}
