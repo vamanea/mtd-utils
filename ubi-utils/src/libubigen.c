@@ -46,9 +46,11 @@
  *                @min_io_size if does not exist)
  * @vid_hdr_offs: offset of the VID header
  * @ubi_ver: UBI version
+ * @image_seq: UBI image sequence number
  */
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
-		      int subpage_size, int vid_hdr_offs, int ubi_ver)
+		      int subpage_size, int vid_hdr_offs, int ubi_ver,
+		      uint32_t image_seq)
 {
 	if (!vid_hdr_offs) {
 		vid_hdr_offs = UBI_EC_HDR_SIZE + subpage_size - 1;
@@ -64,6 +66,7 @@ void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 	ui->data_offs *= min_io_size;
 	ui->leb_size = peb_size - ui->data_offs;
 	ui->ubi_ver = ubi_ver;
+	ui->image_seq = image_seq;
 
 	ui->max_volumes = ui->leb_size / UBI_VTBL_RECORD_SIZE;
 	if (ui->max_volumes > UBI_MAX_VOLUMES)
@@ -157,8 +160,8 @@ void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 	hdr->version = ui->ubi_ver;
 	hdr->ec = cpu_to_be64(ec);
 	hdr->vid_hdr_offset = cpu_to_be32(ui->vid_hdr_offs);
-
 	hdr->data_offset = cpu_to_be32(ui->data_offs);
+	hdr->image_seq = cpu_to_be32(ui->image_seq);
 
 	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
 	hdr->hdr_crc = cpu_to_be32(crc);

@@ -875,7 +875,7 @@ int main(int argc, char * const argv[])
 		normsg("use erase counter %lld for all eraseblocks", args.ec);
 
 	ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, mtd.subpage_size,
-			 args.vid_hdr_offs, args.ubi_ver);
+			 args.vid_hdr_offs, args.ubi_ver, 0);
 
 	if (si->vid_hdr_offs != -1 && ui.vid_hdr_offs != si->vid_hdr_offs) {
 		/*
@@ -895,7 +895,7 @@ int main(int argc, char * const argv[])
 				printf("yes\n");
 		} else
 			ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, 0,
-					 si->vid_hdr_offs, args.ubi_ver);
+					 si->vid_hdr_offs, args.ubi_ver, 0);
 		normsg("use offsets %d and %d",  ui.vid_hdr_offs, ui.data_offs);
 	}
 

@@ -27,6 +27,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include "common.h"
 
 /**
  * get_multiplier - convert size specifier to an integer multiplier.

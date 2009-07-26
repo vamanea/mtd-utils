@@ -111,4 +111,3 @@ void ubi_scan_free(struct ubi_scan_info *si);
 #endif
 
 #endif /* __LIBSCAN_H__ */
-

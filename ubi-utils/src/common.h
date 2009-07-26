@@ -20,6 +20,7 @@
 #define __UBI_UTILS_COMMON_H__
 
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <errno.h>
 

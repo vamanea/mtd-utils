@@ -42,6 +42,7 @@ extern "C" {
  * @ubi_ver: UBI version
  * @vtbl_size: volume table size
  * @max_volumes: maximum amount of volumes
+ * @image_seq: UBI image sequence number
  */
 struct ubigen_info
 {
@@ -53,6 +54,7 @@ struct ubigen_info
 	int ubi_ver;
 	int vtbl_size;
 	int max_volumes;
+	uint32_t image_seq;
 };
 
 /**
@@ -89,7 +91,8 @@ struct ubigen_vol_info
 };
 
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
-		      int subpage_size, int vid_hdr_offs, int ubi_ver);
+		      int subpage_size, int vid_hdr_offs, int ubi_ver,
+		      uint32_t image_seq);
 struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui);
 void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 		        struct ubi_ec_hdr *hdr, long long ec);

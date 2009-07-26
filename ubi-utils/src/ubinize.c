@@ -38,7 +38,7 @@
 #include <libiniparser.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.1"
+#define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubinize"
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -70,12 +70,17 @@ static const char *optionsstr =
 "                             (default is 0)\n"
 "-x, --ubi-ver=<num>          UBI version number to put to EC headers\n"
 "                             (default is 1)\n"
+"-Q, --image-seq=<num>        32-bit UBI image sequence number to use\n"
+"                             (by default a random number is picked)\n"
 "-v, --verbose                be verbose\n"
 "-h, --help                   print help message\n"
 "-V, --version                print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " [-o filename] [-h] [-V] [--output=<filename>] [--help]\n"
+"Usage: " PROGRAM_NAME " [-o filename] [-p <bytes>] [-m <bytes>] [-s <bytes>] [-O <num>] [-e <num>]\n"
+"\t\t[-x <num>] [-Q <num>] [-v] [-h] [-V] [--output=<filename>] [--peb-size=<bytes>]\n"
+"\t\t[--min-io-size=<bytes>] [--sub-page-size=<bytes>] [--vid-hdr-offset=<num>]\n"
+"\t\t[--erase-counter=<num>] [--ubi-ver=<num>] [--image-seq=<num>] [--verbose] [--help]\n"
 "\t\t[--version] ini-file\n"
 "Example: " PROGRAM_NAME " -o ubi.img -p 16KiB -m 512 -s 256 cfg.ini - create UBI image\n"
 "         'ubi.img' as described by configuration file 'cfg.ini'";
@@ -121,6 +126,7 @@ struct option long_options[] = {
 	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "erase-counter",  .has_arg = 1, .flag = NULL, .val = 'e' },
 	{ .name = "ubi-ver",        .has_arg = 1, .flag = NULL, .val = 'x' },
+	{ .name = "image-seq",      .has_arg = 1, .flag = NULL, .val = 'Q' },
 	{ .name = "verbose",        .has_arg = 0, .flag = NULL, .val = 'v' },
 	{ .name = "help",           .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",        .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -137,6 +143,7 @@ struct args {
 	int vid_hdr_offs;
 	int ec;
 	int ubi_ver;
+	long long image_seq;
 	int verbose;
 	dictionary *dict;
 };
@@ -146,6 +153,7 @@ static struct args args = {
 	.min_io_size  = -1,
 	.subpage_size = -1,
 	.ubi_ver      = 1,
+	.image_seq    = -1,
 };
 
 static int parse_opt(int argc, char * const argv[])
@@ -154,7 +162,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "o:p:m:s:O:e:x:vhV", long_options, NULL);
+		key = getopt_long(argc, argv, "o:p:m:s:O:e:x:Q:vhV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -205,6 +213,12 @@ static int parse_opt(int argc, char * const argv[])
 			args.ubi_ver = strtoul(optarg, &endp, 0);
 			if (*endp != '\0'  || endp == optarg || args.ubi_ver < 0)
 				return errmsg("bad UBI version: \"%s\"", optarg);
+			break;
+
+		case 'Q':
+			args.image_seq = strtoul(optarg, &endp, 0);
+			if (*endp != '\0'  || endp == optarg || args.image_seq > 0xFFFFFFFF)
+				return errmsg("bad UBI image sequence number: \"%s\"", optarg);
 			break;
 
 		case 'v':
@@ -267,6 +281,10 @@ static int parse_opt(int argc, char * const argv[])
 			return errmsg("VID header offset has to be multiple of min. I/O unit size");
 	}
 
+	if (!args.image_seq == -1) {
+		srand(getpid());
+		args.image_seq = random();
+	}
 	return 0;
 }
 
@@ -449,14 +467,15 @@ int main(int argc, char * const argv[])
 
 	ubigen_info_init(&ui, args.peb_size, args.min_io_size,
 			 args.subpage_size, args.vid_hdr_offs,
-			 args.ubi_ver);
+			 args.ubi_ver, args.image_seq);
 
-	verbose(args.verbose, "LEB size:      %d", ui.leb_size);
-	verbose(args.verbose, "PEB size:      %d", ui.peb_size);
-	verbose(args.verbose, "min. I/O size: %d", ui.min_io_size);
-	verbose(args.verbose, "sub-page size: %d", args.subpage_size);
-	verbose(args.verbose, "VID offset:    %d", ui.vid_hdr_offs);
-	verbose(args.verbose, "data offset:   %d", ui.data_offs);
+	verbose(args.verbose, "LEB size:                  %d", ui.leb_size);
+	verbose(args.verbose, "PEB size:                  %d", ui.peb_size);
+	verbose(args.verbose, "min. I/O size:             %d", ui.min_io_size);
+	verbose(args.verbose, "sub-page size:             %d", args.subpage_size);
+	verbose(args.verbose, "VID offset:                %d", ui.vid_hdr_offs);
+	verbose(args.verbose, "data offset:               %d", ui.data_offs);
+	verbose(args.verbose, "UBI image sequence number: %u", ui.image_seq);
 
 	vtbl = ubigen_create_empty_vtbl(&ui);
 	if (!vtbl)
