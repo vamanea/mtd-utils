@@ -269,7 +269,7 @@ static void print_bad_eraseblocks(const struct mtd_dev_info *mtd,
 	if (si->bad_cnt == 0)
 		return;
 
-	normsg_cont("bad eraseblocks: ");
+	normsg_cont("%d bad eraseblocks found, numbers: ", si->bad_cnt);
 	for (eb = 0; eb < mtd->eb_cnt; eb++) {
 		if (si->ec[eb] != EB_BAD)
 			continue;
