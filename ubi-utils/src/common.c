@@ -52,24 +52,6 @@ static int get_multiplier(const char *str)
 	if (!strcmp(str, "GiB"))
 		return 1024 * 1024 * 1024;
 
-	/* Handle deprecated stuff */
-	if (!strcmp(str, "KB") || !strcmp(str, "Kib") || !strcmp(str, "kib") ||
-	    !strcmp(str, "kiB")) {
-		fprintf(stderr, "Warning: use \"KiB\" instead of \"%s\" to "
-			"specify Kilobytes - support will be removed\n", str);
-		return 1024;
-	}
-	if (!strcmp(str, "MB") || !strcmp(str, "Mib") || !strcmp(str, "mb")) {
-		fprintf(stderr, "Warning: use \"MiB\" instead of \"%s\", "
-			"this support will be removed\n", str);
-		return 1024*1024;
-	}
-	if (!strcmp(str, "GB") || !strcmp(str, "Gib") || !strcmp(str, "gb")) {
-		fprintf(stderr, "Warning: use \"GiB\" instead of \"%s\", "
-			"this support will be removed\n", str);
-		return 1024*1024*1024;
-	}
-
 	return -1;
 }
 
