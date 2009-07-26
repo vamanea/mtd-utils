@@ -32,7 +32,7 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubimkvol"
 
 /* The variables below are set by command line arguments */
@@ -45,9 +45,6 @@ struct args {
 	const char *name;
 	const char *node;
 	int maxavs;
-	/* For deprecated -d option handling */
-	int devn;
-	char dev_name[256];
 };
 
 static struct args args = {
@@ -56,7 +53,6 @@ static struct args args = {
 	.lebs = -1,
 	.alignment = 1,
 	.vol_id = UBI_VOL_NUM_AUTO,
-	.devn = -1,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -74,11 +70,7 @@ static const char *optionsstr =
 "-m, --maxavsize               set volume size to maximum available size\n"
 "-t, --type=<static|dynamic>   volume type (dynamic, static), default is dynamic\n"
 "-h, -?, --help                print help message\n"
-"-V, --version                 print program version\n\n"
-"The following is a compatibility option which is deprecated, do not use it\n"
-"-d, --devn=<devn>             UBI device number - may be used instead of the UBI\n"
-"                              device node name in which case the utility assumes\n"
-"                              that the device node is \"/dev/ubi<devn>\"";
+"-V, --version                 print program version";
 
 
 static const char *usage =
@@ -100,8 +92,6 @@ static const struct option long_options[] = {
 	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ .name = "maxavsize", .has_arg = 0, .flag = NULL, .val = 'm' },
-	/* Deprecated -d option */
-	{ .name = "devn",      .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ NULL, 0, NULL, 0},
 };
 
@@ -133,7 +123,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "a:n:N:s:S:t:h?Vmd:", long_options, NULL);
+		key = getopt_long(argc, argv, "a:n:N:s:S:t:h?Vm", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -171,14 +161,6 @@ static int parse_opt(int argc, char * const argv[])
 				return errmsg("bad volume ID: " "\"%s\"", optarg);
 			break;
 
-		case 'd':
-			/* Handle deprecated -d option */
-			warnmsg("-d is depricated and will be removed, do not use it");
-			args.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.devn < 0)
-				return errmsg("bad UBI device number: " "\"%s\"", optarg);
-			break;
-
 		case 'N':
 			args.name = optarg;
 			break;
@@ -207,18 +189,12 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	/* Handle deprecated -d option */
-	if (args.devn != -1) {
-		sprintf(args.dev_name, "/dev/ubi%d", args.devn);
-		args.node = args.dev_name;
-	} else {
-		if (optind == argc)
-			return errmsg("UBI device name was not specified (use -h for help)");
-		else if (optind != argc - 1)
-			return errmsg("more then one UBI device specified (use -h for help)");
+	if (optind == argc)
+		return errmsg("UBI device name was not specified (use -h for help)");
+	else if (optind != argc - 1)
+		return errmsg("more then one UBI device specified (use -h for help)");
 
-		args.node = argv[optind];
-	}
+	args.node = argv[optind];
 
 	if (param_sanity_check())
 		return -1;

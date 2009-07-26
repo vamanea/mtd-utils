@@ -37,7 +37,7 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.1"
+#define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubiupdatevol"
 
 struct args {
@@ -45,34 +45,25 @@ struct args {
 	const char *node;
 	const char *img;
 	/* For deprecated -d and -B options handling */
-	int devn;
 	char dev_name[256];
-	int broken_update;
 	int size;
 	int use_stdin;
 };
 
-static struct args args = {
-	.devn = -1,
-};
+static struct args args;
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to write data to UBI volumes.";
 
 static const char *optionsstr =
 "-t, --truncate             truncate volume (wipe it out)\n"
-"-h, --help                 print help message\n"
-"-V, --version              print program version\n\n"
 "-s, --size=<bytes>         bytes in input, if not reading from file\n"
-"The following are compatibility options which are deprecated, do not use them\n"
-"-d, --devn=<devn>          UBI device number - may be used instead of the UBI\n"
-"                           device node name in which case the utility assumes\n"
-"                           that the device node is \"/dev/ubi<devn>\"\n"
-"-B, --broken-update        broken update, this is for testing";
+"-h, --help                 print help message\n"
+"-V, --version              print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " <UBI volume node file name> [-t] [-h] [-V] [--truncate] [--size=x] [--help]\n"
-"\t\t\t[--version] <image file>\n\n"
+"Usage: " PROGRAM_NAME " <UBI volume node file name> [-t] [-s <size>] [-h] [-V] [--truncate]\n"
+"\t\t\t[--size=<size>] [--help] [--version] <image file>\n\n"
 "Example 1: " PROGRAM_NAME " /dev/ubi0_1 fs.img - write file \"fs.img\" to UBI volume /dev/ubi0_1\n"
 "Example 2: " PROGRAM_NAME " /dev/ubi0_1 -t - wipe out UBI volume /dev/ubi0_1";
 
@@ -81,9 +72,6 @@ struct option long_options[] = {
 	{ .name = "help",     .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",  .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ .name = "size",     .has_arg = 1, .flag = NULL, .val = 's' },
-	/* Deprecated -d and -B options */
-	{ .name = "devn",     .has_arg = 1, .flag = NULL, .val = 'd' },
-	{ .name = "broken-update", .has_arg = 1, .flag = NULL, .val = 'B' },
 	{ NULL, 0, NULL, 0}
 };
 
@@ -93,7 +81,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "n:th?Vd:s:", long_options, NULL);
+		key = getopt_long(argc, argv, "ts:h?V", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -115,20 +103,6 @@ static int parse_opt(int argc, char * const argv[])
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
 
-		case 'd':
-			/* Handle deprecated -d option */
-			warnmsg("-d is depricated and will be removed, do not use it");
-			args.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.devn < 0)
-				return errmsg("bad UBI device number: " "\"%s\"", optarg);
-			break;
-
-		case 'B':
-			/* Handle deprecated -B option */
-			warnmsg("-B is depricated and will be removed, do not use it");
-			args.broken_update = 1;
-			break;
-
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
 			exit(EXIT_SUCCESS);
@@ -142,17 +116,11 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	/* Handle deprecated -d option */
-	if (args.devn != -1) {
-		sprintf(args.dev_name, "/dev/ubi%d", args.devn);
-		args.node = args.dev_name;
-	} else {
-		if (optind == argc)
-			return errmsg("UBI device name was not specified (use -h for help)");
-		else if (optind != argc - 2 && !args.truncate)
-			return errmsg("specify UBI device name and image file name as first 2 "
-				      "parameters (use -h for help)");
-	}
+	if (optind == argc)
+		return errmsg("UBI device name was not specified (use -h for help)");
+	else if (optind != argc - 2 && !args.truncate)
+		return errmsg("specify UBI device name and image file name as first 2 "
+			      "parameters (use -h for help)");
 
 	args.node = argv[optind];
 	args.img  = argv[optind + 1];
@@ -241,10 +209,6 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 		       args.img, bytes, args.node, vol_info->rsvd_bytes);
 		goto out_free;
 	}
-
-	/* A hack to handle deprecated -B option */
-	if (args.broken_update)
-		bytes = 1;
 
 	fd = open(args.node, O_RDWR);
 	if (fd == -1) {

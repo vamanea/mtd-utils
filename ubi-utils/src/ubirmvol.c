@@ -32,7 +32,7 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubirmvol"
 
 /* The variables below are set by command line arguments */
@@ -40,14 +40,10 @@ struct args {
 	int vol_id;
 	const char *node;
 	const char *name;
-	/* For deprecated -d option handling */
-	int devn;
-	char dev_name[256];
 };
 
 static struct args args = {
 	.vol_id = -1,
-	.devn = -1,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -57,11 +53,7 @@ static const char *optionsstr =
 "-n, --vol_id=<volume id>   volume ID to remove\n"
 "-N, --name=<volume name>   volume name to remove\n"
 "-h, -?, --help             print help message\n"
-"-V, --version              print program version\n\n"
-"The following is a compatibility option which is deprecated, do not use it\n"
-"-d, --devn=<devn>          UBI device number - may be used instead of the UBI\n"
-"                           device node name in which case the utility assumes\n"
-"                           that the device node is \"/dev/ubi<devn>\"";
+"-V, --version              print program version";
 
 static const char *usage =
 "Usage: " PROGRAM_NAME " <UBI device node file name> [-n <volume id>] [--vol_id=<volume id>]\n\n"
@@ -76,8 +68,6 @@ static const struct option long_options[] = {
 	{ .name = "name",    .has_arg = 1, .flag = NULL, .val = 'N' },
 	{ .name = "help",    .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
-	/* Deprecated -d option */
-	{ .name = "devn",    .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ NULL, 0, NULL, 0},
 };
 
@@ -102,7 +92,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "n:N:h?Vd:", long_options, NULL);
+		key = getopt_long(argc, argv, "n:N:h?V", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -127,14 +117,6 @@ static int parse_opt(int argc, char * const argv[])
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
 
-		case 'd':
-			/* Handle deprecated -d option */
-			warnmsg("-d is depricated and will be removed, do not use it");
-			args.devn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.devn < 0)
-				return errmsg("bad UBI device number: " "\"%s\"", optarg);
-			break;
-
 		case 'V':
 			fprintf(stderr, "%s\n", PROGRAM_VERSION);
 			exit(EXIT_SUCCESS);
@@ -149,21 +131,15 @@ static int parse_opt(int argc, char * const argv[])
 		}
 	}
 
-	/* Handle deprecated -d option */
-	if (args.devn != -1) {
-		sprintf(args.dev_name, "/dev/ubi%d", args.devn);
-		args.node = args.dev_name;
-	} else {
-		if (optind == argc) {
-			errmsg("UBI device name was not specified (use -h for help)");
-			return -1;
-		} else if (optind != argc - 1) {
-			errmsg("more then one UBI device specified (use -h for help)");
-			return -1;
-		}
-
-		args.node = argv[optind];
+	if (optind == argc) {
+		errmsg("UBI device name was not specified (use -h for help)");
+		return -1;
+	} else if (optind != argc - 1) {
+		errmsg("more then one UBI device specified (use -h for help)");
+		return -1;
 	}
+
+	args.node = argv[optind];
 
 	if (param_sanity_check())
 		return -1;
