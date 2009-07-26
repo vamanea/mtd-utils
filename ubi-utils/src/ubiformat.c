@@ -530,12 +530,14 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 			if (errno != EIO)
 				goto out_close;
 
-			if (mark_bad(mtd, si, eb)) {
-				normsg("operation incomplete");
-				goto out_close;
+			err = mtd_torture(mtd, args.node_fd, eb);
+			if (err) {
+				if (mark_bad(mtd, si, eb)) {
+					normsg("operation incomplete");
+					goto out_close;
+				}
+				divisor += 1;
 			}
-
-			divisor += 1;
 			continue;
 		}
 		if (++written_ebs >= img_ebs)

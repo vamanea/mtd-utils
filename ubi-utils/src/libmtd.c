@@ -798,6 +798,87 @@ int mtd_erase(const struct mtd_dev_info *mtd, int fd, int eb)
 	return ioctl(fd, MEMERASE, &ei);
 }
 
+/* Patterns to write to a physical eraseblock when torturing it */
+static uint8_t patterns[] = {0xa5, 0x5a, 0x0};
+
+/**
+ * check_pattern - check if buffer contains only a certain byte pattern.
+ * @buf: buffer to check
+ * @patt: the pattern to check
+ * @size: buffer size in bytes
+ *
+ * This function returns %1 in there are only @patt bytes in @buf, and %0 if
+ * something else was also found.
+ */
+static int check_pattern(const void *buf, uint8_t patt, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++)
+		if (((const uint8_t *)buf)[i] != patt)
+			return 0;
+	return 1;
+}
+
+int mtd_torture(const struct mtd_dev_info *mtd, int fd, int eb)
+{
+	int err, i, patt_count;
+	void *buf;
+
+	normsg("run torture test for PEB %d", eb);
+	patt_count = ARRAY_SIZE(patterns);
+
+	buf = malloc(mtd->eb_size);
+	if (!buf) {
+		errmsg("cannot allocate %d bytes of memory", mtd->eb_size);
+		return -1;
+	}
+
+	for (i = 0; i < patt_count; i++) {
+		err = mtd_erase(mtd, fd, eb);
+		if (err)
+			goto out;
+
+		/* Make sure the PEB contains only 0xFF bytes */
+		err = mtd_read(mtd, fd, eb, 0, buf, mtd->eb_size);
+		if (err)
+			goto out;
+
+		err = check_pattern(buf, 0xFF, mtd->eb_size);
+		if (err == 0) {
+			errmsg("erased PEB %d, but a non-0xFF byte found", eb);
+			errno = EIO;
+			goto out;
+		}
+
+		/* Write a pattern and check it */
+		memset(buf, patterns[i], mtd->eb_size);
+		err = mtd_write(mtd, fd, eb, 0, buf, mtd->eb_size);
+		if (err)
+			goto out;
+
+		memset(buf, ~patterns[i], mtd->eb_size);
+		err = mtd_read(mtd, fd, eb, 0, buf, mtd->eb_size);
+		if (err)
+			goto out;
+
+		err = check_pattern(buf, patterns[i], mtd->eb_size);
+		if (err == 0) {
+			errmsg("pattern %x checking failed for PEB %d",
+				patterns[i], eb);
+			errno = EIO;
+			goto out;
+		}
+	}
+
+	err = 0;
+	normsg("PEB %d passed torture test, do not mark it a bad", eb);
+
+out:
+	free(buf);
+	return -1;
+}
+
 int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	int ret;
