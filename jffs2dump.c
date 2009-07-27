@@ -52,19 +52,18 @@ char	*data;		// image data
 
 void display_help (void)
 {
-	printf("Usage: dumpjffs2 [OPTION] INPUTFILE\n"
-			"Dumps the contents of a binary JFFS2 image.\n"
-			"\n"
-			"           --help     	              display this help and exit\n"
-			"           --version  	              output version information and exit\n"
-			"-b         --bigendian	              image is big endian\n"
-			"-l         --littleendian             image is little endian\n"
-			"-c         --content  	              dump image contents\n"
-			"-e fname   --endianconvert=fname      convert image endianness, output to file fname\n"
-			"-r         --recalccrc                recalc name and data crc on endian conversion\n"
-			"-d len     --datsize=len              size of data chunks, when oob data in binary image (NAND only)\n"
-			"-o len     --oobsize=len              size of oob data chunk in binary image (NAND only)\n"
-			"-v         --verbose		      verbose output\n");
+	printf("Usage: " PROGRAM " [OPTION]... INPUTFILE\n"
+	       "Dump the contents of a binary JFFS2 image.\n\n"
+	       "     --help                   display this help and exit\n"
+	       "     --version                display version information and exit\n"
+	       " -b, --bigendian              image is big endian\n"
+	       " -l, --littleendian           image is little endian\n"
+	       " -c, --content                dump image contents\n"
+	       " -e, --endianconvert=FNAME    convert image endianness, output to file fname\n"
+	       " -r, --recalccrc              recalc name and data crc on endian conversion\n"
+	       " -d, --datsize=LEN            size of data chunks, when oob data in binary image (NAND only)\n"
+	       " -o, --oobsize=LEN            size of oob data chunk in binary image (NAND only)\n"
+	       " -v, --verbose                verbose output\n");
 	exit(0);
 }
 
