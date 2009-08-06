@@ -260,7 +260,6 @@ int main(int argc, char * const argv[])
 	int ret, readlen;
 	int oobinfochanged = 0;
 	struct nand_oobinfo old_oobinfo;
-	int readcnt = 0;
 	bool failed = true;
 
 	process_options(argc, argv);
@@ -476,37 +475,17 @@ int main(int argc, char * const argv[])
 
 		}
 
-		readlen = meminfo.writesize;
+		{
+			readlen = meminfo.writesize;
 
-		if (ifd != STDIN_FILENO) {
 			int tinycnt = 0;
 
-			if (pad && (imglen < readlen))
-			{
-				readlen = imglen;
-				erase_buffer(writebuf + readlen, meminfo.writesize - readlen);
-			}
-
-			/* Read Page Data from input file */
-			while(tinycnt < readlen) {
+			while (tinycnt < readlen) {
 				cnt = read(ifd, writebuf + tinycnt, readlen - tinycnt);
 				if (cnt == 0) { // EOF
 					break;
 				} else if (cnt < 0) {
-					perror ("File I/O error on input file");
-					goto closeall;
-				}
-				tinycnt += cnt;
-			}
-		} else {
-			int tinycnt = 0;
-
-			while(tinycnt < readlen) {
-				cnt = read(ifd, writebuf + tinycnt, readlen - tinycnt);
-				if (cnt == 0) { // EOF
-					break;
-				} else if (cnt < 0) {
-					perror ("File I/O error on stdin");
+					perror ("File I/O error on input");
 					goto closeall;
 				}
 				tinycnt += cnt;
@@ -514,18 +493,29 @@ int main(int argc, char * const argv[])
 
 			/* No padding needed - we are done */
 			if (tinycnt == 0) {
-				imglen = 0;
+				// For standard input, set the imglen to 0 to signal
+				// the end of the "file". For non standard input, leave
+				// it as-is to detect an early EOF
+				if (ifd == STDIN_FILENO) {
+					imglen = 0;
+				}
 				break;
 			}
 
-			/* No more bytes - we are done after writing the remaining bytes */
-			if (cnt == 0) {
-				imglen = 0;
+			/* Padding */
+			if (tinycnt < readlen) {
+				if (!pad) {
+					fprintf(stderr, "Unexpected EOF. Expecting at least "
+							"%d more bytes. Use the padding option.\n",
+							readlen - tinycnt);
+					goto closeall;
+				}
+				erase_buffer(writebuf + tinycnt, readlen - tinycnt);
 			}
 
-			/* Padding */
-			if (pad && (tinycnt < readlen)) {
-				erase_buffer(writebuf + tinycnt, meminfo.writesize - tinycnt);
+			if ((ifd == STDIN_FILENO) && (cnt == 0)) {
+				/* No more bytes - we are done after writing the remaining bytes */
+				imglen = 0;
 			}
 		}
 
