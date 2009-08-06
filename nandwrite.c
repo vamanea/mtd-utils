@@ -520,17 +520,32 @@ int main(int argc, char * const argv[])
 		}
 
 		if (writeoob) {
-			int tinycnt = 0;
+			{
+				int readlen = meminfo.oobsize;
 
-			while(tinycnt < meminfo.oobsize) {
-				cnt = read(ifd, oobreadbuf + tinycnt, meminfo.oobsize - tinycnt);
-				if (cnt == 0) { // EOF
-					break;
-				} else if (cnt < 0) {
-					perror ("File I/O error on input file");
+				int tinycnt = 0;
+
+				while (tinycnt < readlen) {
+					cnt = read(ifd, oobreadbuf + tinycnt, readlen - tinycnt);
+					if (cnt == 0) { // EOF
+						break;
+					} else if (cnt < 0) {
+						perror ("File I/O error on input");
+						goto closeall;
+					}
+					tinycnt += cnt;
+				}
+
+				if (tinycnt < readlen) {
+					fprintf(stderr, "Unexpected EOF. Expecting at least "
+							"%d more bytes for OOB\n", readlen - tinycnt);
 					goto closeall;
 				}
-				tinycnt += cnt;
+
+				if ((ifd == STDIN_FILENO) && (cnt == 0)) {
+					/* No more bytes - we are done after writing the remaining bytes */
+					imglen = 0;
+				}
 			}
 
 			if (!noecc) {
