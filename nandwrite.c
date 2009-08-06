@@ -626,8 +626,8 @@ int main(int argc, char * const argv[])
 		if (pwrite(fd, writebuf, meminfo.writesize, mtdoffset) != meminfo.writesize) {
 			erase_info_t erase;
 
-			perror ("pwrite");
 			if (errno != EIO) {
+				perror("pwrite");
 				goto closeall;
 			}
 
@@ -639,8 +639,9 @@ int main(int argc, char * const argv[])
 			fprintf(stderr, "Erasing failed write from %08lx-%08lx\n",
 				(long)erase.start, (long)erase.start+erase.length-1);
 			if (ioctl(fd, MEMERASE, &erase) != 0) {
+				int errno_tmp = errno;
 				perror("MEMERASE");
-				if (errno != EIO) {
+				if (errno_tmp != EIO) {
 					goto closeall;
 				}
 			}
