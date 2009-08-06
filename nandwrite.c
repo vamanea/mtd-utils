@@ -392,12 +392,6 @@ int main(int argc, char * const argv[])
 		goto restoreoob;
 	}
 
-	/* For now, don't allow writing oob when reading from standard input. */
-	if (ifd == STDIN_FILENO && writeoob) {
-		fprintf(stderr, "Can't write oob when reading from standard input.\n");
-		goto closeall;
-	}
-
 	pagelen = meminfo.writesize + ((writeoob) ? meminfo.oobsize : 0);
 
 	/*
