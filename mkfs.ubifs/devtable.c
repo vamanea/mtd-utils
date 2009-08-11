@@ -248,7 +248,7 @@ static int interpret_table_entry(const char *line)
 			goto out_free;
 		}
 	} else {
-		int i, num = start + increment * count, len = strlen(name) + 20;
+		int i, num = start + count, len = strlen(name) + 20;
 		char *nm;
 
 		for (i = start; i < num; i++) {
@@ -262,7 +262,7 @@ static int interpret_table_entry(const char *line)
 			nh_elt->mode = mode;
 			nh_elt->uid = uid;
 			nh_elt->gid = gid;
-			nh_elt->dev = makedev(major, minor + i - start);
+			nh_elt->dev = makedev(major, minor + (i - start) * increment);
 
 			nm = malloc(len);
 			if (!nm) {
