@@ -527,10 +527,8 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 
 			err = mtd_torture(mtd, args.node_fd, eb);
 			if (err) {
-				if (mark_bad(mtd, si, eb)) {
-					normsg("operation incomplete");
+				if (mark_bad(mtd, si, eb))
 					goto out_close;
-				}
 			}
 			continue;
 		}
@@ -636,9 +634,10 @@ static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
 				goto out_free;
 			}
 
-			if (mark_bad(mtd, si, eb)) {
-				normsg("operation incomplete");
-				goto out_free;
+			err = mtd_torture(mtd, args.node_fd, eb);
+			if (err) {
+				if (mark_bad(mtd, si, eb))
+					goto out_free;
 			}
 			continue;
 
