@@ -59,6 +59,7 @@ struct args {
 	int subpage_size;
 	int vid_hdr_offs;
 	int ubi_ver;
+	uint32_t image_seq;
 	off_t image_sz;
 	long long ec;
 	const char *image;
@@ -68,7 +69,8 @@ struct args {
 
 static struct args args =
 {
-	.ubi_ver = 1,
+	.ubi_ver   = 1,
+	.image_seq = -1,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -91,6 +93,8 @@ static const char *optionsstr =
 "                             eraseblocks\n"
 "-x, --ubi-ver=<num>          UBI version number to put to EC headers\n"
 "                             (default is 1)\n"
+"-Q, --image-seq=<num>        32-bit UBI image sequence number to use\n"
+"                             (by default a random number is picked)\n"
 "-y, --yes                    assume the answer is \"yes\" for all question\n"
 "                             this program would otherwise ask\n"
 "-q, --quiet                  suppress progress percentage information\n"
@@ -130,6 +134,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key;
 		char *endp;
+		unsigned long long image_seq;
 
 		key = getopt_long(argc, argv, "nh?Vyqve:x:s:O:f:S:", long_options, NULL);
 		if (key == -1)
@@ -187,6 +192,14 @@ static int parse_opt(int argc, char * const argv[])
 				return errmsg("bad UBI version: \"%s\"", optarg);
 			break;
 
+		case 'Q':
+			image_seq = strtoul(optarg, &endp, 0);
+			if (*endp != '\0'  || endp == optarg || image_seq > 0xFFFFFFFF)
+				return errmsg("bad UBI image sequence number: \"%s\"", optarg);
+			args.image_seq = image_seq;
+			break;
+
+
 		case 'v':
 			args.verbose = 1;
 			break;
@@ -221,6 +234,11 @@ static int parse_opt(int argc, char * const argv[])
 
 	if (args.image && args.novtbl)
 		return errmsg("-n cannot be used together with -f");
+
+	if (!args.image_seq == -1) {
+		srand(getpid());
+		args.image_seq = random();
+	}
 
 	args.node = argv[optind];
 	return 0;
@@ -872,7 +890,7 @@ int main(int argc, char * const argv[])
 		normsg("use erase counter %lld for all eraseblocks", args.ec);
 
 	ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, mtd.subpage_size,
-			 args.vid_hdr_offs, args.ubi_ver, 0);
+			 args.vid_hdr_offs, args.ubi_ver, args.image_seq);
 
 	if (si->vid_hdr_offs != -1 && ui.vid_hdr_offs != si->vid_hdr_offs) {
 		/*
