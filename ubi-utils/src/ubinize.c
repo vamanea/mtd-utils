@@ -70,7 +70,7 @@ static const char *optionsstr =
 "                             (default is 0)\n"
 "-x, --ubi-ver=<num>          UBI version number to put to EC headers\n"
 "                             (default is 1)\n"
-"-Q, --image-seq=<num>        32-bit UBI image sequence number to use\n"
+"-Q, --image-seq=<num>        64-bit UBI image sequence number to use\n"
 "                             (by default a random number is picked)\n"
 "-v, --verbose                be verbose\n"
 "-h, --help                   print help message\n"
