@@ -70,7 +70,7 @@ static const char *optionsstr =
 "                             (default is 0)\n"
 "-x, --ubi-ver=<num>          UBI version number to put to EC headers\n"
 "                             (default is 1)\n"
-"-Q, --image-seq=<num>        64-bit UBI image sequence number to use\n"
+"-Q, --image-seq=<num>        32-bit UBI image sequence number to use\n"
 "                             (by default a random number is picked)\n"
 "-v, --verbose                be verbose\n"
 "-h, --help                   print help message\n"
@@ -143,7 +143,7 @@ struct args {
 	int vid_hdr_offs;
 	int ec;
 	int ubi_ver;
-	long long image_seq;
+	uint32_t image_seq;
 	int verbose;
 	dictionary *dict;
 };
@@ -161,6 +161,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key;
 		char *endp;
+		unsigned long long image_seq;
 
 		key = getopt_long(argc, argv, "o:p:m:s:O:e:x:Q:vhV", long_options, NULL);
 		if (key == -1)
@@ -216,9 +217,10 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'Q':
-			args.image_seq = strtoul(optarg, &endp, 0);
-			if (*endp != '\0'  || endp == optarg || args.image_seq > 0xFFFFFFFF)
+			image_seq = strtoul(optarg, &endp, 0);
+			if (*endp != '\0'  || endp == optarg || image_seq > 0xFFFFFFFF)
 				return errmsg("bad UBI image sequence number: \"%s\"", optarg);
+			args.image_seq = image_seq;
 			break;
 
 		case 'v':
