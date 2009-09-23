@@ -161,7 +161,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key;
 		char *endp;
-		unsigned long long image_seq;
+		unsigned long int image_seq;
 
 		key = getopt_long(argc, argv, "o:p:m:s:O:e:x:Q:vhV", long_options, NULL);
 		if (key == -1)
