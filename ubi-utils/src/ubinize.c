@@ -153,11 +153,13 @@ static struct args args = {
 	.min_io_size  = -1,
 	.subpage_size = -1,
 	.ubi_ver      = 1,
-	.image_seq    = -1,
 };
 
 static int parse_opt(int argc, char * const argv[])
 {
+	srand(getpid());
+	args.image_seq = random();
+
 	while (1) {
 		int key;
 		char *endp;
@@ -283,10 +285,6 @@ static int parse_opt(int argc, char * const argv[])
 			return errmsg("VID header offset has to be multiple of min. I/O unit size");
 	}
 
-	if (!args.image_seq == -1) {
-		srand(getpid());
-		args.image_seq = random();
-	}
 	return 0;
 }
 

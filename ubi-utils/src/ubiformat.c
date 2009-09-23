@@ -70,7 +70,6 @@ struct args {
 static struct args args =
 {
 	.ubi_ver   = 1,
-	.image_seq = -1,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -131,6 +130,9 @@ static const struct option long_options[] = {
 
 static int parse_opt(int argc, char * const argv[])
 {
+	srand(getpid());
+	args.image_seq = random();
+
 	while (1) {
 		int key;
 		char *endp;
@@ -235,10 +237,6 @@ static int parse_opt(int argc, char * const argv[])
 	if (args.image && args.novtbl)
 		return errmsg("-n cannot be used together with -f");
 
-	if (!args.image_seq == -1) {
-		srand(getpid());
-		args.image_seq = random();
-	}
 
 	args.node = argv[optind];
 	return 0;
