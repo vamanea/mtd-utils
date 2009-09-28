@@ -29,7 +29,6 @@
  */
 #define MAX_CONSECUTIVE_BAD_BLOCKS 4
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -130,8 +129,8 @@ static const struct option long_options[] = {
 
 static int parse_opt(int argc, char * const argv[])
 {
-	srand(getpid());
-	args.image_seq = random();
+	ubiutils_srand();
+	args.image_seq = rand();
 
 	while (1) {
 		int key;

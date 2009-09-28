@@ -23,10 +23,13 @@
  *          Adrian Hunter
  */
 
+#include <sys/time.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "common.h"
 
 /**
@@ -174,4 +177,33 @@ void ubiutils_print_text(FILE *stream, const char *text, int width)
 		while (p[pos] && isspace(p[pos]))
 			++p;
 	}
+}
+
+/**
+ * ubiutils_srand - randomly seed the standard pseudo-random generator.
+ *
+ * This helper function seeds the standard libc pseudo-random generator with a
+ * more or less random value to make sure the 'rand()' call does not return the
+ * same sequence every time UBI utilities run. Returns zero in case of success
+ * and a %-1 in case of error.
+ */
+int ubiutils_srand(void)
+{
+	struct timeval tv;
+	struct timezone tz;
+	unsigned int seed;
+
+	/*
+	 * Just assume that a combination of the PID + current time is a
+	 * reasonably random number.
+	 */
+	if (gettimeofday(&tv, &tz))
+		return -1;
+
+	seed = (unsigned int)tv.tv_sec;
+	seed += (unsigned int)tv.tv_usec;
+	seed *= getpid();
+	seed %= RAND_MAX;
+	srand(seed);
+	return 0;
 }
