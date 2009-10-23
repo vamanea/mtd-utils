@@ -1,11 +1,13 @@
 
 CPPFLAGS += -I../include -I../ubi-utils/include
+CPPFLAGS += $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 
 ALL_SOURCES=*.[ch] hashtable/*.[ch]
 
 TARGETS = mkfs.ubifs
 
-LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid -L../ubi-utils/ -lubi
+LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid -L$(BUILDDIR)/../ubi-utils/ -lubi
+LDLIBS_mkfs.ubifs += $(ZLIBLDFLAGS) $(LZOLDFLAGS)
 
 include ../common.mk
 
