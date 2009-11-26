@@ -506,13 +506,12 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 			goto out_close;
 		}
 
-
-		if (si->ec[eb] <= EC_MAX)
-			ec = si->ec[eb] + 1;
-		else if (!args.override_ec)
-			ec = si->mean_ec;
-		else
+		if (args.override_ec)
 			ec = args.ec;
+		else if (si->ec[eb] <= EC_MAX)
+			ec = si->ec[eb] + 1;
+		else
+			ec = si->mean_ec;
 
 		if (args.verbose) {
 			printf(", change EC to %lld", ec);
@@ -590,12 +589,12 @@ static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
 		if (si->ec[eb] == EB_BAD)
 			continue;
 
-		if (si->ec[eb] <= EC_MAX)
-			ec = si->ec[eb] + 1;
-		else if (!args.override_ec)
-			ec = si->mean_ec;
-		else
+		if (args.override_ec)
 			ec = args.ec;
+		else if (si->ec[eb] <= EC_MAX)
+			ec = si->ec[eb] + 1;
+		else
+			ec = si->mean_ec;
 		ubigen_init_ec_hdr(ui, hdr, ec);
 
 		if (args.verbose) {
