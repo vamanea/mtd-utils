@@ -21,13 +21,14 @@ int main(int argc, char *argv[])
 	int fd;
 	struct mtd_info_user mtdInfo;
 	struct erase_info_user mtdLockInfo;
+	int count;
 
 	/*
 	 * Parse command line options
 	 */
-	if(argc != 2)
+	if(argc < 2)
 	{
-		fprintf(stderr, "USAGE: %s <mtd device>\n", argv[0]);
+		fprintf(stderr, "USAGE: %s <mtd device> <offset in hex> <block count in decimal number>\n", argv[0]);
 		exit(1);
 	}
 	else if(strncmp(argv[1], "/dev/mtd", 8) != 0)
@@ -50,8 +51,18 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	mtdLockInfo.start = 0;
-	mtdLockInfo.length = mtdInfo.size;
+	if (argc > 2)
+		mtdLockInfo.start = strtol(argv[2], NULL, 0);
+	else
+		mtdLockInfo.start = 0;
+
+	if (argc > 3) {
+		count = strtol(argv[3], NULL, 0);
+		mtdLockInfo.length = mtdInfo.erasesize * count;
+	} else {
+		mtdLockInfo.length = mtdInfo.size - mtdInfo.erasesize;
+	}
+
 	if(ioctl(fd, MEMUNLOCK, &mtdLockInfo))
 	{
 		fprintf(stderr, "Could not unlock MTD device: %s\n", argv[1]);
@@ -61,4 +72,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
