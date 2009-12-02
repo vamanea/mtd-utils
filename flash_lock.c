@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	}
 
 	mtdLockInfo.start = ofs;
-	mtdLockInfo.length = num_sectors * mtdInfo.erasesize;
+	mtdLockInfo.length = (num_sectors - 1) * mtdInfo.erasesize;
 	if(ioctl(fd, MEMLOCK, &mtdLockInfo))
 	{
 		fprintf(stderr, "Could not lock MTD device: %s\n", argv[1]);
@@ -81,4 +81,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
