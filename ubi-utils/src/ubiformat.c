@@ -722,7 +722,8 @@ int main(int argc, char * const argv[])
 	}
 
 	if (!is_power_of_2(mtd.min_io_size)) {
-		errmsg("min. I/O size is %d, but should be power of 2");
+		errmsg("min. I/O size is %d, but should be power of 2",
+		       mtd.min_io_size);
 		goto out_close;
 	}
 
