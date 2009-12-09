@@ -721,6 +721,11 @@ int main(int argc, char * const argv[])
 		goto out_close_mtd;
 	}
 
+	if (!is_power_of_2(mtd.min_io_size)) {
+		errmsg("min. I/O size is %d, but should be power of 2");
+		goto out_close;
+	}
+
 	if (!mtd_info.sysfs_supported) {
 		/*
 		 * Linux kernels older than 2.6.30 did not support sysfs
