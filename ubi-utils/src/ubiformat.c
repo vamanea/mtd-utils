@@ -295,7 +295,8 @@ static void print_bad_eraseblocks(const struct mtd_dev_info *mtd,
 	printf("\n");
 }
 
-static int change_ec(struct ubi_ec_hdr *hdr, long long ec)
+static int change_ech(struct ubi_ec_hdr *hdr, uint32_t image_seq,
+		      long long ec)
 {
 	uint32_t crc;
 
@@ -309,6 +310,7 @@ static int change_ec(struct ubi_ec_hdr *hdr, long long ec)
 		return errmsg("bad CRC %#08x, should be %#08x\n",
 			      crc, be32_to_cpu(hdr->hdr_crc));
 
+	hdr->image_seq = cpu_to_be32(image_seq);
 	hdr->ec = cpu_to_be64(ec);
 	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
 	hdr->hdr_crc = cpu_to_be32(crc);
@@ -438,7 +440,8 @@ static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, in
 	return consecutive_bad_check(eb);
 }
 
-static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
+static int flash_image(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
+		       struct ubi_scan_info *si)
 {
 	int fd, img_ebs, eb, written_ebs = 0, divisor;
 	off_t st_size;
@@ -518,7 +521,7 @@ static int flash_image(const struct mtd_dev_info *mtd, struct ubi_scan_info *si)
 			fflush(stdout);
 		}
 
-		err = change_ec((struct ubi_ec_hdr *)buf, ec);
+		err = change_ech((struct ubi_ec_hdr *)buf, ui->image_seq, ec);
 		if (err) {
 			errmsg("bad EC header at eraseblock %d of \"%s\"",
 			       written_ebs, args.image);
@@ -918,7 +921,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (args.image) {
-		err = flash_image(&mtd, si);
+		err = flash_image(&mtd, &ui, si);
 		if (err < 0)
 			goto out_free;
 
