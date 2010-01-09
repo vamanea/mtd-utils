@@ -912,7 +912,8 @@ int main(int argc, char * const argv[])
 				printf("yes\n");
 		} else
 			ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, 0,
-					 si->vid_hdr_offs, args.ubi_ver, 0);
+					 si->vid_hdr_offs, args.ubi_ver,
+					 args.image_seq);
 		normsg("use offsets %d and %d",  ui.vid_hdr_offs, ui.data_offs);
 	}
 
