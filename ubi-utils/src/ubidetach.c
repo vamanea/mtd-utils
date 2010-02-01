@@ -38,12 +38,14 @@ struct args {
 	int devn;
 	int mtdn;
 	const char *node;
+	const char *dev;
 };
 
 static struct args args = {
 	.devn = UBI_DEV_NUM_AUTO,
 	.mtdn = -1,
 	.node = NULL,
+	.dev = NULL,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -51,22 +53,26 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 
 static const char *optionsstr =
 "-d, --devn=<UBI device number>  UBI device number to delete\n"
-"-m, --mtdn=<MTD device number>  or altrnatively, MTD device number to detach -\n"
-"                                this will delete corresponding UBI device\n"
+"-p, --dev-path=<path to device> or alternatively, MTD device node path to detach\n"
+"-m, --mtdn=<MTD device number>  or alternatively, MTD device number to detach\n"
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME "<UBI control device node file name> [-d <UBI device number>] [-m <MTD device number>]\n"
-"\t\t[--devn <UBI device number>] [--mtdn=<MTD device number>]\n"
-"Example 1: " PROGRAM_NAME " /dev/ubi_ctrl -d 2 - delete UBI device 2 (ubi2)\n"
-"Example 2: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 - detach MTD device 0 (mtd0)";
+"Usage: " PROGRAM_NAME " <UBI control device node file name>\n"
+"\t[-d <UBI device number>] [-m <MTD device number>] [-p <path to device>]\n"
+"\t[--devn=<UBI device number>] [--mtdn=<MTD device number>]\n"
+"\t[--dev-path=<path to device>]\n"
+"Example 1: " PROGRAM_NAME " /dev/ubi_ctrl -p /dev/mtd0 - detach MTD device /dev/mtd0\n"
+"Example 2: " PROGRAM_NAME " /dev/ubi_ctrl -d 2 - delete UBI device 2 (ubi2)\n"
+"Example 3: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 - detach MTD device 0 (mtd0)";
 
 static const struct option long_options[] = {
-	{ .name = "devn",    .has_arg = 1, .flag = NULL, .val = 'd' },
-	{ .name = "mtdn",    .has_arg = 1, .flag = NULL, .val = 'm' },
-	{ .name = "help",    .has_arg = 0, .flag = NULL, .val = 'h' },
-	{ .name = "version", .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ .name = "devn",     .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "dev-path", .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "mtdn",     .has_arg = 1, .flag = NULL, .val = 'm' },
+	{ .name = "help",     .has_arg = 0, .flag = NULL, .val = 'h' },
+	{ .name = "version",  .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0},
 };
 
@@ -76,11 +82,14 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "m:d:hV", long_options, NULL);
+		key = getopt_long(argc, argv, "p:m:d:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
 		switch (key) {
+		case 'p':
+			args.dev = optarg;
+			break;
 		case 'd':
 			args.devn = strtoul(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || args.devn < 0)
@@ -119,11 +128,15 @@ static int parse_opt(int argc, char * const argv[])
 	else if (optind != argc - 1)
 		return errmsg("more then one UBI control device specified (use -h for help)");
 
-	if (args.mtdn == -1 && args.devn == -1)
+	if (args.mtdn == -1 && args.devn == -1 && args.dev == NULL)
 		return errmsg("neither MTD nor UBI devices were specified (use -h for help)");
 
-	if (args.mtdn != -1 && args.devn != -1)
-		return errmsg("specify either MTD or UBI device (use -h for help)");
+	if (args.devn != -1) {
+		if (args.mtdn != -1 || args.dev != NULL)
+			return errmsg("specify either MTD or UBI device (use -h for help)");
+
+	} else if (args.mtdn != -1 && args.dev != NULL)
+		return errmsg("specify either MTD number or device node (use -h for help)");
 
 	args.node = argv[optind];
 	return 0;
@@ -167,10 +180,18 @@ int main(int argc, char * const argv[])
 			goto out_libubi;
 		}
 	} else {
-		err = ubi_detach_mtd(libubi, args.node, args.mtdn);
-		if (err) {
-			sys_errmsg("cannot detach mtd%d", args.mtdn);
-			goto out_libubi;
+		if (args.dev != NULL) {
+			err = ubi_detach(libubi, args.node, args.dev);
+			if (err) {
+				sys_errmsg("cannot detach \"%s\"", args.dev);
+				goto out_libubi;
+			}
+		} else {
+			err = ubi_detach_mtd(libubi, args.node, args.mtdn);
+			if (err) {
+				sys_errmsg("cannot detach mtd%d", args.mtdn);
+				goto out_libubi;
+			}
 		}
 	}
 
