@@ -677,35 +677,120 @@ void libubi_close(libubi_t desc)
 	free(lib);
 }
 
-int ubi_attach_mtd(libubi_t desc, const char *node,
-		   struct ubi_attach_request *req)
+/**
+ * do_attach - perform the actual attach operation.
+ * @node: name of the UBI control character device node
+ * @r: attach request
+ *
+ * This function performs the actual UBI attach operation. Returns %0 in case of
+ * success and %-1 in case of failure. @r->ubi_num contains newly created UBI
+ * device number.
+ */
+static int do_attach(const char *node, const struct ubi_attach_req *r)
 {
 	int fd, ret;
-	struct ubi_attach_req r;
-
-	memset(&r, 0, sizeof(struct ubi_attach_req));
-
-	desc = desc;
-	r.ubi_num = req->dev_num;
-	r.mtd_num = req->mtd_num;
-	r.vid_hdr_offset = req->vid_hdr_offset;
 
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return sys_errmsg("cannot open \"%s\"", node);
 
-	ret = ioctl(fd, UBI_IOCATT, &r);
+	ret = ioctl(fd, UBI_IOCATT, r);
 	close(fd);
 	if (ret == -1)
 		return -1;
-
-	req->dev_num = r.ubi_num;
 
 #ifdef UDEV_SETTLE_HACK
 //	if (system("udevsettle") == -1)
 //		return -1;
 	usleep(100000);
 #endif
+	return ret;
+}
+
+int ubi_attach_mtd(libubi_t desc, const char *node,
+		   struct ubi_attach_request *req)
+{
+	struct ubi_attach_req r;
+	int ret;
+
+	(void)desc;
+
+	memset(&r, 0, sizeof(struct ubi_attach_req));
+	r.ubi_num = req->dev_num;
+	r.mtd_num = req->mtd_num;
+	r.vid_hdr_offset = req->vid_hdr_offset;
+
+	ret = do_attach(node, &r);
+	if (ret == 0)
+		req->dev_num = r.ubi_num;
+
+	return ret;
+}
+
+#ifndef MTD_CHAR_MAJOR
+/*
+ * This is taken from kernel <linux/mtd/mtd.h> and is unlikely to change anytime
+ * soon.
+ */
+#define MTD_CHAR_MAJOR 90
+#endif
+
+/**
+ * dev_to_mtdnum - converts device node to MTD number.
+ * @dev: path to device node to convert
+ *
+ * This function converts given @dev to MTD device number. @dev should contain
+ * path to the MTD device node. Returns MTD device number in case of success and
+ * %-1 in case of failure (errno is set).
+ */
+static int dev_to_mtdnum(const char *dev)
+{
+	int major, minor;
+	struct stat sb;
+
+	if (stat(dev, &sb) < 0)
+		return sys_errmsg("cannot stat \"%s\"", dev);
+
+	if (!S_ISCHR(sb.st_mode)) {
+		errno = EINVAL;
+		return sys_errmsg("\"%s\" is not a character device", dev);
+	}
+
+	major = major(sb.st_rdev);
+	minor = minor(sb.st_rdev);
+
+	if (major != MTD_CHAR_MAJOR) {
+		errno = EINVAL;
+		return sys_errmsg("\"%s\" is not an MTD device", dev);
+	}
+
+	return minor / 2;
+}
+
+int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
+{
+	struct ubi_attach_req r;
+	int ret;
+
+	if (!req->dev)
+		/* Fallback to opening by mtd_num */
+		return ubi_attach_mtd(desc, node, req);
+
+	memset(&r, 0, sizeof(struct ubi_attach_req));
+	r.ubi_num = req->dev_num;
+	r.vid_hdr_offset = req->vid_hdr_offset;
+
+	/*
+	 * User has passed path to device node. Lets find out MTD device number
+	 * of the device and pass it to the kernel.
+	 */
+	r.mtd_num = dev_to_mtdnum(req->dev);
+	if (r.mtd_num == -1)
+		return -1;
+
+	ret = do_attach(node, &r);
+	if (ret == 0)
+		req->dev_num = r.ubi_num;
 
 	return ret;
 }
@@ -721,6 +806,22 @@ int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num)
 	}
 
 	return ubi_remove_dev(desc, node, ubi_dev);
+}
+
+int ubi_detach(libubi_t desc, const char *node, const char *dev)
+{
+	int mtd_num;
+
+	if (!dev) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	mtd_num = dev_to_mtdnum(dev);
+	if (mtd_num == -1)
+		return -1;
+
+	return ubi_detach_mtd(desc, node, mtd_num);
 }
 
 int ubi_remove_dev(libubi_t desc, const char *node, int ubi_dev)

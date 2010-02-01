@@ -83,6 +83,7 @@ extern "C" {
  *                handling
  * @dev_max_vols: maximum volumes number count sysfs path pattern
  * @dev_min_io_size: minimum I/O unit size sysfs path pattern
+ * @dev_mtd_num: MTD device number
  * @ubi_vol: UBI volume sysfs directory pattern
  * @vol_type: volume type sysfs path pattern
  * @vol_dev: volume major/minor numbers file pattern
