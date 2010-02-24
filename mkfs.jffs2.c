@@ -1468,6 +1468,7 @@ static struct option long_options[] = {
 	{"devtable", 1, NULL, 'D'},
 	{"compression-mode", 1, NULL, 'm'},
 	{"disable-compressor", 1, NULL, 'x'},
+	{"enable-compressor", 1, NULL, 'X'},
 	{"test-compression", 0, NULL, 't'},
 	{"compressor-priority", 1, NULL, 'y'},
 	{"incremental", 1, NULL, 'i'},
