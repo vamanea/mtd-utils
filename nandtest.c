@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 				printf("\r%08x: reading... ", (unsigned)test_ofs);
 				fflush(stdout);
 
-				len = pread(fd, rbuf, meminfo.erasesize, test_ofs);
+				len = pread(fd, kbuf, meminfo.erasesize, test_ofs);
 				if (len < meminfo.erasesize) {
 					printf("\n");
 					if (len)
