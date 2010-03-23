@@ -39,6 +39,7 @@ struct args {
 	int vol_id;
 	int all;
 	const char *node;
+	const char *vol_name;
 };
 
 static struct args args = {
@@ -46,6 +47,7 @@ static struct args args = {
 	.devn = -1,
 	.all = 0,
 	.node = NULL,
+	.vol_name = NULL,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -87,7 +89,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "an:d:hV", long_options, NULL);
+		key = getopt_long(argc, argv, "an:N:d:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -100,6 +102,10 @@ static int parse_opt(int argc, char * const argv[])
 			args.vol_id = strtoul(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || args.vol_id < 0)
 				return errmsg("bad volume ID: " "\"%s\"", optarg);
+			break;
+
+		case 'N':
+			args.vol_name = optarg;
 			break;
 
 		case 'd':
@@ -170,6 +176,20 @@ static int translate_dev(libubi_t libubi, const char *node)
 		args.devn = vol_info.dev_num;
 		args.vol_id = vol_info.vol_id;
 	}
+
+	return 0;
+}
+
+static int get_vol_id_by_name(libubi_t libubi, int dev_num, const char *name)
+{
+	int err;
+	struct ubi_vol_info vol_info;
+
+	err = ubi_get_vol_info1_nm(libubi, dev_num, name, &vol_info);
+	if (err)
+		return sys_errmsg("cannot get information about volume \"%s\" on ubi%d\n", name, dev_num);
+
+	args.vol_id = vol_info.vol_id;
 
 	return 0;
 }
@@ -373,6 +393,12 @@ int main(int argc, char * const argv[])
 		 * device number and volume ID.
 		 */
 		err = translate_dev(libubi, args.node);
+		if (err)
+			goto out_libubi;
+	}
+
+	if (args.vol_name) {
+		err = get_vol_id_by_name(libubi, args.devn, args.vol_name);
 		if (err)
 			goto out_libubi;
 	}
