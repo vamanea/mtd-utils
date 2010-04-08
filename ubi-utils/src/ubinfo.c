@@ -56,6 +56,7 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 static const char *optionsstr =
 "-d, --devn=<UBI device number>  UBI device number to get information about\n"
 "-n, --vol_id=<volume ID>        ID of UBI volume to print information about\n"
+"-N, --name=<volume name>        name of UBI volume to print information about\n"
 "-a, --all                       print information about all devices and volumes,\n"
 "                                or about all volumes if the UBI device was\n"
 "                                specified\n"
@@ -63,8 +64,8 @@ static const char *optionsstr =
 "-V, --version                   print program version";
 
 static const char *usage =
-"Usage 1: " PROGRAM_NAME " [-d <UBI device number>] [-n <volume ID>] [-a] [-h] [-V] [--vol_id=<volume ID>]\n"
-"\t\t[--devn <UBI device number>] [--all] [--help] [--version]\n"
+"Usage 1: " PROGRAM_NAME " [-d <UBI device number>] [-n <volume ID> | -N <volume name>] [-a] [-h] [-V]\n"
+"\t\t[--vol_id=<volume ID> | --name <volume name>] [--devn <UBI device number>] [--all] [--help] [--version]\n"
 "Usage 2: " PROGRAM_NAME " <UBI device node file name> [-a] [-h] [-V] [--all] [--help] [--version]\n"
 "Usage 3: " PROGRAM_NAME " <UBI volume node file name> [-h] [-V] [--help] [--version]\n\n"
 "Example 1: " PROGRAM_NAME " - (no arguments) print general UBI information\n"
@@ -77,6 +78,7 @@ static const char *usage =
 static const struct option long_options[] = {
 	{ .name = "devn",      .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ .name = "vol_id",    .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "name",      .has_arg = 1, .flag = NULL, .val = 'N' },
 	{ .name = "all",       .has_arg = 0, .flag = NULL, .val = 'a' },
 	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
