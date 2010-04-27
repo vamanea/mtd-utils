@@ -25,12 +25,11 @@
  * UBI device creation (the same as MTD device attachment)
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
- * MTD and block devices may be attached using %UBI_IOCATT ioctl command of the
- * UBI control device. The caller has to properly fill and pass
- * &struct ubi_attach_req object. If the @bdev_major and @bdev_minor fields
- * contain zeroes, UBI will attaches MTD device number @mtd_num. Otherwise it
- * attaches block device with major/minor numbers @bdev_major and @bdev_minor.
- * The ioctl returns the newly created UBI device number.
+ * MTD devices may be attached using %UBI_IOCATT ioctl command of the UBI
+ * control device. The caller has to properly fill and pass
+ * &struct ubi_attach_req object - UBI will attach the MTD device specified in
+ * the request and return the newly created UBI device number as the ioctl
+ * return value.
  *
  * UBI device deletion (the same as MTD device detachment)
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,24 +235,13 @@ enum {
  * @ubi_num: UBI device number to create
  * @mtd_num: MTD device number to attach
  * @vid_hdr_offset: VID header offset (use defaults if %0)
- * @bdev_major: major number of the block device to attach
- * @bdev_minor: minor number of the block device to attach
  * @padding: reserved for future, not used, has to be zeroed
  *
- * This data structure is used to specify the device UBI has to attach and the
+ * This data structure is used to specify MTD device UBI has to attach and the
  * parameters it has to use. The number which should be assigned to the new UBI
  * device is passed in @ubi_num. UBI may automatically assign the number if
  * @UBI_DEV_NUM_AUTO is passed. In this case, the device number is returned in
  * @ubi_num.
- *
- * UBI can attach block and MTD devices. To attach a block device, @bdev_major
- * and @bdev_minor have to contain block device major an minor numbers. And
- * @mtd_num and @vid_hdr_offset have to contain zeroes. Note, the major number
- * cannot be zero. To attach an MTD device, @bdev_major and @bdev_minor have to
- * contain zeroes, while @mtd_num has to contain the MTD device number to
- * attach.
- *
- * The rest of the documentation is specific to the MTD device case.
  *
  * Most applications should pass %0 in @vid_hdr_offset to make UBI use default
  * offset of the VID header within physical eraseblocks. The default offset is
@@ -275,9 +263,7 @@ struct ubi_attach_req {
 	int32_t ubi_num;
 	int32_t mtd_num;
 	int32_t vid_hdr_offset;
-	int32_t bdev_major;
-	int32_t bdev_minor;
-	int8_t padding[4];
+	int8_t padding[12];
 };
 
 /**
