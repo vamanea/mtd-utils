@@ -39,6 +39,7 @@ struct args {
 	int vol_id;
 	int all;
 	const char *node;
+	const char *vol_name;
 };
 
 static struct args args = {
@@ -46,6 +47,7 @@ static struct args args = {
 	.devn = -1,
 	.all = 0,
 	.node = NULL,
+	.vol_name = NULL,
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -54,6 +56,7 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 static const char *optionsstr =
 "-d, --devn=<UBI device number>  UBI device number to get information about\n"
 "-n, --vol_id=<volume ID>        ID of UBI volume to print information about\n"
+"-N, --name=<volume name>        name of UBI volume to print information about\n"
 "-a, --all                       print information about all devices and volumes,\n"
 "                                or about all volumes if the UBI device was\n"
 "                                specified\n"
@@ -61,8 +64,8 @@ static const char *optionsstr =
 "-V, --version                   print program version";
 
 static const char *usage =
-"Usage 1: " PROGRAM_NAME " [-d <UBI device number>] [-n <volume ID>] [-a] [-h] [-V] [--vol_id=<volume ID>]\n"
-"\t\t[--devn <UBI device number>] [--all] [--help] [--version]\n"
+"Usage 1: " PROGRAM_NAME " [-d <UBI device number>] [-n <volume ID> | -N <volume name>] [-a] [-h] [-V]\n"
+"\t\t[--vol_id=<volume ID> | --name <volume name>] [--devn <UBI device number>] [--all] [--help] [--version]\n"
 "Usage 2: " PROGRAM_NAME " <UBI device node file name> [-a] [-h] [-V] [--all] [--help] [--version]\n"
 "Usage 3: " PROGRAM_NAME " <UBI volume node file name> [-h] [-V] [--help] [--version]\n\n"
 "Example 1: " PROGRAM_NAME " - (no arguments) print general UBI information\n"
@@ -75,6 +78,7 @@ static const char *usage =
 static const struct option long_options[] = {
 	{ .name = "devn",      .has_arg = 1, .flag = NULL, .val = 'd' },
 	{ .name = "vol_id",    .has_arg = 1, .flag = NULL, .val = 'n' },
+	{ .name = "name",      .has_arg = 1, .flag = NULL, .val = 'N' },
 	{ .name = "all",       .has_arg = 0, .flag = NULL, .val = 'a' },
 	{ .name = "help",      .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",   .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -87,7 +91,7 @@ static int parse_opt(int argc, char * const argv[])
 		int key;
 		char *endp;
 
-		key = getopt_long(argc, argv, "an:d:hV", long_options, NULL);
+		key = getopt_long(argc, argv, "an:N:d:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -100,6 +104,10 @@ static int parse_opt(int argc, char * const argv[])
 			args.vol_id = strtoul(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || args.vol_id < 0)
 				return errmsg("bad volume ID: " "\"%s\"", optarg);
+			break;
+
+		case 'N':
+			args.vol_name = optarg;
 			break;
 
 		case 'd':
@@ -170,6 +178,20 @@ static int translate_dev(libubi_t libubi, const char *node)
 		args.devn = vol_info.dev_num;
 		args.vol_id = vol_info.vol_id;
 	}
+
+	return 0;
+}
+
+static int get_vol_id_by_name(libubi_t libubi, int dev_num, const char *name)
+{
+	int err;
+	struct ubi_vol_info vol_info;
+
+	err = ubi_get_vol_info1_nm(libubi, dev_num, name, &vol_info);
+	if (err)
+		return sys_errmsg("cannot get information about volume \"%s\" on ubi%d\n", name, dev_num);
+
+	args.vol_id = vol_info.vol_id;
 
 	return 0;
 }
@@ -373,6 +395,12 @@ int main(int argc, char * const argv[])
 		 * device number and volume ID.
 		 */
 		err = translate_dev(libubi, args.node);
+		if (err)
+			goto out_libubi;
+	}
+
+	if (args.vol_name) {
+		err = get_vol_id_by_name(libubi, args.devn, args.vol_name);
 		if (err)
 			goto out_libubi;
 	}
