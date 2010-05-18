@@ -307,6 +307,14 @@ int main(int argc, char * const argv[])
 		exit (EXIT_FAILURE);
 	}
 
+	if (mtdoffset & (meminfo.writesize - 1)) {
+		fprintf(stderr, "The start address is not page-aligned !\n"
+				"The pagesize of this NAND Flash is 0x%x.\n",
+				meminfo.writesize);
+		close(fd);
+		exit(EXIT_FAILURE);
+	}
+
 	if (autoplace) {
 		/* Read the current oob info */
 		if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
