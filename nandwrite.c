@@ -80,6 +80,7 @@ static void display_help (void)
 "  -m, --markbad           Mark blocks bad if write fails\n"
 "  -n, --noecc             Write without ecc\n"
 "  -o, --oob               Image contains oob data\n"
+"  -r, --raw               Image contains the raw oob data dumped by nanddump\n"
 "  -s addr, --start=addr   Set start address (default is 0)\n"
 "  -p, --pad               Pad to page size\n"
 "  -b, --blockalign=1|2|4  Set multiple of eraseblocks to align to\n"
@@ -110,6 +111,7 @@ static const char	*mtd_device, *img;
 static int		mtdoffset = 0;
 static bool		quiet = false;
 static bool		writeoob = false;
+static bool		rawoob = false;
 static bool		autoplace = false;
 static bool		markbad = false;
 static bool		forcejffs2 = false;
@@ -125,7 +127,7 @@ static void process_options (int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "ab:fjmnopqs:y";
+		static const char *short_options = "ab:fjmnopqrs:y";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -138,6 +140,7 @@ static void process_options (int argc, char * const argv[])
 			{"oob", no_argument, 0, 'o'},
 			{"pad", no_argument, 0, 'p'},
 			{"quiet", no_argument, 0, 'q'},
+			{"raw", no_argument, 0, 'r'},
 			{"start", required_argument, 0, 's'},
 			{"yaffs", no_argument, 0, 'y'},
 			{0, 0, 0, 0},
@@ -186,6 +189,10 @@ static void process_options (int argc, char * const argv[])
 				break;
 			case 'p':
 				pad = true;
+				break;
+			case 'r':
+				rawoob = true;
+				writeoob = true;
 				break;
 			case 's':
 				mtdoffset = strtol (optarg, NULL, 0);
@@ -583,6 +590,7 @@ int main(int argc, char * const argv[])
 				oob.ptr = oobreadbuf;
 			} else {
 				int i, start, len;
+				int tags_pos = 0;
 				/*
 				 *  We use autoplacement and have the oobinfo with the autoplacement
 				 * information from the kernel available
@@ -595,9 +603,13 @@ int main(int argc, char * const argv[])
 						/* Set the reserved bytes to 0xff */
 						start = old_oobinfo.oobfree[i][0];
 						len = old_oobinfo.oobfree[i][1];
-						memcpy(oobbuf + start,
-								oobreadbuf + start,
-								len);
+						if (rawoob)
+							memcpy(oobbuf + start,
+									oobreadbuf + start, len);
+						else
+							memcpy(oobbuf + start,
+									oobreadbuf + tags_pos, len);
+						tags_pos += len;
 					}
 				} else {
 					/* Set at least the ecc byte positions to 0xff */
