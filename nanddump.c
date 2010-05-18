@@ -212,6 +212,7 @@ int main(int argc, char * const argv[])
 	if (!(meminfo.oobsize == 224 && meminfo.writesize == 4096) &&
 			!(meminfo.oobsize == 218 && meminfo.writesize == 4096) &&
 			!(meminfo.oobsize == 128 && meminfo.writesize == 4096) &&
+			!(meminfo.oobsize == 64 && meminfo.writesize == 4096) &&
 			!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
 			!(meminfo.oobsize == 32 && meminfo.writesize == 1024) &&
 			!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
