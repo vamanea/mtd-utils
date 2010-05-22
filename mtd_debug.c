@@ -110,7 +110,7 @@ int flash_to_file (int fd,u_int32_t offset,size_t len,const char *filename)
 		perror ("lseek()");
 		goto err0;
 	}
-	outfd = creat (filename,O_WRONLY);
+	outfd = creat (filename,0666);
 	if (outfd < 0)
 	{
 		perror ("creat()");
