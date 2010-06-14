@@ -140,19 +140,7 @@ void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 	hdr->hdr_crc = cpu_to_be32(crc);
 }
 
-/**
- * init_vid_hdr - initialize VID header.
- * @ui: libubigen information
- * @vi: volume information
- * @hdr: the VID header to initialize
- * @lnum: logical eraseblock number
- * @data: the contents of the LEB (static volumes only)
- * @data_size: amount of data in this LEB (static volumes only)
- *
- * Note, @used_ebs, @data and @data_size are ignored in case of dynamic
- * volumes.
- */
-static void init_vid_hdr(const struct ubigen_info *ui,
+void ubigen_init_vid_hdr(const struct ubigen_info *ui,
 			 const struct ubigen_vol_info *vi,
 			 struct ubi_vid_hdr *hdr, int lnum,
 			 const void *data, int data_size)
@@ -234,7 +222,7 @@ int ubigen_write_volume(const struct ubigen_info *ui,
 		} while (l);
 
 		vid_hdr = (struct ubi_vid_hdr *)(&outbuf[ui->vid_hdr_offs]);
-		init_vid_hdr(ui, vi, vid_hdr, lnum, inbuf, len);
+		ubigen_init_vid_hdr(ui, vi, vid_hdr, lnum, inbuf, len);
 
 		memcpy(outbuf + ui->data_offs, inbuf, len);
 		memset(outbuf + ui->data_offs + len, 0xFF,
@@ -298,7 +286,7 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 	}
 
 	ubigen_init_ec_hdr(ui, (struct ubi_ec_hdr *)outbuf, ec1);
-	init_vid_hdr(ui, &vi, vid_hdr, 0, NULL, 0);
+	ubigen_init_vid_hdr(ui, &vi, vid_hdr, 0, NULL, 0);
 	ret = write(fd, outbuf, ui->peb_size);
 	if (ret != ui->peb_size) {
 		sys_errmsg("cannot write %d bytes", ui->peb_size);
@@ -311,7 +299,7 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 		goto out_free;
 	}
 	ubigen_init_ec_hdr(ui, (struct ubi_ec_hdr *)outbuf, ec2);
-	init_vid_hdr(ui, &vi, vid_hdr, 1, NULL, 0);
+	ubigen_init_vid_hdr(ui, &vi, vid_hdr, 1, NULL, 0);
 	ret = write(fd, outbuf, ui->peb_size);
 	if (ret != ui->peb_size) {
 		sys_errmsg("cannot write %d bytes", ui->peb_size);

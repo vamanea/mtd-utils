@@ -125,6 +125,23 @@ void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 		        struct ubi_ec_hdr *hdr, long long ec);
 
 /**
+ * ubigen_init_vid_hdr - initialize VID header.
+ * @ui: libubigen information
+ * @vi: volume information
+ * @hdr: the VID header to initialize
+ * @lnum: logical eraseblock number
+ * @data: the contents of the LEB (static volumes only)
+ * @data_size: amount of data in this LEB (static volumes only)
+ *
+ * Note, @used_ebs, @data and @data_size are ignored in case of dynamic
+ * volumes.
+ */
+void ubigen_init_vid_hdr(const struct ubigen_info *ui,
+			 const struct ubigen_vol_info *vi,
+			 struct ubi_vid_hdr *hdr, int lnum,
+			 const void *data, int data_size);
+
+/**
  * ubigen_add_volume - add a volume to the volume table.
  * @ui: libubigen information
  * @vi: volume information
