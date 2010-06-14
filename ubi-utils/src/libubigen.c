@@ -37,17 +37,6 @@
 
 #define PROGRAM_NAME "libubigen"
 
-/**
- * ubigen_info_init - initialize libubigen.
- * @ui: libubigen information
- * @peb_size: flash physical eraseblock size
- * @min_io_size: flash minimum input/output unit size
- * @subpage_size: flash sub-page, if present (has to be equivalent to
- *                @min_io_size if does not exist)
- * @vid_hdr_offs: offset of the VID header
- * @ubi_ver: UBI version
- * @image_seq: UBI image sequence number
- */
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 		      int subpage_size, int vid_hdr_offs, int ubi_ver,
 		      uint32_t image_seq)
@@ -74,13 +63,6 @@ void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 	ui->vtbl_size = ui->max_volumes * UBI_VTBL_RECORD_SIZE;
 }
 
-/**
- * ubigen_create_empty_vtbl - creates empty volume table.
- *
- * This function creates an empty volume table and returns a pointer to it in
- * case of success and %NULL in case of failure. The returned object has to be
- * freed with 'free()' call.
- */
 struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui)
 {
 	struct ubi_vtbl_record *vtbl;
@@ -101,15 +83,6 @@ struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui)
 	return vtbl;
 }
 
-/**
- * ubigen_add_volume - add a volume to the volume table.
- * @ui: libubigen information
- * @vi: volume information
- * @vtbl: volume table to add to
- *
- * This function adds volume described by input parameters to the volume table
- * @vtbl.
- */
 int ubigen_add_volume(const struct ubigen_info *ui,
 		      const struct ubigen_vol_info *vi,
 		      struct ubi_vtbl_record *vtbl)
@@ -149,12 +122,6 @@ int ubigen_add_volume(const struct ubigen_info *ui,
 	return 0;
 }
 
-/**
- * ubigen_init_ec_hdr - initialize EC header.
- * @ui: libubigen information
- * @hdr: the EC header to initialize
- * @ec: erase counter value
- */
 void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 		        struct ubi_ec_hdr *hdr, long long ec)
 {
@@ -213,19 +180,6 @@ static void init_vid_hdr(const struct ubigen_info *ui,
 	hdr->hdr_crc = cpu_to_be32(crc);
 }
 
-/**
- * ubigen_write_volume - write UBI volume.
- * @ui: libubigen information
- * @vi: volume information
- * @ec: erase coutner value to put to EC headers
- * @bytes: volume size in bytes
- * @in: input file descriptor (has to be properly seeked)
- * @out: output file descriptor
- *
- * This function reads the contents of the volume from the input file @in and
- * writes the UBI volume to the output file @out. Returns zero on success and
- * %-1 on failure.
- */
 int ubigen_write_volume(const struct ubigen_info *ui,
 			const struct ubigen_vol_info *vi, long long ec,
 			long long bytes, int in, int out)
@@ -305,19 +259,6 @@ out_free:
 	return -1;
 }
 
-/**
- * ubigen_write_layout_vol - write UBI layout volume
- * @ui: libubigen information
- * @peb1: physical eraseblock number to write the first volume table copy
- * @peb2: physical eraseblock number to write the second volume table copy
- * @ec1: erase counter value for @peb1
- * @ec2: erase counter value for @peb1
- * @vtbl: volume table
- * @fd: output file descriptor seeked to the proper position
- *
- * This function creates the UBI layout volume which contains 2 copies of the
- * volume table. Returns zero in case of success and %-1 in case of failure.
- */
 int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 			    long long ec1, long long ec2,
 			    struct ubi_vtbl_record *vtbl, int fd)
