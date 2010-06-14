@@ -35,11 +35,15 @@ extern "C" {
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-#define errmsg(fmt, ...)                                                       \
-	__errmsg(TESTNAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
+#define errmsg(fmt, ...) ({                                                    \
+	__errmsg(TESTNAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);        \
+	-1;                                                                    \
+})
 
-#define failed(name)                                                           \
-	__failed(TESTNAME, __FUNCTION__, __LINE__, name)
+#define failed(name) ({                                                        \
+	__failed(TESTNAME, __FUNCTION__, __LINE__, name);                      \
+	-1;                                                                    \
+})
 
 #define initial_check(argc, argv)                                              \
 	__initial_check(TESTNAME, argc, argv)
