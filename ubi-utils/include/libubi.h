@@ -43,8 +43,8 @@ typedef void * libubi_t;
  * @dev_num: number to assign to the newly created UBI device
  *           (%UBI_DEV_NUM_AUTO should be used to automatically assign the
  *           number)
- * @mtd_num: MTD device number to attach
- * @dev: path to device node to attach
+ * @mtd_num: MTD device number to attach (used if @dev is %NULL)
+ * @dev: path to MTD device node to attach
  * @vid_hdr_offset: VID header offset (%0 means default offset and this is what
  *                  most of the users want)
  */

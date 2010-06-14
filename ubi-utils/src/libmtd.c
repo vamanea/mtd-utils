@@ -981,7 +981,6 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		errno = EINVAL;
 		return -1;
 	}
-
 	if (offs % mtd->subpage_size) {
 		errmsg("write offset %d is not aligned to mtd%d min. I/O size %d",
 		       offs, mtd->dev_num, mtd->subpage_size);
@@ -1007,6 +1006,109 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 				  len, mtd->dev_num, eb, offs);
 
 	return 0;
+}
+
+int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
+		  const char *img_name)
+{
+	int tmp, ret, in_fd, len, written = 0;
+	off_t seek;
+	struct stat st;
+	char *buf;
+
+	if (eb < 0 || eb >= mtd->eb_cnt) {
+		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
+		       eb, mtd->dev_num, mtd->eb_cnt);
+		errno = EINVAL;
+		return -1;
+	}
+	if (offs < 0 || offs >= mtd->eb_size) {
+		errmsg("bad offset %d, mtd%d eraseblock size is %d",
+		       offs, mtd->dev_num, mtd->eb_size);
+		errno = EINVAL;
+		return -1;
+	}
+	if (offs % mtd->subpage_size) {
+		errmsg("write offset %d is not aligned to mtd%d min. I/O size %d",
+		       offs, mtd->dev_num, mtd->subpage_size);
+		errno = EINVAL;
+		return -1;
+	}
+
+	in_fd = open(img_name, O_RDONLY);
+	if (in_fd == -1)
+		return sys_errmsg("cannot open %s", img_name);
+
+	if (fstat(in_fd, &st)) {
+		sys_errmsg("cannot stat %s", img_name);
+		goto out_close;
+	}
+
+	len = st.st_size;
+	if (len % mtd->subpage_size) {
+		errmsg("size of \"%s\" is %d byte, which is not aligned to "
+		       "mtd%d min. I/O size %d", img_name, len, mtd->dev_num,
+		       mtd->subpage_size);
+		errno = EINVAL;
+		goto out_close;
+	}
+	tmp = (offs + len + mtd->eb_size - 1) / mtd->eb_size;
+	if (eb + tmp > mtd->eb_cnt) {
+		errmsg("\"%s\" image size is %d bytes, mtd%d size is %d "
+		       "eraseblocks, the image does not fit if we write it "
+		       "starting from eraseblock %d, offset %d",
+		       img_name, len, mtd->dev_num, mtd->eb_cnt, eb, offs);
+		errno = EINVAL;
+		goto out_close;
+	}
+
+	/* Seek to the beginning of the eraseblock */
+	seek = (off_t)eb * mtd->eb_size + offs;
+	if (lseek(fd, seek, SEEK_SET) != seek) {
+		sys_errmsg("cannot seek mtd%d to offset %llu",
+			    mtd->dev_num, (unsigned long long)seek);
+		goto out_close;
+	}
+
+	buf = malloc(mtd->eb_size);
+	if (!buf) {
+		sys_errmsg("cannot allocate %d bytes of memory", mtd->eb_size);
+		goto out_close;
+	}
+
+	while (written < len) {
+		int rd = 0;
+
+		do {
+			ret = read(in_fd, buf, mtd->eb_size - offs - rd);
+			if (ret == -1) {
+				sys_errmsg("cannot read from %s", img_name);
+				goto out_free;
+			}
+			rd += ret;
+		} while (ret && rd < mtd->eb_size - offs);
+
+		ret = write(fd, buf, rd);
+		if (ret != rd) {
+			sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
+				   len, mtd->dev_num, eb, offs);
+			goto out_free;
+		}
+
+		offs = 0;
+		eb += 1;
+		written += rd;
+	}
+
+	free(buf);
+	close(in_fd);
+	return 0;
+
+out_free:
+	free(buf);
+out_close:
+	close(in_fd);
+	return -1;
 }
 
 int mtd_probe_node(libmtd_t desc, const char *node)
