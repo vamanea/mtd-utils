@@ -95,6 +95,8 @@ struct ubi_info
 
 /**
  * struct ubi_dev_info - UBI device information.
+ * @dev_num: UBI device number
+ * @mtd_num: MTD device number on top of which this UBI device is working
  * @vol_count: count of volumes on this UBI device
  * @lowest_vol_id: lowest volume ID
  * @highest_vol_id: highest volume ID
@@ -116,6 +118,7 @@ struct ubi_info
 struct ubi_dev_info
 {
 	int dev_num;
+	int mtd_num;
 	int vol_count;
 	int lowest_vol_id;
 	int highest_vol_id;

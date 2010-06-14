@@ -1193,6 +1193,8 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	if (dev_get_major(lib, dev_num, &info->major, &info->minor))
 		return -1;
 
+	if (dev_read_int(lib->dev_mtd_num, dev_num, &info->mtd_num))
+		return -1;
 	if (dev_read_int(lib->dev_avail_ebs, dev_num, &info->avail_lebs))
 		return -1;
 	if (dev_read_int(lib->dev_total_ebs, dev_num, &info->total_lebs))
