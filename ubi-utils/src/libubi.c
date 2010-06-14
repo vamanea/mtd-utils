@@ -1249,8 +1249,6 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 	info->dev_num = dev_num;
 	info->vol_id = vol_id;
 
-	if (dev_get_major(lib, dev_num, &info->dev_major, &info->dev_minor))
-		return -1;
 	if (vol_get_major(lib, dev_num, vol_id, &info->major, &info->minor))
 		return -1;
 

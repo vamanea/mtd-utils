@@ -139,8 +139,6 @@ struct ubi_dev_info
  * @vol_id: ID of this volume
  * @major: major number of corresponding volume character device
  * @minor: minor number of corresponding volume character device
- * @dev_major: major number of corresponding UBI device character device
- * @dev_minor: minor number of corresponding UBI device character device
  * @type: volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
  * @alignment: alignment of this volume
  * @data_bytes: how many data bytes are stored on this volume (equivalent to
@@ -158,8 +156,6 @@ struct ubi_vol_info
 	int vol_id;
 	int major;
 	int minor;
-	int dev_major;
-	int dev_minor;
 	int type;
 	int alignment;
 	long long data_bytes;
