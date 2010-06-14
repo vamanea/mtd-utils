@@ -117,13 +117,19 @@ int ubigen_add_volume(const struct ubigen_info *ui,
 	struct ubi_vtbl_record *vtbl_rec = &vtbl[vi->id];
 	uint32_t tmp;
 
-	if (vi->id >= ui->max_volumes)
-		return errmsg("too high volume id %d, max. volumes is %d",
-			      vi->id, ui->max_volumes);
+	if (vi->id >= ui->max_volumes) {
+		errmsg("too high volume id %d, max. volumes is %d",
+		       vi->id, ui->max_volumes);
+		errno = EINVAL;
+		return -1;
+	}
 
-	if (vi->alignment >= ui->leb_size)
-		return errmsg("too large alignment %d, max is %d (LEB size)",
-			      vi->alignment, ui->leb_size);
+	if (vi->alignment >= ui->leb_size) {
+		errmsg("too large alignment %d, max is %d (LEB size)",
+		       vi->alignment, ui->leb_size);
+		errno = EINVAL;
+		return -1;
+	}
 
 	memset(vtbl_rec, 0, sizeof(struct ubi_vtbl_record));
 	tmp = (vi->bytes + ui->leb_size - 1) / ui->leb_size;
@@ -225,15 +231,31 @@ int ubigen_write_volume(const struct ubigen_info *ui,
 			long long bytes, int in, int out)
 {
 	int len = vi->usable_leb_size, rd, lnum = 0;
-	char inbuf[ui->leb_size], outbuf[ui->peb_size];
+	char *inbuf, *outbuf;
 
-	if (vi->id >= ui->max_volumes)
-		return errmsg("too high volume id %d, max. volumes is %d",
-			      vi->id, ui->max_volumes);
+	if (vi->id >= ui->max_volumes) {
+		errmsg("too high volume id %d, max. volumes is %d",
+		       vi->id, ui->max_volumes);
+		errno = EINVAL;
+		return -1;
+	}
 
-	if (vi->alignment >= ui->leb_size)
-		return errmsg("too large alignment %d, max is %d (LEB size)",
-			      vi->alignment, ui->leb_size);
+	if (vi->alignment >= ui->leb_size) {
+		errmsg("too large alignment %d, max is %d (LEB size)",
+		       vi->alignment, ui->leb_size);
+		errno = EINVAL;
+		return -1;
+	}
+
+	inbuf = malloc(ui->leb_size);
+	if (!inbuf)
+		return sys_errmsg("cannot allocate %d bytes of memory",
+				  ui->leb_size);
+	outbuf = malloc(ui->peb_size);
+	if (!outbuf) {
+		sys_errmsg("cannot allocate %d bytes of memory", ui->peb_size);
+		goto out_free;
+	}
 
 	memset(outbuf, 0xFF, ui->data_offs);
 	ubigen_init_ec_hdr(ui, (struct ubi_ec_hdr *)outbuf, ec);
@@ -249,8 +271,10 @@ int ubigen_write_volume(const struct ubigen_info *ui,
 		l = len;
 		do {
 			rd = read(in, inbuf + len - l, l);
-			if (rd != l)
-				return sys_errmsg("cannot read %d bytes from the input file", l);
+			if (rd != l) {
+				sys_errmsg("cannot read %d bytes from the input file", l);
+				goto out_free1;
+			}
 
 			l -= rd;
 		} while (l);
@@ -262,13 +286,23 @@ int ubigen_write_volume(const struct ubigen_info *ui,
 		memset(outbuf + ui->data_offs + len, 0xFF,
 		       ui->peb_size - ui->data_offs - len);
 
-		if (write(out, outbuf, ui->peb_size) != ui->peb_size)
-			return sys_errmsg("cannot write %d bytes to the output file", ui->peb_size);
+		if (write(out, outbuf, ui->peb_size) != ui->peb_size) {
+			sys_errmsg("cannot write %d bytes to the output file", ui->peb_size);
+			goto out_free1;
+		}
 
 		lnum += 1;
 	}
 
+	free(outbuf);
+	free(inbuf);
 	return 0;
+
+out_free1:
+	free(outbuf);
+out_free:
+	free(inbuf);
+	return -1;
 }
 
 /**
