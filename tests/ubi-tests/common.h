@@ -24,6 +24,7 @@
 #define __COMMON_H__
 
 #include <string.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +35,11 @@ extern "C" {
 #define PAGE_SIZE 4096
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
+
+/* Normal messages */
+#define normsg(fmt, ...) do {                                                  \
+        printf(TESTNAME ": " fmt "\n", ##__VA_ARGS__);                         \
+} while(0)
 
 #define errmsg(fmt, ...) ({                                                    \
 	__errmsg(TESTNAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);        \
