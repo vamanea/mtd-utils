@@ -201,7 +201,7 @@ static int test_mkvol(void)
 			if (errno == ENFILE)
 				break;
 			failed("ubi_mkvol");
-			err_msg("vol_id %d", i);
+			errmsg("vol_id %d", i);
 			goto remove;
 		}
 	}

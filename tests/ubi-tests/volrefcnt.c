@@ -76,7 +76,7 @@ int main(int argc, char * const argv[])
 	sprintf(fname, SYSFS_FILE, dev_info.dev_num, req.vol_id);
 	fd = open(fname, O_RDONLY);
 	if (fd == -1) {
-		err_msg("cannot open %s", fname);
+		errmsg("cannot open %s", fname);
 		failed("open");
 		goto out_rmvol;
 	}
@@ -91,7 +91,7 @@ int main(int argc, char * const argv[])
 	/* Try to read from the file, this should fail */
 	ret = read(fd, tmp, 100);
 	if (ret != -1) {
-		err_msg("read returned %d, expected -1", ret);
+		errmsg("read returned %d, expected -1", ret);
 		failed("read");
 		goto out_close;
 	}
@@ -100,8 +100,8 @@ int main(int argc, char * const argv[])
 	close(fd);
 	fd = open(fname, O_RDONLY);
 	if (fd != -1) {
-		err_msg("opened %s again, open returned %d, expected -1",
-			fname, fd);
+		errmsg("opened %s again, open returned %d, expected -1",
+		       fname, fd);
 		failed("open");
 		goto out_libubi;
 	}

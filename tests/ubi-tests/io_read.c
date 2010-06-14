@@ -84,7 +84,7 @@ static int test_static(void)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		errmsg("cannot open \"%s\"\n", node);
 		goto remove;
 	}
 
@@ -95,7 +95,7 @@ static int test_static(void)
 
 	/* Make sure new static volume contains no data */
 	if (vol_info.data_bytes != 0) {
-		err_msg("data_bytes = %lld, not zero", vol_info.data_bytes);
+		errmsg("data_bytes = %lld, not zero", vol_info.data_bytes);
 		goto close;
 	}
 
@@ -106,7 +106,7 @@ static int test_static(void)
 		goto close;
 	}
 	if (ret != 0) {
-		err_msg("read data from free static volume");
+		errmsg("read data from free static volume");
 		goto close;
 	}
 
@@ -121,7 +121,7 @@ static int test_static(void)
 		goto close;
 	}
 	if (ret != 10) {
-		err_msg("written %d bytes", ret);
+		errmsg("written %d bytes", ret);
 		goto close;
 	}
 
@@ -135,7 +135,7 @@ static int test_static(void)
 		goto close;
 	}
 	if (ret != 10) {
-		err_msg("read %d bytes", ret);
+		errmsg("read %d bytes", ret);
 		goto close;
 	}
 
@@ -170,12 +170,12 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 
 	if (lseek(fd, off, SEEK_SET) != off) {
 		failed("seek");
-		err_msg("len = %d", len);
+		errmsg("len = %d", len);
 		return -1;
 	}
 	if (read(fd, buf, len) != len1) {
 		failed("read");
-		err_msg("len = %d", len);
+		errmsg("len = %d", len);
 		return -1;
 	}
 
@@ -184,8 +184,8 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 		if (new_off == -1)
 			failed("lseek");
 		else
-			err_msg("read %d bytes from %lld, but resulting "
-				"offset is %lld", len1, (long long) off, (long long) new_off);
+			errmsg("read %d bytes from %lld, but resulting "
+			       "offset is %lld", len1, (long long) off, (long long) new_off);
 		return -1;
 	}
 
@@ -193,9 +193,9 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 		ck_buf[i] = (unsigned char)(off + i);
 
 	if (memcmp(buf, ck_buf, len1)) {
-		err_msg("incorrect data read from offset %lld",
-			(long long)off);
-		err_msg("len = %d", len);
+		errmsg("incorrect data read from offset %lld",
+		       (long long)off);
+		errmsg("len = %d", len);
 		return -1;
 	}
 
@@ -213,7 +213,7 @@ static int test_read2(const struct ubi_vol_info *vol_info, int len)
 
 	for (i = 0; i < sizeof(offsets)/sizeof(off_t); i++) {
 		if (test_read3(vol_info, len, offsets[i])) {
-			err_msg("offset = %d", offsets[i]);
+			errmsg("offset = %d", offsets[i]);
 			return -1;
 		}
 	}
@@ -236,14 +236,14 @@ static int test_read1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		errmsg("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
 	/* Write some pattern to the volume */
 	if (ubi_update_start(libubi, fd, vol_info->rsvd_bytes)) {
 		failed("ubi_update_start");
-		err_msg("bytes = %lld", vol_info->rsvd_bytes);
+		errmsg("bytes = %lld", vol_info->rsvd_bytes);
 		goto close;
 	}
 
@@ -257,7 +257,7 @@ static int test_read1(struct ubi_vol_info *vol_info)
 		ret = write(fd, buf, 512);
 		if (ret == -1) {
 			failed("write");
-			err_msg("written = %d, ret = %d", written, ret);
+			errmsg("written = %d, ret = %d", written, ret);
 			goto close;
 		}
 		written += ret;
@@ -273,13 +273,13 @@ static int test_read1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDONLY);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		errmsg("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
 	for (i = 0; i < sizeof(lengthes)/sizeof(int); i++) {
 		if (test_read2(vol_info, lengthes[i])) {
-			err_msg("length = %d", lengthes[i]);
+			errmsg("length = %d", lengthes[i]);
 			goto close;
 		}
 	}
@@ -337,7 +337,7 @@ static int test_read(int type)
 		}
 
 		if (test_read1(&vol_info)) {
-			err_msg("alignment = %d", req.alignment);
+			errmsg("alignment = %d", req.alignment);
 			goto remove;
 		}
 

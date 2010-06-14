@@ -84,7 +84,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		errmsg("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
@@ -144,14 +144,14 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 			ret = write(fd, buf + off, len);
 			if (ret < 0) {
 				failed("write");
-				err_msg("failed to write %d bytes at offset "
-					"%lld", len, (long long)off);
+				errmsg("failed to write %d bytes at offset "
+				       "%lld", len, (long long)off);
 				goto close;
 			}
 			len = l;
 			if (ret != len) {
-				err_msg("failed to write %d bytes at offset "
-					"%lld, wrote %d", len, (long long)off, ret);
+				errmsg("failed to write %d bytes at offset "
+				       "%lld, wrote %d", len, (long long)off, ret);
 				goto close;
 			}
 			off += len;
@@ -160,7 +160,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 		/* Check data */
 		if ((ret = lseek(fd, SEEK_SET, 0)) != 0) {
 			failed("lseek");
-			err_msg("cannot seek to 0");
+			errmsg("cannot seek to 0");
 			goto close;
 		}
 
@@ -176,15 +176,15 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 			ret = read(fd, buf1, test_len);
 		if (ret < 0) {
 			failed("read");
-			err_msg("failed to read %d bytes", test_len);
+			errmsg("failed to read %d bytes", test_len);
 			goto close;
 		}
 		if (ret != test_len) {
-			err_msg("failed to read %d bytes, read %d", test_len, ret);
+			errmsg("failed to read %d bytes, read %d", test_len, ret);
 			goto close;
 		}
 		if (memcmp(buf, buf1, test_len)) {
-			err_msg("data corruption");
+			errmsg("data corruption");
 			goto close;
 		}
 	}
@@ -241,13 +241,13 @@ static int test_update(int type)
 		}
 
 		if (test_update1(&vol_info, 0)) {
-			err_msg("alignment = %d", req.alignment);
+			errmsg("alignment = %d", req.alignment);
 			goto remove;
 		}
 
 		if (vol_info.type != UBI_STATIC_VOLUME) {
 			if (test_update1(&vol_info, 1)) {
-				err_msg("alignment = %d", req.alignment);
+				errmsg("alignment = %d", req.alignment);
 				goto remove;
 			}
 		}

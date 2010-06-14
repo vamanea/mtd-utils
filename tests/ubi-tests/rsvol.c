@@ -123,14 +123,14 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	}
 
 	if (vol_info1.rsvd_bytes != bytes) {
-		err_msg("rsvd_bytes %lld, must be %lld",
-			vol_info1.rsvd_bytes, bytes);
+		errmsg("rsvd_bytes %lld, must be %lld",
+		       vol_info1.rsvd_bytes, bytes);
 		return -1;
 	}
 
 	if (vol_info1.rsvd_lebs != vol_info->rsvd_lebs - 1) {
-		err_msg("rsvd_lebs %d, must be %d",
-			vol_info1.rsvd_lebs, vol_info->rsvd_lebs - 1);
+		errmsg("rsvd_lebs %d, must be %d",
+		       vol_info1.rsvd_lebs, vol_info->rsvd_lebs - 1);
 		return -1;
 	}
 
@@ -141,7 +141,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", vol_node);
+		errmsg("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
@@ -176,7 +176,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", vol_node);
+		errmsg("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
@@ -194,7 +194,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 
 	for (i = 0; i < bytes; i++) {
 		if (buf[i] != (unsigned char)i) {
-			err_msg("bad data");
+			errmsg("bad data");
 			goto close;
 		}
 	}
@@ -252,7 +252,7 @@ static int test_rsvol(int type)
 		}
 
 		if (test_rsvol1(&vol_info)) {
-			err_msg("alignment = %d", req.alignment);
+			errmsg("alignment = %d", req.alignment);
 			goto remove;
 		}
 

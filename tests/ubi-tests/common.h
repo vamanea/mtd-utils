@@ -35,8 +35,8 @@ extern "C" {
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-#define err_msg(fmt, ...)                                                      \
-	__err_msg(TESTNAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
+#define errmsg(fmt, ...)                                                       \
+	__errmsg(TESTNAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)
 
 #define failed(name)                                                           \
 	__failed(TESTNAME, __FUNCTION__, __LINE__, name)
@@ -59,14 +59,14 @@ extern "C" {
 	int __ret;                                                             \
 		                                                               \
 	if (!ret) {                                                            \
-		err_msg("%s() returned success but should have failed", func); \
-		err_msg(fmt, ##__VA_ARGS__);                                   \
+		errmsg("%s() returned success but should have failed", func);  \
+		errmsg(fmt, ##__VA_ARGS__);                                    \
 		__ret = -1;                                                    \
 	}                                                                      \
 	if (errno != (error)) {                                                \
-		err_msg("%s failed with error %d (%s), expected %d (%s)",      \
-			func, errno, strerror(errno), error, strerror(error)); \
-		err_msg(fmt, ##__VA_ARGS__);                                   \
+		errmsg("%s failed with error %d (%s), expected %d (%s)",       \
+		       func, errno, strerror(errno), error, strerror(error));  \
+		errmsg(fmt, ##__VA_ARGS__);                                    \
 		__ret = -1;                                                    \
 	}                                                                      \
 	__ret = 0;                                                             \
@@ -80,8 +80,8 @@ extern "C" {
 	 (s)/5-3, (s)/5-2, (s)/5-1, (s)/5+1, (s)/5+2, (s)/5+3, (s)-17, (s)-9,  \
 	 (s)-8, (s)-6, (s)-4, (s)-1, (s)};
 
-extern void __err_msg(const char *test, const char *func, int line,
-		      const char *fmt, ...);
+extern void __errmsg(const char *test, const char *func, int line,
+		     const char *fmt, ...);
 void __failed(const char *test, const char *func, int line,
 	      const char *failed);
 int __initial_check(const char *test, int argc, char * const argv[]);

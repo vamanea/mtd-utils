@@ -59,7 +59,7 @@ static int update_volume(int vol_id, int bytes)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", vol_node);
+		errmsg("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
@@ -70,7 +70,7 @@ static int update_volume(int vol_id, int bytes)
 	ret = ubi_update_start(libubi, fd, bytes);
 	if (ret) {
 		failed("ubi_update_start");
-		err_msg("volume id is %d", vol_id);
+		errmsg("volume id is %d", vol_id);
 		goto err_close;
 	}
 
@@ -83,10 +83,10 @@ static int update_volume(int vol_id, int bytes)
 		ret = write(fd, wbuf + written, to_write);
 		if (ret != to_write) {
 			failed("write");
-			err_msg("failed to write %d bytes at offset %d "
-				"of volume %d", to_write, written,
-				vol_id);
-			err_msg("update: %d bytes", bytes);
+			errmsg("failed to write %d bytes at offset %d "
+			       "of volume %d", to_write, written,
+			       vol_id);
+			errmsg("update: %d bytes", bytes);
 			goto err_close;
 		}
 
@@ -98,7 +98,7 @@ static int update_volume(int vol_id, int bytes)
 	fd = open(vol_node, O_RDONLY);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", node);
+		errmsg("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
@@ -112,8 +112,8 @@ static int update_volume(int vol_id, int bytes)
 		ret = read(fd, rbuf + rd, to_read);
 		if (ret != to_read) {
 			failed("read");
-			err_msg("failed to read %d bytes at offset %d "
-				"of volume %d", to_read, rd, vol_id);
+			errmsg("failed to read %d bytes at offset %d "
+			       "of volume %d", to_read, rd, vol_id);
 			goto err_close;
 		}
 
@@ -121,7 +121,7 @@ static int update_volume(int vol_id, int bytes)
 	}
 
 	if (memcmp(wbuf, rbuf, bytes)) {
-		err_msg("written and read data are different");
+		errmsg("written and read data are different");
 		goto err_close;
 	}
 
@@ -146,13 +146,13 @@ static void *update_thread(void *ptr)
 			ret = ubi_rmvol(libubi, node, vol_id);
 			if (ret) {
 				failed("ubi_rmvol");
-				err_msg("cannot remove volume %d", vol_id);
+				errmsg("cannot remove volume %d", vol_id);
 				return NULL;
 			}
 			ret = ubi_mkvol(libubi, node, &reqests[vol_id]);
 			if (ret) {
 				failed("ubi_mkvol");
-				err_msg("cannot create volume %d", vol_id);
+				errmsg("cannot create volume %d", vol_id);
 				return NULL;
 			}
 		}
@@ -175,14 +175,14 @@ static void *write_thread(void *ptr)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		err_msg("cannot open \"%s\"\n", vol_node);
+		errmsg("cannot open \"%s\"\n", vol_node);
 		return NULL;
 	}
 
 	ret = ubi_set_property(fd, UBI_PROP_DIRECT_WRITE, 1);
 	if (ret) {
 		failed("ubi_set_property");
-		err_msg("cannot set property for \"%s\"\n", vol_node);
+		errmsg("cannot set property for \"%s\"\n", vol_node);
 	}
 
 	for (i = 0; i < ITERATIONS * VOL_LEBS; i++) {
@@ -192,7 +192,7 @@ static void *write_thread(void *ptr)
 		ret = ubi_leb_unmap(fd, leb);
 		if (ret) {
 			failed("ubi_leb_unmap");
-			err_msg("cannot unmap LEB %d", leb);
+			errmsg("cannot unmap LEB %d", leb);
 			break;
 		}
 
@@ -203,7 +203,7 @@ static void *write_thread(void *ptr)
 		ret = pwrite(fd, wbuf, dev_info.leb_size, offs);
 		if (ret != dev_info.leb_size) {
 			failed("pwrite");
-			err_msg("cannot write %d bytes to offs %lld, wrote %d",
+			errmsg("cannot write %d bytes to offs %lld, wrote %d",
 				dev_info.leb_size, offs, ret);
 			break;
 		}
@@ -212,14 +212,14 @@ static void *write_thread(void *ptr)
 		ret = pread(fd, rbuf, dev_info.leb_size, offs);
 		if (ret != dev_info.leb_size) {
 			failed("read");
-			err_msg("failed to read %d bytes at offset %d "
-				"of volume %d", dev_info.leb_size, offs,
-				vol_id);
+			errmsg("failed to read %d bytes at offset %d "
+			       "of volume %d", dev_info.leb_size, offs,
+			       vol_id);
 			break;
 		}
 
 		if (memcmp(wbuf, rbuf, dev_info.leb_size)) {
-			err_msg("written and read data are different");
+			errmsg("written and read data are different");
 			break;
 		}
 	}
