@@ -188,7 +188,7 @@ int main(int argc, char * const argv[])
 	req.dev_num = args.devn;
 	req.mtd_num = args.mtdn;
 	req.vid_hdr_offset = args.vidoffs;
-	req.dev = args.dev;
+	req.mtd_dev_node = args.dev;
 
 	err = ubi_attach(libubi, args.node, &req);
 	if (err) {

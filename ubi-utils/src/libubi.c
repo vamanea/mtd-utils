@@ -736,24 +736,25 @@ int ubi_attach_mtd(libubi_t desc, const char *node,
 #endif
 
 /**
- * dev_to_mtdnum - converts device node to MTD number.
- * @dev: path to device node to convert
+ * mtd_node_to_num - converts device node to MTD number.
+ * @mtd_dev_node: path to device node to convert
  *
- * This function converts given @dev to MTD device number. @dev should contain
- * path to the MTD device node. Returns MTD device number in case of success and
- * %-1 in case of failure (errno is set).
+ * This function converts given @mtd_dev_node to MTD device number.
+ * @mtd_dev_node should contain path to the MTD device node. Returns MTD device
+ * number in case of success and %-1 in case of failure (errno is set).
  */
-static int dev_to_mtdnum(const char *dev)
+static int mtd_node_to_num(const char *mtd_dev_node)
 {
 	int major, minor;
 	struct stat sb;
 
-	if (stat(dev, &sb) < 0)
-		return sys_errmsg("cannot stat \"%s\"", dev);
+	if (stat(mtd_dev_node, &sb) < 0)
+		return sys_errmsg("cannot stat \"%s\"", mtd_dev_node);
 
 	if (!S_ISCHR(sb.st_mode)) {
 		errno = EINVAL;
-		return sys_errmsg("\"%s\" is not a character device", dev);
+		return sys_errmsg("\"%s\" is not a character device",
+				  mtd_dev_node);
 	}
 
 	major = major(sb.st_rdev);
@@ -761,7 +762,7 @@ static int dev_to_mtdnum(const char *dev)
 
 	if (major != MTD_CHAR_MAJOR) {
 		errno = EINVAL;
-		return sys_errmsg("\"%s\" is not an MTD device", dev);
+		return sys_errmsg("\"%s\" is not an MTD device", mtd_dev_node);
 	}
 
 	return minor / 2;
@@ -772,7 +773,7 @@ int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 	struct ubi_attach_req r;
 	int ret;
 
-	if (!req->dev)
+	if (!req->mtd_dev_node)
 		/* Fallback to opening by mtd_num */
 		return ubi_attach_mtd(desc, node, req);
 
@@ -784,7 +785,7 @@ int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 	 * User has passed path to device node. Lets find out MTD device number
 	 * of the device and pass it to the kernel.
 	 */
-	r.mtd_num = dev_to_mtdnum(req->dev);
+	r.mtd_num = mtd_node_to_num(req->mtd_dev_node);
 	if (r.mtd_num == -1)
 		return -1;
 
@@ -808,16 +809,16 @@ int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num)
 	return ubi_remove_dev(desc, node, ubi_dev);
 }
 
-int ubi_detach(libubi_t desc, const char *node, const char *dev)
+int ubi_detach(libubi_t desc, const char *node, const char *mtd_dev_node)
 {
 	int mtd_num;
 
-	if (!dev) {
+	if (!mtd_dev_node) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	mtd_num = dev_to_mtdnum(dev);
+	mtd_num = mtd_node_to_num(mtd_dev_node);
 	if (mtd_num == -1)
 		return -1;
 

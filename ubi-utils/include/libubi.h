@@ -43,8 +43,8 @@ typedef void * libubi_t;
  * @dev_num: number to assign to the newly created UBI device
  *           (%UBI_DEV_NUM_AUTO should be used to automatically assign the
  *           number)
- * @mtd_num: MTD device number to attach (used if @dev is %NULL)
- * @dev: path to MTD device node to attach
+ * @mtd_num: MTD device number to attach (used if @mtd_dev_node is %NULL)
+ * @mtd_dev_node: path to MTD device node to attach
  * @vid_hdr_offset: VID header offset (%0 means default offset and this is what
  *                  most of the users want)
  */
@@ -52,7 +52,7 @@ struct ubi_attach_request
 {
 	int dev_num;
 	int mtd_num;
-	const char *dev;
+	const char *mtd_dev_node;
 	int vid_hdr_offset;
 };
 
@@ -226,9 +226,9 @@ int ubi_attach_mtd(libubi_t desc, const char *node,
  * @req: MTD attach request
  *
  * This function creates new UBI device by attaching an MTD device described by
- * @req. If @req->dev is given it should contain path to the MTD device node.
- * Otherwise functionality is similar than in function 'ubi_attach_mtd()' where
- * @req->mtd_num is used.
+ * @req. If @req->mtd_dev_node is given it should contain path to the MTD
+ * device node. Otherwise functionality is similar than in function
+ * 'ubi_attach_mtd()' where @req->mtd_num is used.
  *
  * Returns %0 in case of success and %-1 in case of failure (errno is set). The
  * newly created UBI device number is returned in @req->dev_num.
@@ -252,12 +252,12 @@ int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num);
  * ubi_detach - detach an MTD device by its node path.
  * @desc: UBI library descriptor
  * @node: name of the UBI control character device node
- * @dev: path to an MTD device node
+ * @mtd_dev_node: path to an MTD device node
  *
- * This function detaches an MTD device @dev from UBI. Returns zero in case of
- * success and %-1 in case of failure.
+ * This function detaches an MTD device @mtd_dev_node from UBI. Returns zero in
+ * case of success and %-1 in case of failure.
  */
-int ubi_detach(libubi_t desc, const char *node, const char *dev);
+int ubi_detach(libubi_t desc, const char *node, const char *mtd_dev_node);
 
 /**
  * ubi_remove_dev - remove an UBI device.
