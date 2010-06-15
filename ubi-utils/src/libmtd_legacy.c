@@ -48,7 +48,7 @@
 
 /**
  * struct proc_parse_info - /proc/mtd parsing information.
- * @dev_num: MTD device number
+ * @mtd_num: MTD device number
  * @size: device size
  * @eb_size: eraseblock size
  * @name: device name
@@ -58,7 +58,7 @@
  */
 struct proc_parse_info
 {
-	int dev_num;
+	int mtd_num;
 	long long size;
 	char name[MTD_NAME_MAX + 1];
 	int eb_size;
@@ -118,7 +118,7 @@ static int proc_parse_next(struct proc_parse_info *pi)
 		return 0;
 	}
 
-	ret = sscanf(pi->next, PROC_MTD_PATT, &pi->dev_num, &pi->size,
+	ret = sscanf(pi->next, PROC_MTD_PATT, &pi->mtd_num, &pi->size,
 		     &pi->eb_size);
 	if (ret != 3)
 		return errmsg("\"%s\" pattern not found", PROC_MTD_PATT);
@@ -140,7 +140,7 @@ static int proc_parse_next(struct proc_parse_info *pi)
 
 	len = p1 - p;
 	if (len > MTD_NAME_MAX)
-		return errmsg("too long mtd%d device name", pi->dev_num);
+		return errmsg("too long mtd%d device name", pi->mtd_num);
 
 	memcpy(pi->name, p, len);
 	pi->name[len] = '\0';
@@ -190,13 +190,13 @@ int legacy_mtd_get_info(struct mtd_info *info)
 	if (ret)
 		return -1;
 
-	info->lowest_dev_num = INT_MAX;
+	info->lowest_mtd_num = INT_MAX;
 	while (proc_parse_next(&pi)) {
-		info->dev_count += 1;
-		if (pi.dev_num > info->highest_dev_num)
-			info->highest_dev_num = pi.dev_num;
-		if (pi.dev_num < info->lowest_dev_num)
-			info->lowest_dev_num = pi.dev_num;
+		info->mtd_dev_cnt += 1;
+		if (pi.mtd_num > info->highest_mtd_num)
+			info->highest_mtd_num = pi.mtd_num;
+		if (pi.mtd_num < info->lowest_mtd_num)
+			info->lowest_mtd_num = pi.mtd_num;
 	}
 
 	return 0;
@@ -241,7 +241,7 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 			      "major %d", node, mtd->major, MTD_DEV_MAJOR);
 	}
 
-	mtd->dev_num = mtd->minor / 2;
+	mtd->mtd_num = mtd->minor / 2;
 
 	fd = open(node, O_RDWR);
 	if (fd == -1)
@@ -270,17 +270,17 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 
 	if (mtd->min_io_size <= 0) {
 		errmsg("mtd%d (%s) has insane min. I/O unit size %d",
-		       mtd->dev_num, node, mtd->min_io_size);
+		       mtd->mtd_num, node, mtd->min_io_size);
 		goto out_close;
 	}
 	if (mtd->eb_size <= 0 || mtd->eb_size < mtd->min_io_size) {
 		errmsg("mtd%d (%s) has insane eraseblock size %d",
-		       mtd->dev_num, node, mtd->eb_size);
+		       mtd->mtd_num, node, mtd->eb_size);
 		goto out_close;
 	}
 	if (mtd->size <= 0 || mtd->size < mtd->eb_size) {
 		errmsg("mtd%d (%s) has insane size %lld",
-		       mtd->dev_num, node, mtd->size);
+		       mtd->mtd_num, node, mtd->size);
 		goto out_close;
 	}
 	mtd->eb_cnt = mtd->size / mtd->eb_size;
@@ -288,7 +288,7 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	switch(mtd->type) {
 	case MTD_ABSENT:
 		errmsg("mtd%d (%s) is removable and is not present",
-		       mtd->dev_num, node);
+		       mtd->mtd_num, node);
 		goto out_close;
 	case MTD_RAM:
 		strcpy((char *)mtd->type_str, "ram");
@@ -327,13 +327,13 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 		return -1;
 
 	while (proc_parse_next(&pi)) {
-		if (pi.dev_num == mtd->dev_num) {
+		if (pi.mtd_num == mtd->mtd_num) {
 			strcpy((char *)mtd->name, pi.name);
 			return 0;
 		}
 	}
 
-	errmsg("mtd%d not found in \"%s\"", mtd->dev_num, MTD_PROC_FILE);
+	errmsg("mtd%d not found in \"%s\"", mtd->mtd_num, MTD_PROC_FILE);
 	errno = ENOENT;
 	return -1;
 
@@ -350,10 +350,10 @@ out_close:
  * This function is similar to 'mtd_get_dev_info1()' and has the same
  * conventions.
  */
-int legacy_get_dev_info1(int dev_num, struct mtd_dev_info *mtd)
+int legacy_get_dev_info1(int mtd_num, struct mtd_dev_info *mtd)
 {
 	char node[sizeof(MTD_DEV_PATT) + 20];
 
-	sprintf(node, MTD_DEV_PATT, dev_num);
+	sprintf(node, MTD_DEV_PATT, mtd_num);
 	return legacy_get_dev_info(node, mtd);
 }

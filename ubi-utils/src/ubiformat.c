@@ -784,7 +784,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (!mtd.writable) {
-		errmsg("mtd%d (%s) is a read-only device", mtd.dev_num, args.node);
+		errmsg("mtd%d (%s) is a read-only device", mtd.mtd_num, args.node);
 		goto out_close;
 	}
 
@@ -793,17 +793,17 @@ int main(int argc, char * const argv[])
 	if (libubi) {
 		int ubi_dev_num;
 
-		err = mtd_num2ubi_dev(libubi, mtd.dev_num, &ubi_dev_num);
+		err = mtd_num2ubi_dev(libubi, mtd.mtd_num, &ubi_dev_num);
 		libubi_close(libubi);
 		if (!err) {
 			errmsg("please, first detach mtd%d (%s) from ubi%d",
-			       mtd.dev_num, args.node, ubi_dev_num);
+			       mtd.mtd_num, args.node, ubi_dev_num);
 			goto out_close;
 		}
 	}
 
 	if (!args.quiet) {
-		normsg_cont("mtd%d (%s), size ", mtd.dev_num, mtd.type_str);
+		normsg_cont("mtd%d (%s), size ", mtd.mtd_num, mtd.type_str);
 		ubiutils_print_bytes(mtd.size, 1);
 		printf(", %d eraseblocks of ", mtd.eb_cnt);
 		ubiutils_print_bytes(mtd.eb_size, 1);
@@ -818,7 +818,7 @@ int main(int argc, char * const argv[])
 		verbose = 1;
 	err = ubi_scan(&mtd, args.node_fd, &si, verbose);
 	if (err) {
-		errmsg("failed to scan mtd%d (%s)", mtd.dev_num, args.node);
+		errmsg("failed to scan mtd%d (%s)", mtd.mtd_num, args.node);
 		goto out_close;
 	}
 
@@ -829,7 +829,7 @@ int main(int argc, char * const argv[])
 
 	if (si->good_cnt < 2 && (!args.novtbl || args.image)) {
 		errmsg("too few non-bad eraseblocks (%d) on mtd%d",
-		       si->good_cnt, mtd.dev_num);
+		       si->good_cnt, mtd.mtd_num);
 		goto out_free;
 	}
 

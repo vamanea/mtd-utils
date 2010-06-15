@@ -155,7 +155,7 @@ static int translate_dev(libmtd_t libmtd, const char *node)
 				  "device \"%s\"", node);
 	}
 
-	args.mtdn = mtd.dev_num;
+	args.mtdn = mtd.mtd_num;
 	return 0;
 }
 
@@ -174,7 +174,7 @@ static int print_dev_info(libmtd_t libmtd, const struct mtd_info *mtd_info, int 
 				  mtdn);
 	}
 
-	printf("mtd%d\n", mtd.dev_num);
+	printf("mtd%d\n", mtd.mtd_num);
 	printf("Name:                           %s\n", mtd.name);
 	printf("Type:                           %s\n", mtd.type_str);
 	printf("Eraseblock size:                ");
@@ -234,12 +234,12 @@ static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
 	int i, err, first = 1;
 	struct mtd_dev_info mtd;
 
-	printf("Count of MTD devices:           %d\n", mtd_info->dev_count);
-	if (mtd_info->dev_count == 0)
+	printf("Count of MTD devices:           %d\n", mtd_info->mtd_dev_cnt);
+	if (mtd_info->mtd_dev_cnt == 0)
 		return 0;
 
-	for (i = mtd_info->lowest_dev_num;
-	     i <= mtd_info->highest_dev_num; i++) {
+	for (i = mtd_info->lowest_mtd_num;
+	     i <= mtd_info->highest_mtd_num; i++) {
 		err = mtd_get_dev_info1(libmtd, i, &mtd);
 		if (err == -1) {
 			if (errno == ENODEV)
@@ -265,8 +265,8 @@ static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
 	first = 1;
 	printf("\n");
 
-	for (i = mtd_info->lowest_dev_num;
-	     i <= mtd_info->highest_dev_num; i++) {
+	for (i = mtd_info->lowest_mtd_num;
+	     i <= mtd_info->highest_mtd_num; i++) {
 		err = print_dev_info(libmtd, mtd_info, i);
 		if (err)
 			return err;

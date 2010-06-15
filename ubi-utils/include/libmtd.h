@@ -36,22 +36,22 @@ extern "C" {
 typedef void * libmtd_t;
 
 /**
- * @dev_count: count of MTD devices in system
- * @lowest_dev_num: lowest MTD device number
- * @highest_dev_num: highest MTD device number
+ * @mtd_dev_cnt: count of MTD devices in system
+ * @lowest_mtd_num: lowest MTD device number in system
+ * @highest_mtd_num: highest MTD device number in system
  * @sysfs_supported: non-zero if sysfs is supported by MTD
  */
 struct mtd_info
 {
-	int dev_count;
-	int lowest_dev_num;
-	int highest_dev_num;
+	int mtd_dev_cnt;
+	int lowest_mtd_num;
+	int highest_mtd_num;
 	unsigned int sysfs_supported:1;
 };
 
 /**
  * struct mtd_dev_info - information about an MTD device.
- * @dev_num: MTD device number
+ * @mtd_num: MTD device number
  * @major: major number of corresponding character device
  * @minor: minor number of corresponding character device
  * @type: flash type (constants like %MTD_NANDFLASH defined in mtd-abi.h)
@@ -69,7 +69,7 @@ struct mtd_info
  */
 struct mtd_dev_info
 {
-	int dev_num;
+	int mtd_num;
 	int major;
 	int minor;
 	int type;
@@ -129,13 +129,13 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd);
 /**
  * mtd_get_dev_info1 - get information about an MTD device.
  * @desc: MTD library descriptor
- * @dev_num: MTD device number to fetch information about
+ * @mtd_num: MTD device number to fetch information about
  * @mtd: the MTD device information is returned here
  *
  * This function is identical to 'mtd_get_dev_info()' except that it accepts
  * MTD device number, not MTD character device.
  */
-int mtd_get_dev_info1(libmtd_t desc, int dev_num, struct mtd_dev_info *mtd);
+int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd);
 
 /**
  * mtd_erase - erase an eraseblock.
