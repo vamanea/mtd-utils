@@ -216,14 +216,6 @@ static void set_random_data(unsigned seed, unsigned char *buf, int size)
 	srand(r);
 }
 
-#if 0
-static void print_write_info(struct write_info *w)
-{
-	printf("Offset: %lld  Size:%d  Seed:%u\n", w->offset, w->size, w->random_seed);
-	fflush(stdout);
-}
-#endif
-
 static void check_erase_block(struct erase_block_info *erase_block, int fd)
 {
 	struct write_info *w;
