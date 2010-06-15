@@ -731,10 +731,8 @@ int main(int argc,char *argv[])
 		return 1;
 	}
 
-	initial_seed = getpid();
+	next_seed = initial_seed = seed_random_generator();
 	printf("Initial seed = %u\n", (unsigned) initial_seed);
-	next_seed = initial_seed;
-	srand(initial_seed);
 	load_ubi();
 
 	libubi = libubi_open();

@@ -233,6 +233,7 @@ int main(int argc, char * const argv[])
 	int i, ret;
 	pthread_t threads[THREADS_NUM];
 
+	seed_random_generator();
 	if (initial_check(argc, argv))
 		return 1;
 

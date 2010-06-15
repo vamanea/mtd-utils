@@ -26,8 +26,10 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include "libubi.h"
 #include "common.h"
@@ -331,4 +333,33 @@ int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
 close:
 	close(fd);
 	return -1;
+}
+
+/**
+ * seed_random_generator - randomly seed the standard pseudo-random generator.
+ *
+ * This helper function seeds the standard libc pseudo-random generator with a
+ * more or less random value to make sure the 'rand()' call does not return the
+ * same sequence every time UBI utilities run. Returns the random seed in case
+ * of success and a %-1 in case of error.
+ */
+int seed_random_generator(void)
+{
+	struct timeval tv;
+	struct timezone tz;
+	int seed;
+
+	/*
+	 * Just assume that a combination of the PID + current time is a
+	 * reasonably random number.
+	 */
+	if (gettimeofday(&tv, &tz))
+		return -1;
+
+	seed = (unsigned int)tv.tv_sec;
+	seed += (unsigned int)tv.tv_usec;
+	seed *= getpid();
+	seed %= INT_MAX;
+	srand(seed);
+	return seed;
 }

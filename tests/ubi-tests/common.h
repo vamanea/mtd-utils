@@ -90,19 +90,21 @@ extern "C" {
 	 (s)/5-3, (s)/5-2, (s)/5-1, (s)/5+1, (s)/5+2, (s)/5+3, (s)-17, (s)-9,  \
 	 (s)-8, (s)-6, (s)-4, (s)-1, (s)};
 
+extern int seed_random_generator(void);
+
 extern void __errmsg(const char *test, const char *func, int line,
 		     const char *fmt, ...);
-void __failed(const char *test, const char *func, int line,
-	      const char *failed);
-int __initial_check(const char *test, int argc, char * const argv[]);
-int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
-		   const char *test, const char *func, int line, int vol_id,
-		   const struct ubi_mkvol_request *req);
-int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
-		     int line, const char *node, uint8_t byte);
-int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
-		      int line, const char *node, long long bytes,
-		      uint8_t byte);
+extern void __failed(const char *test, const char *func, int line,
+		     const char *failed);
+extern int __initial_check(const char *test, int argc, char * const argv[]);
+extern int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
+			  const char *test, const char *func, int line,
+			  int vol_id, const struct ubi_mkvol_request *req);
+extern int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
+			    int line, const char *node, uint8_t byte);
+extern int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
+			     int line, const char *node, long long bytes,
+			     uint8_t byte);
 
 #ifdef __cplusplus
 }

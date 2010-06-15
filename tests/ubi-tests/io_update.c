@@ -267,6 +267,7 @@ remove:
 
 int main(int argc, char * const argv[])
 {
+	seed_random_generator();
 	if (initial_check(argc, argv))
 		return 1;
 
