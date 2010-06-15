@@ -64,7 +64,7 @@ static int update_volume(int vol_id, int bytes)
 	}
 
 	for (i = 0; i < bytes; i++)
-		wbuf[i] = random() % 255;
+		wbuf[i] = rand() % 255;
 	memset(rbuf, '\0', bytes);
 
 	ret = ubi_update_start(libubi, fd, bytes);
@@ -75,7 +75,7 @@ static int update_volume(int vol_id, int bytes)
 	}
 
 	while (written < bytes) {
-		int to_write = random() % (bytes - written);
+		int to_write = rand() % (bytes - written);
 
 		if (to_write == 0)
 			to_write = 1;
@@ -104,7 +104,7 @@ static int update_volume(int vol_id, int bytes)
 
 	/* read data back and check */
 	while (rd < bytes) {
-		int to_read = random() % (bytes - rd);
+		int to_read = rand() % (bytes - rd);
 
 		if (to_read == 0)
 			to_read = 1;
@@ -138,8 +138,8 @@ static void *update_thread(void *ptr)
 	int vol_id = (long)ptr, i;
 
 	for (i = 0; i < ITERATIONS; i++) {
-		int ret, bytes = (random() % (vol_size - 1)) + 1;
-		int remove = !(random() % 16);
+		int ret, bytes = (rand() % (vol_size - 1)) + 1;
+		int remove = !(rand() % 16);
 
 		/* From time to time remove the volume */
 		if (remove) {
@@ -186,7 +186,7 @@ static void *write_thread(void *ptr)
 	}
 
 	for (i = 0; i < ITERATIONS * VOL_LEBS; i++) {
-		int j, leb = random() % VOL_LEBS;
+		int j, leb = rand() % VOL_LEBS;
 		off_t offs = dev_info.leb_size * leb;
 
 		ret = ubi_leb_unmap(fd, leb);
@@ -197,7 +197,7 @@ static void *write_thread(void *ptr)
 		}
 
 		for (j = 0; j < dev_info.leb_size; j++)
-			wbuf[j] = random() % 255;
+			wbuf[j] = rand() % 255;
 		memset(rbuf, '\0', dev_info.leb_size);
 
 		ret = pwrite(fd, wbuf, dev_info.leb_size, offs);
