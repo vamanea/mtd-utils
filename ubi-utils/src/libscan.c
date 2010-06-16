@@ -73,7 +73,7 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 	for (eb = 0; eb < mtd->eb_cnt; eb++) {
 		int ret;
 		uint32_t crc;
-		struct ubi_ec_hdr hdr;
+		struct ubi_ec_hdr ech;
 		unsigned long long ec;
 
 		if (v) {
@@ -97,13 +97,12 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 			continue;
 		}
 
-		ret = mtd_read(mtd, fd, eb, 0, &hdr, sizeof(struct ubi_ec_hdr));
+		ret = mtd_read(mtd, fd, eb, 0, &ech, sizeof(struct ubi_ec_hdr));
 		if (ret < 0)
 			goto out_ec;
 
-		/* Check the EC header */
-		if (be32_to_cpu(hdr.magic) != UBI_EC_HDR_MAGIC) {
-			if (all_ff(&hdr, sizeof(struct ubi_ec_hdr))) {
+		if (be32_to_cpu(ech.magic) != UBI_EC_HDR_MAGIC) {
+			if (all_ff(&ech, sizeof(struct ubi_ec_hdr))) {
 				si->empty_cnt += 1;
 				si->ec[eb] = EB_EMPTY;
 				if (v)
@@ -117,17 +116,17 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 			continue;
 		}
 
-		crc = crc32(UBI_CRC32_INIT, &hdr, UBI_EC_HDR_SIZE_CRC);
-		if (be32_to_cpu(hdr.hdr_crc) != crc) {
+		crc = crc32(UBI_CRC32_INIT, &ech, UBI_EC_HDR_SIZE_CRC);
+		if (be32_to_cpu(ech.hdr_crc) != crc) {
 			si->corrupted_cnt += 1;
 			si->ec[eb] = EB_CORRUPTED;
 			if (v)
 				printf(": bad CRC %#08x, should be %#08x\n",
-				       crc, be32_to_cpu(hdr.hdr_crc));
+				       crc, be32_to_cpu(ech.hdr_crc));
 			continue;
 		}
 
-		ec = be64_to_cpu(hdr.ec);
+		ec = be64_to_cpu(ech.ec);
 		if (ec > EC_MAX) {
 			if (pr)
 				printf("\n");
@@ -138,8 +137,8 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 		}
 
 		if (si->vid_hdr_offs == -1) {
-			si->vid_hdr_offs = be32_to_cpu(hdr.vid_hdr_offset);
-			si->data_offs = be32_to_cpu(hdr.data_offset);
+			si->vid_hdr_offs = be32_to_cpu(ech.vid_hdr_offset);
+			si->data_offs = be32_to_cpu(ech.data_offset);
 			if (si->data_offs % mtd->min_io_size) {
 				if (pr)
 					printf("\n");
@@ -155,7 +154,7 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 
 			}
 		} else {
-			if ((int)be32_to_cpu(hdr.vid_hdr_offset) != si->vid_hdr_offs) {
+			if ((int)be32_to_cpu(ech.vid_hdr_offset) != si->vid_hdr_offs) {
 				if (pr)
 					printf("\n");
 				if (v)
@@ -163,13 +162,13 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 				warnmsg("inconsistent VID header offset: was "
 					"%d, but is %d in eraseblock %d",
 					si->vid_hdr_offs,
-					be32_to_cpu(hdr.vid_hdr_offset), eb);
+					be32_to_cpu(ech.vid_hdr_offset), eb);
 				warnmsg("treat eraseblock %d as corrupted", eb);
 				si->corrupted_cnt += 1;
 				si->ec[eb] = EB_CORRUPTED;
 				continue;
 			}
-			if ((int)be32_to_cpu(hdr.data_offset) != si->data_offs) {
+			if ((int)be32_to_cpu(ech.data_offset) != si->data_offs) {
 				if (pr)
 					printf("\n");
 				if (v)
@@ -177,7 +176,7 @@ int ubi_scan(struct mtd_dev_info *mtd, int fd, struct ubi_scan_info **info,
 				warnmsg("inconsistent data offset: was %d, but"
 					" is %d in eraseblock %d",
 					si->data_offs,
-					be32_to_cpu(hdr.data_offset), eb);
+					be32_to_cpu(ech.data_offset), eb);
 				warnmsg("treat eraseblock %d as corrupted", eb);
 				si->corrupted_cnt += 1;
 				si->ec[eb] = EB_CORRUPTED;
