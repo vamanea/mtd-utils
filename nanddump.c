@@ -174,8 +174,10 @@ static void process_options (int argc, char * const argv[])
 /*
  * Buffers for reading data from flash
  */
-static unsigned char readbuf[4096];
-static unsigned char oobbuf[128];
+#define NAND_MAX_PAGESIZE 4096
+#define NAND_MAX_OOBSIZE 256
+static unsigned char readbuf[NAND_MAX_PAGESIZE];
+static unsigned char oobbuf[NAND_MAX_OOBSIZE];
 
 /*
  * Main program
