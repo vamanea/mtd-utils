@@ -32,8 +32,8 @@
 #include <mtd/mtd-user.h>
 #include <libmtd.h>
 #include <libscan.h>
+#include <crc32.h>
 #include "common.h"
-#include "crc32.h"
 
 #define PROGRAM_NAME "libscan"
 

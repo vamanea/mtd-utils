@@ -47,7 +47,7 @@ clean:: $(SUBDIRS_CLEAN)
 
 install:: $(TARGETS) $(SUBDIRS_INSTALL)
 
-%: %.o
+%: %.o $(LDDEPS) $(LDDEPS_$(notdir $@))
 	$(CC) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_$(notdir $@)) -g -o $@ $^ $(LDLIBS) $(LDLIBS_$(notdir $@))
 
 $(BUILDDIR)/%.a:

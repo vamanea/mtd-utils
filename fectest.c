@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 
 #include "mcast_image.h"
-#include "crc32.h"
+#include <crc32.h>
 
 #define ERASE_SIZE 131072
 //#define PKT_SIZE 1400

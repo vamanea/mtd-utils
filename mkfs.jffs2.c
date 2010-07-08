@@ -69,10 +69,10 @@
 #include <sys/acl.h>
 #endif
 #include <byteswap.h>
-#define crc32 __complete_crap
+#define crc32 __zlib_crc32
 #include <zlib.h>
 #undef crc32
-#include "crc32.h"
+#include <crc32.h>
 #include "rbtree.h"
 
 /* Do not use the weird XPG version of basename */

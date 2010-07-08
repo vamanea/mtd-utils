@@ -24,9 +24,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <zlib.h>
 #include <lzo/lzo1x.h>
 #include <linux/types.h>
+
+#define crc32 __zlib_crc32
+#include <zlib.h>
 
 #include "compr.h"
 #include "ubifs-media.h"

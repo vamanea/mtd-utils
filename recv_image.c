@@ -16,7 +16,7 @@
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include "crc32.h"
+#include <crc32.h>
 #include "mtd/mtd-user.h"
 #include "mcast_image.h"
 

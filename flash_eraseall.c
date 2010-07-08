@@ -35,7 +35,7 @@
 #include <getopt.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
-#include "crc32.h"
+#include <crc32.h>
 
 #include <mtd/mtd-user.h>
 #include <mtd/jffs2-user.h>

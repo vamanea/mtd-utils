@@ -32,7 +32,7 @@
 #include <mtd/ubi-media.h>
 #include <mtd_swab.h>
 #include <libubigen.h>
-#include "crc32.h"
+#include <crc32.h>
 #include "common.h"
 
 #define PROGRAM_NAME "libubigen"

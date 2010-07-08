@@ -49,7 +49,6 @@
 #include <sys/file.h>
 
 #include "libubi.h"
-#include "crc32.h"
 #include "defs.h"
 #include "crc16.h"
 #include "ubifs-media.h"

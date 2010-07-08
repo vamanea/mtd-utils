@@ -44,7 +44,7 @@
 #include <endian.h>
 #include <byteswap.h>
 #include <getopt.h>
-#include "crc32.h"
+#include <crc32.h>
 #include "summary.h"
 
 #define PAD(x) (((x)+3)&~3)
