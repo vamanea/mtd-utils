@@ -301,7 +301,7 @@ int showinfo (int fd)
 			{ "MTD_WRITEABLE", MTD_WRITEABLE },
 			{ "MTD_BIT_WRITEABLE", MTD_BIT_WRITEABLE },
 			{ "MTD_NO_ERASE", MTD_NO_ERASE },
-			{ "MTD_STUPID_LOCK", MTD_STUPID_LOCK },
+			{ "MTD_POWERUP_LOCK", MTD_POWERUP_LOCK },
 			{ NULL, -1 }
 		};
 		for (i = 0; flags[i].name != NULL; i++)
