@@ -309,8 +309,8 @@ static struct filesystem_entry *find_filesystem_entry(
 	return (NULL);
 }
 
-static struct filesystem_entry *add_host_filesystem_entry(
-		char *name, char *path, unsigned long uid, unsigned long gid,
+static struct filesystem_entry *add_host_filesystem_entry(const char *name,
+		const char *path, unsigned long uid, unsigned long gid,
 		unsigned long mode, dev_t rdev, struct filesystem_entry *parent)
 {
 	int status;
@@ -401,7 +401,8 @@ static struct filesystem_entry *add_host_filesystem_entry(
 }
 
 static struct filesystem_entry *recursive_add_host_directory(
-		struct filesystem_entry *parent, char *targetpath, char *hostpath)
+		struct filesystem_entry *parent, const char *targetpath,
+		const char *hostpath)
 {
 	int i, n;
 	struct stat sb;
