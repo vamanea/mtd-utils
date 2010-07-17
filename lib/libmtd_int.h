@@ -43,6 +43,10 @@ extern "C" {
 #define MTD_REGION_CNT   "numeraseregions"
 #define MTD_FLAGS        "flags"
 
+#define OFFS64_IOCTLS_UNKNOWN       0
+#define OFFS64_IOCTLS_NOT_SUPPORTED 1
+#define OFFS64_IOCTLS_SUPPORTED     2
+
 /**
  * libmtd - MTD library description data structure.
  * @sysfs_mtd: MTD directory in sysfs
@@ -58,6 +62,19 @@ extern "C" {
  * @mtd_region_cnt: count of additional erase regions file pattern
  * @mtd_flags: MTD device flags file pattern
  * @sysfs_supported: non-zero if sysfs is supported by MTD
+ * @offs64_ioctls: %OFFS64_IOCTLS_SUPPORTED if 64-bit %MEMERASE64,
+ *                 %MEMREADOOB64, %MEMWRITEOOB64 MTD device ioctls are
+ *                 supported, %OFFS64_IOCTLS_NOT_SUPPORTED if not, and
+ *                 %OFFS64_IOCTLS_UNKNOWN if it is not known yet;
+ *
+ *  Note, we cannot find out whether 64-bit ioctls are supported by MTD when we
+ *  are initializing the library, because this requires an MTD device node.
+ *  Indeed, we have to actually call the ioctl and check for %ENOTTY to find
+ *  out whether it is supported or not.
+ *
+ *  Thus, we leave %offs64_ioctls uninitialized in 'libmtd_open()', and
+ *  initialize it later, when corresponding libmtd function is used, and when
+ *  we actually have a device node and can invoke an ioctl command on it.
  */
 struct libmtd
 {
@@ -74,6 +91,7 @@ struct libmtd
 	char *mtd_region_cnt;
 	char *mtd_flags;
 	unsigned int sysfs_supported:1;
+	unsigned int offs64_ioctls:2;
 };
 
 int legacy_libmtd_open(void);

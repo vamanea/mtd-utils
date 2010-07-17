@@ -560,6 +560,8 @@ libmtd_t libmtd_open(void)
 	if (!lib)
 		return NULL;
 
+	lib->offs64_ioctls = OFFS64_IOCTLS_UNKNOWN;
+
 	lib->sysfs_mtd = mkpath("/sys", SYSFS_MTD);
 	if (!lib->sysfs_mtd)
 		goto out_error;
@@ -789,13 +791,57 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd)
 	return mtd_get_dev_info1(desc, mtd_num, mtd);
 }
 
-int mtd_erase(const struct mtd_dev_info *mtd, int fd, int eb)
+int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 {
+	int ret;
+	struct libmtd *lib = (struct libmtd *)desc;
+	struct erase_info_user64 ei64;
 	struct erase_info_user ei;
 
-	ei.start = eb * mtd->eb_size;;
-	ei.length = mtd->eb_size;
-	return ioctl(fd, MEMERASE, &ei);
+	if (eb < 0 || eb >= mtd->eb_cnt) {
+		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
+		       eb, mtd->mtd_num, mtd->eb_cnt);
+		errno = EINVAL;
+		return -1;
+	}
+
+	ei64.start = (__u64)eb * mtd->eb_size;
+	ei64.length = mtd->eb_size;
+
+	if (lib->offs64_ioctls == OFFS64_IOCTLS_SUPPORTED ||
+	    lib->offs64_ioctls == OFFS64_IOCTLS_UNKNOWN) {
+		ret = ioctl(fd, MEMERASE64, &ei64);
+		if (ret == 0)
+			return ret;
+
+		if (errno != ENOTTY ||
+		    lib->offs64_ioctls != OFFS64_IOCTLS_UNKNOWN)
+			return sys_errmsg("MEMERASE64 ioctl failed for "
+					  "eraseblock %d (mtd%d)",
+					  eb, mtd->mtd_num);
+
+		/*
+		 * MEMERASE64 support was added in kernel version 2.6.31, so
+		 * probably we are working with older kernel and this ioctl is
+		 * not supported.
+		 */
+		lib->offs64_ioctls = OFFS64_IOCTLS_NOT_SUPPORTED;
+	}
+
+	if (ei64.start + ei64.length > 0xFFFFFFFF) {
+		errmsg("this system can address only %u eraseblocks",
+		       0xFFFFFFFFU / mtd->eb_size);
+		errno = EINVAL;
+		return -1;
+	}
+
+	ei.start = ei64.start;
+	ei.length = ei64.length;
+	ret = ioctl(fd, MEMERASE, &ei);
+	if (ret < 0)
+		return sys_errmsg("MEMERASE ioctl failed for eraseblock %d "
+				  "(mtd%d)", eb, mtd->mtd_num);
+	return 0;
 }
 
 /* Patterns to write to a physical eraseblock when torturing it */
@@ -820,7 +866,7 @@ static int check_pattern(const void *buf, uint8_t patt, int size)
 	return 1;
 }
 
-int mtd_torture(const struct mtd_dev_info *mtd, int fd, int eb)
+int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	int err, i, patt_count;
 	void *buf;
@@ -835,7 +881,7 @@ int mtd_torture(const struct mtd_dev_info *mtd, int fd, int eb)
 	}
 
 	for (i = 0; i < patt_count; i++) {
-		err = mtd_erase(mtd, fd, eb);
+		err = mtd_erase(desc, mtd, fd, eb);
 		if (err)
 			goto out;
 

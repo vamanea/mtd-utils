@@ -441,8 +441,8 @@ static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, in
 	return consecutive_bad_check(eb);
 }
 
-static int flash_image(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
-		       struct ubi_scan_info *si)
+static int flash_image(libmtd_t libmtd, const struct mtd_dev_info *mtd,
+		       const struct ubigen_info *ui, struct ubi_scan_info *si)
 {
 	int fd, img_ebs, eb, written_ebs = 0, divisor;
 	off_t st_size;
@@ -488,7 +488,7 @@ static int flash_image(const struct mtd_dev_info *mtd, const struct ubigen_info 
 			fflush(stdout);
 		}
 
-		err = mtd_erase(mtd, args.node_fd, eb);
+		err = mtd_erase(libmtd, mtd, args.node_fd, eb);
 		if (err) {
 			if (!args.quiet)
 				printf("\n");
@@ -543,7 +543,7 @@ static int flash_image(const struct mtd_dev_info *mtd, const struct ubigen_info 
 			if (errno != EIO)
 				goto out_close;
 
-			err = mtd_torture(mtd, args.node_fd, eb);
+			err = mtd_torture(libmtd, mtd, args.node_fd, eb);
 			if (err) {
 				if (mark_bad(mtd, si, eb))
 					goto out_close;
@@ -564,8 +564,9 @@ out_close:
 	return -1;
 }
 
-static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
-		  struct ubi_scan_info *si, int start_eb, int novtbl)
+static int format(libmtd_t libmtd, const struct mtd_dev_info *mtd,
+		  const struct ubigen_info *ui, struct ubi_scan_info *si,
+		  int start_eb, int novtbl)
 {
 	int eb, err, write_size;
 	struct ubi_ec_hdr *hdr;
@@ -606,7 +607,7 @@ static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
 			fflush(stdout);
 		}
 
-		err = mtd_erase(mtd, args.node_fd, eb);
+		err = mtd_erase(libmtd, mtd, args.node_fd, eb);
 		if (err) {
 			if (!args.quiet)
 				printf("\n");
@@ -652,7 +653,7 @@ static int format(const struct mtd_dev_info *mtd, const struct ubigen_info *ui,
 				goto out_free;
 			}
 
-			err = mtd_torture(mtd, args.node_fd, eb);
+			err = mtd_torture(libmtd, mtd, args.node_fd, eb);
 			if (err) {
 				if (mark_bad(mtd, si, eb))
 					goto out_free;
@@ -922,15 +923,15 @@ int main(int argc, char * const argv[])
 	}
 
 	if (args.image) {
-		err = flash_image(&mtd, &ui, si);
+		err = flash_image(libmtd, &mtd, &ui, si);
 		if (err < 0)
 			goto out_free;
 
-		err = format(&mtd, &ui, si, err, 1);
+		err = format(libmtd, &mtd, &ui, si, err, 1);
 		if (err)
 			goto out_free;
 	} else {
-		err = format(&mtd, &ui, si, 0, args.novtbl);
+		err = format(libmtd, &mtd, &ui, si, 0, args.novtbl);
 		if (err)
 			goto out_free;
 	}

@@ -139,6 +139,7 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd);
 
 /**
  * mtd_erase - erase an eraseblock.
+ * @desc: MTD library descriptor
  * @mtd: MTD device description object
  * @fd: MTD device node file descriptor
  * @eb: eraseblock to erase
@@ -146,10 +147,11 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd);
  * This function erases eraseblock @eb of MTD device described by @fd. Returns
  * %0 in case of success and %-1 in case of failure.
  */
-int mtd_erase(const struct mtd_dev_info *mtd, int fd, int eb);
+int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb);
 
 /**
  * mtd_torture - torture an eraseblock.
+ * @desc: MTD library descriptor
  * @mtd: MTD device description object
  * @fd: MTD device node file descriptor
  * @eb: eraseblock to torture
@@ -157,7 +159,7 @@ int mtd_erase(const struct mtd_dev_info *mtd, int fd, int eb);
  * This function tortures eraseblock @eb. Returns %0 in case of success and %-1
  * in case of failure.
  */
-int mtd_torture(const struct mtd_dev_info *mtd, int fd, int eb);
+int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb);
 
 /**
  * mtd_is_bad - check if eraseblock is bad.
