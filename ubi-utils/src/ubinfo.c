@@ -29,6 +29,7 @@
 
 #include <libubi.h>
 #include "common.h"
+#include "ubiutils-common.h"
 
 #define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubinfo"

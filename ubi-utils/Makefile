@@ -18,9 +18,9 @@ LDLIBS = -L$(BUILDDIR)/../lib -lmtd
 
 include ../common.mk
 
-# And the below is the rule to get final executable from its .o and common.o
+# And the below is the rule to get final executable from its .o and ubiutils-common.o
 $(TARGETS): $(addprefix $(BUILDDIR)/,\
-	libubi.a common.o)
+	libubi.a ubiutils-common.o)
 #	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lubi -o $@
 
 $(BUILDDIR)/ubicrc32: $(addprefix $(BUILDDIR)/,\
@@ -28,15 +28,15 @@ $(BUILDDIR)/ubicrc32: $(addprefix $(BUILDDIR)/,\
 #	$(CC) $(CFLAGS) -o $@ $^
 
 $(BUILDDIR)/ubinize: $(addprefix $(BUILDDIR)/,\
-	ubinize.o common.o libiniparser.a libubigen.a)
+	ubinize.o ubiutils-common.o libiniparser.a libubigen.a)
 #	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -liniparser -lubigen -o $@
 
 $(BUILDDIR)/mtdinfo: $(addprefix $(BUILDDIR)/,\
-	libubigen.a common.o)
+	libubigen.a ubiutils-common.o)
 #	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lubigen -o $@
 
 $(BUILDDIR)/ubiformat: $(addprefix $(BUILDDIR)/,\
-	ubiformat.o common.o libscan.a libubi.a libubigen.a)
+	ubiformat.o ubiutils-common.o libscan.a libubi.a libubigen.a)
 #	$(CC) $(CFLAGS) $(filter %.o, $^) -L. -lmtd -lscan -lubi -lubigen -o $@
 
 $(BUILDDIR)/libubi.a: $(BUILDDIR)/libubi.o

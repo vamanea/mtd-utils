@@ -43,6 +43,7 @@
 #include <mtd_swab.h>
 #include <crc32.h>
 #include "common.h"
+#include "ubiutils-common.h"
 
 #define PROGRAM_VERSION "1.5"
 #define PROGRAM_NAME    "ubiformat"

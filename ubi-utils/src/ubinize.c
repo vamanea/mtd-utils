@@ -34,6 +34,7 @@
 #include <libubigen.h>
 #include <libiniparser.h>
 #include "common.h"
+#include "ubiutils-common.h"
 
 #define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubinize"
