@@ -1169,8 +1169,8 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	char *kname;
 	int len;
 
-	dbg_msg(3, "%s ino %lu type %u dir ino %lu", name, inum,
-		(unsigned)type, dir_inum);
+	dbg_msg(3, "%s ino %lu type %u dir ino %lu", name, (unsigned long)inum,
+		(unsigned int)type, (unsigned long)dir_inum);
 	memset(dent, 0, UBIFS_DENT_NODE_SZ);
 
 	dname.name = (void *)name;
