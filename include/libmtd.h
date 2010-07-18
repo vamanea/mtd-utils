@@ -216,6 +216,40 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	      void *buf, int len);
 
 /**
+ * mtd_read_oob - read out-of-band area.
+ * @desc: MTD library descriptor
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @start: page-aligned start address
+ * @length: number of OOB bytes to read
+ * @data: read buffer
+ *
+ * This function reads @length OOB bytes starting from address @start on
+ * MTD device described by @fd. The address is specified as page byte offset
+ * from the beginning of the MTD device. This function returns %0 in case of
+ * success and %-1 in case of failure.
+ */
+int mtd_read_oob(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
+		 uint64_t start, uint64_t length, void *data);
+
+/**
+ * mtd_write_oob - write out-of-band area.
+ * @desc: MTD library descriptor
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @start: page-aligned start address
+ * @length: number of OOB bytes to write
+ * @data: write buffer
+ *
+ * This function writes @length OOB bytes starting from address @start on
+ * MTD device described by @fd. The address is specified as page byte offset
+ * from the beginning of the MTD device. Returns %0 in case of success and %-1
+ * in case of failure.
+ */
+int mtd_write_oob(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
+		  uint64_t start, uint64_t length, void *data);
+
+/**
  * mtd_write_img - write a file to MTD device.
  * @mtd: MTD device description object
  * @fd: MTD device node file descriptor
@@ -236,7 +270,7 @@ int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
  * @node: the node to test
  *
  * This function tests whether @node is an MTD device node and returns %1 if it
- * is, and %-1 if it is not (errno is ENODEV in this case) or if an error
+ * is, and %-1 if it is not (errno is %ENODEV in this case) or if an error
  * occurred.
  */
 int mtd_probe_node(libmtd_t desc, const char *node);

@@ -1054,6 +1054,101 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	return 0;
 }
 
+int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
+	      uint64_t start, uint64_t length, void *data, unsigned int cmd64,
+	      unsigned int cmd)
+{
+	int ret;
+	struct mtd_oob_buf64 oob64;
+	struct mtd_oob_buf oob;
+	unsigned long long max_offs;
+	const char *cmd64_str, *cmd_str;
+	struct libmtd *lib = (struct libmtd *)desc;
+
+	if (cmd64 ==  MEMREADOOB64) {
+		cmd64_str = "MEMREADOOB64";
+		cmd_str   = "MEMREADOOB";
+	} else {
+		cmd64_str = "MEMWRITEOOB64";
+		cmd_str   = "MEMWRITEOOB";
+	}
+
+	max_offs = (unsigned long long)mtd->eb_cnt * mtd->eb_size;
+	if (start >= max_offs) {
+		errmsg("bad page address %llu, mtd%d has %d eraseblocks "
+		       "(%llu bytes)", (unsigned long long) start, mtd->mtd_num,
+		       mtd->eb_cnt, max_offs);
+		errno = EINVAL;
+		return -1;
+	}
+	if (start % mtd->min_io_size) {
+		errmsg("unaligned address %llu, mtd%d page size is %d",
+		       (unsigned long long)start, mtd->mtd_num,
+		       mtd->min_io_size);
+		errno = EINVAL;
+		return -1;
+	}
+
+	oob64.start = start;
+	oob64.length = length;
+	oob64.usr_ptr = (uint64_t)(unsigned long)data;
+
+	if (lib->offs64_ioctls == OFFS64_IOCTLS_SUPPORTED ||
+	    lib->offs64_ioctls == OFFS64_IOCTLS_UNKNOWN) {
+		ret = ioctl(fd, cmd64, &oob64);
+		if (ret == 0)
+			return ret;
+
+		if (errno != ENOTTY ||
+		    lib->offs64_ioctls != OFFS64_IOCTLS_UNKNOWN) {
+			sys_errmsg("%s ioctl failed for mtd%d, offset %llu "
+				   "(eraseblock %llu)", cmd64_str, mtd->mtd_num,
+				   (unsigned long long)start,
+				   (unsigned long long)start / mtd->eb_size);
+		}
+
+		/*
+		 * MEMREADOOB64/MEMWRITEOOB64 support was added in kernel
+		 * version 2.6.31, so probably we are working with older kernel
+		 * and these ioctls are not supported.
+		 */
+		lib->offs64_ioctls = OFFS64_IOCTLS_NOT_SUPPORTED;
+	}
+
+	if (oob64.start > 0xFFFFFFFFULL) {
+		errmsg("this system can address only up to address %lu",
+		       0xFFFFFFFFUL);
+		errno = EINVAL;
+		return -1;
+	}
+
+	oob.start = oob64.start;
+	oob.length = oob64.length;
+	oob.ptr = data;
+
+	ret = ioctl(fd, cmd, &oob);
+	if (ret < 0)
+		sys_errmsg("%s ioctl failed for mtd%d, offset %llu "
+			   "(eraseblock %llu)", cmd_str, mtd->mtd_num,
+			   (unsigned long long)start,
+			   (unsigned long long)start / mtd->eb_size);
+	return ret;
+}
+
+int mtd_read_oob(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
+		 uint64_t start, uint64_t length, void *data)
+{
+	return do_oob_op(desc, mtd, fd, start, length, data,
+			 MEMREADOOB64, MEMREADOOB);
+}
+
+int mtd_write_oob(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
+		  uint64_t start, uint64_t length, void *data)
+{
+	return do_oob_op(desc, mtd, fd, start, length, data,
+			 MEMWRITEOOB64, MEMWRITEOOB);
+}
+
 int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		  const char *img_name)
 {
