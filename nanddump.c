@@ -45,6 +45,7 @@ static void display_help (void)
 "\n"
 "           --help               Display this help and exit\n"
 "           --version            Output version information and exit\n"
+"-c         --canonicalprint     Print canonical Hex+ASCII dump\n"
 "-f file    --file=file          Dump to file\n"
 "-i         --ignoreerrors       Ignore errors\n"
 "-l length  --length=length      Length\n"
@@ -74,7 +75,7 @@ static void display_version (void)
 // Option variables
 
 static bool		ignoreerrors = false;	// ignore errors
-static bool		pretty_print = false;	// print nice in ascii
+static bool		pretty_print = false;	// print nice
 static bool		noecc = false;		// don't error correct
 static bool		omitoob = false;	// omit oob data
 static unsigned long	start_addr;		// start address
@@ -83,7 +84,7 @@ static const char	*mtddev;		// mtd device name
 static const char	*dumpfile;		// dump file name
 static bool		omitbad = false;
 static bool		quiet = false;		// suppress diagnostic output
-static bool		canonical = false;
+static bool		canonical = false;	// print nice + ascii
 
 static void process_options (int argc, char * const argv[])
 {
@@ -91,10 +92,11 @@ static void process_options (int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "bs:f:il:opqn";
+		static const char *short_options = "bs:f:il:opqnc";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
+			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
 			{"ignoreerrors", no_argument, 0, 'i'},
 			{"prettyprint", no_argument, 0, 'p'},
@@ -145,6 +147,8 @@ static void process_options (int argc, char * const argv[])
 			case 'o':
 				omitoob = true;
 				break;
+			case 'c':
+				canonical = true;
 			case 'p':
 				pretty_print = true;
 				break;
