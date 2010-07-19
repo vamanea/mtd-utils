@@ -45,6 +45,7 @@ static void display_help (void)
 "\n"
 "           --help               Display this help and exit\n"
 "           --version            Output version information and exit\n"
+"-a         --forcebinary        Force printing of binary data to tty\n"
 "-c         --canonicalprint     Print canonical Hex+ASCII dump\n"
 "-f file    --file=file          Dump to file\n"
 "-i         --ignoreerrors       Ignore errors\n"
@@ -85,6 +86,7 @@ static const char	*dumpfile;		// dump file name
 static bool		omitbad = false;
 static bool		quiet = false;		// suppress diagnostic output
 static bool		canonical = false;	// print nice + ascii
+static bool		forcebinary = false;	// force printing binary to tty
 
 static void process_options (int argc, char * const argv[])
 {
@@ -92,10 +94,11 @@ static void process_options (int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "bs:f:il:opqnc";
+		static const char *short_options = "bs:f:il:opqnca";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
+			{"forcebinary", no_argument, 0, 'a'},
 			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
 			{"ignoreerrors", no_argument, 0, 'i'},
@@ -147,6 +150,9 @@ static void process_options (int argc, char * const argv[])
 			case 'o':
 				omitoob = true;
 				break;
+			case 'a':
+				forcebinary = true;
+				break;
 			case 'c':
 				canonical = true;
 			case 'p':
@@ -167,6 +173,13 @@ static void process_options (int argc, char * const argv[])
 	if (quiet && pretty_print) {
 		fprintf(stderr, "The quiet and pretty print options are mutually-\n"
 				"exclusive. Choose one or the other.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (forcebinary && pretty_print) {
+		fprintf(stderr, "The forcebinary and pretty print options are\n"
+				"mutually-exclusive. Choose one or the "
+				"other.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -351,6 +364,13 @@ int main(int argc, char * const argv[])
 		ofd = STDOUT_FILENO;
 	} else if ((ofd = open(dumpfile, O_WRONLY | O_TRUNC | O_CREAT, 0644))== -1) {
 		perror (dumpfile);
+		close(fd);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!pretty_print && !forcebinary && isatty(ofd)) {
+		fprintf(stderr, "Not printing binary garbage to tty. Use '-a'\n"
+				"or '--forcebinary' to override.\n");
 		close(fd);
 		exit(EXIT_FAILURE);
 	}
