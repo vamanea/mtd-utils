@@ -25,6 +25,9 @@ LDDEPS = $(BUILDDIR)/lib/libmtd.a
 
 include common.mk
 
+# mkfs.ubifs needs -lubi which is in ubi-utils/
+subdirs_mkfs.ubifs_all: subdirs_ubi-utils_all
+
 clean::
 	-rm -f $(SYMLINKS)
 ifneq ($(BUILDDIR)/.git,)
