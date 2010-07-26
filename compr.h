@@ -67,7 +67,7 @@ int jffs2_set_compressor_priority(const char *name, int priority);
 struct jffs2_compressor {
 	struct list_head list;
 	int priority;             /* used by prirority comr. mode */
-	char *name;
+	const char *name;
 	char compr;               /* JFFS2_COMPR_XXX */
 	int (*compress)(unsigned char *data_in, unsigned char *cpage_out,
 			uint32_t *srclen, uint32_t *destlen, void *model);

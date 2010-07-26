@@ -1090,7 +1090,7 @@ static uint32_t highest_xseqno = 0;
 
 static struct {
 	int xprefix;
-	char *string;
+	const char *string;
 	int length;
 } xprefix_tbl[] = {
 	{ JFFS2_XPREFIX_USER, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN },
@@ -1232,7 +1232,8 @@ static void write_xattr_entry(struct filesystem_entry *e)
 	struct jffs2_raw_xref ref;
 	struct xattr_entry *xe;
 	char xlist[XATTR_BUFFER_SIZE], xvalue[XATTR_BUFFER_SIZE];
-	char *xname, *prefix_str;
+	char *xname;
+	const char *prefix_str;
 	int i, xprefix, prefix_len;
 	int list_sz, offset, name_len, value_len;
 
@@ -1481,7 +1482,7 @@ static struct option long_options[] = {
 	{NULL, 0, NULL, 0}
 };
 
-static char *helptext =
+static const char helptext[] =
 "Usage: mkfs.jffs2 [OPTIONS]\n"
 "Make a JFFS2 file system image from an existing directory tree\n\n"
 "Options:\n"
@@ -1520,7 +1521,7 @@ static char *helptext =
 "  -V, --version           Display version information\n"
 "  -i, --incremental=FILE  Parse FILE and generate appendage output for it\n\n";
 
-static char *revtext = "1.60";
+static const char revtext[] = "1.60";
 
 int load_next_block() {
 

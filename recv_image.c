@@ -39,24 +39,24 @@ int main(int argc, char **argv)
 	struct addrinfo *runp;
 	int ret;
 	int sock;
-	size_t len;
+	ssize_t len;
 	int flfd;
 	struct mtd_info_user meminfo;
 	unsigned char *eb_buf, *decode_buf, **src_pkts;
 	int nr_blocks = 0;
 	int pkts_per_block;
 	int block_nr = -1;
-	uint32_t image_crc;
+	uint32_t image_crc = 0;
 	int total_pkts = 0;
 	int ignored_pkts = 0;
 	loff_t mtdoffset = 0;
 	int badcrcs = 0;
 	int duplicates = 0;
 	int file_mode = 0;
-	struct fec_parms *fec;
+	struct fec_parms *fec = NULL;
 	int i;
 	struct eraseblock *eraseblocks = NULL;
-	uint32_t start_seq;
+	uint32_t start_seq = 0;
 	struct timeval start, now;
 	unsigned long fec_time = 0, flash_time = 0, crc_time = 0,
 		rflash_time = 0, erase_time = 0, net_time = 0;
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 			break;
 		}
 		if (len < sizeof(thispkt)) {
-			fprintf(stderr, "Wrong length %d bytes (expected %d)\n",
+			fprintf(stderr, "Wrong length %zd bytes (expected %lu)\n",
 				len, sizeof(thispkt));
 			continue;
 		}

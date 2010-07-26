@@ -158,7 +158,7 @@ retry:
 	if (buf != NULL)
 		free (buf);
 	close (outfd);
-	printf ("Copied %d bytes from address 0x%.8x in flash to %s\n",len,offset,filename);
+	printf ("Copied %zu bytes from address 0x%.8x in flash to %s\n",len,offset,filename);
 	return (0);
 
 err2:
@@ -309,7 +309,7 @@ int showinfo (int fd)
 			{
 				if (first)
 				{
-					printf (flags[i].name);
+					printf ("%s", flags[i].name);
 					first = 0;
 				}
 				else printf (" | %s",flags[i].name);

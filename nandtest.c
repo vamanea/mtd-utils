@@ -70,7 +70,7 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 	}
 	if (len < meminfo.erasesize) {
 		printf("\n");
-		fprintf(stderr, "Short write (%d bytes)\n", len);
+		fprintf(stderr, "Short write (%zd bytes)\n", len);
 		exit(1);
 	}
 
@@ -81,7 +81,7 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 	if (len < meminfo.erasesize) {
 		printf("\n");
 		if (len)
-			fprintf(stderr, "Short read (%d bytes)\n", len);
+			fprintf(stderr, "Short read (%zd bytes)\n", len);
 		else
 			perror("read");
 		exit(1);
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
 				if (len < meminfo.erasesize) {
 					printf("\n");
 					if (len)
-						fprintf(stderr, "Short read (%d bytes)\n", len);
+						fprintf(stderr, "Short read (%zd bytes)\n", len);
 					else
 						perror("read");
 					exit(1);

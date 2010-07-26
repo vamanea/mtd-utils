@@ -202,7 +202,8 @@ int main(int argc, char **argv)
 	long MediaUnitOff1 = 0, MediaUnitOff2 = 0;
 	unsigned char oobbuf[16];
 	struct mtd_oob_buf oob = {0, 16, oobbuf};
-	char *mtddevice, *nftl;
+	char *mtddevice;
+	const char *nftl;
 	int c, do_inftl = 0, do_bbt = 0;
 
 

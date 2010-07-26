@@ -88,7 +88,7 @@ static struct option long_options[] = {
 	{NULL, 0, NULL, 0}
 };
 
-static char *helptext =
+static const char helptext[] =
 "Usage: sumtool [OPTIONS] -i inputfile -o outputfile\n\n"
 "Convert the input JFFS2 image to a summarized JFFS2 image\n"
 "Summary makes mounting faster - if summary support enabled in your kernel\n\n"
@@ -112,7 +112,7 @@ static char *helptext =
 "                            eraseblock\n\n";
 
 
-static char *revtext = "$Revision: 1.9 $";
+static const char revtext[] = "$Revision: 1.9 $";
 
 static unsigned char ffbuf[16] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -927,7 +927,7 @@ int main(int argc, char **argv)
 			close(in_fd);
 		if(out_fd != -1)
 			close(out_fd);
-		fprintf(stderr,helptext);
+		fprintf(stderr, "%s", helptext);
 		error_msg_and_die("You must specify input and output files!\n");
 	}
 
