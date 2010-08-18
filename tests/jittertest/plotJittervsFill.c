@@ -223,7 +223,7 @@ int main(
                                junkStr1, &junkInt1, &junkInt2, &junkInt3, &dfPercent);
             if(converted < 5)
             {
-                printf("Line %i contains \"%%\", but expected fileds not found. Skipping.\n", lineNo);
+                printf("Line %i contains \"%%\", but expected fields not found. Skipping.\n", lineNo);
             }else
             {
                 /* Now print out the saved jitter values (in col2) with this dfPercent value as the col1. */
@@ -258,7 +258,7 @@ int main(
         converted = sscanf(lineBuf, "%f %s %f %s\n", &junkFloat1, junkStr1, &jitter_ms, junkStr2);
         if(converted < 4)
         {
-            printf("Line %i contains \"ms\", but expected fileds not found. Converted %i, Skipping.",
+            printf("Line %i contains \"ms\", but expected fields not found. Converted %i, Skipping.",
                    lineNo, converted);
             printf("1=%i, 2=%s.\n", junkInt1, junkStr1);
             continue; /* not our jitter line*/
