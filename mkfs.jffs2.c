@@ -1555,7 +1555,7 @@ void process_buffer(int inp_size) {
 
 		if (je16_to_cpu (node->u.magic) != JFFS2_MAGIC_BITMASK)	{
 			if (!bitchbitmask++)
-				printf ("Wrong bitmask  at  0x%08x, 0x%04x\n", p - file_buffer, je16_to_cpu (node->u.magic));
+				printf ("Wrong bitmask  at  0x%08zx, 0x%04x\n", p - file_buffer, je16_to_cpu (node->u.magic));
 			p += 4;
 			continue;
 		}
@@ -1575,7 +1575,7 @@ void process_buffer(int inp_size) {
 
 			case JFFS2_NODETYPE_INODE:
 				if(verbose)
-					printf ("%8s Inode      node at 0x%08x, totlen 0x%08x, #ino  %5d, version %5d, isize %8d, csize %8d, dsize %8d, offset %8d\n",
+					printf ("%8s Inode      node at 0x%08zx, totlen 0x%08x, #ino  %5d, version %5d, isize %8d, csize %8d, dsize %8d, offset %8d\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->i.totlen), je32_to_cpu (node->i.ino),
 							je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
@@ -1592,7 +1592,7 @@ void process_buffer(int inp_size) {
 				name [node->d.nsize] = 0x0;
 
 				if(verbose)
-					printf ("%8s Dirent     node at 0x%08x, totlen 0x%08x, #pino %5d, version %5d, #ino  %8d, nsize %8d, name %s\n",
+					printf ("%8s Dirent     node at 0x%08zx, totlen 0x%08x, #pino %5d, version %5d, #ino  %8d, nsize %8d, name %s\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->d.totlen), je32_to_cpu (node->d.pino),
 							je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
@@ -1603,7 +1603,7 @@ void process_buffer(int inp_size) {
 
 			case JFFS2_NODETYPE_CLEANMARKER:
 				if (verbose) {
-					printf ("%8s Cleanmarker     at 0x%08x, totlen 0x%08x\n",
+					printf ("%8s Cleanmarker     at 0x%08zx, totlen 0x%08x\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
@@ -1613,7 +1613,7 @@ void process_buffer(int inp_size) {
 
 			case JFFS2_NODETYPE_PADDING:
 				if (verbose) {
-					printf ("%8s Padding    node at 0x%08x, totlen 0x%08x\n",
+					printf ("%8s Padding    node at 0x%08zx, totlen 0x%08x\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
@@ -1627,7 +1627,7 @@ void process_buffer(int inp_size) {
 
 			default:
 				if (verbose) {
-					printf ("%8s Unknown    node at 0x%08x, totlen 0x%08x\n",
+					printf ("%8s Unknown    node at 0x%08zx, totlen 0x%08x\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}

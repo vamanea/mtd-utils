@@ -740,7 +740,7 @@ void create_summed_image(int inp_size)
 
 		if (je16_to_cpu (node->u.magic) != JFFS2_MAGIC_BITMASK) {
 			if (!bitchbitmask++)
-				printf ("Wrong bitmask  at  0x%08x, 0x%04x\n", p - file_buffer, je16_to_cpu (node->u.magic));
+				printf ("Wrong bitmask  at  0x%08zx, 0x%04x\n", p - file_buffer, je16_to_cpu (node->u.magic));
 			p += 4;
 			continue;
 		}
@@ -759,7 +759,7 @@ void create_summed_image(int inp_size)
 
 		crc = crc32 (0, node, sizeof (struct jffs2_unknown_node) - 4);
 		if (crc != je32_to_cpu (node->u.hdr_crc)) {
-			printf ("Wrong hdr_crc  at  0x%08x, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->u.hdr_crc), crc);
+			printf ("Wrong hdr_crc  at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->u.hdr_crc), crc);
 			p += 4;
 			continue;
 		}
@@ -767,7 +767,7 @@ void create_summed_image(int inp_size)
 		switch(je16_to_cpu(node->u.nodetype)) {
 			case JFFS2_NODETYPE_INODE:
 				if (verbose)
-					printf ("%8s Inode      node at 0x%08x, totlen 0x%08x, #ino  %5d, version %5d, isize %8d, csize %8d, dsize %8d, offset %8d\n",
+					printf ("%8s Inode      node at 0x%08zx, totlen 0x%08x, #ino  %5d, version %5d, isize %8d, csize %8d, dsize %8d, offset %8d\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->i.totlen), je32_to_cpu (node->i.ino),
 							je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
@@ -775,14 +775,14 @@ void create_summed_image(int inp_size)
 
 				crc = crc32 (0, node, sizeof (struct jffs2_raw_inode) - 8);
 				if (crc != je32_to_cpu (node->i.node_crc)) {
-					printf ("Wrong node_crc at  0x%08x, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->i.node_crc), crc);
+					printf ("Wrong node_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->i.node_crc), crc);
 					p += PAD(je32_to_cpu (node->i.totlen));
 					continue;
 				}
 
 				crc = crc32(0, p + sizeof (struct jffs2_raw_inode), je32_to_cpu(node->i.csize));
 				if (crc != je32_to_cpu(node->i.data_crc)) {
-					printf ("Wrong data_crc at  0x%08x, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->i.data_crc), crc);
+					printf ("Wrong data_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->i.data_crc), crc);
 					p += PAD(je32_to_cpu (node->i.totlen));
 					continue;
 				}
@@ -797,7 +797,7 @@ void create_summed_image(int inp_size)
 				name [node->d.nsize] = 0x0;
 
 				if (verbose)
-					printf ("%8s Dirent     node at 0x%08x, totlen 0x%08x, #pino %5d, version %5d, #ino  %8d, nsize %8d, name %s\n",
+					printf ("%8s Dirent     node at 0x%08zx, totlen 0x%08x, #pino %5d, version %5d, #ino  %8d, nsize %8d, name %s\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->d.totlen), je32_to_cpu (node->d.pino),
 							je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
@@ -805,14 +805,14 @@ void create_summed_image(int inp_size)
 
 				crc = crc32 (0, node, sizeof (struct jffs2_raw_dirent) - 8);
 				if (crc != je32_to_cpu (node->d.node_crc)) {
-					printf ("Wrong node_crc at  0x%08x, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->d.node_crc), crc);
+					printf ("Wrong node_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->d.node_crc), crc);
 					p += PAD(je32_to_cpu (node->d.totlen));
 					continue;
 				}
 
 				crc = crc32(0, p + sizeof (struct jffs2_raw_dirent), node->d.nsize);
 				if (crc != je32_to_cpu(node->d.name_crc)) {
-					printf ("Wrong name_crc at  0x%08x, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->d.name_crc), crc);
+					printf ("Wrong name_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->d.name_crc), crc);
 					p += PAD(je32_to_cpu (node->d.totlen));
 					continue;
 				}
@@ -826,14 +826,14 @@ void create_summed_image(int inp_size)
 				if (je32_to_cpu(node->x.node_crc) == 0xffffffff)
 					obsolete = 1;
 				if (verbose)
-					printf("%8s Xdatum     node at 0x%08x, totlen 0x%08x, "
+					printf("%8s Xdatum     node at 0x%08zx, totlen 0x%08x, "
 							"#xid  %5u, version %5u\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->x.totlen),
 							je32_to_cpu(node->x.xid), je32_to_cpu(node->x.version));
 				crc = crc32(0, node, sizeof (struct jffs2_raw_xattr) - 4);
 				if (crc != je32_to_cpu(node->x.node_crc)) {
-					printf("Wrong node_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
+					printf("Wrong node_crc at 0x%08zx, 0x%08x instead of 0x%08x\n",
 							p - file_buffer, je32_to_cpu(node->x.node_crc), crc);
 					p += PAD(je32_to_cpu (node->x.totlen));
 					continue;
@@ -841,7 +841,7 @@ void create_summed_image(int inp_size)
 				length = node->x.name_len + 1 + je16_to_cpu(node->x.value_len);
 				crc = crc32(0, node->x.data, length);
 				if (crc != je32_to_cpu(node->x.data_crc)) {
-					printf("Wrong data_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
+					printf("Wrong data_crc at 0x%08zx, 0x%08x instead of 0x%08x\n",
 							p - file_buffer, je32_to_cpu(node->x.data_crc), crc);
 					p += PAD(je32_to_cpu (node->x.totlen));
 					continue;
@@ -855,14 +855,14 @@ void create_summed_image(int inp_size)
 				if (je32_to_cpu(node->r.node_crc) == 0xffffffff)
 					obsolete = 1;
 				if (verbose)
-					printf("%8s Xref       node at 0x%08x, totlen 0x%08x, "
+					printf("%8s Xref       node at 0x%08zx, totlen 0x%08x, "
 							"#ino  %5u, xid     %5u\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu(node->r.totlen),
 							je32_to_cpu(node->r.ino), je32_to_cpu(node->r.xid));
 				crc = crc32(0, node, sizeof (struct jffs2_raw_xref) - 4);
 				if (crc != je32_to_cpu(node->r.node_crc)) {
-					printf("Wrong node_crc at 0x%08x, 0x%08x instead of 0x%08x\n",
+					printf("Wrong node_crc at 0x%08zx, 0x%08x instead of 0x%08x\n",
 							p - file_buffer, je32_to_cpu(node->r.node_crc), crc);
 					p += PAD(je32_to_cpu (node->r.totlen));
 					continue;
@@ -874,7 +874,7 @@ void create_summed_image(int inp_size)
 
 			case JFFS2_NODETYPE_CLEANMARKER:
 				if (verbose) {
-					printf ("%8s Cleanmarker     at 0x%08x, totlen 0x%08x\n",
+					printf ("%8s Cleanmarker     at 0x%08zx, totlen 0x%08x\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
@@ -893,7 +893,7 @@ void create_summed_image(int inp_size)
 
 			case JFFS2_NODETYPE_PADDING:
 				if (verbose) {
-					printf ("%8s Padding    node at 0x%08x, totlen 0x%08x\n",
+					printf ("%8s Padding    node at 0x%08zx, totlen 0x%08x\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}
@@ -906,7 +906,7 @@ void create_summed_image(int inp_size)
 
 			default:
 				if (verbose) {
-					printf ("%8s Unknown    node at 0x%08x, totlen 0x%08x\n",
+					printf ("%8s Unknown    node at 0x%08zx, totlen 0x%08x\n",
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->u.totlen));
 				}

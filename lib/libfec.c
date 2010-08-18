@@ -792,7 +792,7 @@ shuffle(gf *pkt[], int index[], int k)
  * a vector of k*k elements, in row-major order
  */
 static gf *
-build_decode_matrix(struct fec_parms *code, gf *pkt[], int index[])
+build_decode_matrix(struct fec_parms *code, int index[])
 {
     int i , k = code->k ;
     gf *p, *matrix = NEW_GF_MATRIX(k, k);
@@ -846,7 +846,7 @@ fec_decode(struct fec_parms *code, gf *pkt[], int index[], int sz)
 
     if (shuffle(pkt, index, k))	/* error if true */
 	return 1 ;
-    m_dec = build_decode_matrix(code, pkt, index);
+    m_dec = build_decode_matrix(code, index);
 
     if (m_dec == NULL)
 	return 1 ; /* error */

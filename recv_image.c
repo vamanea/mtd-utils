@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 			break;
 		}
 		if (len < sizeof(thispkt)) {
-			fprintf(stderr, "Wrong length %zd bytes (expected %lu)\n",
+			fprintf(stderr, "Wrong length %zd bytes (expected %zu)\n",
 				len, sizeof(thispkt));
 			continue;
 		}
