@@ -239,8 +239,8 @@ static void pretty_dump_to_buffer(const unsigned char *buf, size_t len,
 
 	for (j = 0; (j < len) && (lx + 3) <= linebuflen; j++) {
 		ch = buf[j];
-		linebuf[lx++] = hex_asc[ch & 0x0f];
 		linebuf[lx++] = hex_asc[(ch & 0xf0) >> 4];
+		linebuf[lx++] = hex_asc[ch & 0x0f];
 		linebuf[lx++] = ' ';
 	}
 	if (j)
