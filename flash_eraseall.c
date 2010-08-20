@@ -47,14 +47,46 @@
 static const char *exe_name;
 static const char *mtd_device;
 static int quiet;		/* true -- don't output progress */
-static int jffs2;		// format for jffs2 usage
+static int jffs2;		/* format for jffs2 usage */
 
-static void process_options (int argc, char *argv[]);
-void show_progress (struct mtd_dev_info *mtd, uint64_t start);
-static void display_help (void);
-static void display_version (void);
 static struct jffs2_unknown_node cleanmarker;
 int target_endian = __BYTE_ORDER;
+
+static void show_progress (struct mtd_dev_info *mtd, uint64_t start)
+{
+	printf("\rErasing %d Kibyte @ %llx -- %2llu %% complete.",
+		mtd->eb_size / 1024, (unsigned long long)start,
+		(unsigned long long) start * 100 / mtd->size);
+	fflush(stdout);
+}
+
+static void display_help (void)
+{
+	printf("Usage: %s [OPTION] MTD_DEVICE\n"
+			"Erases all of the specified MTD device.\n"
+			"\n"
+			"  -j, --jffs2    format the device for jffs2\n"
+			"  -q, --quiet    don't display progress messages\n"
+			"      --silent   same as --quiet\n"
+			"      --help     display this help and exit\n"
+			"      --version  output version information and exit\n",
+			exe_name);
+}
+
+
+static void display_version (void)
+{
+	printf(PROGRAM " " VERSION "\n"
+			"\n"
+			"Copyright (C) 2000 Arcom Control Systems Ltd\n"
+			"\n"
+			PROGRAM " comes with NO WARRANTY\n"
+			"to the extent permitted by law.\n"
+			"\n"
+			"You may redistribute copies of " PROGRAM "\n"
+			"under the terms of the GNU General Public Licence.\n"
+			"See the file `COPYING' for more information.\n");
+}
 
 int main (int argc, char *argv[])
 {
@@ -62,9 +94,60 @@ int main (int argc, char *argv[])
 	struct mtd_dev_info mtd;
 	int fd, clmpos = 0, clmlen = 8, eb;
 	int isNAND, bbtest = 1;
+	int error = 0;
 	uint64_t offset = 0;
 
-	process_options(argc, argv);
+	exe_name = argv[0];
+	for (;;) {
+		int option_index = 0;
+		static const char *short_options = "jq";
+		static const struct option long_options[] = {
+			{"help", no_argument, 0, 0},
+			{"version", no_argument, 0, 0},
+			{"jffs2", no_argument, 0, 'j'},
+			{"quiet", no_argument, 0, 'q'},
+			{"silent", no_argument, 0, 'q'},
+
+			{0, 0, 0, 0},
+		};
+
+		int c = getopt_long(argc, argv, short_options,
+				long_options, &option_index);
+		if (c == EOF)
+			break;
+
+		switch (c) {
+		case 0:
+			switch (option_index) {
+			case 0:
+				display_help();
+				return 0;
+			case 1:
+				display_version();
+				return 0;
+			}
+			break;
+		case 'q':
+			quiet = 1;
+			break;
+		case 'j':
+			jffs2 = 1;
+			break;
+		case '?':
+			error = 1;
+			break;
+		}
+	}
+	if (optind == argc) {
+		fprintf(stderr, "%s: no MTD device specified\n", exe_name);
+		error = 1;
+	}
+	if (error) {
+		fprintf(stderr, "Try `%s --help' for more information.\n",
+				exe_name);
+		return 1;
+	}
+	mtd_device = argv[optind];
 
 	mtd_desc = libmtd_open();
 	if (mtd_desc == NULL) {
@@ -191,101 +274,3 @@ int main (int argc, char *argv[])
 	return 0;
 }
 
-
-void process_options (int argc, char *argv[])
-{
-	int error = 0;
-
-	exe_name = argv[0];
-
-	for (;;) {
-		int option_index = 0;
-		static const char *short_options = "jq";
-		static const struct option long_options[] = {
-			{"help", no_argument, 0, 0},
-			{"version", no_argument, 0, 0},
-			{"jffs2", no_argument, 0, 'j'},
-			{"quiet", no_argument, 0, 'q'},
-			{"silent", no_argument, 0, 'q'},
-
-			{0, 0, 0, 0},
-		};
-
-		int c = getopt_long(argc, argv, short_options,
-				long_options, &option_index);
-		if (c == EOF) {
-			break;
-		}
-
-		switch (c) {
-			case 0:
-				switch (option_index) {
-					case 0:
-						display_help();
-						break;
-					case 1:
-						display_version();
-						break;
-				}
-				break;
-			case 'q':
-				quiet = 1;
-				break;
-			case 'j':
-				jffs2 = 1;
-				break;
-			case '?':
-				error = 1;
-				break;
-		}
-	}
-	if (optind == argc) {
-		fprintf(stderr, "%s: no MTD device specified\n", exe_name);
-		error = 1;
-	}
-	if (error) {
-		fprintf(stderr, "Try `%s --help' for more information.\n",
-				exe_name);
-		exit(1);
-	}
-
-	mtd_device = argv[optind];
-}
-
-void show_progress (struct mtd_dev_info *mtd, uint64_t start)
-{
-	printf("\rErasing %d Kibyte @ %llx -- %2llu %% complete.",
-		mtd->eb_size / 1024, (unsigned long long)start,
-		(unsigned long long) start * 100 / mtd->size);
-	fflush(stdout);
-}
-
-void display_help (void)
-{
-	printf("Usage: %s [OPTION] MTD_DEVICE\n"
-			"Erases all of the specified MTD device.\n"
-			"\n"
-			"  -j, --jffs2    format the device for jffs2\n"
-			"  -q, --quiet    don't display progress messages\n"
-			"      --silent   same as --quiet\n"
-			"      --help     display this help and exit\n"
-			"      --version  output version information and exit\n",
-			exe_name);
-	exit(0);
-}
-
-
-void display_version (void)
-{
-	printf(PROGRAM " " VERSION "\n"
-			"\n"
-			"Copyright (C) 2000 Arcom Control Systems Ltd\n"
-			"\n"
-			PROGRAM " comes with NO WARRANTY\n"
-			"to the extent permitted by law.\n"
-			"\n"
-			"You may redistribute copies of " PROGRAM "\n"
-			"under the terms of the GNU General Public Licence.\n"
-			"See the file `COPYING' for more information.\n");
-	exit(0);
-}
