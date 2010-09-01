@@ -306,14 +306,14 @@ static int change_ech(struct ubi_ec_hdr *hdr, uint32_t image_seq,
 		return errmsg("bad UBI magic %#08x, should be %#08x",
 			      be32_to_cpu(hdr->magic), UBI_EC_HDR_MAGIC);
 
-	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
+	crc = mtd_crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
 	if (be32_to_cpu(hdr->hdr_crc) != crc)
 		return errmsg("bad CRC %#08x, should be %#08x\n",
 			      crc, be32_to_cpu(hdr->hdr_crc));
 
 	hdr->image_seq = cpu_to_be32(image_seq);
 	hdr->ec = cpu_to_be64(ec);
-	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
+	crc = mtd_crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
 	hdr->hdr_crc = cpu_to_be32(crc);
 
 	return 0;

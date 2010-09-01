@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 	fflush(stdout);
 
 	pktbuf.hdr.resend = 0;
-	pktbuf.hdr.totcrc = htonl(crc32(-1, image, st.st_size));
+	pktbuf.hdr.totcrc = htonl(mtd_crc32(-1, image, st.st_size));
 	pktbuf.hdr.nr_blocks = htonl(nr_blocks);
 	pktbuf.hdr.blocksize = htonl(erasesize);
 	pktbuf.hdr.thislen = htonl(PKT_SIZE);
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 		printf("\rChecking block CRCS.... %d/%d",
 		       block_nr + 1, nr_blocks);
 		fflush(stdout);
-		block_crcs[block_nr] = crc32(-1, image + (block_nr * erasesize), erasesize);
+		block_crcs[block_nr] = mtd_crc32(-1, image + (block_nr * erasesize), erasesize);
 	}
 		
 	printf("\nImage size %ld KiB (0x%08lx). %d blocks at %d pkts/block\n"
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 
 			fec_encode_linear(fec, blockptr, pktbuf.data, actualpkt, PKT_SIZE);
 
-			pktbuf.hdr.thiscrc = htonl(crc32(-1, pktbuf.data, PKT_SIZE));
+			pktbuf.hdr.thiscrc = htonl(mtd_crc32(-1, pktbuf.data, PKT_SIZE));
 			pktbuf.hdr.block_crc = htonl(block_crcs[block_nr]);
 			pktbuf.hdr.block_nr = htonl(block_nr);
 			pktbuf.hdr.pkt_nr = htons(actualpkt);

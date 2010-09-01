@@ -244,10 +244,10 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (crc32(-1, thispkt.data, PKT_SIZE) != ntohl(thispkt.hdr.thiscrc)) {
+		if (mtd_crc32(-1, thispkt.data, PKT_SIZE) != ntohl(thispkt.hdr.thiscrc)) {
 			printf("\nDiscard %08x pkt %d with bad CRC (%08x not %08x)\n",
 			       block_nr * meminfo.erasesize, ntohs(thispkt.hdr.pkt_nr),
-			       crc32(-1, thispkt.data, PKT_SIZE),
+			       mtd_crc32(-1, thispkt.data, PKT_SIZE),
 			       ntohl(thispkt.hdr.thiscrc));
 			badcrcs++;
 			continue;
@@ -393,10 +393,10 @@ int main(int argc, char **argv)
 
 		/* Paranoia */
 		gettimeofday(&start, NULL);
-		if (crc32(-1, decode_buf, meminfo.erasesize) != eraseblocks[block_nr].crc) {
+		if (mtd_crc32(-1, decode_buf, meminfo.erasesize) != eraseblocks[block_nr].crc) {
 			printf("\nCRC mismatch for block #%d: want %08x got %08x\n",
 			       block_nr, eraseblocks[block_nr].crc, 
-			       crc32(-1, decode_buf, meminfo.erasesize));
+			       mtd_crc32(-1, decode_buf, meminfo.erasesize));
 			exit(1);
 		}
 		gettimeofday(&now, NULL);

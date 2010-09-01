@@ -168,7 +168,7 @@ void setup_cleanmarker()
 	cleanmarker.magic = cpu_to_je16(JFFS2_MAGIC_BITMASK);
 	cleanmarker.nodetype = cpu_to_je16(JFFS2_NODETYPE_CLEANMARKER);
 	cleanmarker.totlen = cpu_to_je32(cleanmarker_size);
-	cleanmarker.hdr_crc = cpu_to_je32(crc32(0, &cleanmarker, sizeof(struct jffs2_unknown_node)-4));
+	cleanmarker.hdr_crc = cpu_to_je32(mtd_crc32(0, &cleanmarker, sizeof(struct jffs2_unknown_node)-4));
 }
 
 void process_options (int argc, char **argv)
@@ -394,7 +394,7 @@ void dump_sum_records()
 	isum.magic = cpu_to_je16(JFFS2_MAGIC_BITMASK);
 	isum.nodetype = cpu_to_je16(JFFS2_NODETYPE_SUMMARY);
 	isum.totlen = cpu_to_je32(infosize);
-	isum.hdr_crc = cpu_to_je32(crc32(0, &isum, sizeof(struct jffs2_unknown_node) - 4));
+	isum.hdr_crc = cpu_to_je32(mtd_crc32(0, &isum, sizeof(struct jffs2_unknown_node) - 4));
 	isum.padded = cpu_to_je32(0);
 
 	if (add_cleanmarkers && found_cleanmarkers) {
@@ -486,8 +486,8 @@ void dump_sum_records()
 	sm->offset = offset;
 	sm->magic = magic;
 
-	isum.sum_crc = cpu_to_je32(crc32(0, tpage, datasize));
-	isum.node_crc = cpu_to_je32(crc32(0, &isum, sizeof(isum) - 8));
+	isum.sum_crc = cpu_to_je32(mtd_crc32(0, tpage, datasize));
+	isum.node_crc = cpu_to_je32(mtd_crc32(0, &isum, sizeof(isum) - 8));
 
 	full_write(data_buffer + data_ofs, &isum, sizeof(isum));
 	full_write(data_buffer + data_ofs, tpage, datasize);
@@ -757,7 +757,7 @@ void create_summed_image(int inp_size)
 
 		node->u.nodetype = cpu_to_je16(type);
 
-		crc = crc32 (0, node, sizeof (struct jffs2_unknown_node) - 4);
+		crc = mtd_crc32 (0, node, sizeof (struct jffs2_unknown_node) - 4);
 		if (crc != je32_to_cpu (node->u.hdr_crc)) {
 			printf ("Wrong hdr_crc  at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->u.hdr_crc), crc);
 			p += 4;
@@ -773,14 +773,14 @@ void create_summed_image(int inp_size)
 							je32_to_cpu ( node->i.version), je32_to_cpu (node->i.isize),
 							je32_to_cpu (node->i.csize), je32_to_cpu (node->i.dsize), je32_to_cpu (node->i.offset));
 
-				crc = crc32 (0, node, sizeof (struct jffs2_raw_inode) - 8);
+				crc = mtd_crc32 (0, node, sizeof (struct jffs2_raw_inode) - 8);
 				if (crc != je32_to_cpu (node->i.node_crc)) {
 					printf ("Wrong node_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->i.node_crc), crc);
 					p += PAD(je32_to_cpu (node->i.totlen));
 					continue;
 				}
 
-				crc = crc32(0, p + sizeof (struct jffs2_raw_inode), je32_to_cpu(node->i.csize));
+				crc = mtd_crc32(0, p + sizeof (struct jffs2_raw_inode), je32_to_cpu(node->i.csize));
 				if (crc != je32_to_cpu(node->i.data_crc)) {
 					printf ("Wrong data_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->i.data_crc), crc);
 					p += PAD(je32_to_cpu (node->i.totlen));
@@ -803,14 +803,14 @@ void create_summed_image(int inp_size)
 							je32_to_cpu ( node->d.version), je32_to_cpu (node->d.ino),
 							node->d.nsize, name);
 
-				crc = crc32 (0, node, sizeof (struct jffs2_raw_dirent) - 8);
+				crc = mtd_crc32 (0, node, sizeof (struct jffs2_raw_dirent) - 8);
 				if (crc != je32_to_cpu (node->d.node_crc)) {
 					printf ("Wrong node_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->d.node_crc), crc);
 					p += PAD(je32_to_cpu (node->d.totlen));
 					continue;
 				}
 
-				crc = crc32(0, p + sizeof (struct jffs2_raw_dirent), node->d.nsize);
+				crc = mtd_crc32(0, p + sizeof (struct jffs2_raw_dirent), node->d.nsize);
 				if (crc != je32_to_cpu(node->d.name_crc)) {
 					printf ("Wrong name_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - file_buffer, je32_to_cpu (node->d.name_crc), crc);
 					p += PAD(je32_to_cpu (node->d.totlen));
@@ -831,7 +831,7 @@ void create_summed_image(int inp_size)
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu (node->x.totlen),
 							je32_to_cpu(node->x.xid), je32_to_cpu(node->x.version));
-				crc = crc32(0, node, sizeof (struct jffs2_raw_xattr) - 4);
+				crc = mtd_crc32(0, node, sizeof (struct jffs2_raw_xattr) - 4);
 				if (crc != je32_to_cpu(node->x.node_crc)) {
 					printf("Wrong node_crc at 0x%08zx, 0x%08x instead of 0x%08x\n",
 							p - file_buffer, je32_to_cpu(node->x.node_crc), crc);
@@ -839,7 +839,7 @@ void create_summed_image(int inp_size)
 					continue;
 				}
 				length = node->x.name_len + 1 + je16_to_cpu(node->x.value_len);
-				crc = crc32(0, node->x.data, length);
+				crc = mtd_crc32(0, node->x.data, length);
 				if (crc != je32_to_cpu(node->x.data_crc)) {
 					printf("Wrong data_crc at 0x%08zx, 0x%08x instead of 0x%08x\n",
 							p - file_buffer, je32_to_cpu(node->x.data_crc), crc);
@@ -860,7 +860,7 @@ void create_summed_image(int inp_size)
 							obsolete ? "Obsolete" : "",
 							p - file_buffer, je32_to_cpu(node->r.totlen),
 							je32_to_cpu(node->r.ino), je32_to_cpu(node->r.xid));
-				crc = crc32(0, node, sizeof (struct jffs2_raw_xref) - 4);
+				crc = mtd_crc32(0, node, sizeof (struct jffs2_raw_xref) - 4);
 				if (crc != je32_to_cpu(node->r.node_crc)) {
 					printf("Wrong node_crc at 0x%08zx, 0x%08x instead of 0x%08x\n",
 							p - file_buffer, je32_to_cpu(node->r.node_crc), crc);

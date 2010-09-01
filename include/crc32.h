@@ -8,6 +8,6 @@
 #include <stdint.h>
 
 /* Return a 32-bit CRC of the contents of the buffer */
-extern uint32_t crc32(uint32_t val, const void *ss, int len);
+extern uint32_t mtd_crc32(uint32_t val, const void *ss, int len);
 
 #endif /* __CRC32_H__ */

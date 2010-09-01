@@ -112,7 +112,7 @@ int main(int argc, char * const argv[])
 			err = -1;
 			goto out_close;
 		}
-		crc = crc32(crc, buf, read);
+		crc = mtd_crc32(crc, buf, read);
 	}
 
 	printf("0x%08x\n", crc);

@@ -75,7 +75,7 @@ struct ubi_vtbl_record *ubigen_create_empty_vtbl(const struct ubigen_info *ui)
 	}
 
 	for (i = 0; i < ui->max_volumes; i++) {
-		uint32_t crc = crc32(UBI_CRC32_INIT, &vtbl[i],
+		uint32_t crc = mtd_crc32(UBI_CRC32_INIT, &vtbl[i],
 				     UBI_VTBL_RECORD_SIZE_CRC);
 		vtbl[i].crc = cpu_to_be32(crc);
 	}
@@ -117,7 +117,7 @@ int ubigen_add_volume(const struct ubigen_info *ui,
 	vtbl_rec->name[vi->name_len] = '\0';
 	vtbl_rec->name_len = cpu_to_be16(vi->name_len);
 
-	tmp = crc32(UBI_CRC32_INIT, vtbl_rec, UBI_VTBL_RECORD_SIZE_CRC);
+	tmp = mtd_crc32(UBI_CRC32_INIT, vtbl_rec, UBI_VTBL_RECORD_SIZE_CRC);
 	vtbl_rec->crc =	 cpu_to_be32(tmp);
 	return 0;
 }
@@ -136,7 +136,7 @@ void ubigen_init_ec_hdr(const struct ubigen_info *ui,
 	hdr->data_offset = cpu_to_be32(ui->data_offs);
 	hdr->image_seq = cpu_to_be32(ui->image_seq);
 
-	crc = crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
+	crc = mtd_crc32(UBI_CRC32_INIT, hdr, UBI_EC_HDR_SIZE_CRC);
 	hdr->hdr_crc = cpu_to_be32(crc);
 }
 
@@ -160,11 +160,11 @@ void ubigen_init_vid_hdr(const struct ubigen_info *ui,
 	if (vi->type == UBI_VID_STATIC) {
 		hdr->data_size = cpu_to_be32(data_size);
 		hdr->used_ebs = cpu_to_be32(vi->used_ebs);
-		crc = crc32(UBI_CRC32_INIT, data, data_size);
+		crc = mtd_crc32(UBI_CRC32_INIT, data, data_size);
 		hdr->data_crc = cpu_to_be32(crc);
 	}
 
-	crc = crc32(UBI_CRC32_INIT, hdr, UBI_VID_HDR_SIZE_CRC);
+	crc = mtd_crc32(UBI_CRC32_INIT, hdr, UBI_VID_HDR_SIZE_CRC);
 	hdr->hdr_crc = cpu_to_be32(crc);
 }
 

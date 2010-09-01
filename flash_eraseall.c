@@ -210,7 +210,7 @@ int main (int argc, char *argv[])
 			}
 			cleanmarker.totlen = cpu_to_je32(8);
 		}
-		cleanmarker.hdr_crc =  cpu_to_je32 (crc32 (0, &cleanmarker,  sizeof (struct jffs2_unknown_node) - 4));
+		cleanmarker.hdr_crc =  cpu_to_je32 (mtd_crc32 (0, &cleanmarker,  sizeof (struct jffs2_unknown_node) - 4));
 	}
 
 	for (eb = 0; eb < (mtd.size / mtd.eb_size); eb++) {
