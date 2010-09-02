@@ -30,8 +30,9 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubidetach"
+#define DEFAULT_CTRL_DEV "/dev/ubi_ctrl"
 
 /* The variables below are set by command line arguments */
 struct args {
@@ -59,13 +60,14 @@ static const char *optionsstr =
 "-V, --version                   print program version";
 
 static const char *usage =
-"Usage: " PROGRAM_NAME " <UBI control device node file name>\n"
+"Usage: " PROGRAM_NAME " [<UBI control device node file name>]\n"
 "\t[-d <UBI device number>] [-m <MTD device number>] [-p <path to device>]\n"
 "\t[--devn=<UBI device number>] [--mtdn=<MTD device number>]\n"
 "\t[--dev-path=<path to device>]\n"
-"Example 1: " PROGRAM_NAME " /dev/ubi_ctrl -p /dev/mtd0 - detach MTD device /dev/mtd0\n"
-"Example 2: " PROGRAM_NAME " /dev/ubi_ctrl -d 2 - delete UBI device 2 (ubi2)\n"
-"Example 3: " PROGRAM_NAME " /dev/ubi_ctrl -m 0 - detach MTD device 0 (mtd0)";
+"UBI control device defaults to " DEFAULT_CTRL_DEV " if not supplied.\n"
+"Example 1: " PROGRAM_NAME " -p /dev/mtd0 - detach MTD device /dev/mtd0\n"
+"Example 2: " PROGRAM_NAME " -d 2 - delete UBI device 2 (ubi2)\n"
+"Example 3: " PROGRAM_NAME " -m 0 - detach MTD device 0 (mtd0)";
 
 static const struct option long_options[] = {
 	{ .name = "devn",     .has_arg = 1, .flag = NULL, .val = 'd' },
@@ -124,9 +126,11 @@ static int parse_opt(int argc, char * const argv[])
 	}
 
 	if (optind == argc)
-		return errmsg("UBI control device name was not specified (use -h for help)");
+		args.node = DEFAULT_CTRL_DEV;
 	else if (optind != argc - 1)
 		return errmsg("more then one UBI control device specified (use -h for help)");
+	else
+		args.node = argv[optind];
 
 	if (args.mtdn == -1 && args.devn == -1 && args.dev == NULL)
 		return errmsg("neither MTD nor UBI devices were specified (use -h for help)");
@@ -138,7 +142,6 @@ static int parse_opt(int argc, char * const argv[])
 	} else if (args.mtdn != -1 && args.dev != NULL)
 		return errmsg("specify either MTD number or device node (use -h for help)");
 
-	args.node = argv[optind];
 	return 0;
 }
 
