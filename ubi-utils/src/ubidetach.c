@@ -50,7 +50,7 @@ static struct args args = {
 };
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
-" - a tool to remove UBI devices (detach MTD devices from UBI)";
+" - tool to remove UBI devices (detach MTD devices from UBI)";
 
 static const char *optionsstr =
 "-d, --devn=<UBI device number>  UBI device number to delete\n"

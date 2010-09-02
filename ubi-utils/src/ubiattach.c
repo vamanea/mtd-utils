@@ -56,17 +56,15 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to attach MTD device to UBI.";
 
 static const char *optionsstr =
-"-d, --devn=<UBI device number>  the number to assign to the newly created UBI device\n"
-"                                (the number is assigned automatically if this is not\n"
-"                                specified\n"
-"-p, --dev-path=<path to device> path to MTD device node to attach\n"
-"-m, --mtdn=<MTD device number>  MTD device number to attach (alternative method, e.g\n"
-"                                if the character device node does not exist)\n"
-"-O, --vid-hdr-offset            VID header offset (do not specify this unless you\n"
-"                                really know what you do and the optimal defaults will\n"
-"                                be used)\n"
-"-h, --help                      print help message\n"
-"-V, --version                   print program version";
+"-d, --devn=<number>   the number to assign to the newly created UBI device\n"
+"                      (assigned automatically if this is not specified)\n"
+"-p, --dev-path=<path> path to MTD device node to attach\n"
+"-m, --mtdn=<number>   MTD device number to attach (alternative method, e.g\n"
+"                      if the character device node does not exist)\n"
+"-O, --vid-hdr-offset  VID header offset (do not specify this unless you really\n"
+"                      know what you are doing, the default should be optimal)\n"
+"-h, --help            print help message\n"
+"-V, --version         print program version";
 
 static const char *usage =
 "Usage: " PROGRAM_NAME " [<UBI control device node file name>]\n"
