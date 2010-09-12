@@ -48,7 +48,6 @@ static void display_help (void)
 "-a         --forcebinary        Force printing of binary data to tty\n"
 "-c         --canonicalprint     Print canonical Hex+ASCII dump\n"
 "-f file    --file=file          Dump to file\n"
-"-i         --ignoreerrors       Ignore errors\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
 "-o         --omitoob            Omit oob data\n"
@@ -75,7 +74,6 @@ static void display_version (void)
 
 // Option variables
 
-static bool		ignoreerrors = false;	// ignore errors
 static bool		pretty_print = false;	// print nice
 static bool		noecc = false;		// don't error correct
 static bool		omitoob = false;	// omit oob data
@@ -94,14 +92,13 @@ static void process_options (int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "bs:f:il:opqnca";
+		static const char *short_options = "bs:f:l:opqnca";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
 			{"forcebinary", no_argument, 0, 'a'},
 			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
-			{"ignoreerrors", no_argument, 0, 'i'},
 			{"prettyprint", no_argument, 0, 'p'},
 			{"omitoob", no_argument, 0, 'o'},
 			{"omitbad", no_argument, 0, 'b'},
@@ -140,9 +137,6 @@ static void process_options (int argc, char * const argv[])
 					perror("stddup");
 					exit(EXIT_FAILURE);
 				}
-				break;
-			case 'i':
-				ignoreerrors = true;
 				break;
 			case 'l':
 				length = strtol(optarg, NULL, 0);
