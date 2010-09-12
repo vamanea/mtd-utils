@@ -4,7 +4,7 @@
 
 KERNELHDR := ../../include
 
-CFLAGS ?= -O2 -g -Werror
+CFLAGS ?= -O2 -g
 CPPFLAGS := -I./inc -I./src -I$(KERNELHDR) \
 	-std=gnu99 -DPACKAGE_VERSION=\"1.0\" $(CPPFLAGS)
 
