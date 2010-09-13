@@ -50,7 +50,7 @@ static void display_help (void)
 "-f file    --file=file          Dump to file\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
-"-N         --nobad              Read without bad block skipping\n"
+"-N         --noskipbad          Read without bad block skipping\n"
 "-o         --omitoob            Omit oob data\n"
 "-b         --omitbad            Omit bad blocks from the dump\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
@@ -77,7 +77,7 @@ static void display_version (void)
 
 static bool		pretty_print = false;	// print nice
 static bool		noecc = false;		// don't error correct
-static bool		nobad = false;		// don't skip bad blocks
+static bool		noskipbad = false;	// don't skip bad blocks
 static bool		omitoob = false;	// omit oob data
 static unsigned long	start_addr;		// start address
 static unsigned long	length;			// dump length
@@ -107,7 +107,7 @@ static void process_options (int argc, char * const argv[])
 			{"startaddress", required_argument, 0, 's'},
 			{"length", required_argument, 0, 'l'},
 			{"noecc", no_argument, 0, 'n'},
-			{"nobad", no_argument, 0, 'N'},
+			{"noskipbad", no_argument, 0, 'N'},
 			{"quiet", no_argument, 0, 'q'},
 			{0, 0, 0, 0},
 		};
@@ -162,7 +162,7 @@ static void process_options (int argc, char * const argv[])
 				noecc = true;
 				break;
 			case 'N':
-				nobad = true;
+				noskipbad = true;
 				break;
 			case '?':
 				error++;
@@ -396,7 +396,7 @@ int main(int argc, char * const argv[])
 	for (ofs = start_addr; ofs < end_addr ; ofs+=bs) {
 
 		// new eraseblock , check for bad block
-		if (nobad) {
+		if (noskipbad) {
 			badblock = 0;
 		} else if (blockstart != (ofs & (~meminfo.erasesize + 1))) {
 			blockstart = ofs & (~meminfo.erasesize + 1);
