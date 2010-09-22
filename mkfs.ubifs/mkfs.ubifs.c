@@ -929,9 +929,11 @@ static void set_lprops(int lnum, int offs, int flags)
 	dirty = c->leb_size - free - ALIGN(offs, 8);
 	dbg_msg(3, "LEB %d free %d dirty %d flags %d", lnum, free, dirty,
 		flags);
-	c->lpt[i].free = free;
-	c->lpt[i].dirty = dirty;
-	c->lpt[i].flags = flags;
+	if (i < c->main_lebs) {
+		c->lpt[i].free = free;
+		c->lpt[i].dirty = dirty;
+		c->lpt[i].flags = flags;
+	}
 	c->lst.total_free += free;
 	c->lst.total_dirty += dirty;
 	if (flags & LPROPS_INDEX)
@@ -1943,8 +1945,6 @@ static int finalize_leb_cnt(void)
 {
 	c->leb_cnt = head_lnum;
 	if (c->leb_cnt > c->max_leb_cnt)
-		/* TODO: in this case it segfaults because buffer overruns - we
-		 * somewhere allocate smaller buffers - fix */
 		return err_msg("max_leb_cnt too low (%d needed)", c->leb_cnt);
 	c->main_lebs = c->leb_cnt - c->main_first;
 	if (verbose) {
