@@ -132,7 +132,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:X:j:R:l:j:U";
+static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:X:j:R:l:j:UQq";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -698,8 +698,8 @@ static int get_options(int argc, char**argv)
 		return err_msg("Maximum count of LEBs was not specified "
 			       "(use -h for help)");
 
-	if (squash_rino_perm != -1 && root)
-		return err_msg("--squash-rino-perm and nosquash-rino-perm options"
+	if (squash_rino_perm != -1 && !root)
+		return err_msg("--squash-rino-perm and nosquash-rino-perm options "
 			       "can be used only with the --root option");
 
 	if (c->max_bud_bytes == -1) {
@@ -1673,7 +1673,7 @@ static int write_data(void)
 		if (squash_rino_perm == -1) {
 			printf("WARNING: setting root UBIFS inode UID=GID=0 (root) and permissions "
 				 "to u+rwx,go+rx; use --squash-rino-perm or --nosquash-rino-perm "
-				 "to suppress this warning");
+				 "to suppress this warning\n");
 			squash_rino_perm = 1;
 		}
 		if (squash_rino_perm) {
