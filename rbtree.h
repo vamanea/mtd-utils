@@ -131,7 +131,10 @@ static inline void rb_set_color(struct rb_node *rb, int color)
 
 #define RB_ROOT	(struct rb_root) { NULL, }
 
+/* Newer gcc versions take care of exporting this */
+#ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
 
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
