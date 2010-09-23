@@ -79,7 +79,7 @@ static void print_size(u_int s)
 
 /*====================================================================*/
 
-static void check_partition(int fd, int verbose)
+static void check_partition(int fd)
 {
 	mtd_info_t mtd;
 	erase_unit_header_t hdr, hdr2;
@@ -180,26 +180,21 @@ static void check_partition(int fd, int verbose)
 /* Show usage information */
 void showusage(char *pname)
 {
-	fprintf(stderr, "usage: %s [-v] device\n", pname);
-	fprintf(stderr, "-v verbose messages\n");
+	fprintf(stderr, "usage: %s device\n", pname);
 }
 
 /*====================================================================*/
 
 int main(int argc, char *argv[])
 {
-	int verbose;
 	int optch, errflg, fd;
 	struct stat buf;
 
 	errflg = 0;
-	verbose = 0;
-	while ((optch = getopt(argc, argv, "vh")) != -1) {
+	while ((optch = getopt(argc, argv, "h")) != -1) {
 		switch (optch) {
 			case 'h':
 				errflg = 1; break;
-			case 'v':
-				verbose = 1; break;
 			default:
 				errflg = -1; break;
 		}
@@ -224,7 +219,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	check_partition(fd, verbose);
+	check_partition(fd);
 	close(fd);
 
 	exit(EXIT_SUCCESS);
