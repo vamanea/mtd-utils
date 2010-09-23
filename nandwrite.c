@@ -79,6 +79,7 @@ static void display_help (void)
 "                          device\n"
 "  -m, --markbad           Mark blocks bad if write fails\n"
 "  -n, --noecc             Write without ecc\n"
+"  -N, --noskipbad         Write without bad block skipping\n"
 "  -o, --oob               Image contains oob data\n"
 "  -r, --raw               Image contains the raw oob data dumped by nanddump\n"
 "  -s addr, --start=addr   Set start address (default is 0)\n"
@@ -118,6 +119,7 @@ static bool		forcejffs2 = false;
 static bool		forceyaffs = false;
 static bool		forcelegacy = false;
 static bool		noecc = false;
+static bool		noskipbad = false;
 static bool		pad = false;
 static int		blockalign = 1; /*default to using 16K block size */
 
@@ -127,7 +129,7 @@ static void process_options (int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "ab:fjmnopqrs:y";
+		static const char *short_options = "ab:fjmnNopqrs:y";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -137,6 +139,7 @@ static void process_options (int argc, char * const argv[])
 			{"jffs2", no_argument, 0, 'j'},
 			{"markbad", no_argument, 0, 'm'},
 			{"noecc", no_argument, 0, 'n'},
+			{"noskipbad", no_argument, 0, 'N'},
 			{"oob", no_argument, 0, 'o'},
 			{"pad", no_argument, 0, 'p'},
 			{"quiet", no_argument, 0, 'q'},
@@ -180,6 +183,9 @@ static void process_options (int argc, char * const argv[])
 				break;
 			case 'n':
 				noecc = true;
+				break;
+			case 'N':
+				noskipbad = true;
 				break;
 			case 'm':
 				markbad = true;
@@ -487,6 +493,8 @@ int main(int argc, char * const argv[])
 						 blockstart / meminfo.erasesize, blockstart);
 
 			/* Check all the blocks in an erase block for bad blocks */
+			if (noskipbad)
+				continue;
 			do {
 				if ((ret = ioctl(fd, MEMGETBADBLOCK, &offs)) < 0) {
 					perror("ioctl(MEMGETBADBLOCK)");
