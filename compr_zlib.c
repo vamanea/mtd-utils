@@ -33,7 +33,9 @@
  */
 
 #include <stdint.h>
+#define crc32 __zlib_crc32
 #include <zlib.h>
+#undef crc32
 #include <stdio.h>
 #include <asm/types.h>
 #include <linux/jffs2.h>

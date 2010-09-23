@@ -75,7 +75,6 @@ BUGS:
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <dirent.h>
-#include <zlib.h>
 #include <linux/jffs2.h>
 
 #define SCRATCH_SIZE (5*1024*1024)

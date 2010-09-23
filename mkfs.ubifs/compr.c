@@ -29,6 +29,7 @@
 
 #define crc32 __zlib_crc32
 #include <zlib.h>
+#undef crc32
 
 #include "compr.h"
 #include "ubifs-media.h"
