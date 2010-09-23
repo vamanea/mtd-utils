@@ -70,9 +70,9 @@ struct jffs2_compressor {
 	const char *name;
 	char compr;               /* JFFS2_COMPR_XXX */
 	int (*compress)(unsigned char *data_in, unsigned char *cpage_out,
-			uint32_t *srclen, uint32_t *destlen, void *model);
+			uint32_t *srclen, uint32_t *destlen);
 	int (*decompress)(unsigned char *cdata_in, unsigned char *data_out,
-			uint32_t cdatalen, uint32_t datalen, void *model);
+			uint32_t cdatalen, uint32_t datalen);
 	int usecount;
 	int disabled;             /* if seted the compressor won't compress */
 	unsigned char *compr_buf; /* used by size compr. mode */

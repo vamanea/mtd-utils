@@ -149,7 +149,7 @@ static void jffs2_decompression_test(struct jffs2_compressor *compr,
 		jffs2_error_cnt++;
 		return;
 	}
-	if (compr->decompress(output_buf,jffs2_compression_check_buf,cdatalen,datalen,NULL)) {
+	if (compr->decompress(output_buf,jffs2_compression_check_buf,cdatalen,datalen)) {
 		fprintf(stderr,"JFFS2 compression check: decompression failed at %s.\n", compr->name);
 		jffs2_error_cnt++;
 	}
@@ -243,7 +243,7 @@ uint16_t jffs2_compress( unsigned char *data_in, unsigned char **cpage_out,
 
 				*datalen  = orig_slen;
 				*cdatalen = orig_dlen;
-				compr_ret = this->compress(data_in, output_buf, datalen, cdatalen, NULL);
+				compr_ret = this->compress(data_in, output_buf, datalen, cdatalen);
 				this->usecount--;
 				if (!compr_ret) {
 					ret = this->compr;
@@ -294,7 +294,7 @@ uint16_t jffs2_compress( unsigned char *data_in, unsigned char **cpage_out,
 					jffs2_decompression_test_prepare(this->compr_buf,this->compr_buf_size);
 				*datalen  = orig_slen;
 				*cdatalen = orig_dlen;
-				compr_ret = this->compress(data_in, this->compr_buf, datalen, cdatalen, NULL);
+				compr_ret = this->compress(data_in, this->compr_buf, datalen, cdatalen);
 				this->usecount--;
 				if (!compr_ret) {
 					if (jffs2_compression_check)

@@ -53,7 +53,7 @@ Q: Is 12 bytes sufficient?
 #define STREAM_END_SPACE 12
 
 static int jffs2_zlib_compress(unsigned char *data_in, unsigned char *cpage_out,
-		uint32_t *sourcelen, uint32_t *dstlen, void *model)
+		uint32_t *sourcelen, uint32_t *dstlen)
 {
 	z_stream strm;
 	int ret;
@@ -101,7 +101,7 @@ static int jffs2_zlib_compress(unsigned char *data_in, unsigned char *cpage_out,
 }
 
 static int jffs2_zlib_decompress(unsigned char *data_in, unsigned char *cpage_out,
-		uint32_t srclen, uint32_t destlen, void *model)
+		uint32_t srclen, uint32_t destlen)
 {
 	z_stream strm;
 	int ret;
