@@ -1,5 +1,6 @@
 /* Copyright (C) 2004 Christopher Clark <firstname.lastname@cl.cam.ac.uk> */
 
+#include "common.h"
 #include "hashtable.h"
 #include "hashtable_private.h"
 #include <stdlib.h>
@@ -21,7 +22,7 @@ static const unsigned int primes[] = {
 50331653, 100663319, 201326611, 402653189,
 805306457, 1610612741
 };
-const unsigned int prime_table_length = sizeof(primes)/sizeof(primes[0]);
+const unsigned int prime_table_length = ARRAY_SIZE(primes);
 const float max_load_factor = 0.65;
 
 /*****************************************************************************/
