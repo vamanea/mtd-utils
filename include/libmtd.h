@@ -138,6 +138,30 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd);
 int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd);
 
 /**
+ * mtd_lock - lock eraseblocks.
+ * @desc: MTD library descriptor
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @eb: eraseblock to lock
+ *
+ * This function locks eraseblock @eb. Returns %0 in case of success and %-1
+ * in case of failure.
+ */
+int mtd_lock(const struct mtd_dev_info *mtd, int fd, int eb);
+
+/**
+ * mtd_unlock - unlock eraseblocks.
+ * @desc: MTD library descriptor
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @eb: eraseblock to lock
+ *
+ * This function unlocks eraseblock @eb. Returns %0 in case of success and %-1
+ * in case of failure.
+ */
+int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb);
+
+/**
  * mtd_erase - erase an eraseblock.
  * @desc: MTD library descriptor
  * @mtd: MTD device description object

@@ -802,6 +802,38 @@ static int mtd_valid_erase_block(const struct mtd_dev_info *mtd, int eb)
 	return 0;
 }
 
+static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb, int req,
+		     const char *sreq)
+{
+	int ret;
+	struct erase_info_user ei;
+
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
+
+	ei.start = eb * mtd->eb_size;
+	ei.length = mtd->eb_size;
+
+	ret = ioctl(fd, req, &ei);
+	if (ret < 0)
+		return sys_errmsg("%s ioctl failed for eraseblock %d "
+				  "(mtd%d)", sreq, eb, mtd->mtd_num);
+
+	return 0;
+}
+#define mtd_xlock(mtd, fd, eb, req) mtd_xlock(mtd, fd, eb, req, #req)
+
+int mtd_lock(const struct mtd_dev_info *mtd, int fd, int eb)
+{
+	return mtd_xlock(mtd, fd, eb, MEMLOCK);
+}
+
+int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb)
+{
+	return mtd_xlock(mtd, fd, eb, MEMUNLOCK);
+}
+
 int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	int ret;
