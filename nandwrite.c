@@ -331,7 +331,7 @@ int main(int argc, char * const argv[])
 		}
 
 		// autoplace ECC ?
-		if (autoplace && (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE)) {
+		if (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE) {
 
 			if (ioctl (fd, MEMSETOOBSEL, &autoplace_oobinfo) != 0) {
 				perror ("MEMSETOOBSEL");
