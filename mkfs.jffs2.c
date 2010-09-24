@@ -72,13 +72,14 @@
 #include <crc32.h>
 #include "rbtree.h"
 
+#include "common.h"
+
 /* Do not use the weird XPG version of basename */
 #undef basename
 
 //#define DMALLOC
 //#define mkfs_debug_msg    error_msg
 #define mkfs_debug_msg(a...)	{ }
-#define min(x,y) ({ typeof((x)) _x = (x); typeof((y)) _y = (y); (_x>_y)?_y:_x; })
 
 #define PAD(x) (((x)+3)&~3)
 

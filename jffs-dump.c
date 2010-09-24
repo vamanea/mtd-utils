@@ -14,6 +14,8 @@
 #include <linux/types.h>
 #include <asm/byteorder.h>
 
+#include "common.h"
+
 #define BLOCK_SIZE 1024
 #define JFFS_MAGIC 0x34383931 /* "1984" */
 #define JFFS_MAX_NAME_LEN 256
@@ -31,8 +33,6 @@
 #define JFFS_EMPTY_BITMASK 0xffffffff
 #define JFFS_MAGIC_BITMASK 0x34383931
 #define JFFS_DIRTY_BITMASK 0x00000000
-
-#define min(x,y) (x) > (y) ? (y) : (x)
 
 struct jffs_raw_inode
 {

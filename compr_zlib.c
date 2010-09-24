@@ -39,9 +39,8 @@
 #include <stdio.h>
 #include <asm/types.h>
 #include <linux/jffs2.h>
+#include "common.h"
 #include "compr.h"
-
-#define min(x,y) ((x)<(y)?(x):(y))
 
 /* Plan: call deflate() with avail_in == *sourcelen,
    avail_out = *dstlen - 12 and flush == Z_FINISH.

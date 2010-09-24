@@ -20,7 +20,7 @@
 #include "mtd/mtd-user.h"
 #include "mcast_image.h"
 
-#define min(x,y) (  (x)>(y)?(y):(x) )
+#include "common.h"
 
 #define WBUF_SIZE 4096
 struct eraseblock {
