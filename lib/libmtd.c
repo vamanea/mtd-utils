@@ -791,6 +791,17 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd)
 	return mtd_get_dev_info1(desc, mtd_num, mtd);
 }
 
+static int mtd_valid_erase_block(const struct mtd_dev_info *mtd, int eb)
+{
+	if (eb < 0 || eb >= mtd->eb_cnt) {
+		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
+		       eb, mtd->mtd_num, mtd->eb_cnt);
+		errno = EINVAL;
+		return -1;
+	}
+	return 0;
+}
+
 int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 {
 	int ret;
@@ -798,12 +809,9 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 	struct erase_info_user64 ei64;
 	struct erase_info_user ei;
 
-	if (eb < 0 || eb >= mtd->eb_cnt) {
-		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->mtd_num, mtd->eb_cnt);
-		errno = EINVAL;
-		return -1;
-	}
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
 
 	ei64.start = (__u64)eb * mtd->eb_size;
 	ei64.length = mtd->eb_size;
@@ -930,12 +938,9 @@ int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 	int ret;
 	loff_t seek;
 
-	if (eb < 0 || eb >= mtd->eb_cnt) {
-		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->mtd_num, mtd->eb_cnt);
-		errno = EINVAL;
-		return -1;
-	}
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
 
 	if (!mtd->bb_allowed)
 		return 0;
@@ -958,12 +963,9 @@ int mtd_mark_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 		return -1;
 	}
 
-	if (eb < 0 || eb >= mtd->eb_cnt) {
-		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->mtd_num, mtd->eb_cnt);
-		errno = EINVAL;
-		return -1;
-	}
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
 
 	seek = (loff_t)eb * mtd->eb_size;
 	ret = ioctl(fd, MEMSETBADBLOCK, &seek);
@@ -979,12 +981,10 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	int ret, rd = 0;
 	off_t seek;
 
-	if (eb < 0 || eb >= mtd->eb_cnt) {
-		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->mtd_num, mtd->eb_cnt);
-		errno = EINVAL;
-		return -1;
-	}
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
+
 	if (offs < 0 || offs + len > mtd->eb_size) {
 		errmsg("bad offset %d or length %d, mtd%d eraseblock size is %d",
 		       offs, len, mtd->mtd_num, mtd->eb_size);
@@ -1015,12 +1015,10 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	int ret;
 	off_t seek;
 
-	if (eb < 0 || eb >= mtd->eb_cnt) {
-		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->mtd_num, mtd->eb_cnt);
-		errno = EINVAL;
-		return -1;
-	}
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
+
 	if (offs < 0 || offs + len > mtd->eb_size) {
 		errmsg("bad offset %d or length %d, mtd%d eraseblock size is %d",
 		       offs, len, mtd->mtd_num, mtd->eb_size);
@@ -1157,12 +1155,10 @@ int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	struct stat st;
 	char *buf;
 
-	if (eb < 0 || eb >= mtd->eb_cnt) {
-		errmsg("bad eraseblock number %d, mtd%d has %d eraseblocks",
-		       eb, mtd->mtd_num, mtd->eb_cnt);
-		errno = EINVAL;
-		return -1;
-	}
+	ret = mtd_valid_erase_block(mtd, eb);
+	if (ret)
+		return ret;
+
 	if (offs < 0 || offs >= mtd->eb_size) {
 		errmsg("bad offset %d, mtd%d eraseblock size is %d",
 		       offs, mtd->mtd_num, mtd->eb_size);
