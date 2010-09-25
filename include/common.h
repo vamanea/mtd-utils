@@ -38,10 +38,12 @@ extern "C" {
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* Verbose messages */
-#define verbose(verbose, fmt, ...) do {                            \
+#define bareverbose(verbose, fmt, ...) do {                        \
 	if (verbose)                                               \
-		printf(PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__); \
+		printf(fmt, ##__VA_ARGS__);                        \
 } while(0)
+#define verbose(verbose, fmt, ...) \
+	bareverbose(verbose, PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__)
 
 /* Normal messages */
 #define normsg(fmt, ...) do {                              \
