@@ -21,6 +21,9 @@
  * Author: Artem Bityutskiy
  */
 
+#define PROGRAM_VERSION "1.1"
+#define PROGRAM_NAME    "ubidetach"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -30,8 +33,6 @@
 #include <libubi.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.1"
-#define PROGRAM_NAME    "ubidetach"
 #define DEFAULT_CTRL_DEV "/dev/ubi_ctrl"
 
 /* The variables below are set by command line arguments */

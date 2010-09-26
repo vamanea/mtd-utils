@@ -21,6 +21,9 @@
  * Author: Richard Titmuss
  */
 
+#define PROGRAM_VERSION "1.0"
+#define PROGRAM_NAME    "ubirename"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -29,9 +32,6 @@
 
 #include <libubi.h>
 #include "common.h"
-
-#define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "ubirename"
 
 static const char *usage =
 "Usage: " PROGRAM_NAME " <UBI device node file name> [<old name> <new name>|...]\n\n"

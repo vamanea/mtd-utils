@@ -26,6 +26,8 @@
  *
  */
 
+#define PROGRAM_NAME "sumtool"
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -48,8 +50,6 @@
 #include "summary.h"
 
 #define PAD(x) (((x)+3)&~3)
-
-static const char *const app_name = "sumtool";
 
 static struct jffs2_summary *sum_collected = NULL;
 
@@ -122,7 +122,7 @@ static unsigned char ffbuf[16] = {
 static void verror_msg(const char *s, va_list p)
 {
 	fflush(stdout);
-	fprintf(stderr, "%s: ", app_name);
+	fprintf(stderr, "%s: ", PROGRAM_NAME);
 	vfprintf(stderr, s, p);
 }
 

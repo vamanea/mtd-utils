@@ -27,6 +27,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define PROGRAM_NAME "mtd_debug"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -347,17 +349,14 @@ int showinfo (int fd)
 	return (0);
 }
 
-void showusage (const char *progname)
+void showusage(void)
 {
 	fprintf (stderr,
-			"usage: %s info <device>\n"
-			"       %s read <device> <offset> <len> <dest-filename>\n"
-			"       %s write <device> <offset> <len> <source-filename>\n"
-			"       %s erase <device> <offset> <len>\n",
-			progname,
-			progname,
-			progname,
-			progname);
+			"usage: %1$s info <device>\n"
+			"       %1$s read <device> <offset> <len> <dest-filename>\n"
+			"       %1$s write <device> <offset> <len> <source-filename>\n"
+			"       %1$s erase <device> <offset> <len>\n",
+			PROGRAM_NAME);
 	exit (1);
 }
 
@@ -368,10 +367,8 @@ void showusage (const char *progname)
 
 int main (int argc,char *argv[])
 {
-	const char *progname;
 	int err = 0,fd,option = OPT_INFO;
 	int open_flag;
-	(progname = strrchr (argv[0],'/')) ? progname++ : (progname = argv[0]);
 
 	/* parse command-line options */
 	if (argc == 3 && !strcmp (argv[1],"info"))
@@ -383,7 +380,7 @@ int main (int argc,char *argv[])
 	else if (argc == 5 && !strcmp (argv[1],"erase"))
 		option = OPT_ERASE;
 	else
-		showusage (progname);
+		showusage();
 
 	/* open device */
 	open_flag = (option==OPT_INFO || option==OPT_READ) ? O_RDONLY : O_RDWR;

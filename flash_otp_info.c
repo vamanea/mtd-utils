@@ -2,6 +2,8 @@
  * flash_otp_info.c -- print info about One-Time-Programm data
  */
 
+#define PROGRAM_NAME "flash_otp_info"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -16,7 +18,7 @@ int main(int argc,char *argv[])
 	int fd, val, i, ret;
 
 	if (argc != 3 || (strcmp(argv[1], "-f") && strcmp(argv[1], "-u"))) {
-		fprintf(stderr,"Usage: %s [ -f | -u ] <device>\n", argv[0]);
+		fprintf(stderr,"Usage: %s [ -f | -u ] <device>\n", PROGRAM_NAME);
 		return EINVAL;
 	}
 

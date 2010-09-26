@@ -5,6 +5,8 @@
  *
  */
 
+#define PROGRAM_NAME "flash_lock"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,7 +31,7 @@ int main(int argc, char *argv[])
 	 */
 	if(argc != 4)
 	{
-		fprintf(stderr, "USAGE: %s <mtd device> <ofs in hex> <num of sectors in decimal or -1 for all sectors>\n", argv[0]);
+		fprintf(stderr, "USAGE: %s <mtd device> <ofs in hex> <num of sectors in decimal or -1 for all sectors>\n", PROGRAM_NAME);
 		exit(1);
 	}
 	else if(strncmp(argv[1], "/dev/mtd", 8) != 0)

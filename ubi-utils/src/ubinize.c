@@ -24,6 +24,9 @@
  *          Oliver Lohmann
  */
 
+#define PROGRAM_VERSION "1.2"
+#define PROGRAM_NAME    "ubinize"
+
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -35,9 +38,6 @@
 #include <libiniparser.h>
 #include "common.h"
 #include "ubiutils-common.h"
-
-#define PROGRAM_VERSION "1.2"
-#define PROGRAM_NAME    "ubinize"
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 " - a tool to generate UBI images. An UBI image may contain one or more UBI "

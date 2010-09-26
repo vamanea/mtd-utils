@@ -20,6 +20,8 @@
  *	2. test, test, and test !!!
  */
 
+#define PROGRAM_NAME "nftldump"
+
 #define _XOPEN_SOURCE 500 /* For pread */
 
 #include <unistd.h>
@@ -249,7 +251,7 @@ static void dump_virtual_units(void)
 int main(int argc, char **argv)
 {
 	if (argc < 2) {
-		printf("Usage: %s <device> [<outfile>]\n", argv[0]);
+		printf("Usage: %s <device> [<outfile>]\n", PROGRAM_NAME);
 		exit(1);
 	}
 	fd = open(argv[1], O_RDONLY);

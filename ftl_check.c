@@ -34,6 +34,8 @@
 
   ======================================================================*/
 
+#define PROGRAM_NAME "ftl_check"
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -178,9 +180,9 @@ static void check_partition(int fd)
 } /* format_partition */
 
 /* Show usage information */
-void showusage(char *pname)
+void showusage(void)
 {
-	fprintf(stderr, "usage: %s device\n", pname);
+	fprintf(stderr, "usage: %s device\n", PROGRAM_NAME);
 }
 
 /*====================================================================*/
@@ -200,7 +202,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (errflg || (optind != argc-1)) {
-		showusage(argv[0]);
+		showusage();
 		exit(errflg > 0 ? 0 : EXIT_FAILURE);
 	}
 

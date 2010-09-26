@@ -24,6 +24,8 @@
  *          Artem Bityutskiy
  */
 
+#define PROGRAM_NAME "libubigen"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -34,8 +36,6 @@
 #include <libubigen.h>
 #include <crc32.h>
 #include "common.h"
-
-#define PROGRAM_NAME "libubigen"
 
 void ubigen_info_init(struct ubigen_info *ui, int peb_size, int min_io_size,
 		      int subpage_size, int vid_hdr_offs, int ubi_ver,

@@ -34,6 +34,8 @@
 
   ======================================================================*/
 
+#define PROGRAM_NAME "ftl_format"
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -308,7 +310,7 @@ int main(int argc, char *argv[])
 	}
 	if (errflg || (optind != argc-1)) {
 		fprintf(stderr, "usage: %s [-q] [-i] [-s spare-blocks]"
-				" [-r reserve-percent] [-b bootsize] device\n", argv[0]);
+				" [-r reserve-percent] [-b bootsize] device\n", PROGRAM_NAME);
 		exit(EXIT_FAILURE);
 	}
 

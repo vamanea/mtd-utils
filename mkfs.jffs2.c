@@ -47,6 +47,8 @@
  *  -Erik, November 2002
  */
 
+#define PROGRAM_NAME "mkfs.jffs2"
+
 #define _GNU_SOURCE
 #include <sys/types.h>
 #include <stdio.h>
@@ -108,7 +110,6 @@ static int squash_uids = 0;
 static int squash_perms = 0;
 static int fake_times = 0;
 int target_endian = __BYTE_ORDER;
-static const char *const app_name = "mkfs.jffs2";
 static const char *const memory_exhausted = "memory exhausted";
 
 uint32_t find_hardlink(struct filesystem_entry *e)
@@ -141,7 +142,7 @@ uint32_t find_hardlink(struct filesystem_entry *e)
 static void verror_msg(const char *s, va_list p)
 {
 	fflush(stdout);
-	fprintf(stderr, "%s: ", app_name);
+	fprintf(stderr, "%s: ", PROGRAM_NAME);
 	vfprintf(stderr, s, p);
 }
 static void error_msg(const char *s, ...)
@@ -247,7 +248,7 @@ extern char *xreadlink(const char *path)
 		buf = xrealloc(buf, bufsize += GROWBY);
 		readsize = readlink(path, buf, bufsize); /* 1st try */
 		if (readsize == -1) {
-			perror_msg("%s:%s", app_name, path);
+			perror_msg("%s:%s", PROGRAM_NAME, path);
 			return NULL;
 		}
 	}

@@ -1,3 +1,5 @@
+#define PROGRAM_NAME "doc_loadbios"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>

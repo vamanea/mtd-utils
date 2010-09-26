@@ -14,6 +14,9 @@
  * Bug/ToDo:
  */
 
+#define PROGRAM_NAME "jffs2dump"
+#define VERSION "$Revision: 1.10 $"
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -34,9 +37,6 @@
 #include <crc32.h>
 #include "summary.h"
 
-#define PROGRAM "jffs2dump"
-#define VERSION "$Revision: 1.10 $"
-
 #define PAD(x) (((x)+3)&~3)
 
 /* For outputting a byte-swapped version of the input image. */
@@ -52,7 +52,7 @@ char	*data;		// image data
 
 void display_help (void)
 {
-	printf("Usage: " PROGRAM " [OPTION]... INPUTFILE\n"
+	printf("Usage: %s [OPTION]... INPUTFILE\n"
 	       "Dump the contents of a binary JFFS2 image.\n\n"
 	       "     --help                   display this help and exit\n"
 	       "     --version                display version information and exit\n"
@@ -63,22 +63,24 @@ void display_help (void)
 	       " -r, --recalccrc              recalc name and data crc on endian conversion\n"
 	       " -d, --datsize=LEN            size of data chunks, when oob data in binary image (NAND only)\n"
 	       " -o, --oobsize=LEN            size of oob data chunk in binary image (NAND only)\n"
-	       " -v, --verbose                verbose output\n");
+	       " -v, --verbose                verbose output\n",
+	       PROGRAM_NAME);
 	exit(0);
 }
 
 void display_version (void)
 {
-	printf(PROGRAM " " VERSION "\n"
+	printf("%1$s " VERSION "\n"
 			"\n"
 			"Copyright (C) 2003 Thomas Gleixner \n"
 			"\n"
-			PROGRAM " comes with NO WARRANTY\n"
+			"%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
 			"\n"
-			"You may redistribute copies of " PROGRAM "\n"
+			"You may redistribute copies of %1$s\n"
 			"under the terms of the GNU General Public Licence.\n"
-			"See the file `COPYING' for more information.\n");
+			"See the file `COPYING' for more information.\n",
+			PROGRAM_NAME);
 	exit(0);
 }
 

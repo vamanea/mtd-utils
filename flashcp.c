@@ -29,6 +29,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define PROGRAM_NAME "flashcp"
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -84,7 +86,7 @@ static void log_printf (int level,const char *fmt, ...)
 	fflush (fp);
 }
 
-static void showusage (const char *progname,bool error)
+static void showusage(bool error)
 {
 	int level = error ? LOG_ERROR : LOG_NORMAL;
 
@@ -92,15 +94,15 @@ static void showusage (const char *progname,bool error)
 			"\n"
 			"Flash Copy - Written by Abraham van der Merwe <abraham@2d3d.co.za>\n"
 			"\n"
-			"usage: %s [ -v | --verbose ] <filename> <device>\n"
-			"       %s -h | --help\n"
+			"usage: %1$s [ -v | --verbose ] <filename> <device>\n"
+			"       %1$s -h | --help\n"
 			"\n"
 			"   -h | --help      Show this help message\n"
 			"   -v | --verbose   Show progress reports\n"
 			"   <filename>       File which you want to copy to flash\n"
 			"   <device>         Flash device to write to (e.g. /dev/mtd0, /dev/mtd1, etc.)\n"
 			"\n",
-			progname,progname);
+			PROGRAM_NAME);
 
 	exit (error ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -165,7 +167,7 @@ static void cleanup (void)
 
 int main (int argc,char *argv[])
 {
-	const char *progname,*filename = NULL,*device = NULL;
+	const char *filename = NULL,*device = NULL;
 	int i,flags = FLAG_NONE;
 	ssize_t result;
 	size_t size,written;
@@ -173,8 +175,6 @@ int main (int argc,char *argv[])
 	struct erase_info_user erase;
 	struct stat filestat;
 	unsigned char src[BUFSIZE],dest[BUFSIZE];
-
-	(progname = strrchr (argv[0],'/')) ? progname++ : (progname = argv[0]);
 
 	/*********************
 	 * parse cmd-line
@@ -206,7 +206,7 @@ int main (int argc,char *argv[])
 				break;
 			default:
 				DEBUG("Unknown parameter: %s\n",argv[option_index]);
-				showusage (progname,true);
+				showusage(true);
 		}
 	}
 	if (optind+2 == argc) {
@@ -219,8 +219,8 @@ int main (int argc,char *argv[])
 		DEBUG("Got device: %s\n",device);
 	}
 
-	if (flags & FLAG_HELP || progname == NULL || device == NULL)
-		showusage (progname,flags != FLAG_HELP);
+	if (flags & FLAG_HELP || device == NULL)
+		showusage(flags != FLAG_HELP);
 
 	atexit (cleanup);
 

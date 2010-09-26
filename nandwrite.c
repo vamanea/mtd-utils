@@ -19,6 +19,9 @@
  * Bug/ToDo:
  */
 
+#define PROGRAM_NAME "nandwrite"
+#define VERSION "$Revision: 1.32 $"
+
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
@@ -38,9 +41,6 @@
 
 #include <asm/types.h>
 #include "mtd/mtd-user.h"
-
-#define PROGRAM "nandwrite"
-#define VERSION "$Revision: 1.32 $"
 
 #define MAX_PAGE_SIZE	4096
 #define MAX_OOB_SIZE	128
@@ -94,16 +94,17 @@ static void display_help (void)
 
 static void display_version (void)
 {
-	printf(PROGRAM " " VERSION "\n"
+	printf("%1$s " VERSION "\n"
 			"\n"
 			"Copyright (C) 2003 Thomas Gleixner \n"
 			"\n"
-			PROGRAM " comes with NO WARRANTY\n"
+			"%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
 			"\n"
-			"You may redistribute copies of " PROGRAM "\n"
+			"You may redistribute copies of %1$s\n"
 			"under the terms of the GNU General Public Licence.\n"
-			"See the file `COPYING' for more information.\n");
+			"See the file `COPYING' for more information.\n",
+			PROGRAM_NAME);
 	exit (EXIT_SUCCESS);
 }
 

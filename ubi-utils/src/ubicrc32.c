@@ -22,6 +22,9 @@
  * Author: Oliver Lohmann
  */
 
+#define PROGRAM_VERSION "1.0"
+#define PROGRAM_NAME    "ubicrc32"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -33,9 +36,6 @@
 #include "common.h"
 
 #define BUFSIZE 4096
-
-#define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "ubicrc32"
 
 static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to calculate CRC32 with UBI start value (0xFFFFFFFF)";

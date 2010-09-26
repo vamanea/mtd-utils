@@ -20,6 +20,8 @@
  *	2. test, test, and test !!!
  */
 
+#define PROGRAM_NAME "nftl_format"
+
 #define _XOPEN_SOURCE 500 /* for pread/pwrite */
 #include <unistd.h>
 #include <stdlib.h>
@@ -171,7 +173,7 @@ static int checkbbt(void)
 	int i, addr;
 
 	if (pread(fd, bbt, 512, 0x800) < 0) {
-		printf("nftl_format: failed to read BBT, errno=%d\n", errno);
+		printf("%s: failed to read BBT, errno=%d\n", PROGRAM_NAME, errno);
 		return (-1);
 	}
 
@@ -189,7 +191,7 @@ static int checkbbt(void)
 
 void usage(int rc)
 {
-	fprintf(stderr, "Usage: nftl_format [-ib] <mtddevice> [<start offset> [<size>]]\n");
+	fprintf(stderr, "Usage: %s [-ib] <mtddevice> [<start offset> [<size>]]\n", PROGRAM_NAME);
 	exit(rc);
 }
 

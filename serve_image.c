@@ -1,3 +1,4 @@
+#define PROGRAM_NAME "serve_image"
 #define _POSIX_C_SOURCE 199309
 
 #include <time.h>
@@ -59,7 +60,7 @@ int main(int argc, char **argv)
 	}
 	if (argc != 5) {
 		fprintf(stderr, "usage: %s <host> <port> <image> <erasesize> [<tx_rate>]\n",
-			(strrchr(argv[0], '/')?:argv[0]-1)+1);
+			PROGRAM_NAME);
 		exit(1);
 	}
 	pkt_delay = (sizeof(pktbuf) * 1000000) / tx_rate;

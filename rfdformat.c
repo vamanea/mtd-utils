@@ -12,6 +12,9 @@
  * the beginning of each block.
  */
 
+#define PROGRAM_NAME "rfdformat"
+#define VERSION "$Revision 1.0 $"
+
 #define _XOPEN_SOURCE 500 /* For pread/pwrite */
 
 #include <stdio.h>
@@ -26,25 +29,24 @@
 #include <mtd/mtd-user.h>
 #include <linux/types.h>
 
-#define PROGRAM "rfdformat"
-#define VERSION "$Revision 1.0 $"
-
 void display_help(void)
 {
-	printf("Usage: " PROGRAM " [OPTIONS] MTD-device\n"
+	printf("Usage: %s [OPTIONS] MTD-device\n"
 			"Formats NOR flash for resident flash disk\n"
 			"\n"
 			"-h         --help               display this help and exit\n"
-			"-V         --version            output version information and exit\n");
+			"-V         --version            output version information and exit\n",
+			PROGRAM_NAME);
 	exit(0);
 }
 
 void display_version(void)
 {
-	printf(PROGRAM " " VERSION "\n"
+	printf("%s " VERSION "\n"
 			"\n"
 			"This is free software; see the source for copying conditions.  There is NO\n"
-			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
+			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n",
+			PROGRAM_NAME);
 
 	exit(0);
 }

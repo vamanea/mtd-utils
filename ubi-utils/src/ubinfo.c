@@ -21,6 +21,9 @@
  * Author: Artem Bityutskiy
  */
 
+#define PROGRAM_VERSION "1.1"
+#define PROGRAM_NAME    "ubinfo"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -30,9 +33,6 @@
 #include <libubi.h>
 #include "common.h"
 #include "ubiutils-common.h"
-
-#define PROGRAM_VERSION "1.1"
-#define PROGRAM_NAME    "ubinfo"
 
 /* The variables below are set by command line arguments */
 struct args {

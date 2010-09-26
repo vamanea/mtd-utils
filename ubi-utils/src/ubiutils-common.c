@@ -23,6 +23,8 @@
  *          Adrian Hunter
  */
 
+#define PROGRAM_NAME "ubiutils"
+
 #include <sys/time.h>
 #include <sys/types.h>
 #include <stdio.h>

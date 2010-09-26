@@ -1,3 +1,5 @@
+#define PROGRAM_NAME "nandtest"
+
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
@@ -17,14 +19,15 @@
 
 void usage(void)
 {
-	fprintf(stderr, "usage: nandtest [OPTIONS] <device>\n\n"
+	fprintf(stderr, "usage: %s [OPTIONS] <device>\n\n"
 		"  -h, --help           Display this help output\n"
 		"  -m, --markbad        Mark blocks bad if they appear so\n"
 		"  -s, --seed           Supply random seed\n"
 		"  -p, --passes         Number of passes\n"
 		"  -o, --offset         Start offset on flash\n"
 		"  -l, --length         Length of flash to test\n"
-		"  -k, --keep           Restore existing contents after test\n");
+		"  -k, --keep           Restore existing contents after test\n",
+		PROGRAM_NAME);
 	exit(1);
 }
 

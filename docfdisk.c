@@ -16,6 +16,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#define PROGRAM_NAME "docfdisk"
+
 #define _XOPEN_SOURCE 500 /* for pread/pwrite */
 #include <unistd.h>
 #include <stdlib.h>
@@ -158,7 +160,7 @@ int main(int argc, char **argv)
 				"Usage: %s <mtddevice> [<size1> [<size2> [<size3> [<size4]]]]\n"
 				"  Sizes are in device units (run with no sizes to show unitsize and current\n"
 				"  partitions).  Last size = 0 means go to end of device.\n",
-				argv[0]);
+				PROGRAM_NAME);
 		return 1;
 	}
 

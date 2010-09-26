@@ -29,6 +29,9 @@
  */
 #define MAX_CONSECUTIVE_BAD_BLOCKS 4
 
+#define PROGRAM_VERSION "1.5"
+#define PROGRAM_NAME    "ubiformat"
+
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -44,9 +47,6 @@
 #include <crc32.h>
 #include "common.h"
 #include "ubiutils-common.h"
-
-#define PROGRAM_VERSION "1.5"
-#define PROGRAM_NAME    "ubiformat"
 
 /* The variables below are set by command line arguments */
 struct args {

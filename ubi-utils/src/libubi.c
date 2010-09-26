@@ -20,6 +20,8 @@
  * UBI (Unsorted Block Images) library.
  */
 
+#define PROGRAM_NAME "libubi"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,8 +35,6 @@
 #include <libubi.h>
 #include "libubi_int.h"
 #include "common.h"
-
-#define PROGRAM_NAME "libubi"
 
 /**
  * mkpath - compose full path from 2 given components.

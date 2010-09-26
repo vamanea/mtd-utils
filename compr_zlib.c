@@ -32,6 +32,8 @@
  * under either the RHEPL or the GPL.
  */
 
+#define PROGRAM_NAME "compr_zlib"
+
 #include <stdint.h>
 #define crc32 __zlib_crc32
 #include <zlib.h>

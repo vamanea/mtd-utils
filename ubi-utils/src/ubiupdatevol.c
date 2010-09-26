@@ -24,6 +24,9 @@
  *          Artem Bityutskiy
  */
 
+#define PROGRAM_VERSION "1.2"
+#define PROGRAM_NAME    "ubiupdatevol"
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -36,9 +39,6 @@
 
 #include <libubi.h>
 #include "common.h"
-
-#define PROGRAM_VERSION "1.2"
-#define PROGRAM_NAME    "ubiupdatevol"
 
 struct args {
 	int truncate;

@@ -9,6 +9,9 @@
  *  (at your option) any later version.
  */
 
+#define PROGRAM_NAME "rfddump"
+#define VERSION "$Revision 1.0 $"
+
 #define _XOPEN_SOURCE 500 /* For pread */
 
 #include <stdio.h>
@@ -51,27 +54,26 @@ struct rfd {
 	int verbose;
 };
 
-#define PROGRAM "rfddump"
-#define VERSION "$Revision 1.0 $"
-
 void display_help(void)
 {
-	printf("Usage: " PROGRAM " [OPTIONS] MTD-device filename\n"
+	printf("Usage: %s [OPTIONS] MTD-device filename\n"
 			"Dumps the contents of a resident flash disk\n"
 			"\n"
 			"-h         --help               display this help and exit\n"
 			"-V         --version            output version information and exit\n"
 			"-v         --verbose		Be verbose\n"
-			"-b size    --blocksize          Block size (defaults to erase unit)\n");
+			"-b size    --blocksize          Block size (defaults to erase unit)\n",
+			PROGRAM_NAME);
 	exit(0);
 }
 
 void display_version(void)
 {
-	printf(PROGRAM " " VERSION "\n"
+	printf("%s " VERSION "\n"
 			"\n"
 			"This is free software; see the source for copying conditions.  There is NO\n"
-			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
+			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n",
+			PROGRAM_NAME);
 
 	exit(0);
 }
@@ -248,13 +250,13 @@ int main(int argc, char *argv[])
 
 	rfd.header = malloc(rfd.header_size);
 	if (!rfd.header) {
-		perror(PROGRAM);
+		perror(PROGRAM_NAME);
 		close(fd);
 		return 2;
 	}
 	rfd.sector_map = malloc(rfd.sector_count * sizeof(int));
 	if (!rfd.sector_map) {
-		perror(PROGRAM);
+		perror(PROGRAM_NAME);
 		close(fd);
 		free(rfd.sector_map);
 		return 2;

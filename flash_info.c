@@ -2,6 +2,8 @@
  * flash_info.c -- print info about a MTD device
  */
 
+#define PROGRAM_NAME "flash_info"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,7 +21,7 @@ int main(int argc,char *argv[])
 
 	if (1 >= argc)
 	{
-		fprintf(stderr,"Usage: flash_info device\n");
+		fprintf(stderr,"Usage: %s device\n", PROGRAM_NAME);
 		return 16;
 	}
 

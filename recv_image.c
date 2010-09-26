@@ -1,4 +1,5 @@
 
+#define PROGRAM_NAME "recv_image"
 #define _XOPEN_SOURCE 500
 
 #include <errno.h>
@@ -63,7 +64,7 @@ int main(int argc, char **argv)
 
 	if (argc != 4) {
 		fprintf(stderr, "usage: %s <host> <port> <mtddev>\n",
-			(strrchr(argv[0], '/')?:argv[0]-1)+1);
+			PROGRAM_NAME);
 		exit(1);
 	}
 	/* Open the device */

@@ -1,5 +1,7 @@
 /* Copyright (C) 2004 Christopher Clark <firstname.lastname@cl.cam.ac.uk> */
 
+#define PROGRAM_NAME "hashtable"
+
 #include "common.h"
 #include "hashtable.h"
 #include "hashtable_private.h"

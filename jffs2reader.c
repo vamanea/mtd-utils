@@ -62,6 +62,7 @@ BUGS:
 - Doesn't check CRC checksums.
  */
 
+#define PROGRAM_NAME "jffs2reader"
 
 #include <errno.h>
 #include <stdint.h>
@@ -817,8 +818,8 @@ void lsdir(char *o, size_t size, char *path, int recurse)
 
 	if (ino == 0 ||
 			(dd == NULL && ino == 0) || (dd != NULL && dd->type != DT_DIR)) {
-		fprintf(stderr, "jffs2reader: %s: No such file or directory\n",
-				path);
+		fprintf(stderr, "%s: %s: No such file or directory\n",
+				PROGRAM_NAME, path);
 		exit(EXIT_FAILURE);
 	}
 
@@ -888,7 +889,8 @@ int main(int argc, char **argv)
 				break;
 			default:
 				fprintf(stderr,
-						"Usage: jffs2reader <image> [-d|-f] < path > \n");
+						"Usage: %s <image> [-d|-f] < path >\n",
+						PROGRAM_NAME);
 				exit(EXIT_FAILURE);
 		}
 	}

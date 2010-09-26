@@ -2,6 +2,8 @@
  * flash_otp_write.c -- write One-Time-Program data
  */
 
+#define PROGRAM_NAME "flash_otp_write"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -21,7 +23,7 @@ int main(int argc,char *argv[])
 	char *p, buf[2048];
 
 	if (argc != 4 || strcmp(argv[1], "-u")) {
-		fprintf(stderr, "Usage: %s -u <device> <offset>\n", argv[0]);
+		fprintf(stderr, "Usage: %s -u <device> <offset>\n", PROGRAM_NAME);
 		fprintf(stderr, "the raw data to write should be provided on stdin\n");
 		fprintf(stderr, "CAUTION! ONCE SET TO 0, OTP DATA BITS CAN'T BE ERASED!\n");
 		return EINVAL;
@@ -47,7 +49,7 @@ int main(int argc,char *argv[])
 
 	offset = strtoul(argv[3], &p, 0);
 	if (argv[3][0] == 0 || *p != 0) {
-		fprintf(stderr, "%s: bad offset value\n", argv[0]);
+		fprintf(stderr, "%s: bad offset value\n", PROGRAM_NAME);
 		return ERANGE;
 	}
 

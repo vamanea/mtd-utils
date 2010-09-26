@@ -5,6 +5,8 @@
  *
  */
 
+#define PROGRAM_NAME "flash_unlock"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,7 +30,7 @@ int main(int argc, char *argv[])
 	 */
 	if(argc < 2)
 	{
-		fprintf(stderr, "USAGE: %s <mtd device> <offset in hex> <block count in decimal number>\n", argv[0]);
+		fprintf(stderr, "USAGE: %s <mtd device> <offset in hex> <block count in decimal number>\n", PROGRAM_NAME);
 		exit(1);
 	}
 	else if(strncmp(argv[1], "/dev/mtd", 8) != 0)

@@ -23,6 +23,9 @@
  *          Frank Haverkamp <haver@vnet.ibm.com>
  */
 
+#define PROGRAM_VERSION "1.1"
+#define PROGRAM_NAME    "ubirmvol"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -31,9 +34,6 @@
 
 #include <libubi.h>
 #include "common.h"
-
-#define PROGRAM_VERSION "1.1"
-#define PROGRAM_NAME    "ubirmvol"
 
 /* The variables below are set by command line arguments */
 struct args {

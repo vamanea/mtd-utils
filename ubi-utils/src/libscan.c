@@ -20,6 +20,8 @@
  * UBI scanning library.
  */
 
+#define PROGRAM_NAME "libscan"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdint.h>
@@ -34,8 +36,6 @@
 #include <libscan.h>
 #include <crc32.h>
 #include "common.h"
-
-#define PROGRAM_NAME "libscan"
 
 static int all_ff(const void *buf, int len)
 {

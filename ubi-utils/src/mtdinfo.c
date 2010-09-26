@@ -21,6 +21,9 @@
  * Author: Artem Bityutskiy
  */
 
+#define PROGRAM_VERSION "1.0"
+#define PROGRAM_NAME    "mtdinfo"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -32,9 +35,6 @@
 #include <libmtd.h>
 #include "common.h"
 #include "ubiutils-common.h"
-
-#define PROGRAM_VERSION "1.0"
-#define PROGRAM_NAME    "mtdinfo"
 
 /* The variables below are set by command line arguments */
 struct args {

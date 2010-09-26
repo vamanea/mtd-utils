@@ -13,6 +13,9 @@
  *   chips contained in DoC devices.
  */
 
+#define PROGRAM_NAME "nanddump"
+#define VERSION "$Revision: 1.29 $"
+
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
@@ -30,9 +33,6 @@
 #include <asm/types.h>
 #include <mtd/mtd-user.h>
 
-#define PROGRAM "nanddump"
-#define VERSION "$Revision: 1.29 $"
-
 static struct nand_oobinfo none_oobinfo = {
 	.useecc = MTD_NANDECC_OFF,
 };
@@ -40,7 +40,7 @@ static struct nand_oobinfo none_oobinfo = {
 static void display_help (void)
 {
 	printf(
-"Usage: nanddump [OPTIONS] MTD-device\n"
+"Usage: %s [OPTIONS] MTD-device\n"
 "Dumps the contents of a nand mtd partition.\n"
 "\n"
 "           --help               Display this help and exit\n"
@@ -55,21 +55,22 @@ static void display_help (void)
 "-b         --omitbad            Omit bad blocks from the dump\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
-"-s addr    --startaddress=addr  Start address\n"
-	);
+"-s addr    --startaddress=addr  Start address\n",
+	PROGRAM_NAME);
 	exit(EXIT_SUCCESS);
 }
 
 static void display_version (void)
 {
-	printf(PROGRAM " " VERSION "\n"
+	printf("%1$s " VERSION "\n"
 			"\n"
-			PROGRAM " comes with NO WARRANTY\n"
+			"%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
 			"\n"
-			"You may redistribute copies of " PROGRAM "\n"
+			"You may redistribute copies of %1$s\n"
 			"under the terms of the GNU General Public Licence.\n"
-			"See the file `COPYING' for more information.\n");
+			"See the file `COPYING' for more information.\n",
+			PROGRAM_NAME);
 	exit(EXIT_SUCCESS);
 }
 
