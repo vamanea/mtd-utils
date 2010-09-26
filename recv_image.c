@@ -1,11 +1,11 @@
 
 #define PROGRAM_NAME "recv_image"
 #define _XOPEN_SOURCE 500
+#define _BSD_SOURCE	/* struct ip_mreq */
 
 #include <errno.h>
 #include <error.h>
 #include <stdio.h>
-#define __USE_GNU
 #include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
