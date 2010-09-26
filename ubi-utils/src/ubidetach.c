@@ -50,17 +50,17 @@ static struct args args = {
 	.dev = NULL,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 " - tool to remove UBI devices (detach MTD devices from UBI)";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-d, --devn=<UBI device number>  UBI device number to delete\n"
 "-p, --dev-path=<path to device> or alternatively, MTD device node path to detach\n"
 "-m, --mtdn=<MTD device number>  or alternatively, MTD device number to detach\n"
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
 
-static const char *usage =
+static const char usage[] =
 "Usage: " PROGRAM_NAME " [<UBI control device node file name>]\n"
 "\t[-d <UBI device number>] [-m <MTD device number>] [-p <path to device>]\n"
 "\t[--devn=<UBI device number>] [--mtdn=<MTD device number>]\n"

@@ -51,10 +51,10 @@ static struct args args = {
 	.node = NULL,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to print MTD information.";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-m, --mtdn=<MTD device number>  MTD device number to get information about\n"
 "-u, --ubi-info                  print what would UBI layout be if it was put\n"
 "                                on this MTD device\n"
@@ -62,7 +62,7 @@ static const char *optionsstr =
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
 
-static const char *usage =
+static const char usage[] =
 "Usage 1: " PROGRAM_NAME " [-m <MTD device number>] [-u] [-h] [-V] [--mtdn <MTD device number>]\n"
 "\t\t[--ubi-info] [--help] [--version]\n"
 "Usage 2: " PROGRAM_NAME " <MTD device node file name> [-u] [-h] [-V] [--ubi-info] [--help]\n"

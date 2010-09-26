@@ -51,10 +51,10 @@ static struct args args = {
 	.vol_name = NULL,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to print UBI information.";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-d, --devn=<UBI device number>  UBI device number to get information about\n"
 "-n, --vol_id=<volume ID>        ID of UBI volume to print information about\n"
 "-N, --name=<volume name>        name of UBI volume to print information about\n"
@@ -64,7 +64,7 @@ static const char *optionsstr =
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
 
-static const char *usage =
+static const char usage[] =
 "Usage 1: " PROGRAM_NAME " [-d <UBI device number>] [-n <volume ID> | -N <volume name>] [-a] [-h] [-V]\n"
 "\t\t[--vol_id=<volume ID> | --name <volume name>] [--devn <UBI device number>] [--all] [--help] [--version]\n"
 "Usage 2: " PROGRAM_NAME " <UBI device node file name> [-a] [-h] [-V] [--all] [--help] [--version]\n"

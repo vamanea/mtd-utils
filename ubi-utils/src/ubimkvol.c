@@ -56,10 +56,10 @@ static struct args args = {
 	.vol_id = UBI_VOL_NUM_AUTO,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to create UBI volumes.";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-a, --alignment=<alignment>   volume alignment (default is 1)\n"
 "-n, --vol_id=<volume ID>      UBI volume ID, if not specified, the volume ID\n"
 "                              will be assigned automatically\n"
@@ -74,7 +74,7 @@ static const char *optionsstr =
 "-V, --version                 print program version";
 
 
-static const char *usage =
+static const char usage[] =
 "Usage: " PROGRAM_NAME " <UBI device node file name> [-h] [-a <alignment>] [-n <volume ID>] [-N <name>]\n"
 "\t\t\t[-s <bytes>] [-S <LEBs>] [-t <static|dynamic>] [-V] [-m]\n"
 "\t\t\t[--alignment=<alignment>][--vol_id=<volume ID>] [--name=<name>]\n"

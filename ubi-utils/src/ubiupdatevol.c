@@ -52,22 +52,22 @@ struct args {
 
 static struct args args;
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to write data to UBI volumes.";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-t, --truncate             truncate volume (wipe it out)\n"
 "-s, --size=<bytes>         bytes in input, if not reading from file\n"
 "-h, --help                 print help message\n"
 "-V, --version              print program version";
 
-static const char *usage =
+static const char usage[] =
 "Usage: " PROGRAM_NAME " <UBI volume node file name> [-t] [-s <size>] [-h] [-V] [--truncate]\n"
 "\t\t\t[--size=<size>] [--help] [--version] <image file>\n\n"
 "Example 1: " PROGRAM_NAME " /dev/ubi0_1 fs.img - write file \"fs.img\" to UBI volume /dev/ubi0_1\n"
 "Example 2: " PROGRAM_NAME " /dev/ubi0_1 -t - wipe out UBI volume /dev/ubi0_1";
 
-struct option long_options[] = {
+static const struct option long_options[] = {
 	{ .name = "truncate", .has_arg = 0, .flag = NULL, .val = 't' },
 	{ .name = "help",     .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",  .has_arg = 0, .flag = NULL, .val = 'V' },

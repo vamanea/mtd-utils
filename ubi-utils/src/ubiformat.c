@@ -72,10 +72,10 @@ static struct args args =
 	.ubi_ver   = 1,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 		" - a tool to format MTD devices and flash UBI images";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-s, --sub-page-size=<bytes>  minimum input/output unit used for UBI\n"
 "                             headers, e.g. sub-page size in case of NAND\n"
 "                             flash (equivalent to the minimum input/output\n"
@@ -101,7 +101,7 @@ static const char *optionsstr =
 "-h, -?, --help               print help message\n"
 "-V, --version                print program version\n";
 
-static const char *usage =
+static const char usage[] =
 "Usage: " PROGRAM_NAME " <MTD device node file name> [-s <bytes>] [-O <offs>] [-n]\n"
 "\t\t\t[-f <file>] [-S <bytes>] [-e <value>] [-x <num>] [-y] [-q] [-v] [-h] [-v]\n"
 "\t\t\t[--sub-page-size=<bytes>] [--vid-hdr-offset=<offs>] [--no-volume-table]\n"

@@ -39,7 +39,7 @@
 #include "common.h"
 #include "ubiutils-common.h"
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 " - a tool to generate UBI images. An UBI image may contain one or more UBI "
 "volumes which have to be defined in the input configuration ini-file. The "
 "ini file defines all the UBI volumes - their characteristics and the and the "
@@ -48,7 +48,7 @@ static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
 "the command-line options. Note, if not sure about some of the command-line "
 "parameters, do not specify them and let the utility to use default values.";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-o, --output=<file name>     output file name\n"
 "-p, --peb-size=<bytes>       size of the physical eraseblock of the flash\n"
 "                             this UBI image is created for in bytes,\n"
@@ -74,7 +74,7 @@ static const char *optionsstr =
 "-h, --help                   print help message\n"
 "-V, --version                print program version";
 
-static const char *usage =
+static const char usage[] =
 "Usage: " PROGRAM_NAME " [-o filename] [-p <bytes>] [-m <bytes>] [-s <bytes>] [-O <num>] [-e <num>]\n"
 "\t\t[-x <num>] [-Q <num>] [-v] [-h] [-V] [--output=<filename>] [--peb-size=<bytes>]\n"
 "\t\t[--min-io-size=<bytes>] [--sub-page-size=<bytes>] [--vid-hdr-offset=<num>]\n"
@@ -83,7 +83,7 @@ static const char *usage =
 "Example: " PROGRAM_NAME " -o ubi.img -p 16KiB -m 512 -s 256 cfg.ini - create UBI image\n"
 "         'ubi.img' as described by configuration file 'cfg.ini'";
 
-static const char *ini_doc = "INI-file format.\n"
+static const char ini_doc[] = "INI-file format.\n"
 "The input configuration ini-file describes all the volumes which have to\n"
 "be included to the output UBI image. Each volume is described in its own\n"
 "section which may be named arbitrarily. The section consists on\n"
@@ -116,7 +116,7 @@ static const char *ini_doc = "INI-file format.\n"
 "    put all the volumes which are described by these section to the output\n"
 "    UBI image file.";
 
-struct option long_options[] = {
+static const struct option long_options[] = {
 	{ .name = "output",         .has_arg = 1, .flag = NULL, .val = 'o' },
 	{ .name = "peb-size",       .has_arg = 1, .flag = NULL, .val = 'p' },
 	{ .name = "min-io-size",    .has_arg = 1, .flag = NULL, .val = 'm' },

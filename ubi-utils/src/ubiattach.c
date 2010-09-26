@@ -53,10 +53,10 @@ static struct args args = {
 	.dev = NULL,
 };
 
-static const char *doc = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 			 " - a tool to attach MTD device to UBI.";
 
-static const char *optionsstr =
+static const char optionsstr[] =
 "-d, --devn=<number>   the number to assign to the newly created UBI device\n"
 "                      (assigned automatically if this is not specified)\n"
 "-p, --dev-path=<path> path to MTD device node to attach\n"
@@ -67,7 +67,7 @@ static const char *optionsstr =
 "-h, --help            print help message\n"
 "-V, --version         print program version";
 
-static const char *usage =
+static const char usage[] =
 "Usage: " PROGRAM_NAME " [<UBI control device node file name>]\n"
 "\t[-m <MTD device number>] [-d <UBI device number>] [-p <path to device>]\n"
 "\t[--mtdn=<MTD device number>] [--devn=<UBI device number>]\n"
