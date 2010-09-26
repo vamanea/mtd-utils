@@ -64,7 +64,7 @@ static int jffs2_rtime_compress(unsigned char *data_in, unsigned char *cpage_out
 
 
 static int jffs2_rtime_decompress(unsigned char *data_in, unsigned char *cpage_out,
-		uint32_t srclen, uint32_t destlen)
+		__attribute__((unused)) uint32_t srclen, uint32_t destlen)
 {
 	short positions[256];
 	int outpos = 0;
