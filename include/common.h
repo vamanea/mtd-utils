@@ -24,10 +24,9 @@
 #include <string.h>
 #include <errno.h>
 
-/*
- * Note, the user is supposed to define its PROGRAM_NAME before including this
- * header.
- */
+#ifndef PROGRAM_NAME
+# error "You must define PROGRAM_NAME before including this header"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,27 +42,27 @@ extern "C" {
 		printf(fmt, ##__VA_ARGS__);                        \
 } while(0)
 #define verbose(verbose, fmt, ...) \
-	bareverbose(verbose, PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__)
+	bareverbose(verbose, "%s: " fmt "\n", PROGRAM_NAME, ##__VA_ARGS__)
 
 /* Normal messages */
-#define normsg(fmt, ...) do {                              \
-	printf(PROGRAM_NAME ": " fmt "\n", ##__VA_ARGS__); \
+#define normsg_cont(fmt, ...) do {                                 \
+	printf("%s: " fmt, PROGRAM_NAME, ##__VA_ARGS__);           \
 } while(0)
-#define normsg_cont(fmt, ...) do {                         \
-	printf(PROGRAM_NAME ": " fmt, ##__VA_ARGS__);      \
+#define normsg(fmt, ...) do {                                      \
+	normsg_cont(fmt "\n", ##__VA_ARGS__);                      \
 } while(0)
 
 /* Error messages */
 #define errmsg(fmt, ...)  ({                                                \
-	fprintf(stderr, PROGRAM_NAME ": error!: " fmt "\n", ##__VA_ARGS__); \
+	fprintf(stderr, "%s: error!: " fmt "\n", PROGRAM_NAME, ##__VA_ARGS__); \
 	-1;                                                                 \
 })
 
 /* System error messages */
 #define sys_errmsg(fmt, ...)  ({                                            \
 	int _err = errno;                                                   \
-	size_t _i;                                                           \
-	fprintf(stderr, PROGRAM_NAME ": error!: " fmt "\n", ##__VA_ARGS__); \
+	size_t _i;                                                          \
+	errmsg(fmt, ##__VA_ARGS__);                                         \
 	for (_i = 0; _i < sizeof(PROGRAM_NAME) + 1; _i++)                   \
 		fprintf(stderr, " ");                                       \
 	fprintf(stderr, "error %d (%s)\n", _err, strerror(_err));           \
@@ -72,7 +71,7 @@ extern "C" {
 
 /* Warnings */
 #define warnmsg(fmt, ...) do {                                                \
-	fprintf(stderr, PROGRAM_NAME ": warning!: " fmt "\n", ##__VA_ARGS__); \
+	fprintf(stderr, "%s: warning!: " fmt "\n", PROGRAM_NAME, ##__VA_ARGS__); \
 } while(0)
 
 static inline int is_power_of_2(unsigned long long n)
