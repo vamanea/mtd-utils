@@ -9,7 +9,7 @@ endif
 
 SUBDIRS = lib ubi-utils mkfs.ubifs
 
-TARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
+TARGETS = ftl_format flash_erase nanddump doc_loadbios \
 	ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \
 	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite nandtest \
 	jffs2dump \
@@ -17,6 +17,7 @@ TARGETS = ftl_format flash_erase flash_eraseall nanddump doc_loadbios \
 	rfddump rfdformat \
 	serve_image recv_image \
 	sumtool #jffs2reader
+SCRIPTS = flash_eraseall
 
 SYMLINKS =
 
@@ -53,8 +54,8 @@ LDLIBS_jffs2reader  = -lz -llzo2
 
 $(BUILDDIR)/lib/libmtd.a: subdirs_lib_all ;
 
-install:: ${TARGETS}
+install:: ${TARGETS} ${SCRIPTS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m 0755 ${TARGETS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${TARGETS} ${SCRIPTS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -9c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
