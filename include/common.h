@@ -20,6 +20,7 @@
 #define __MTD_UTILS_COMMON_H__
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
@@ -78,6 +79,29 @@ static inline int is_power_of_2(unsigned long long n)
 {
 	        return (n != 0 && ((n & (n - 1)) == 0));
 }
+
+/**
+ * simple_strtoX - convert a hex/dec/oct string into a number
+ * @snum: buffer to convert
+ * @error: set to 1 when buffer isn't fully consumed
+ */
+#define simple_strtoX(func, type) \
+static inline type simple_##func(const char *snum, int *error) \
+{ \
+	char *endptr; \
+	type ret = func(snum, &endptr, 0); \
+ \
+	if (error && (!*snum || *endptr)) { \
+		errmsg("%s: unable to parse the number '%s'", #func, snum); \
+		*error = 1; \
+	} \
+ \
+	return ret; \
+}
+simple_strtoX(strtol, long int)
+simple_strtoX(strtoll, long int)
+simple_strtoX(strtoul, unsigned long int)
+simple_strtoX(strtoull, unsigned long int)
 
 #ifdef __cplusplus
 }
