@@ -26,10 +26,10 @@ INCLUDEDIR=$(PREFIX)/include
 
 ifndef BUILDDIR
 ifeq ($(origin CROSS),undefined)
-  BUILDDIR := $(PWD)
+  BUILDDIR := $(CURDIR)
 else
 # Remove the trailing slash to make the directory name
-  BUILDDIR := $(PWD)/$(CROSS:-=)
+  BUILDDIR := $(CURDIR)/$(CROSS:-=)
 endif
 endif
 override BUILDDIR := $(patsubst %/,%,$(BUILDDIR))

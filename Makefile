@@ -33,7 +33,7 @@ clean::
 	-rm -f $(SYMLINKS)
 ifneq ($(BUILDDIR)/.git,)
 ifneq ($(BUILDDIR),.)
-ifneq ($(BUILDDIR),$(PWD))
+ifneq ($(BUILDDIR),$(CURDIR))
 	rm -rf $(BUILDDIR)
 endif
 endif
