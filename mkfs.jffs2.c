@@ -391,14 +391,14 @@ static struct filesystem_entry *recursive_add_host_directory(
 			continue;
 		}
 
-		asprintf(&hpath, "%s/%s", hostpath, dp->d_name);
+		xasprintf(&hpath, "%s/%s", hostpath, dp->d_name);
 		if (lstat(hpath, &sb)) {
 			perror_msg_and_die("%s", hpath);
 		}
 		if (strcmp(targetpath, "/") == 0) {
-			asprintf(&tpath, "%s%s", targetpath, dp->d_name);
+			xasprintf(&tpath, "%s%s", targetpath, dp->d_name);
 		} else {
-			asprintf(&tpath, "%s/%s", targetpath, dp->d_name);
+			xasprintf(&tpath, "%s/%s", targetpath, dp->d_name);
 		}
 
 		switch (sb.st_mode & S_IFMT) {
@@ -489,7 +489,7 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 		error_msg_and_die("Device table entries require absolute paths");
 	}
 
-	asprintf(&hostpath, "%s%s", rootdir, name);
+	xasprintf(&hostpath, "%s%s", rootdir, name);
 
 	/* Check if this file already exists... */
 	switch (type) {
@@ -556,8 +556,8 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 					char *dname, *hpath;
 
 					for (i = start; i < count; i++) {
-						asprintf(&dname, "%s%lu", name, i);
-						asprintf(&hpath, "%s/%s%lu", rootdir, name, i);
+						xasprintf(&dname, "%s%lu", name, i);
+						xasprintf(&hpath, "%s/%s%lu", rootdir, name, i);
 						rdev = makedev(major, minor + (i * increment - start));
 						add_host_filesystem_entry(dname, hpath, uid, gid,
 								mode, rdev, parent);
