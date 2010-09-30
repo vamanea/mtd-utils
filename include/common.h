@@ -58,6 +58,9 @@ extern "C" {
 	fprintf(stderr, "%s: error!: " fmt "\n", PROGRAM_NAME, ##__VA_ARGS__); \
 	-1;                                                                 \
 })
+#define errmsg_die(fmt, ...) do {                                           \
+	exit(errmsg(fmt, ##__VA_ARGS__));                                   \
+} while(0)
 
 /* System error messages */
 #define sys_errmsg(fmt, ...)  ({                                            \
@@ -69,6 +72,9 @@ extern "C" {
 	fprintf(stderr, "error %d (%s)\n", _err, strerror(_err));           \
 	-1;                                                                 \
 })
+#define sys_errmsg_die(fmt, ...) do {                                       \
+	exit(sys_errmsg(fmt, ##__VA_ARGS__));                               \
+} while(0)
 
 /* Warnings */
 #define warnmsg(fmt, ...) do {                                                \
@@ -102,6 +108,8 @@ simple_strtoX(strtol, long int)
 simple_strtoX(strtoll, long int)
 simple_strtoX(strtoul, unsigned long int)
 simple_strtoX(strtoull, unsigned long int)
+
+#include "xalloc.h"
 
 #ifdef __cplusplus
 }

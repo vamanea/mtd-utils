@@ -110,7 +110,6 @@ static int squash_uids = 0;
 static int squash_perms = 0;
 static int fake_times = 0;
 int target_endian = __BYTE_ORDER;
-static const char *const memory_exhausted = "memory exhausted";
 
 uint32_t find_hardlink(struct filesystem_entry *e)
 {
@@ -196,46 +195,6 @@ static void perror_msg_and_die(const char *s, ...)
 	va_end(p);
 	exit(EXIT_FAILURE);
 }
-
-#ifndef DMALLOC
-extern void *xmalloc(size_t size)
-{
-	void *ptr = malloc(size);
-
-	if (ptr == NULL && size != 0)
-		error_msg_and_die(memory_exhausted);
-	return ptr;
-}
-
-extern void *xcalloc(size_t nmemb, size_t size)
-{
-	void *ptr = calloc(nmemb, size);
-
-	if (ptr == NULL && nmemb != 0 && size != 0)
-		error_msg_and_die(memory_exhausted);
-	return ptr;
-}
-
-extern void *xrealloc(void *ptr, size_t size)
-{
-	ptr = realloc(ptr, size);
-	if (ptr == NULL && size != 0)
-		error_msg_and_die(memory_exhausted);
-	return ptr;
-}
-
-extern char *xstrdup(const char *s)
-{
-	char *t;
-
-	if (s == NULL)
-		return NULL;
-	t = strdup(s);
-	if (t == NULL)
-		error_msg_and_die(memory_exhausted);
-	return t;
-}
-#endif
 
 extern char *xreadlink(const char *path)
 {
