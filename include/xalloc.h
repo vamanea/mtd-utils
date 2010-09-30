@@ -77,4 +77,24 @@ static char *xstrdup(const char *s)
 	return t;
 }
 
+#ifdef _GNU_SOURCE
+#include <stdarg.h>
+
+__attribute__((unused))
+static int xasprintf(char **strp, const char *fmt, ...)
+{
+	int cnt;
+	va_list ap;
+
+	va_start(ap, fmt);
+	cnt = vasprintf(strp, fmt, ap);
+	va_end(ap);
+
+	if (cnt == -1)
+		sys_errmsg_die("asprintf(...) failed");
+
+	return cnt;
+}
+#endif
+
 #endif /* !__MTD_UTILS_XALLOC_H__ */
