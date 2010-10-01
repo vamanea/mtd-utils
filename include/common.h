@@ -65,11 +65,9 @@ extern "C" {
 /* System error messages */
 #define sys_errmsg(fmt, ...)  ({                                            \
 	int _err = errno;                                                   \
-	size_t _i;                                                          \
 	errmsg(fmt, ##__VA_ARGS__);                                         \
-	for (_i = 0; _i < sizeof(PROGRAM_NAME) + 1; _i++)                   \
-		fprintf(stderr, " ");                                       \
-	fprintf(stderr, "error %d (%s)\n", _err, strerror(_err));           \
+	fprintf(stderr, "%*serror %d (%s)\n", (int)sizeof(PROGRAM_NAME) + 1,\
+		"", _err, strerror(_err));                                  \
 	-1;                                                                 \
 })
 #define sys_errmsg_die(fmt, ...) do {                                       \
