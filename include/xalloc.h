@@ -41,7 +41,7 @@ static void *xmalloc(size_t size)
 	void *ptr = malloc(size);
 
 	if (ptr == NULL && size != 0)
-		sys_errmsg_die("malloc(%zu) failed", size);
+		sys_errmsg_die("out of memory");
 	return ptr;
 }
 
@@ -51,7 +51,7 @@ static void *xcalloc(size_t nmemb, size_t size)
 	void *ptr = calloc(nmemb, size);
 
 	if (ptr == NULL && nmemb != 0 && size != 0)
-		sys_errmsg_die("calloc(%zu, %zu) failed", nmemb, size);
+		sys_errmsg_die("out of memory");
 	return ptr;
 }
 
@@ -66,7 +66,7 @@ static void *xrealloc(void *ptr, size_t size)
 {
 	ptr = realloc(ptr, size);
 	if (ptr == NULL && size != 0)
-		sys_errmsg_die("realloc(%p, %zu) failed", ptr, size);
+		sys_errmsg_die("out of memory");
 	return ptr;
 }
 
@@ -79,7 +79,7 @@ static char *xstrdup(const char *s)
 		return NULL;
 	t = strdup(s);
 	if (t == NULL)
-		sys_errmsg_die("strdup(%p) failed", s);
+		sys_errmsg_die("out of memory");
 	return t;
 }
 
@@ -97,7 +97,7 @@ static int xasprintf(char **strp, const char *fmt, ...)
 	va_end(ap);
 
 	if (cnt == -1)
-		sys_errmsg_die("asprintf(...) failed");
+		sys_errmsg_die("out of memory");
 
 	return cnt;
 }
