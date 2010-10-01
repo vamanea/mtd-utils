@@ -381,7 +381,7 @@ static struct filesystem_entry *recursive_add_host_directory(
 #define GETCWD_SIZE 0
 #else
 #define SCANF_PREFIX "511"
-#define SCANF_STRING(s) (s = malloc(512))
+#define SCANF_STRING(s) (s = xmalloc(512))
 #define GETCWD_SIZE -1
 inline int snprintf(char *str, size_t n, const char *fmt, ...)
 {
@@ -1540,14 +1540,7 @@ void process_buffer(int inp_size) {
 void parse_image(){
 	int ret;
 
-	file_buffer = malloc(erase_block_size);
-
-	if (!file_buffer) {
-		perror("out of memory");
-		close (in_fd);
-		close (out_fd);
-		exit(1);
-	}
+	file_buffer = xmalloc(erase_block_size);
 
 	while ((ret = load_next_block())) {
 		process_buffer(ret);
@@ -1721,7 +1714,7 @@ int main(int argc, char **argv)
 					  jffs2_compression_check_set(1);
 					  break;
 			case 'y':
-					  compr_name = malloc(strlen(optarg));
+					  compr_name = xmalloc(strlen(optarg));
 					  sscanf(optarg,"%d:%s",&compr_prior,compr_name);
 					  if ((compr_prior>=0)&&(compr_name)) {
 						  if (jffs2_set_compressor_priority(compr_name, compr_prior))
