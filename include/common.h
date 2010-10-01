@@ -33,7 +33,9 @@
 extern "C" {
 #endif
 
+#ifndef MIN	/* some C lib headers define this for us */
 #define MIN(a ,b) ((a) < (b) ? (a) : (b))
+#endif
 #define min(a, b) MIN(a, b) /* glue for linux kernel source */
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
