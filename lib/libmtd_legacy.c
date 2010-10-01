@@ -125,18 +125,18 @@ static int proc_parse_next(struct proc_parse_info *pi)
 
 	p = memchr(pi->next, '\"', pi->data_size - pos);
 	if (!p)
-		return errmsg("opening \" not fount");
+		return errmsg("opening \" not found");
 	p += 1;
 	pos = p - pi->buf;
 	if (pos >= pi->data_size)
-		return errmsg("opening \" not fount");
+		return errmsg("opening \" not found");
 
 	p1 = memchr(p, '\"', pi->data_size - pos);
 	if (!p1)
-		return errmsg("closing \" not fount");
+		return errmsg("closing \" not found");
 	pos = p1 - pi->buf;
 	if (pos >= pi->data_size)
-		return errmsg("closing \" not fount");
+		return errmsg("closing \" not found");
 
 	len = p1 - p;
 	if (len > MTD_NAME_MAX)
@@ -146,7 +146,7 @@ static int proc_parse_next(struct proc_parse_info *pi)
 	pi->name[len] = '\0';
 
 	if (p1[1] != '\n')
-		return errmsg("opening \"\n\" not fount");
+		return errmsg("opening \"\n\" not found");
 	pi->next = p1 + 2;
 	return 1;
 }
