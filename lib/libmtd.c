@@ -791,6 +791,13 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd)
 	return mtd_get_dev_info1(desc, mtd_num, mtd);
 }
 
+static inline int mtd_ioctl_error(const struct mtd_dev_info *mtd, int eb,
+				  const char *sreq)
+{
+	return sys_errmsg("%s ioctl failed for eraseblock %d (mtd%d)",
+			  sreq, eb, mtd->mtd_num);
+}
+
 static int mtd_valid_erase_block(const struct mtd_dev_info *mtd, int eb)
 {
 	if (eb < 0 || eb >= mtd->eb_cnt) {
@@ -817,8 +824,7 @@ static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb, int req,
 
 	ret = ioctl(fd, req, &ei);
 	if (ret < 0)
-		return sys_errmsg("%s ioctl failed for eraseblock %d "
-				  "(mtd%d)", sreq, eb, mtd->mtd_num);
+		return mtd_ioctl_error(mtd, eb, sreq);
 
 	return 0;
 }
@@ -856,9 +862,7 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 
 		if (errno != ENOTTY ||
 		    lib->offs64_ioctls != OFFS64_IOCTLS_UNKNOWN)
-			return sys_errmsg("MEMERASE64 ioctl failed for "
-					  "eraseblock %d (mtd%d)",
-					  eb, mtd->mtd_num);
+			return mtd_ioctl_error(mtd, eb, "MEMERASE64");
 
 		/*
 		 * MEMERASE64 support was added in kernel version 2.6.31, so
@@ -879,8 +883,7 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 	ei.length = ei64.length;
 	ret = ioctl(fd, MEMERASE, &ei);
 	if (ret < 0)
-		return sys_errmsg("MEMERASE ioctl failed for eraseblock %d "
-				  "(mtd%d)", eb, mtd->mtd_num);
+		return mtd_ioctl_error(mtd, eb, "MEMERASE");
 	return 0;
 }
 
@@ -980,8 +983,7 @@ int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 	seek = (loff_t)eb * mtd->eb_size;
 	ret = ioctl(fd, MEMGETBADBLOCK, &seek);
 	if (ret == -1)
-		return sys_errmsg("MEMGETBADBLOCK ioctl failed for "
-				  "eraseblock %d (mtd%d)", eb, mtd->mtd_num);
+		return mtd_ioctl_error(mtd, eb, "MEMGETBADBLOCK");
 	return ret;
 }
 
@@ -1002,8 +1004,7 @@ int mtd_mark_bad(const struct mtd_dev_info *mtd, int fd, int eb)
 	seek = (loff_t)eb * mtd->eb_size;
 	ret = ioctl(fd, MEMSETBADBLOCK, &seek);
 	if (ret == -1)
-		return sys_errmsg("MEMSETBADBLOCK ioctl failed for "
-			          "eraseblock %d (mtd%d)", eb, mtd->mtd_num);
+		return mtd_ioctl_error(mtd, eb, "MEMSETBADBLOCK");
 	return 0;
 }
 
@@ -1206,7 +1207,7 @@ int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 
 	in_fd = open(img_name, O_RDONLY);
 	if (in_fd == -1)
-		return sys_errmsg("cannot open %s", img_name);
+		return sys_errmsg("cannot open \"%s\"", img_name);
 
 	if (fstat(in_fd, &st)) {
 		sys_errmsg("cannot stat %s", img_name);
@@ -1251,7 +1252,7 @@ int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		do {
 			ret = read(in_fd, buf, mtd->eb_size - offs - rd);
 			if (ret == -1) {
-				sys_errmsg("cannot read from %s", img_name);
+				sys_errmsg("cannot read \"%s\"", img_name);
 				goto out_free;
 			}
 			rd += ret;
