@@ -185,7 +185,7 @@ static gf gf_mul_table[GF_SIZE + 1][GF_SIZE + 1];
 #define GF_ADDMULC(dst, x) dst ^= __gf_mulc_[x]
 
 static void
-init_mul_table()
+init_mul_table(void)
 {
     int i, j;
     for (i=0; i< GF_SIZE+1; i++)
@@ -603,7 +603,7 @@ invert_vdm(gf *src, int k)
 
 static int fec_initialized = 0 ;
 static void
-init_fec()
+init_fec(void)
 {
     TICK(ticks[0]);
     generate_gf();
@@ -882,7 +882,7 @@ fec_decode(struct fec_parms *code, gf *pkt[], int index[], int sz)
 
 #if (TEST || DEBUG)
 void
-test_gf()
+test_gf(void)
 {
     int i ;
     /*

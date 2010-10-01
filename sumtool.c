@@ -122,7 +122,7 @@ static unsigned char ffbuf[16] = {
 
 static void full_write(void *target_buff, const void *buf, int len);
 
-void setup_cleanmarker()
+void setup_cleanmarker(void)
 {
 	cleanmarker.magic = cpu_to_je16(JFFS2_MAGIC_BITMASK);
 	cleanmarker.nodetype = cpu_to_je16(JFFS2_NODETYPE_CLEANMARKER);
@@ -226,24 +226,24 @@ void process_options (int argc, char **argv)
 }
 
 
-void init_buffers()
+void init_buffers(void)
 {
 	data_buffer = xmalloc(erase_block_size);
 	file_buffer = xmalloc(erase_block_size);
 }
 
-void init_sumlist()
+void init_sumlist(void)
 {
 	sum_collected = xzalloc(sizeof(*sum_collected));
 }
 
-void clean_buffers()
+void clean_buffers(void)
 {
 	free(data_buffer);
 	free(file_buffer);
 }
 
-void clean_sumlist()
+void clean_sumlist(void)
 {
 	union jffs2_sum_mem *temp;
 
@@ -263,7 +263,7 @@ void clean_sumlist()
 	}
 }
 
-int load_next_block()
+int load_next_block(void)
 {
 	int ret;
 	ret = read(in_fd, file_buffer, erase_block_size);
@@ -274,7 +274,7 @@ int load_next_block()
 	return ret;
 }
 
-void write_buff_to_file()
+void write_buff_to_file(void)
 {
 	int ret;
 	int len = data_ofs;
@@ -298,7 +298,7 @@ void write_buff_to_file()
 	data_ofs = 0;
 }
 
-void dump_sum_records()
+void dump_sum_records(void)
 {
 
 	struct jffs2_raw_summary isum;
@@ -447,7 +447,7 @@ static void pad(int req)
 	}
 }
 
-static inline void padword()
+static inline void padword(void)
 {
 	if (data_ofs % 4)
 		full_write(data_buffer + data_ofs, ffbuf, 4 - (data_ofs % 4));
@@ -474,7 +474,7 @@ static inline void pad_block_if_less_than(int req,int plus)
 	}
 }
 
-void flush_buffers()
+void flush_buffers(void)
 {
 
 	if ((add_cleanmarkers == 1) && (found_cleanmarkers == 1)) { /* CLEANMARKER */
