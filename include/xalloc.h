@@ -56,6 +56,12 @@ static void *xcalloc(size_t nmemb, size_t size)
 }
 
 __attribute__((unused))
+static void *xzalloc(size_t size)
+{
+	return xcalloc(1, size);
+}
+
+__attribute__((unused))
 static void *xrealloc(void *ptr, size_t size)
 {
 	ptr = realloc(ptr, size);
