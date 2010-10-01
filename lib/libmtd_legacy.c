@@ -75,12 +75,7 @@ static int proc_parse_start(struct proc_parse_info *pi)
 	if (fd == -1)
 		return -1;
 
-	pi->buf = malloc(PROC_MTD_MAX_LEN);
-	if (!pi->buf) {
-		sys_errmsg("cannot allocate %d bytes of memory",
-			   PROC_MTD_MAX_LEN);
-		goto out_close;
-	}
+	pi->buf = xmalloc(PROC_MTD_MAX_LEN);
 
 	ret = read(fd, pi->buf, PROC_MTD_MAX_LEN);
 	if (ret == -1) {
@@ -103,7 +98,6 @@ static int proc_parse_start(struct proc_parse_info *pi)
 
 out_free:
 	free(pi->buf);
-out_close:
 	close(fd);
 	return -1;
 }

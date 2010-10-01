@@ -48,14 +48,10 @@
 static char *mkpath(const char *path, const char *name)
 {
 	char *n;
-	int len1 = strlen(path);
-	int len2 = strlen(name);
+	size_t len1 = strlen(path);
+	size_t len2 = strlen(name);
 
-	n = malloc(len1 + len2 + 2);
-	if (!n) {
-		sys_errmsg("cannot allocate %d bytes", len1 + len2 + 2);
-		return NULL;
-	}
+	n = xmalloc(len1 + len2 + 2);
 
 	memcpy(n, path, len1);
 	if (n[len1 - 1] != '/')
@@ -556,9 +552,7 @@ libmtd_t libmtd_open(void)
 {
 	struct libmtd *lib;
 
-	lib = calloc(1, sizeof(struct libmtd));
-	if (!lib)
-		return NULL;
+	lib = xzalloc(sizeof(*lib));
 
 	lib->offs64_ioctls = OFFS64_IOCTLS_UNKNOWN;
 
@@ -917,11 +911,7 @@ int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 	normsg("run torture test for PEB %d", eb);
 	patt_count = ARRAY_SIZE(patterns);
 
-	buf = malloc(mtd->eb_size);
-	if (!buf) {
-		errmsg("cannot allocate %d bytes of memory", mtd->eb_size);
-		return -1;
-	}
+	buf = xmalloc(mtd->eb_size);
 
 	for (i = 0; i < patt_count; i++) {
 		err = mtd_erase(desc, mtd, fd, eb);
@@ -1240,11 +1230,7 @@ int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		goto out_close;
 	}
 
-	buf = malloc(mtd->eb_size);
-	if (!buf) {
-		sys_errmsg("cannot allocate %d bytes of memory", mtd->eb_size);
-		goto out_close;
-	}
+	buf = xmalloc(mtd->eb_size);
 
 	while (written < len) {
 		int rd = 0;
