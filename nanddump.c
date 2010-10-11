@@ -452,7 +452,7 @@ int main(int argc, char * const argv[])
 			continue;
 
 		if (badblock) {
-			memset (readbuf, 0xff, meminfo.oobsize);
+			memset(oobbuf, 0xff, meminfo.oobsize);
 		} else {
 			/* Read OOB data and exit on failure */
 			oob.start = ofs;
