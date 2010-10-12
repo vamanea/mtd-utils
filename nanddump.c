@@ -283,7 +283,7 @@ int main(int argc, char * const argv[])
 	struct mtd_oob_buf oob = {0, 16, oobbuf};
 	mtd_info_t meminfo;
 	char pretty_buf[PRETTY_BUF_LEN];
-	int oobinfochanged = 0 ;
+	int oobinfochanged = 0, firstblock = 1;
 	struct nand_oobinfo old_oobinfo;
 	struct mtd_ecc_stats stat1, stat2;
 	bool eccstats = false;
@@ -399,8 +399,10 @@ int main(int argc, char * const argv[])
 		// new eraseblock , check for bad block
 		if (noskipbad) {
 			badblock = 0;
-		} else if (blockstart != (ofs & (~meminfo.erasesize + 1))) {
+		} else if (blockstart != (ofs & (~meminfo.erasesize + 1)) ||
+				firstblock) {
 			blockstart = ofs & (~meminfo.erasesize + 1);
+			firstblock = 0;
 			if ((badblock = ioctl(fd, MEMGETBADBLOCK, &blockstart)) < 0) {
 				perror("ioctl(MEMGETBADBLOCK)");
 				goto closeall;
