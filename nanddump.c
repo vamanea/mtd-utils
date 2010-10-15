@@ -38,7 +38,7 @@ static struct nand_oobinfo none_oobinfo = {
 	.useecc = MTD_NANDECC_OFF,
 };
 
-static void display_help (void)
+static void display_help(void)
 {
 	printf(
 "Usage: %s [OPTIONS] MTD-device\n"
@@ -61,7 +61,7 @@ static void display_help (void)
 	exit(EXIT_SUCCESS);
 }
 
-static void display_version (void)
+static void display_version(void)
 {
 	printf("%1$s " VERSION "\n"
 			"\n"
@@ -90,7 +90,7 @@ static bool		quiet = false;		// suppress diagnostic output
 static bool		canonical = false;	// print nice + ascii
 static bool		forcebinary = false;	// force printing binary to tty
 
-static void process_options (int argc, char * const argv[])
+static void process_options(int argc, char * const argv[])
 {
 	int error = 0;
 
@@ -186,7 +186,7 @@ static void process_options (int argc, char * const argv[])
 	}
 
 	if ((argc - optind) != 1 || error)
-		display_help ();
+		display_help();
 
 	mtddev = argv[optind];
 }
@@ -288,14 +288,14 @@ int main(int argc, char * const argv[])
 	/* Open MTD device */
 	if ((fd = open(mtddev, O_RDONLY)) == -1) {
 		perror(mtddev);
-		exit (EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 
 	/* Fill in MTD device capability structure */
 	if (ioctl(fd, MEMGETINFO, &meminfo) != 0) {
 		perror("MEMGETINFO");
 		close(fd);
-		exit (EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 
 	/* Allocate buffers */
@@ -314,18 +314,18 @@ int main(int argc, char * const argv[])
 		} else {
 			switch (errno) {
 			case ENOTTY:
-				if (ioctl (fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-					perror ("MEMGETOOBSEL");
+				if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+					perror("MEMGETOOBSEL");
 					goto closeall;
 				}
-				if (ioctl (fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-					perror ("MEMSETOOBSEL");
+				if (ioctl(fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
+					perror("MEMSETOOBSEL");
 					goto closeall;
 				}
 				oobinfochanged = 1;
 				break;
 			default:
-				perror ("MTDFILEMODE");
+				perror("MTDFILEMODE");
 				goto closeall;
 			}
 		}
@@ -336,9 +336,9 @@ int main(int argc, char * const argv[])
 			eccstats = true;
 			if (!quiet) {
 				fprintf(stderr, "ECC failed: %d\n", stat1.failed);
-				fprintf(stderr, "ECC corrected: %d\n", stat1.corrected);    
-				fprintf(stderr, "Number of bad blocks: %d\n", stat1.badblocks);    
-				fprintf(stderr, "Number of bbt blocks: %d\n", stat1.bbtblocks);    
+				fprintf(stderr, "ECC corrected: %d\n", stat1.corrected);
+				fprintf(stderr, "Number of bad blocks: %d\n", stat1.badblocks);
+				fprintf(stderr, "Number of bbt blocks: %d\n", stat1.bbtblocks);
 			}
 		} else
 			perror("No ECC status information available");
@@ -349,7 +349,7 @@ int main(int argc, char * const argv[])
 	if (!dumpfile) {
 		ofd = STDOUT_FILENO;
 	} else if ((ofd = open(dumpfile, O_WRONLY | O_TRUNC | O_CREAT, 0644))== -1) {
-		perror (dumpfile);
+		perror(dumpfile);
 		goto closeall;
 	}
 
@@ -374,12 +374,11 @@ int main(int argc, char * const argv[])
 				meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
 		fprintf(stderr,
 				"Dumping data starting at 0x%08x and ending at 0x%08x...\n",
-				(unsigned int) start_addr, (unsigned int) end_addr);
+				(unsigned int)start_addr, (unsigned int)end_addr);
 	}
 	/* Dump the flash contents */
-	for (ofs = start_addr; ofs < end_addr ; ofs+=bs) {
-
-		// new eraseblock , check for bad block
+	for (ofs = start_addr; ofs < end_addr; ofs += bs) {
+		/* Check for bad block */
 		if (noskipbad) {
 			badblock = 0;
 		} else if (blockstart != (ofs & (~meminfo.erasesize + 1)) ||
@@ -431,8 +430,6 @@ int main(int argc, char * const argv[])
 		} else
 			write(ofd, readbuf, bs);
 
-
-
 		if (omitoob)
 			continue;
 
@@ -460,8 +457,8 @@ int main(int argc, char * const argv[])
 
 	/* reset oobinfo */
 	if (oobinfochanged == 1) {
-		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
-			perror ("MEMSETOOBSEL");
+		if (ioctl(fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
+			perror("MEMSETOOBSEL");
 			close(fd);
 			close(ofd);
 			return EXIT_FAILURE;
@@ -479,8 +476,8 @@ int main(int argc, char * const argv[])
 closeall:
 	/* The new mode change is per file descriptor ! */
 	if (oobinfochanged == 1) {
-		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0)  {
-			perror ("MEMSETOOBSEL");
+		if (ioctl(fd, MEMSETOOBSEL, &old_oobinfo) != 0)  {
+			perror("MEMSETOOBSEL");
 		}
 	}
 	close(fd);
