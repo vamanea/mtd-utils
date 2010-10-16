@@ -93,7 +93,8 @@ int main(int argc, char *argv[])
 {
 	libmtd_t mtd_desc;
 	struct mtd_dev_info mtd;
-	int fd, clmpos = 0, clmlen = 8, eb, eb_start, eb_cnt;
+	int fd, clmpos = 0, clmlen = 8;
+	unsigned int eb, eb_start, eb_cnt;
 	int isNAND;
 	int error = 0;
 	uint64_t offset = 0;
@@ -232,7 +233,7 @@ int main(int argc, char *argv[])
 		eb_cnt = (mtd.size / mtd.eb_size) - eb_start;
 
 	for (eb = eb_start; eb < eb_start + eb_cnt; eb++) {
-		offset = eb * mtd.eb_size;
+		offset = (uint64_t)eb * mtd.eb_size;
 
 		if (!noskipbad) {
 			int ret = mtd_is_bad(&mtd, fd, eb);
@@ -285,7 +286,6 @@ int main(int argc, char *argv[])
 		}
 		verbose(!quiet, " Cleanmarker written at %"PRIx64, offset);
 	}
-	offset += mtd.eb_size;
 	show_progress(&mtd, offset, eb, eb_start, eb_cnt);
 	bareverbose(!quiet, "\n");
 
