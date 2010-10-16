@@ -41,9 +41,7 @@
 
 #include <asm/types.h>
 #include "mtd/mtd-user.h"
-
-#define MAX_PAGE_SIZE	4096
-#define MAX_OOB_SIZE	128
+#include "common.h"
 
 // oob layouts to pass into the kernel as default
 static struct nand_oobinfo none_oobinfo = {
@@ -276,11 +274,9 @@ int main(int argc, char * const argv[])
 	unsigned char *writebuf = NULL;
 	// points to the OOB for the current page in filebuf
 	unsigned char *oobreadbuf = NULL;
-	unsigned char oobbuf[MAX_OOB_SIZE];
+	unsigned char *oobbuf = NULL;
 
 	process_options(argc, argv);
-
-	erase_buffer(oobbuf, sizeof(oobbuf));
 
 	if (pad && writeoob) {
 		fprintf(stderr, "Can't pad when oob data is present.\n");
@@ -303,17 +299,6 @@ int main(int argc, char * const argv[])
 	/* Set erasesize to specified number of blocks - to match jffs2
 	 * (virtual) block size */
 	meminfo.erasesize *= blockalign;
-
-	/* Make sure device page sizes are valid */
-	if (!(meminfo.oobsize == 16 && meminfo.writesize == 512) &&
-			!(meminfo.oobsize == 8 && meminfo.writesize == 256) &&
-			!(meminfo.oobsize == 64 && meminfo.writesize == 2048) &&
-			!(meminfo.oobsize == 64 && meminfo.writesize == 4096) &&
-			!(meminfo.oobsize == 128 && meminfo.writesize == 4096)) {
-		fprintf(stderr, "Unknown flash (not normal NAND)\n");
-		close(fd);
-		exit (EXIT_FAILURE);
-	}
 
 	if (mtdoffset & (meminfo.writesize - 1)) {
 		fprintf(stderr, "The start address is not page-aligned !\n"
@@ -452,13 +437,11 @@ int main(int argc, char * const argv[])
 
 	// Allocate a buffer big enough to contain all the data (OOB included) for one eraseblock
 	filebuf_max = pagelen * meminfo.erasesize / meminfo.writesize;
-	filebuf = (unsigned char*)malloc(filebuf_max);
-	if (!filebuf) {
-		fprintf(stderr, "Failed to allocate memory for file buffer (%d bytes)\n",
-				pagelen * meminfo.erasesize / meminfo.writesize);
-		goto closeall;
-	}
+	filebuf = xmalloc(filebuf_max);
 	erase_buffer(filebuf, filebuf_max);
+
+	oobbuf = xmalloc(meminfo.oobsize);
+	erase_buffer(oobbuf, meminfo.oobsize);
 
 	/*
 	 * Get data from input and write to the device while there is
@@ -689,13 +672,12 @@ int main(int argc, char * const argv[])
 	failed = false;
 
 closeall:
-	if (filebuf) {
-		free(filebuf);
-	}
-
 	close(ifd);
 
 restoreoob:
+	free(filebuf);
+	free(oobbuf);
+
 	if (oobinfochanged == 1) {
 		if (ioctl (fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
 			perror ("MEMSETOOBSEL");
