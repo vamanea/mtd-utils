@@ -360,6 +360,13 @@ int main(int argc, char * const argv[])
 	}
 
 	/* Initialize start/end addresses and block size */
+	if (start_addr & (meminfo.writesize - 1)) {
+		fprintf(stderr, "WARNING: The start address is not page-aligned !\n"
+				"The pagesize of this NAND Flash is 0x%x.\n"
+				"nandwrite doesn't allow writes starting at this location.\n"
+				"Future versions of nanddump will fail here.\n",
+				meminfo.writesize);
+	}
 	if (length)
 		end_addr = start_addr + length;
 	if (!length || end_addr > meminfo.size)

@@ -27,5 +27,15 @@ So the plan is (to be done by Artem Bityutskiy):
 3.1 adding a warning to make users stop using them
 3.2 removing both options.
 ---------------------------
-2.
+2. nanddump: fail when the -s parameter is not page aligned
+
+nanddump should be consistent with nandwrite, and refuse accepting non page
+aligned start addresses. These dumps are most likely useless, since nandwrite
+won't write then at this location. Currently only a warning is issued to keep
+backward compatibility during a transition period. This should become an error
+one release after the next release (current is mtd-utils-1.4.0, 18 Sep 2010).
+
+To be done by Artem Bityutskiy.
+---------------------------
+3.
 ---------------------------
