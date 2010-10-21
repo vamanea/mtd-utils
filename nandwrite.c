@@ -318,7 +318,6 @@ int main(int argc, char * const argv[])
 
 		// autoplace ECC ?
 		if (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE) {
-
 			if (ioctl(fd, MEMSETOOBSEL, &autoplace_oobinfo) != 0) {
 				perror("MEMSETOOBSEL");
 				close(fd);
@@ -329,7 +328,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (noecc)  {
-		ret = ioctl(fd, MTDFILEMODE, (void *)MTD_MODE_RAW);
+		ret = ioctl(fd, MTDFILEMODE, MTD_MODE_RAW);
 		if (ret == 0) {
 			oobinfochanged = 2;
 		} else {
@@ -428,7 +427,7 @@ int main(int argc, char * const argv[])
 	}
 
 	// Check, if length fits into device
-	if ( ((imglen / pagelen) * meminfo.writesize) > (meminfo.size - mtdoffset)) {
+	if (((imglen / pagelen) * meminfo.writesize) > (meminfo.size - mtdoffset)) {
 		fprintf(stderr, "Image %d bytes, NAND page %d bytes, OOB area %u bytes, device size %u bytes\n",
 				imglen, pagelen, meminfo.writesize, meminfo.size);
 		perror("Input file does not fit into device");
@@ -451,14 +450,15 @@ int main(int argc, char * const argv[])
 	 * length or zero.
 	 */
 	while (((imglen > 0) || (writebuf < (filebuf + filebuf_len)))
-		&& (mtdoffset < meminfo.size))
-	{
-		// new eraseblock , check for bad block(s)
-		// Stay in the loop to be sure if the mtdoffset changes because
-		// of a bad block, that the next block that will be written to
-		// is also checked. Thus avoiding errors if the block(s) after the
-		// skipped block(s) is also bad (number of blocks depending on
-		// the blockalign
+		&& (mtdoffset < meminfo.size)) {
+		/*
+		 * New eraseblock, check for bad block(s)
+		 * Stay in the loop to be sure that, if mtdoffset changes because
+		 * of a bad block, the next block that will be written to
+		 * is also checked. Thus, we avoid errors if the block(s) after the
+		 * skipped block(s) is also bad (number of blocks depending on
+		 * the blockalign).
+		 */
 		while (blockstart != (mtdoffset & (~meminfo.erasesize + 1))) {
 			blockstart = mtdoffset & (~meminfo.erasesize + 1);
 			offs = blockstart;
@@ -592,14 +592,14 @@ int main(int argc, char * const argv[])
 				int i, start, len;
 				int tags_pos = 0;
 				/*
-				 *  We use autoplacement and have the oobinfo with the autoplacement
+				 * We use autoplacement and have the oobinfo with the autoplacement
 				 * information from the kernel available
 				 *
 				 * Modified to support out of order oobfree segments,
 				 * such as the layout used by diskonchip.c
 				 */
 				if (!oobinfochanged && (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE)) {
-					for (i = 0;old_oobinfo.oobfree[i][1]; i++) {
+					for (i = 0; old_oobinfo.oobfree[i][1]; i++) {
 						/* Set the reserved bytes to 0xff */
 						start = old_oobinfo.oobfree[i][0];
 						len = old_oobinfo.oobfree[i][1];
@@ -620,7 +620,7 @@ int main(int argc, char * const argv[])
 							len);
 				}
 			}
-			/* Write OOB data first, as ecc will be placed in there*/
+			/* Write OOB data first, as ecc will be placed in there */
 			oob.start = mtdoffset;
 			if (ioctl(fd, MEMWRITEOOB, &oob) != 0) {
 				perror("ioctl(MEMWRITEOOB)");

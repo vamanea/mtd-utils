@@ -77,18 +77,18 @@ static void display_version(void)
 
 // Option variables
 
-static bool		pretty_print = false;	// print nice
-static bool		noecc = false;		// don't error correct
-static bool		noskipbad = false;	// don't skip bad blocks
-static bool		omitoob = false;	// omit oob data
-static unsigned long	start_addr;		// start address
-static unsigned long	length;			// dump length
-static const char	*mtddev;		// mtd device name
-static const char	*dumpfile;		// dump file name
-static bool		omitbad = false;
-static bool		quiet = false;		// suppress diagnostic output
-static bool		canonical = false;	// print nice + ascii
-static bool		forcebinary = false;	// force printing binary to tty
+static bool			pretty_print = false;	// print nice
+static bool			noecc = false;		// don't error correct
+static bool			noskipbad = false;	// don't skip bad blocks
+static bool			omitoob = false;	// omit oob data
+static unsigned long		start_addr;		// start address
+static unsigned long		length;			// dump length
+static const char		*mtddev;		// mtd device name
+static const char		*dumpfile;		// dump file name
+static bool			omitbad = false;
+static bool			quiet = false;		// suppress diagnostic output
+static bool			canonical = false;	// print nice + ascii
+static bool			forcebinary = false;	// force printing binary to tty
 
 static void process_options(int argc, char * const argv[])
 {
@@ -135,7 +135,7 @@ static void process_options(int argc, char * const argv[])
 				omitbad = true;
 				break;
 			case 's':
-				start_addr = strtol(optarg, NULL, 0);
+				start_addr = strtoul(optarg, NULL, 0);
 				break;
 			case 'f':
 				if (!(dumpfile = strdup(optarg))) {
@@ -144,7 +144,7 @@ static void process_options(int argc, char * const argv[])
 				}
 				break;
 			case 'l':
-				length = strtol(optarg, NULL, 0);
+				length = strtoul(optarg, NULL, 0);
 				break;
 			case 'o':
 				omitoob = true;
@@ -225,14 +225,12 @@ static void pretty_dump_to_buffer(const unsigned char *buf, size_t len,
 {
 	static const char hex_asc[] = "0123456789abcdef";
 	unsigned char ch;
-	int j, lx = 0;
-	int ascii_column;
+	unsigned int j, lx = 0, ascii_column;
 
 	if (pagedump)
-		sprintf(linebuf, "0x%.8x: ", prefix);
+		lx += sprintf(linebuf, "0x%.8x: ", prefix);
 	else
-		sprintf(linebuf, "  OOB Data: ");
-	lx += 12;
+		lx += sprintf(linebuf, "  OOB Data: ");
 
 	if (!len)
 		goto nil;
@@ -253,8 +251,10 @@ static void pretty_dump_to_buffer(const unsigned char *buf, size_t len,
 	if (!ascii)
 		goto nil;
 
-	while (lx < (linebuflen - 1) && lx < (ascii_column - 1))
+	do {
 		linebuf[lx++] = ' ';
+	} while (lx < (linebuflen - 1) && lx < (ascii_column - 1));
+
 	linebuf[lx++] = '|';
 	for (j = 0; (j < len) && (lx + 2) < linebuflen; j++)
 		linebuf[lx++] = (isascii(buf[j]) && isprint(buf[j])) ? buf[j]
@@ -308,7 +308,7 @@ int main(int argc, char * const argv[])
 	oob.ptr = oobbuf;
 
 	if (noecc)  {
-		ret = ioctl(fd, MTDFILEMODE, (void *) MTD_MODE_RAW);
+		ret = ioctl(fd, MTDFILEMODE, MTD_MODE_RAW);
 		if (ret == 0) {
 			oobinfochanged = 2;
 		} else {
@@ -330,7 +330,6 @@ int main(int argc, char * const argv[])
 			}
 		}
 	} else {
-
 		/* check if we can read ecc stats */
 		if (!ioctl(fd, ECCGETSTATS, &stat1)) {
 			eccstats = true;
@@ -375,7 +374,6 @@ int main(int argc, char * const argv[])
 	bs = meminfo.writesize;
 
 	/* Print informative message */
-
 	if (!quiet) {
 		fprintf(stderr, "Block size %u, page size %u, OOB size %u\n",
 				meminfo.erasesize, meminfo.writesize, meminfo.oobsize);
@@ -383,6 +381,7 @@ int main(int argc, char * const argv[])
 				"Dumping data starting at 0x%08x and ending at 0x%08x...\n",
 				(unsigned int)start_addr, (unsigned int)end_addr);
 	}
+
 	/* Dump the flash contents */
 	for (ofs = start_addr; ofs < end_addr; ofs += bs) {
 		/* Check for bad block */
@@ -401,7 +400,7 @@ int main(int argc, char * const argv[])
 		if (badblock) {
 			if (omitbad)
 				continue;
-			memset (readbuf, 0xff, bs);
+			memset(readbuf, 0xff, bs);
 		} else {
 			/* Read page data and exit on failure */
 			if (pread(fd, readbuf, bs, ofs) != bs) {
@@ -430,8 +429,8 @@ int main(int argc, char * const argv[])
 		/* Write out page data */
 		if (pretty_print) {
 			for (i = 0; i < bs; i += PRETTY_ROW_SIZE) {
-				pretty_dump_to_buffer(readbuf+i, PRETTY_ROW_SIZE,
-						pretty_buf, PRETTY_BUF_LEN, true, canonical, ofs+i);
+				pretty_dump_to_buffer(readbuf + i, PRETTY_ROW_SIZE,
+						pretty_buf, PRETTY_BUF_LEN, true, canonical, ofs + i);
 				write(ofd, pretty_buf, strlen(pretty_buf));
 			}
 		} else
@@ -453,8 +452,8 @@ int main(int argc, char * const argv[])
 
 		/* Write out OOB data */
 		if (pretty_print) {
-			for (i = 0; i < meminfo.oobsize; i += 16) {
-				pretty_dump_to_buffer(oobbuf+i, meminfo.oobsize-i,
+			for (i = 0; i < meminfo.oobsize; i += PRETTY_ROW_SIZE) {
+				pretty_dump_to_buffer(oobbuf + i, meminfo.oobsize - i,
 						pretty_buf, PRETTY_BUF_LEN, false, canonical, 0);
 				write(ofd, pretty_buf, strlen(pretty_buf));
 			}
