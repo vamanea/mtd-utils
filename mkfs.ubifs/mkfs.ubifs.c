@@ -132,7 +132,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:P:k:x:X:j:R:l:j:UQq";
+static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:p:k:x:X:j:R:l:j:UQq";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
