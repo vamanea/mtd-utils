@@ -83,7 +83,7 @@ static bool			noecc = false;		// don't error correct
 static bool			noskipbad = false;	// don't skip bad blocks
 static bool			omitoob = false;	// omit oob data
 static unsigned long long	start_addr;		// start address
-static unsigned long		length;			// dump length
+static unsigned long long	length;			// dump length
 static const char		*mtddev;		// mtd device name
 static const char		*dumpfile;		// dump file name
 static bool			omitbad = false;
