@@ -433,7 +433,7 @@ int main(int argc, char * const argv[])
 	// Check, if length fits into device
 	if (((imglen / pagelen) * meminfo.writesize) > (meminfo.size - mtdoffset)) {
 		fprintf(stderr, "Image %d bytes, NAND page %d bytes, OOB area %u bytes, device size %u bytes\n",
-				imglen, pagelen, meminfo.writesize, meminfo.size);
+				imglen, pagelen, meminfo.oobsize, meminfo.size);
 		perror("Input file does not fit into device");
 		goto closeall;
 	}
