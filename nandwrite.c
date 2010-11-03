@@ -120,7 +120,7 @@ static bool		forcelegacy = false;
 static bool		noecc = false;
 static bool		noskipbad = false;
 static bool		pad = false;
-static int		blockalign = 1; /* default to using 16K block size */
+static int		blockalign = 1; /* default to using actual block size */
 
 static void process_options(int argc, char * const argv[])
 {
@@ -483,8 +483,7 @@ int main(int argc, char * const argv[])
 				if ((ret = ioctl(fd, MEMGETBADBLOCK, &offs)) < 0) {
 					perror("ioctl(MEMGETBADBLOCK)");
 					goto closeall;
-				}
-				if (ret == 1) {
+				} else if (ret == 1) {
 					baderaseblock = true;
 					if (!quiet)
 						fprintf(stderr, "Bad block at %x, %u block(s) "
@@ -520,9 +519,11 @@ int main(int argc, char * const argv[])
 
 			/* No padding needed - we are done */
 			if (tinycnt == 0) {
-				// For standard input, set the imglen to 0 to signal
-				// the end of the "file". For non standard input, leave
-				// it as-is to detect an early EOF
+				/*
+				 * For standard input, set imglen to 0 to signal
+				 * the end of the "file". For nonstandard input,
+				 * leave it as-is to detect an early EOF.
+				 */
 				if (ifd == STDIN_FILENO) {
 					imglen = 0;
 				}
