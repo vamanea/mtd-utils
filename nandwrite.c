@@ -391,7 +391,6 @@ int main(int argc, char * const argv[])
 	}
 
 	oob.length = mtd.oob_size;
-	oob.ptr = noecc ? oobreadbuf : oobbuf;
 
 	/* Determine if we are reading from standard input or from a file. */
 	if (strcmp(img, standard_input) == 0) {
@@ -594,9 +593,7 @@ int main(int argc, char * const argv[])
 				}
 			}
 
-			if (noecc) {
-				oob.ptr = oobreadbuf;
-			} else {
+			if (!noecc) {
 				int i, start, len;
 				int tags_pos = 0;
 				/*
@@ -630,6 +627,7 @@ int main(int argc, char * const argv[])
 			}
 			/* Write OOB data first, as ecc will be placed in there */
 			oob.start = mtdoffset;
+			oob.ptr = noecc ? oobreadbuf : oobbuf;
 			if (ioctl(fd, MEMWRITEOOB, &oob) != 0) {
 				perror("ioctl(MEMWRITEOOB)");
 				goto closeall;
