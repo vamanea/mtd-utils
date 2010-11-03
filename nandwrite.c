@@ -109,7 +109,7 @@ static void display_version(void)
 
 static const char	*standard_input = "-";
 static const char	*mtd_device, *img;
-static int		mtdoffset = 0;
+static long long	mtdoffset = 0;
 static bool		quiet = false;
 static bool		writeoob = false;
 static bool		rawoob = false;
@@ -201,7 +201,7 @@ static void process_options(int argc, char * const argv[])
 				writeoob = true;
 				break;
 			case 's':
-				mtdoffset = strtol(optarg, NULL, 0);
+				mtdoffset = strtoll(optarg, NULL, 0);
 				break;
 			case 'b':
 				blockalign = atoi(optarg);
@@ -213,7 +213,7 @@ static void process_options(int argc, char * const argv[])
 	}
 
 	if (mtdoffset < 0) {
-		fprintf(stderr, "Can't specify a negative device offset `%d'\n",
+		fprintf(stderr, "Can't specify a negative device offset `%lld'\n",
 				mtdoffset);
 		exit(EXIT_FAILURE);
 	}
@@ -259,7 +259,7 @@ int main(int argc, char * const argv[])
 	int ifd = -1;
 	int imglen = 0, pagelen;
 	bool baderaseblock = false;
-	int blockstart = -1;
+	long long blockstart = -1;
 	struct mtd_dev_info mtd;
 	struct mtd_oob_buf oob;
 	loff_t offs;
@@ -480,7 +480,7 @@ int main(int argc, char * const argv[])
 
 			baderaseblock = false;
 			if (!quiet)
-				fprintf(stdout, "Writing data to block %d at offset 0x%x\n",
+				fprintf(stdout, "Writing data to block %lld at offset 0x%llx\n",
 						 blockstart / ebsize_aligned, blockstart);
 
 			/* Check all the blocks in an erase block for bad blocks */
@@ -494,7 +494,7 @@ int main(int argc, char * const argv[])
 					baderaseblock = true;
 					if (!quiet)
 						fprintf(stderr, "Bad block at %x, %u block(s) "
-								"from %x will be skipped\n",
+								"from %llx will be skipped\n",
 								(int) offs, blockalign, blockstart);
 				}
 
