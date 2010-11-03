@@ -275,6 +275,7 @@ int main(int argc, char * const argv[])
 	// points to the OOB for the current page in filebuf
 	unsigned char *oobreadbuf = NULL;
 	unsigned char *oobbuf = NULL;
+	int ebsize_aligned;
 
 	process_options(argc, argv);
 
@@ -296,9 +297,12 @@ int main(int argc, char * const argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* Set erasesize to specified number of blocks - to match jffs2
-	 * (virtual) block size */
-	meminfo.erasesize *= blockalign;
+	/*
+	 * Pretend erasesize is specified number of blocks - to match jffs2
+	 *   (virtual) block size
+	 * Use this value throughout unless otherwise necessary
+	 */
+	ebsize_aligned = meminfo.erasesize * blockalign;
 
 	if (mtdoffset & (meminfo.writesize - 1)) {
 		fprintf(stderr, "The start address is not page-aligned !\n"
@@ -435,7 +439,7 @@ int main(int argc, char * const argv[])
 	}
 
 	// Allocate a buffer big enough to contain all the data (OOB included) for one eraseblock
-	filebuf_max = pagelen * meminfo.erasesize / meminfo.writesize;
+	filebuf_max = pagelen * ebsize_aligned / meminfo.writesize;
 	filebuf = xmalloc(filebuf_max);
 	erase_buffer(filebuf, filebuf_max);
 
@@ -459,8 +463,8 @@ int main(int argc, char * const argv[])
 		 * skipped block(s) is also bad (number of blocks depending on
 		 * the blockalign).
 		 */
-		while (blockstart != (mtdoffset & (~meminfo.erasesize + 1))) {
-			blockstart = mtdoffset & (~meminfo.erasesize + 1);
+		while (blockstart != (mtdoffset & (~ebsize_aligned + 1))) {
+			blockstart = mtdoffset & (~ebsize_aligned + 1);
 			offs = blockstart;
 
 			// if writebuf == filebuf, we are rewinding so we must not
@@ -474,7 +478,7 @@ int main(int argc, char * const argv[])
 			baderaseblock = false;
 			if (!quiet)
 				fprintf(stdout, "Writing data to block %d at offset 0x%x\n",
-						 blockstart / meminfo.erasesize, blockstart);
+						 blockstart / ebsize_aligned, blockstart);
 
 			/* Check all the blocks in an erase block for bad blocks */
 			if (noskipbad)
@@ -492,10 +496,10 @@ int main(int argc, char * const argv[])
 				}
 
 				if (baderaseblock) {
-					mtdoffset = blockstart + meminfo.erasesize;
+					mtdoffset = blockstart + ebsize_aligned;
 				}
-				offs +=  meminfo.erasesize / blockalign;
-			} while (offs < blockstart + meminfo.erasesize);
+				offs +=  ebsize_aligned / blockalign;
+			} while (offs < blockstart + ebsize_aligned);
 
 		}
 
@@ -642,7 +646,7 @@ int main(int argc, char * const argv[])
 			writebuf = filebuf;
 
 			erase.start = blockstart;
-			erase.length = meminfo.erasesize;
+			erase.length = ebsize_aligned;
 			fprintf(stderr, "Erasing failed write from %08lx-%08lx\n",
 				(long)erase.start, (long)erase.start+erase.length-1);
 			if (ioctl(fd, MEMERASE, &erase) != 0) {
@@ -654,14 +658,14 @@ int main(int argc, char * const argv[])
 			}
 
 			if (markbad) {
-				loff_t bad_addr = mtdoffset & (~(meminfo.erasesize / blockalign) + 1);
+				loff_t bad_addr = mtdoffset & (~meminfo.erasesize + 1);
 				fprintf(stderr, "Marking block at %08lx bad\n", (long)bad_addr);
 				if (ioctl(fd, MEMSETBADBLOCK, &bad_addr)) {
 					perror("MEMSETBADBLOCK");
 					goto closeall;
 				}
 			}
-			mtdoffset = blockstart + meminfo.erasesize;
+			mtdoffset = blockstart + ebsize_aligned;
 
 			continue;
 		}
