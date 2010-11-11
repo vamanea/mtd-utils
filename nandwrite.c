@@ -261,7 +261,6 @@ int main(int argc, char * const argv[])
 	bool baderaseblock = false;
 	long long blockstart = -1;
 	struct mtd_dev_info mtd;
-	struct mtd_oob_buf oob;
 	loff_t offs;
 	int ret;
 	int oobinfochanged = 0;
@@ -390,8 +389,6 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	oob.length = mtd.oob_size;
-
 	/* Determine if we are reading from standard input or from a file. */
 	if (strcmp(img, standard_input) == 0) {
 		ifd = STDIN_FILENO;
@@ -491,8 +488,8 @@ int main(int argc, char * const argv[])
 			if (noskipbad)
 				continue;
 			do {
-				if ((ret = ioctl(fd, MEMGETBADBLOCK, &offs)) < 0) {
-					perror("ioctl(MEMGETBADBLOCK)");
+				if ((ret = mtd_is_bad(&mtd, fd, offs / ebsize_aligned)) < 0) {
+					sys_errmsg("%s: MTD get bad block failed", mtd_device);
 					goto closeall;
 				} else if (ret == 1) {
 					baderaseblock = true;
@@ -631,43 +628,43 @@ int main(int argc, char * const argv[])
 				}
 			}
 			/* Write OOB data first, as ecc will be placed in there */
-			oob.start = mtdoffset;
-			oob.ptr = noecc ? oobreadbuf : oobbuf;
-			if (ioctl(fd, MEMWRITEOOB, &oob) != 0) {
-				perror("ioctl(MEMWRITEOOB)");
+			if (mtd_write_oob(mtd_desc, &mtd, fd, mtdoffset,
+						mtd.oob_size,
+						noecc ? oobreadbuf : oobbuf)) {
+				sys_errmsg("%s: MTD writeoob failure", mtd_device);
 				goto closeall;
 			}
 		}
 
 		/* Write out the Page data */
-		if (pwrite(fd, writebuf, mtd.min_io_size, mtdoffset) != mtd.min_io_size) {
-			erase_info_t erase;
-
+		if (mtd_write(&mtd, fd, mtdoffset / mtd.eb_size, mtdoffset % mtd.eb_size,
+					writebuf, mtd.min_io_size)) {
+			int i;
 			if (errno != EIO) {
-				perror("pwrite");
+				sys_errmsg("%s: MTD write failure", mtd_device);
 				goto closeall;
 			}
 
 			/* Must rewind to blockstart if we can */
 			writebuf = filebuf;
 
-			erase.start = blockstart;
-			erase.length = ebsize_aligned;
-			fprintf(stderr, "Erasing failed write from %08lx-%08lx\n",
-				(long)erase.start, (long)erase.start+erase.length-1);
-			if (ioctl(fd, MEMERASE, &erase) != 0) {
-				int errno_tmp = errno;
-				perror("MEMERASE");
-				if (errno_tmp != EIO) {
-					goto closeall;
+			fprintf(stderr, "Erasing failed write from %#08llx to %#08llx\n",
+				blockstart, blockstart + ebsize_aligned - 1);
+			for (i = blockstart; i < blockstart + ebsize_aligned; i += mtd.eb_size) {
+				if (mtd_erase(mtd_desc, &mtd, fd, mtd.eb_size)) {
+					int errno_tmp = errno;
+					sys_errmsg("%s: MTD Erase failure", mtd_device);
+					if (errno_tmp != EIO) {
+						goto closeall;
+					}
 				}
 			}
 
 			if (markbad) {
-				loff_t bad_addr = mtdoffset & (~mtd.eb_size + 1);
-				fprintf(stderr, "Marking block at %08lx bad\n", (long)bad_addr);
-				if (ioctl(fd, MEMSETBADBLOCK, &bad_addr)) {
-					perror("MEMSETBADBLOCK");
+				fprintf(stderr, "Marking block at %08llx bad\n",
+						mtdoffset & (~mtd.eb_size + 1));
+				if (mtd_mark_bad(&mtd, fd, mtdoffset / mtd.eb_size)) {
+					sys_errmsg("%s: MTD Mark bad block failure", mtd_device);
 					goto closeall;
 				}
 			}
