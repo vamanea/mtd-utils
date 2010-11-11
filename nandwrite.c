@@ -440,8 +440,13 @@ int main(int argc, char * const argv[])
 		goto closeall;
 	}
 
-	// Allocate a buffer big enough to contain all the data (OOB included) for one eraseblock
-	filebuf_max = pagelen * ebsize_aligned / mtd.min_io_size;
+	/*
+	 * Allocate a buffer big enough to contain all the data (OOB included)
+	 * for one eraseblock. The order of operations here matters; if ebsize
+	 * and pagelen are large enough, then "ebsize_aligned * pagelen" could
+	 * overflow a 32-bit data type.
+	 */
+	filebuf_max = ebsize_aligned / mtd.min_io_size * pagelen;
 	filebuf = xmalloc(filebuf_max);
 	erase_buffer(filebuf, filebuf_max);
 
