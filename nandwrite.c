@@ -261,7 +261,7 @@ int main(int argc, char * const argv[])
 	bool baderaseblock = false;
 	long long blockstart = -1;
 	struct mtd_dev_info mtd;
-	loff_t offs;
+	long long offs;
 	int ret;
 	int oobinfochanged = 0;
 	struct nand_oobinfo old_oobinfo;
@@ -494,9 +494,9 @@ int main(int argc, char * const argv[])
 				} else if (ret == 1) {
 					baderaseblock = true;
 					if (!quiet)
-						fprintf(stderr, "Bad block at %x, %u block(s) "
+						fprintf(stderr, "Bad block at %llx, %u block(s) "
 								"from %llx will be skipped\n",
-								(int) offs, blockalign, blockstart);
+								offs, blockalign, blockstart);
 				}
 
 				if (baderaseblock) {
