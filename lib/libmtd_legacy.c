@@ -261,6 +261,7 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	mtd->size = ui.size;
 	mtd->eb_size = ui.erasesize;
 	mtd->min_io_size = ui.writesize;
+	mtd->oob_size = ui.oobsize;
 
 	if (mtd->min_io_size <= 0) {
 		errmsg("mtd%d (%s) has insane min. I/O unit size %d",
