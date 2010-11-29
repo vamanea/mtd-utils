@@ -252,9 +252,10 @@ static void pretty_dump_to_buffer(const unsigned char *buf, size_t len,
 	if (!ascii)
 		goto nil;
 
-	do {
-		linebuf[lx++] = ' ';
-	} while (lx < (linebuflen - 1) && lx < (ascii_column - 1));
+	/* Spacing between hex and ASCII - ensure at least one space */
+	lx += sprintf(linebuf + lx, "%*s",
+			MAX((int)MIN(linebuflen, ascii_column) - 1 - lx, 1),
+			" ");
 
 	linebuf[lx++] = '|';
 	for (j = 0; (j < len) && (lx + 2) < linebuflen; j++)
