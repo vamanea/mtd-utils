@@ -82,8 +82,8 @@ static bool			pretty_print = false;	// print nice
 static bool			noecc = false;		// don't error correct
 static bool			noskipbad = false;	// don't skip bad blocks
 static bool			omitoob = false;	// omit oob data
-static unsigned long long	start_addr;		// start address
-static unsigned long long	length;			// dump length
+static long long		start_addr;		// start address
+static long long		length;			// dump length
 static const char		*mtddev;		// mtd device name
 static const char		*dumpfile;		// dump file name
 static bool			omitbad = false;
@@ -136,7 +136,7 @@ static void process_options(int argc, char * const argv[])
 				omitbad = true;
 				break;
 			case 's':
-				start_addr = simple_strtoull(optarg, &error);
+				start_addr = simple_strtoll(optarg, &error);
 				break;
 			case 'f':
 				if (!(dumpfile = strdup(optarg))) {
@@ -145,7 +145,7 @@ static void process_options(int argc, char * const argv[])
 				}
 				break;
 			case 'l':
-				length = simple_strtoull(optarg, &error);
+				length = simple_strtoll(optarg, &error);
 				break;
 			case 'o':
 				omitoob = true;
@@ -273,8 +273,8 @@ nil:
  */
 int main(int argc, char * const argv[])
 {
-	unsigned long long ofs, end_addr = 0;
-	unsigned long long blockstart = 1;
+	long long ofs, end_addr = 0;
+	long long blockstart = 1;
 	int ret, i, fd, ofd = 0, bs, badblock = 0;
 	struct mtd_dev_info mtd;
 	char pretty_buf[PRETTY_BUF_LEN];
