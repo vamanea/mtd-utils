@@ -381,7 +381,7 @@ int main(int argc, char * const argv[])
 
 	/* Print informative message */
 	if (!quiet) {
-		fprintf(stderr, "Block size %u, page size %u, OOB size %u\n",
+		fprintf(stderr, "Block size %d, page size %d, OOB size %d\n",
 				mtd.eb_size, mtd.min_io_size, mtd.oob_size);
 		fprintf(stderr,
 				"Dumping data starting at 0x%08llx and ending at 0x%08llx...\n",
