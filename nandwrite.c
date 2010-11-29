@@ -201,7 +201,7 @@ static void process_options(int argc, char * const argv[])
 				writeoob = true;
 				break;
 			case 's':
-				mtdoffset = strtoll(optarg, NULL, 0);
+				mtdoffset = simple_strtoll(optarg, &error);
 				break;
 			case 'b':
 				blockalign = atoi(optarg);

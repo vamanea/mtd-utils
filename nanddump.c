@@ -136,7 +136,7 @@ static void process_options(int argc, char * const argv[])
 				omitbad = true;
 				break;
 			case 's':
-				start_addr = strtoull(optarg, NULL, 0);
+				start_addr = simple_strtoull(optarg, &error);
 				break;
 			case 'f':
 				if (!(dumpfile = strdup(optarg))) {
@@ -145,7 +145,7 @@ static void process_options(int argc, char * const argv[])
 				}
 				break;
 			case 'l':
-				length = strtoull(optarg, NULL, 0);
+				length = simple_strtoull(optarg, &error);
 				break;
 			case 'o':
 				omitoob = true;
