@@ -173,6 +173,13 @@ static void process_options(int argc, char * const argv[])
 		}
 	}
 
+	if (start_addr < 0)
+		errmsg_die("Can't specify negative offset with option -s: %lld",
+				start_addr);
+
+	if (length < 0)
+		errmsg_die("Can't specify negative length with option -l: %lld", length);
+
 	if (quiet && pretty_print) {
 		fprintf(stderr, "The quiet and pretty print options are mutually-\n"
 				"exclusive. Choose one or the other.\n");
