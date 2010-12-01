@@ -212,11 +212,9 @@ static void process_options(int argc, char * const argv[])
 		}
 	}
 
-	if (mtdoffset < 0) {
-		fprintf(stderr, "Can't specify a negative device offset `%lld'\n",
-				mtdoffset);
-		exit(EXIT_FAILURE);
-	}
+	if (mtdoffset < 0)
+		errmsg_die("Can't specify negative device offset with option"
+				" -s: %lld", mtdoffset);
 
 	if (blockalign < 0)
 		errmsg_die("Can't specify negative blockalign with option -b:"
