@@ -218,6 +218,10 @@ static void process_options(int argc, char * const argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (blockalign < 0)
+		errmsg_die("Can't specify negative blockalign with option -b:"
+				" %d", blockalign);
+
 	argc -= optind;
 	argv += optind;
 
