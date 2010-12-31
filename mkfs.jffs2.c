@@ -457,7 +457,7 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 			errmsg_die("Unsupported file type '%c'", type);
 	}
 	entry = find_filesystem_entry(root, name, mode);
-	if (entry) {
+	if (entry && !(count > 0 && (type == 'c' || type == 'b'))) {
 		/* Ok, we just need to fixup the existing entry
 		 * and we will be all done... */
 		entry->sb.st_uid = uid;
