@@ -497,10 +497,10 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 					unsigned long i;
 					char *dname, *hpath;
 
-					for (i = start; i < count; i++) {
+					for (i = start; i < (start + count); i++) {
 						xasprintf(&dname, "%s%lu", name, i);
 						xasprintf(&hpath, "%s/%s%lu", rootdir, name, i);
-						rdev = makedev(major, minor + (i * increment - start));
+						rdev = makedev(major, minor + (i - start) * increment);
 						add_host_filesystem_entry(dname, hpath, uid, gid,
 								mode, rdev, parent);
 						free(dname);
