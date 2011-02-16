@@ -108,9 +108,9 @@ static inline type simple_##func(const char *snum, int *error) \
 	return ret; \
 }
 simple_strtoX(strtol, long int)
-simple_strtoX(strtoll, long int)
+simple_strtoX(strtoll, long long int)
 simple_strtoX(strtoul, unsigned long int)
-simple_strtoX(strtoull, unsigned long int)
+simple_strtoX(strtoull, unsigned long long int)
 
 #include "xalloc.h"
 
