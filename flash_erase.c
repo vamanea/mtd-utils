@@ -60,7 +60,7 @@ static void show_progress(struct mtd_dev_info *mtd, uint64_t start, int eb,
 
 static void display_help (void)
 {
-	printf("Usage: %s [options] MTD_DEVICE <start block> <block count>\n"
+	printf("Usage: %s [options] MTD_DEVICE <start offset> <block count>\n"
 			"Erase blocks of the specified MTD device.\n"
 			"Specify a count of 0 to erase to end of device.\n"
 			"\n"
@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
 	libmtd_t mtd_desc;
 	struct mtd_dev_info mtd;
 	int fd, clmpos = 0, clmlen = 8;
+	unsigned long long start;
 	unsigned int eb, eb_start, eb_cnt;
 	int isNAND;
 	int error = 0;
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 	switch (argc - optind) {
 	case 3:
 		mtd_device = argv[optind];
-		eb_start = simple_strtoul(argv[optind + 1], &error);
+		start = simple_strtoull(argv[optind + 1], &error);
 		eb_cnt = simple_strtoul(argv[optind + 2], &error);
 		break;
 	default:
@@ -181,6 +182,8 @@ int main(int argc, char *argv[])
 
 	if (mtd_get_dev_info(mtd_desc, mtd_device, &mtd) < 0)
 		return errmsg("mtd_get_dev_info failed");
+
+	eb_start = start / mtd.eb_size;
 
 	isNAND = mtd.type == MTD_NANDFLASH ? 1 : 0;
 
