@@ -14,7 +14,7 @@
  */
 
 #define PROGRAM_NAME "nanddump"
-#define VERSION "$Revision: 1.29 $"
+#define VERSION "1.30"
 
 #define _GNU_SOURCE
 #include <ctype.h>
@@ -366,11 +366,10 @@ int main(int argc, char * const argv[])
 
 	/* Initialize start/end addresses and block size */
 	if (start_addr & (mtd.min_io_size - 1)) {
-		fprintf(stderr, "WARNING: The start address is not page-aligned !\n"
-				"The pagesize of this NAND Flash is 0x%x.\n"
-				"nandwrite doesn't allow writes starting at this location.\n"
-				"Future versions of nanddump will fail here.\n",
+		fprintf(stderr, "the start address (-s parameter) is not page-aligned!\n"
+				"The pagesize of this NAND Flash is 0x%x.\n",
 				mtd.min_io_size);
+		goto closeall;
 	}
 	if (length)
 		end_addr = start_addr + length;
