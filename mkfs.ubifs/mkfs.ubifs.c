@@ -23,7 +23,7 @@
 #include "mkfs.ubifs.h"
 #include <crc32.h>
 
-#define PROGRAM_VERSION "1.4"
+#define PROGRAM_VERSION "1.5"
 
 /* Size (prime number) of hash table for link counting */
 #define HASH_TABLE_SIZE 10099
@@ -109,7 +109,7 @@ static char *output;
 static int out_fd;
 static int out_ubi;
 static int squash_owner;
-static int squash_rino_perm = -1;
+static int squash_rino_perm;
 
 /* The 'head' (position) which nodes are written */
 static int head_lnum;
@@ -195,10 +195,13 @@ static const char *helptext =
 "                         2 - files, 3 - more details)\n"
 "-Q, --squash-rino-perm   ignore permissions of the FS image directory (the one\n"
 "                         specified with --root) and make the UBIFS root inode\n"
-"			  permissions to be {uid=gid=root, u+rwx,go+rx}; this is\n"
-"                         see also the default so far, see explanations below\n"
+"                         permissions to be {uid=gid=root, u+rwx,go+rx}; this is\n"
+"                         a legacy compatibility option and it will be removed\n"
+"                         at some point, do not use it\n"
 "-q, --nosquash-rino-perm for the UBIFS root inode use permissions of the FS\n"
-"                         image directory (the one specified with --root)\n"
+"                         image directory (the one specified with --root); this\n"
+"                         is the default behavior; this option will be removed\n"
+"                         at some point, do not use it, see clarifications below;\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -217,12 +220,8 @@ static const char *helptext =
 "late, when mkfs.ubifs had already been used in production. To fix this bug, 2 new\n"
 "options were introduced: --squash-rino-perm which preserves the old behavior and\n"
 "--nosquash-rino-perm which makes mkfs.ubifs use the right permissions for the root\n"
-"inode. For now --squash-rino-perm is the default, and if neither --squash-rino-perm\n"
-"nor --nosquash-rino-perm are used, mkfs.ubifs prints a warning. The further plan is:\n"
-" o keep the warning for few releases to make sure users start using one of the\n"
-"   options\n"
-" o make --nosquash-rino-perm to be the default, and remove the warning\n"
-" o eventually deprecate both options\n";
+"inode. Now these options are considered depricated and they will be removed later, so\n"
+"do not use them.\n";
 
 /**
  * make_path - make a path name from a directory and a name.
@@ -666,9 +665,10 @@ static int get_options(int argc, char**argv)
 			break;
 		case 'Q':
 			squash_rino_perm = 1;
+			printf("WARNING: --squash-rino-perm is depricated, do not use it\n");
 			break;
 		case 'q':
-			squash_rino_perm = 0;
+			printf("WARNING: --nosquash-rino-perm is depricated, do not use it\n");
 			break;
 		}
 	}
@@ -1670,12 +1670,6 @@ static int write_data(void)
 		if (err)
 			return sys_err_msg("bad root file-system directory '%s'",
 					   root);
-		if (squash_rino_perm == -1) {
-			printf("WARNING: setting root UBIFS inode UID=GID=0 (root) and permissions "
-				 "to u+rwx,go+rx; use --squash-rino-perm or --nosquash-rino-perm "
-				 "to suppress this warning\n");
-			squash_rino_perm = 1;
-		}
 		if (squash_rino_perm) {
 			root_st.st_uid = root_st.st_gid = 0;
 			root_st.st_mode = mode;
