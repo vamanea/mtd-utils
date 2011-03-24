@@ -1049,26 +1049,39 @@ out_mem:
 	return 1;
 }
 
-/* Un-mount and re-mount test file system */
+/*
+ * Re-mount test file system. Randomly choose how to do this: re-mount R/O then
+ * re-mount R/W, or unmount, then mount R/W, or unmount then mount R/O then
+ * re-mount R/W, etc. This should improve test coverage.
+ */
 void tests_remount(void)
 {
+	int err;
 	struct mntent mount_info;
-	char *source;
-	char *target;
-	char *filesystemtype;
-	unsigned long mountflags;
-	char *data;
+	char *source, *target, *filesystemtype, *data;
 	char cwd[4096];
+	unsigned long mountflags, flags;
+	unsigned int rorw1, um, um_ro, um_rorw, rorw2;
 
 	CHECK(tests_get_mount_info(&mount_info));
 
 	if (strcmp(mount_info.mnt_dir,"/") == 0)
 		return;
 
+	/* Save current working directory */
 	CHECK(getcwd(cwd, 4096) != NULL);
+	/* Temporarily change working directory to '/' */
 	CHECK(chdir("/") != -1);
 
-	CHECK(umount(tests_file_system_mount_dir) != -1);
+	/* Choose what to do */
+	rorw1 = tests_random_no(2);
+	um = tests_random_no(2);
+	um_ro = tests_random_no(2);
+	um_rorw = tests_random_no(2);
+	rorw2 = tests_random_no(2);
+
+	if (rorw1 + um + rorw2 == 0)
+		um = 1;
 
 	source = mount_info.mnt_fsname;
 	target = tests_file_system_mount_dir;
@@ -1076,7 +1089,62 @@ void tests_remount(void)
 	data = mount_info.mnt_opts;
 	process_mount_options(&data, &mountflags);
 
-	CHECK(mount(source, target, filesystemtype, mountflags, data) != -1);
+	if (rorw1) {
+		/* Re-mount R/O and then re-mount R/W */
+		flags = mountflags | MS_RDONLY | MS_REMOUNT;
+		err = mount(source, target, filesystemtype, flags, data);
+		CHECK(err != -1);
+
+		flags = mountflags | MS_REMOUNT;
+		flags &= ~((unsigned long)MS_RDONLY);
+		err = mount(source, target, filesystemtype, flags, data);
+		CHECK(err != -1);
+	}
+
+	if (um) {
+		/* Unmount and mount */
+		if (um_ro) {
+			/* But re-mount R/O before unmounting */
+			flags = mountflags | MS_RDONLY | MS_REMOUNT;
+			err = mount(source, target, filesystemtype,
+				    flags, data);
+			CHECK(err != -1);
+		}
+
+		CHECK(umount(target) != -1);
+
+		if (!um_rorw) {
+			/* Mount R/W straight away */
+			err = mount(source, target, filesystemtype,
+				    mountflags, data);
+			CHECK(err != -1);
+		} else {
+			/* Mount R/O and then re-mount R/W */
+			err = mount(source, target, filesystemtype,
+				    mountflags | MS_RDONLY, data);
+			CHECK(err != -1);
+
+			flags = mountflags | MS_REMOUNT;
+			flags &= ~((unsigned long)MS_RDONLY);
+			err = mount(source, target, filesystemtype,
+				    flags, data);
+			CHECK(err != -1);
+		}
+	}
+
+	if (rorw2) {
+		/* Re-mount R/O and then re-mount R/W */
+		flags = mountflags | MS_RDONLY | MS_REMOUNT;
+		err = mount(source, target, filesystemtype, flags, data);
+		CHECK(err != -1);
+
+		flags = mountflags | MS_REMOUNT;
+		flags &= ~((unsigned long)MS_RDONLY);
+		err = mount(source, target, filesystemtype, flags, data);
+		CHECK(err != -1);
+	}
+
+	/* Restore the previous working directory */
 	CHECK(chdir(cwd) != -1);
 }
 
