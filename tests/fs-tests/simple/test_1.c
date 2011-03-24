@@ -64,7 +64,7 @@ void test_1(void)
 	/* Create files to file up the file system */
 	for (block = 1000000, i = 1; ; block /= 10) {
 		while (i != 0) {
-			sprintf(name, "fill_up_%llu", i);
+			sprintf(name, "fill_up_%llu", (unsigned long long)i);
 			actual_size = tests_create_file(name, block);
 			if (actual_size != 0)
 				++i;
@@ -85,7 +85,7 @@ void test_1(void)
 	i -= 1;
 	CHECK(tests_count_files_in_dir(".") == i);
 	for (; i > 0; --i) {
-		sprintf(name, "fill_up_%llu", i);
+		sprintf(name, "fill_up_%llu", (unsigned long long)i);
 		tests_check_filled_file(name);
 		tests_delete_file(name);
 	}
