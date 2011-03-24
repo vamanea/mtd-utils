@@ -141,7 +141,8 @@ void perf(void)
 	/* Display timings */
 	printf("File system read and write speed\n");
 	printf("================================\n");
-	printf("Specfied file size: %lld\n", tests_size_parameter);
+	printf("Specfied file size: %lld\n",
+	       (unsigned long long)tests_size_parameter);
 	printf("Actual file size: %zu\n", actual_size);
 	printf("Write time (us): %lld\n", write_time);
 	printf("Unmount time (us): %lld\n", unmount_time);
