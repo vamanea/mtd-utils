@@ -153,7 +153,7 @@ static char *copy_string(const char *s)
 
 	if (!s)
 		return NULL;
-	str = (char *) malloc(strlen(s) + 1);
+	str = malloc(strlen(s) + 1);
 	CHECK(str != NULL);
 	strcpy(str, s);
 	return str;
@@ -171,7 +171,7 @@ static char *cat_strings(const char *a, const char *b)
 	if (!a && !b)
 		return NULL;
 	sz = strlen(a) + strlen(b) + 1;
-	str = (char *) malloc(sz);
+	str = malloc(sz);
 	CHECK(str != NULL);
 	strcpy(str, a);
 	strcat(str, b);
@@ -206,7 +206,7 @@ static char *cat_paths(const char *a, const char *b)
 		return cat_strings(a, b + 1);
 
 	sz = na + nb + 2;
-	str = (char *) malloc(sz);
+	str = malloc(sz);
 	CHECK(str != NULL);
 	strcpy(str, a);
 	strcat(str, "/");
@@ -1286,7 +1286,7 @@ static void dir_check(struct dir_info *dir)
 	/* Create an array of entries */
 	sz = sizeof(struct dir_entry_info *);
 	n = dir->number_of_entries;
-	entry_array = (struct dir_entry_info **) malloc(sz * n);
+	entry_array = malloc(sz * n);
 	CHECK(entry_array != NULL);
 
 	entry = dir->first;
