@@ -425,8 +425,6 @@ static void link_new(struct dir_info *parent, const char *name,
 	char *path, *target;
 	int ret;
 
-	if (!file)
-		return;
 	entry = file->links;
 	if (!entry)
 		return;
