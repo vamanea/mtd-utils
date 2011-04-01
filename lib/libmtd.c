@@ -1079,7 +1079,7 @@ int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
 	      uint64_t start, uint64_t length, void *data, unsigned int cmd64,
 	      unsigned int cmd)
 {
-	int ret;
+	int ret, oob_offs;
 	struct mtd_oob_buf64 oob64;
 	struct mtd_oob_buf oob;
 	unsigned long long max_offs;
@@ -1102,10 +1102,13 @@ int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
 		errno = EINVAL;
 		return -1;
 	}
-	if (start % mtd->min_io_size) {
-		errmsg("unaligned address %llu, mtd%d page size is %d",
-		       (unsigned long long)start, mtd->mtd_num,
-		       mtd->min_io_size);
+
+	oob_offs = start & (mtd->min_io_size - 1);
+	if (oob_offs + length > mtd->oob_size || length == 0) {
+		errmsg("Cannot write %llu OOB bytes to address %llu "
+		       "(OOB offset %u) - mtd%d OOB size is only %d bytes",
+		       (unsigned long long)length, (unsigned long long)start,
+		       oob_offs, mtd->mtd_num,  mtd->oob_size);
 		errno = EINVAL;
 		return -1;
 	}
