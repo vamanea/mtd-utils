@@ -675,17 +675,17 @@ static int get_options(int argc, char**argv)
 
 	if (optind != argc && !output)
 		output = strdup(argv[optind]);
-	if (output)
-		out_ubi = !open_ubi(output);
+
+	if (!output)
+		return err_msg("not output device or file specified");
+
+	out_ubi = !open_ubi(output);
 
 	if (out_ubi) {
 		c->min_io_size = c->di.min_io_size;
 		c->leb_size = c->vi.leb_size;
 		c->max_leb_cnt = c->vi.rsvd_lebs;
 	}
-
-	if (!output)
-		return err_msg("not output device or file specified");
 
 	if (c->min_io_size == -1)
 		return err_msg("min. I/O unit was not specified "
