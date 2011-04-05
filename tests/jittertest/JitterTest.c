@@ -292,7 +292,7 @@ int main(
     }
 
     /*------------------------- Initializations --------------------------*/
-    if((Fd1 = open(OutFileName, O_RDWR|O_CREAT|O_SYNC)) <= 0)
+    if((Fd1 = open(OutFileName, O_RDWR|O_CREAT|O_SYNC, S_IRWXU)) <= 0)
     {
         perror("Cannot open outfile for write:");
         exit(1);
@@ -304,7 +304,7 @@ int main(
     if(DoRead)
     {
 
-        if((Fd2 = open(ReadFile, O_RDWR|O_CREAT|O_SYNC|O_TRUNC)) <= 0)
+        if((Fd2 = open(ReadFile, O_RDWR|O_CREAT|O_SYNC|O_TRUNC, S_IRWXU)) <= 0)
         {
             perror("cannot open read file:");
             exit(1);
@@ -459,7 +459,7 @@ void doGrabKProfile(int jitterusec, char *fileName)
     int readBytes;
     char readBuf[4096];
 
-    if((fdSnapshot = open(fileName, O_WRONLY | O_CREAT)) <= 0)
+    if((fdSnapshot = open(fileName, O_WRONLY | O_CREAT, S_IRWXU)) <= 0)
     {
         fprintf(stderr, "Could not open file %s.\n", fileName);
         perror("Error:");

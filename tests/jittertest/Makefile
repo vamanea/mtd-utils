@@ -1,6 +1,6 @@
 CC=gcc
 # uncomment following for performance
-CCFLAGS=-O3 -Wall -m486 -fomit-frame-pointer
+CCFLAGS=-O3 -Wall -fomit-frame-pointer
 
 # uncomment following for debugging. Uncomment either this or the one above. Not both.
 # CCFLAGS=-Wall -g
