@@ -1236,7 +1236,8 @@ void tests_try_to_clear_dir(const char *dir_name)
 			break;
 		}
 	}
-	chdir(buf);
+	if (chdir(buf) < 0)
+		perror("chdir");
 	closedir(dir);
 }
 

@@ -40,8 +40,11 @@ void adjust_size(void)
 
 	total_memory = 0;
 	f = fopen("/proc/meminfo", "r");
-	fscanf(f, "%s %lu", dummy, &total_memory);
+	if (fscanf(f, "%s %lu", dummy, &total_memory) != 2)
+		perror("fscanf error");
 	fclose(f);
+
+
 	if (total_memory > 0 && tests_size_parameter > total_memory / 2)
 		tests_size_parameter = total_memory / 2;
 }
