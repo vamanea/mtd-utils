@@ -21,15 +21,12 @@
   Split the modbus comm part of the program (that sends the ok to pwr me down
   message) into another file "comm.c"
 
-
-
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-
+#include <string.h>
 
 /*
   This is the routine that forms and
