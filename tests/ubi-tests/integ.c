@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 
 #include "libubi.h"
+#include "common.h"
 
 struct erase_block_info;
 struct volume_info;
@@ -586,7 +587,7 @@ static void reload_ubi(void)
 	sleep(1);
 }
 
-static void check_volume(struct volume_info *vol)
+static void integ_check_volume(struct volume_info *vol)
 {
 	struct erase_block_info *eb = vol->erase_blocks;
 	int pos;
@@ -607,7 +608,7 @@ static void check_ubi_device(struct ubi_device_info *ubi_device)
 
 	vol = ubi_device->volumes;
 	while (vol) {
-		check_volume(vol);
+		integ_check_volume(vol);
 		vol = vol->next;
 	}
 }
