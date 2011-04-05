@@ -167,11 +167,11 @@ int setupSerial (const char *dev) {
 
     fd = open(dev,O_RDWR | O_NDELAY );
     if (fd < 0) {
-        fprintf(stderr, "%s: %s\n", dev, sys_errlist[errno]);
+        fprintf(stderr, "%s: %s\n", dev, strerror(errno));
         exit(1);
     }
     if (tcgetattr(fd, &tios) < 0) {
-        fprintf(stderr,"Could not get terminal attributes: %s",sys_errlist[errno]);
+        fprintf(stderr, "Could not get terminal attributes: %s", strerror(errno));
         exit(1);
     }
 
@@ -197,7 +197,7 @@ int setupSerial (const char *dev) {
     cfsetispeed (&tios, B9600);
 
     if (tcsetattr(fd, TCSAFLUSH, &tios) < 0) {
-        fprintf(stderr,"Could not set attributes: ,%s",sys_errlist[errno]);
+        fprintf(stderr, "Could not set attributes: ,%s", strerror(errno));
         exit(1);
     }
     return fd;
