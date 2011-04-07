@@ -8,6 +8,7 @@ ifeq ($(WITHOUT_XATTR), 1)
 endif
 
 SUBDIRS = lib ubi-utils mkfs.ubifs
+TESTS = tests
 
 TARGETS = ftl_format flash_erase nanddump doc_loadbios \
 	ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \
@@ -38,6 +39,7 @@ ifneq ($(BUILDDIR),$(CURDIR))
 endif
 endif
 endif
+	$(MAKE) -C $(TESTS) clean
 
 $(SYMLINKS):
 	ln -sf ../fs/jffs2/$@ $@
@@ -59,3 +61,6 @@ install:: ${TARGETS} ${SCRIPTS}
 	install -m 0755 ${TARGETS} ${SCRIPTS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -9c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
+
+tests::
+	$(MAKE) -C $(TESTS)
