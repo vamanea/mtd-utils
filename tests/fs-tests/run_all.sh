@@ -42,8 +42,8 @@ rm -rf ${TEST_DIR}/*
 
 cd stress || exit 1
 
-./stress00.sh 3600 || exit 1
+./stress00.sh 360 || exit 1
 
-./stress01.sh 3600 || exit 1
+./stress01.sh 360 || exit 1
 
 cd .. || exit 1
