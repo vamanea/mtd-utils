@@ -87,8 +87,7 @@ static const struct option long_options[] = {
 static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
-		int key;
-		char *endp;
+		int key, error = 0;
 
 		key = getopt_long(argc, argv, "am:uhV", long_options, NULL);
 		if (key == -1)
@@ -104,8 +103,8 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'm':
-			args.mtdn = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.mtdn < 0)
+			args.mtdn = simple_strtoul(optarg, &error);
+			if (error || args.mtdn < 0)
 				return errmsg("bad MTD device number: \"%s\"", optarg);
 
 			break;

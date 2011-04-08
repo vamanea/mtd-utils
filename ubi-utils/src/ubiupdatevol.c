@@ -78,8 +78,7 @@ static const struct option long_options[] = {
 static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
-		int key;
-		char *endp;
+		int key, error = 0;
 
 		key = getopt_long(argc, argv, "ts:h?V", long_options, NULL);
 		if (key == -1)
@@ -91,8 +90,8 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 's':
-			args.size = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.size < 0)
+			args.size = simple_strtoul(optarg, &error);
+			if (error || args.size < 0)
 				return errmsg("bad size: " "\"%s\"", optarg);
 			break;
 

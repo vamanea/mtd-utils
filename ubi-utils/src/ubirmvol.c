@@ -89,8 +89,7 @@ static int param_sanity_check(void)
 static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
-		int key;
-		char *endp;
+		int key, error = 0;
 
 		key = getopt_long(argc, argv, "n:N:h?V", long_options, NULL);
 		if (key == -1)
@@ -99,8 +98,8 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 
 		case 'n':
-			args.vol_id = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vol_id < 0) {
+			args.vol_id = simple_strtoul(optarg, &error);
+			if (error || args.vol_id < 0) {
 				errmsg("bad volume ID: " "\"%s\"", optarg);
 				return -1;
 			}

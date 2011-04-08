@@ -159,8 +159,7 @@ static int parse_opt(int argc, char * const argv[])
 	args.image_seq = rand();
 
 	while (1) {
-		int key;
-		char *endp;
+		int key, error = 0;
 		unsigned long int image_seq;
 
 		key = getopt_long(argc, argv, "o:p:m:s:O:e:x:Q:vhV", long_options, NULL);
@@ -199,26 +198,26 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'O':
-			args.vid_hdr_offs = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.vid_hdr_offs < 0)
+			args.vid_hdr_offs = simple_strtoul(optarg, &error);
+			if (error || args.vid_hdr_offs < 0)
 				return errmsg("bad VID header offset: \"%s\"", optarg);
 			break;
 
 		case 'e':
-			args.ec = strtoul(optarg, &endp, 0);
-			if (*endp != '\0' || endp == optarg || args.ec < 0)
+			args.ec = simple_strtoul(optarg, &error);
+			if (error || args.ec < 0)
 				return errmsg("bad erase counter value: \"%s\"", optarg);
 			break;
 
 		case 'x':
-			args.ubi_ver = strtoul(optarg, &endp, 0);
-			if (*endp != '\0'  || endp == optarg || args.ubi_ver < 0)
+			args.ubi_ver = simple_strtoul(optarg, &error);
+			if (error || args.ubi_ver < 0)
 				return errmsg("bad UBI version: \"%s\"", optarg);
 			break;
 
 		case 'Q':
-			image_seq = strtoul(optarg, &endp, 0);
-			if (*endp != '\0'  || endp == optarg || image_seq > 0xFFFFFFFF)
+			image_seq = simple_strtoul(optarg, &error);
+			if (error || image_seq > 0xFFFFFFFF)
 				return errmsg("bad UBI image sequence number: \"%s\"", optarg);
 			args.image_seq = image_seq;
 			break;
