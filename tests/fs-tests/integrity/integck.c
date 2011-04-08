@@ -30,8 +30,10 @@
 #include <limits.h>
 #include <dirent.h>
 #include <sys/mman.h>
-
 #include "tests.h"
+
+#define PROGRAM_NAME "integck"
+#include "common.h"
 
 /* Structures to store data written to the test file system,
    so that we can check whether the file system is correct. */

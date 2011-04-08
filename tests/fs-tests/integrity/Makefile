@@ -3,7 +3,9 @@ ifeq ($(origin CC),default)
 CC = gcc
 endif
 
-CFLAGS := $(CFLAGS) -Wall -g -O2 -I../lib
+COMMON_HEADERS_DIR := ../../../include
+
+CFLAGS := $(CFLAGS) -Wall -g -O2 -I../lib -I$(COMMON_HEADERS_DIR)
 
 LDFLAGS := $(LDFLAGS)
 
