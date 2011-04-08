@@ -93,6 +93,17 @@ static inline int is_power_of_2(unsigned long long n)
  * simple_strtoX - convert a hex/dec/oct string into a number
  * @snum: buffer to convert
  * @error: set to 1 when buffer isn't fully consumed
+ *
+ * These functions are similar to the standard strtoX() functions, but they are
+ * a little bit easier to use if you want to convert full string of digits into
+ * the binary form. The typical usage:
+ *
+ * int error = 0;
+ * unsigned long num;
+ *
+ * num = simple_strtoul(str, &error);
+ * if (error || ... if needed, your check that num is not out of range ...)
+ * 	error_happened();
  */
 #define simple_strtoX(func, type) \
 static inline type simple_##func(const char *snum, int *error) \
