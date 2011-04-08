@@ -64,3 +64,6 @@ install:: ${TARGETS} ${SCRIPTS}
 
 tests::
 	$(MAKE) -C $(TESTS)
+
+cscope:
+	cscope -bR
