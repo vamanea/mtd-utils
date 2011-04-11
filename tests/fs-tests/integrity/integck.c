@@ -60,9 +60,9 @@ struct file_info /* Each file has one of these */
 	struct dir_entry_info *links;
 	off_t length;
 	int link_count;
+	unsigned int check_run_no; /* Run number used when checking */
 	unsigned int deleted:1; /* File has been deleted but is still open */
 	unsigned int no_space_error:1; /* File has incurred a ENOSPC error */
-	uint64_t check_run_no; /* Run number used when checking */
 };
 
 struct symlink_info /* Each symlink has one of these */
@@ -134,7 +134,7 @@ static int can_mmap = 0; /* Can write via mmap */
 
 static long mem_page_size; /* Page size for mmap */
 
-static uint64_t check_run_no;
+static unsigned int check_run_no;
 
 /*
  * Allocate a buffer of 'size' bytes and fill it with zeroes.
