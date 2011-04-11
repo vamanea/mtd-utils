@@ -44,7 +44,10 @@ struct write_info /* Record of random data written into a file */
 	off_t offset; /* Where in the file the data was written */
 	size_t size; /* Number of bytes written */
 	unsigned random_seed; /* Seed for rand() to create random data */
-	off_t random_offset; /* Call rand() this number of times first */
+	union {
+		off_t random_offset; /* Call rand() this number of times first */
+		off_t new_length; /* For truncation records new file length */
+	};
 	int trunc; /* Records a truncation (raw_writes only) */
 };
 
@@ -568,7 +571,7 @@ static void file_info_display(struct file_info *file)
 	while (w) {
 		if (w->trunc)
 			normsg("        Trunc from %u to %u",
-			       (unsigned) w->offset, (unsigned) w->random_offset);
+			       (unsigned) w->offset, (unsigned) w->new_length);
 		else
 			normsg("        Offset: %u  Size: %u  Seed: %u  R.Off: %u",
 			       (unsigned) w->offset, (unsigned) w->size,
@@ -920,7 +923,7 @@ static void file_truncate_info(struct file_info *file, size_t new_length)
 	w = zalloc(sizeof(struct write_info));
 	w->next = file->raw_writes;
 	w->offset = file->length;
-	w->random_offset = new_length; /* Abuse random_offset */
+	w->new_length = new_length;
 	w->trunc = 1;
 	file->raw_writes = w;
 	/* Update file length */
