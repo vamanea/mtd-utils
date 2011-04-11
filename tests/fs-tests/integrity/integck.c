@@ -133,10 +133,10 @@ static uint64_t initial_free_space = 0; /* Free space on file system when
 					   test starts */
 static unsigned log10_initial_free_space = 0; /* log10 of initial_free_space */
 
-static int check_nospc_files = 0; /* Also check data in files that incurred a
+static int check_nospc_files = 1; /* Also check data in files that incurred a
 				     "no space" error */
 
-static int can_mmap = 0; /* Can write via mmap */
+static int can_mmap = 1; /* Can write via mmap */
 
 static long mem_page_size; /* Page size for mmap */
 
@@ -2027,16 +2027,19 @@ int main(int argc, char *argv[])
 			integck_get_description(), "n");
 	if (!run_test)
 		return 1;
+
 	/* Change directory to the file system and check it is ok for testing */
 	tests_check_test_file_system();
+
 	/*
-	 * We expect accurate file size from ubifs even after "no space"
-	 * errors. And we can mmap.
+	 * JFFS2 does not support shared writable mmap and it may report
+	 * incorrect file size after "no space" errors.
 	 */
-	if (strcmp(tests_file_system_type, "ubifs") == 0) {
-		check_nospc_files = 1;
-		can_mmap = 1;
+	if (strcmp(tests_file_system_type, "jffs2") == 0) {
+		check_nospc_files = 0;
+		can_mmap = 0;
 	}
+
 	/* Do the actual test */
 	integck();
 	return 0;
