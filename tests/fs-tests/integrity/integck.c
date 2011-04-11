@@ -31,7 +31,10 @@
 #include <dirent.h>
 #include <getopt.h>
 #include <assert.h>
+#include <mntent.h>
 #include <sys/mman.h>
+#include <sys/vfs.h>
+#include <sys/mount.h>
 #include "tests.h"
 
 #define PROGRAM_VERSION "1.1"
@@ -47,6 +50,17 @@ static struct {
 } args = {
 	.repeat_cnt = 1,
 };
+
+/*
+ * The below data structure describes the tested file-system.
+ *
+ * max_name_len: maximum file name length
+ * fstype: file-system type (e.g., "ubifs")
+ */
+static struct {
+	int max_name_len;
+	const char *fstype;
+} fsinfo;
 
 /* Structures to store data written to the test file system,
    so that we can check whether the file system is correct. */
@@ -1383,7 +1397,7 @@ static char *make_name(struct dir_info *dir)
 	do {
 		found = 0;
 		if (tests_random_no(5) == 1) {
-			int i, n = tests_random_no(tests_max_fname_len) + 1;
+			int i, n = tests_random_no(fsinfo.max_name_len) + 1;
 
 			CHECK(n > 0 && n < 256);
 			for (i = 0; i < n; i++)
@@ -2000,6 +2014,43 @@ void integck(void)
 	CHECK(rmdir(dir_name) != -1);
 }
 
+/*
+ * Fill 'fsinfo' with information about the tested file-system.
+ */
+static void get_tested_fs_info(void)
+{
+	struct statfs fs_info;
+	struct mntent *mntent;
+	const char *mp;
+        FILE *f;
+
+	CHECK(statfs(args.mount_point, &fs_info) == 0);
+
+	fsinfo.max_name_len = fs_info.f_namelen;
+
+	mp = "/proc/mounts";
+        f = fopen(mp, "rb");
+        if (!f) {
+		mp = "/etc/mtab";
+                f = fopen(mp, "rb");
+	}
+	CHECK(f != NULL);
+
+        while (1) {
+		mntent = getmntent(f);
+                if (!mntent) {
+			errmsg("cannot find file-system info");
+			CHECK(0);
+		}
+
+		if (!strcmp(mntent->mnt_dir, args.mount_point))
+			break;
+        }
+        fclose(f);
+
+	fsinfo.fstype = dup_string(mntent->mnt_type);
+}
+
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 " - a stress test which checks the file-system integrity.\n"
 "It creates a directory named \"integck_test_dir_pid\", where where pid is the\n"
@@ -2023,10 +2074,13 @@ static const struct option long_options[] = {
 };
 
 /*
- * Parse input command-line options. Returns zero on success and -1 on error.
+ * Parse and validate input command-line options. Returns zero on success and
+ * -1 on error.
  */
 static int parse_opts(int argc, char * const argv[])
 {
+	struct stat st;
+
 	while (1) {
 		int key, error = 0;
 
@@ -2065,6 +2119,11 @@ static int parse_opts(int argc, char * const argv[])
 		return errmsg("more then one test file-system specified (use -h for help)");
 
 	args.mount_point = argv[optind];
+
+	if (chdir(args.mount_point) != 0 || lstat(args.mount_point, &st) != 0)
+		return errmsg("invalid test file system mount directory: %s",
+			      args.mount_point);
+
 	return 0;
 }
 
@@ -2076,12 +2135,11 @@ int main(int argc, char *argv[])
 	if (ret)
 		return EXIT_FAILURE;
 
+	get_tested_fs_info();
+
 	/* Temporary hack - will be fixed a bit later */
 	tests_file_system_mount_dir = (void *)args.mount_point;
-	tests_file_system_type = "ubifs";
-
-	/* Change directory to the file system and check it is ok for testing */
-	tests_check_test_file_system();
+	tests_file_system_type = (void *)fsinfo.fstype;
 
 	/*
 	 * JFFS2 does not support shared writable mmap and it may report
