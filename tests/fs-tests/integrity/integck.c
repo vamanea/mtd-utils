@@ -58,10 +58,10 @@ struct file_info /* Each file has one of these */
 				/* Record in order all writes to the file */
 	struct fd_info *fds; /* All open file descriptors for this file */
 	struct dir_entry_info *links;
-	int link_count;
 	off_t length;
-	int deleted; /* File has been deleted but is still open */
-	int no_space_error; /* File has incurred a ENOSPC error */
+	int link_count;
+	unsigned int deleted:1; /* File has been deleted but is still open */
+	unsigned int no_space_error:1; /* File has incurred a ENOSPC error */
 	uint64_t check_run_no; /* Run number used when checking */
 };
 
