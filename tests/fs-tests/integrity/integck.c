@@ -89,14 +89,14 @@ struct dir_entry_info /* Each entry in a directory has one of these */
 	struct dir_entry_info *prev_link; /* List of hard links for same file */
 	char *name;
 	struct dir_info *parent; /* Parent directory */
-	char type; /* f => file, d => dir, s => symlink */
-	int checked; /* Temporary flag used when checking */
 	union {
 		struct file_info *file;
 		struct dir_info *dir;
 		struct symlink_info *symlink;
 		void *target;
 	};
+	char type; /* f => file, d => dir, s => symlink */
+	char checked; /* Temporary flag used when checking */
 };
 
 struct fd_info /* We keep a number of files open */
