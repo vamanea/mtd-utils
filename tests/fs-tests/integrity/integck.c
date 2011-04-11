@@ -35,6 +35,8 @@
 #define PROGRAM_NAME "integck"
 #include "common.h"
 
+#define MAX_RANDOM_SEED 10000000
+
 /* Structures to store data written to the test file system,
    so that we can check whether the file system is correct. */
 
@@ -42,13 +44,14 @@ struct write_info /* Record of random data written into a file */
 {
 	struct write_info *next;
 	off_t offset; /* Where in the file the data was written */
-	size_t size; /* Number of bytes written */
-	unsigned random_seed; /* Seed for rand() to create random data */
 	union {
 		off_t random_offset; /* Call rand() this number of times first */
 		off_t new_length; /* For truncation records new file length */
 	};
-	int trunc; /* Records a truncation (raw_writes only) */
+	size_t size; /* Number of bytes written */
+	unsigned int random_seed; /* Seed for rand() to create random data. If
+				     greater than MAX_RANDOM_SEED then this is
+				     a truncation record (raw_writes only) */
 };
 
 struct dir_entry_info;
@@ -138,6 +141,14 @@ static int can_mmap = 0; /* Can write via mmap */
 static long mem_page_size; /* Page size for mmap */
 
 static unsigned int check_run_no;
+
+/*
+ * Is this 'struct write_info' actually holds information about a truncation?
+ */
+static int is_truncation(struct write_info *w)
+{
+	return w->random_seed > MAX_RANDOM_SEED;
+}
 
 /*
  * Allocate a buffer of 'size' bytes and fill it with zeroes.
@@ -569,7 +580,7 @@ static void file_info_display(struct file_info *file)
 	wcnt = 0;
 	w = file->raw_writes;
 	while (w) {
-		if (w->trunc)
+		if (is_truncation(w))
 			normsg("        Trunc from %u to %u",
 			       (unsigned) w->offset, (unsigned) w->new_length);
 		else
@@ -834,7 +845,7 @@ static void file_mmap_write(struct file_info *file)
 	offset = w->offset + tests_random_no(w->size - size);
 
 	/* Write it */
-	seed = tests_random_no(10000000);
+	seed = tests_random_no(MAX_RANDOM_SEED);
 	srand(seed);
 	waddr = addr + (offset - offs);
 	for (i = 0; i < size; i++)
@@ -860,7 +871,7 @@ static void file_write(struct file_info *file, int fd)
 	}
 
 	get_offset_and_size(file, &offset, &size);
-	seed = tests_random_no(10000000);
+	seed = tests_random_no(MAX_RANDOM_SEED);
 	actual = file_write_data(file, fd, offset, size, seed);
 
 	if (offset + actual <= file->length && shrink)
@@ -924,7 +935,7 @@ static void file_truncate_info(struct file_info *file, size_t new_length)
 	w->next = file->raw_writes;
 	w->offset = file->length;
 	w->new_length = new_length;
-	w->trunc = 1;
+	w->random_seed = MAX_RANDOM_SEED + 1;
 	file->raw_writes = w;
 	/* Update file length */
 	file->length = new_length;
