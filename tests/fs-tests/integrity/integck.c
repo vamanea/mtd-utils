@@ -57,6 +57,8 @@ static struct {
  *
  * max_name_len: maximum file name length
  * page_size: memory page size to use with 'mmap()'
+ * log10_initial_free: logarighm base 10 of the initial amount of free space in
+ *                     the tested file-system
  * nospc_size_ok: file size is updated even if the write operation failed with
  *                ENOSPC error
  * can_mmap: file-system supports share writable 'mmap()' operation
@@ -65,6 +67,7 @@ static struct {
 static struct {
 	int max_name_len;
 	int page_size;
+	unsigned int log10_initial_free;
 	unsigned int nospc_size_ok:1;
 	unsigned int can_mmap:1;
 	const char *fstype;
@@ -165,10 +168,6 @@ static int shrink = 0; /* Should we try to shrink files and directories */
 static int full   = 0; /* Flag that the file system is full */
 static uint64_t operation_count = 0; /* Number of operations used to fill
                                         up the file system */
-static uint64_t initial_free_space = 0; /* Free space on file system when
-					   test starts */
-static unsigned log10_initial_free_space = 0; /* log10 of initial_free_space */
-
 static unsigned int check_run_no;
 
 /*
@@ -804,9 +803,9 @@ static void get_offset_and_size(struct file_info *file,
 		*offset = file->length;
 	/* Distribute the size logarithmically */
 	if (tests_random_no(1000) == 0)
-		r = tests_random_no(log10_initial_free_space + 2);
+		r = tests_random_no(fsinfo.log10_initial_free + 2);
 	else
-		r = tests_random_no(log10_initial_free_space);
+		r = tests_random_no(fsinfo.log10_initial_free);
 	n = 1;
 	while (r--)
 		n *= 10;
@@ -1971,7 +1970,6 @@ static int integck(void)
 {
 	pid_t pid;
 	int64_t rpt;
-	uint64_t z;
 	char dir_name[256];
 
 	/* Make our top directory */
@@ -1984,10 +1982,6 @@ static int integck(void)
 		CHECK(chdir("..") != -1);
 		CHECK(rmdir(dir_name) != -1);
 	}
-	initial_free_space = get_free_space();
-	log10_initial_free_space = 0;
-	for (z = initial_free_space; z >= 10; z /= 10)
-		++log10_initial_free_space;
 	top_dir = dir_new(NULL, dir_name);
 
 	if (!top_dir)
@@ -2038,6 +2032,7 @@ static void get_tested_fs_info(void)
 	struct mntent *mntent;
 	const char *mp;
         FILE *f;
+	uint64_t z;
 
 	CHECK(statfs(args.mount_point, &fs_info) == 0);
 
@@ -2078,6 +2073,8 @@ static void get_tested_fs_info(void)
 		fsinfo.can_mmap = 0;
 	}
 
+	for (z = get_free_space(); z >= 10; z /= 10)
+		fsinfo.log10_initial_free += 1;
 }
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
