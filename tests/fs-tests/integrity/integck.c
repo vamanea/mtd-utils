@@ -44,6 +44,9 @@
 
 #define MAX_RANDOM_SEED 10000000
 
+/* The pattern for the top directory where we run the test */
+#define TEST_DIR_PATTERN "integck_test_dir_%u"
+
 /* The variables below are set by command line arguments */
 static struct {
 	long repeat_cnt;
@@ -64,6 +67,7 @@ static struct {
  * can_mmap: file-system supports share writable 'mmap()' operation
  * fstype: file-system type (e.g., "ubifs")
  * mount_point: tested file-system mount point path
+ * test_dir: the directory on the tested file-system where we test
  */
 static struct {
 	int max_name_len;
@@ -73,6 +77,7 @@ static struct {
 	unsigned int can_mmap:1;
 	const char *fstype;
 	const char *mount_point;
+	const char *test_dir;
 } fsinfo = {
 	.nospc_size_ok = 1,
 	.can_mmap = 1,
@@ -1970,27 +1975,21 @@ static void update_test_data(void)
 
 static int integck(void)
 {
-	unsigned int pid;
 	int64_t rpt;
-	char dir_name[256];
 
 	/* Make our top directory */
-	pid = getpid();
-	normsg("pid is %u", pid);
-	CHECK(sprintf(dir_name, "integck_test_dir_%u", pid) > 0);
-	if (chdir(dir_name) != -1) {
+	if (chdir(fsinfo.test_dir) != -1) {
 		/* Remove it if it is already there */
 		tests_clear_dir(".");
 		CHECK(chdir("..") != -1);
-		CHECK(rmdir(dir_name) != -1);
+		CHECK(rmdir(fsinfo.test_dir) != -1);
 	}
-	top_dir = dir_new(NULL, dir_name);
+	top_dir = dir_new(NULL, fsinfo.test_dir);
 
 	if (!top_dir)
 		return -1;
 
-	srand(pid);
-
+	srand(getpid());
 	create_test_data();
 
 	if (!tests_fs_is_rootfs()) {
@@ -2019,8 +2018,8 @@ static int integck(void)
 
 	/* Tidy up by removing everything */
 	close_open_files();
-	tests_clear_dir(dir_name);
-	CHECK(rmdir(dir_name) != -1);
+	tests_clear_dir(fsinfo.test_dir);
+	CHECK(rmdir(fsinfo.test_dir) != -1);
 
 	return 0;
 }
@@ -2036,6 +2035,7 @@ static void get_tested_fs_info(void)
         FILE *f;
 	uint64_t z;
 	char *p;
+	unsigned int pid;
 
 	/* Remove trailing '/' symbols from the mount point */
 	p = dup_string(args.mount_point);
@@ -2084,6 +2084,16 @@ static void get_tested_fs_info(void)
 
 	for (z = get_free_space(); z >= 10; z /= 10)
 		fsinfo.log10_initial_free += 1;
+
+	/* Pick the test directory name */
+	p = malloc(sizeof(TEST_DIR_PATTERN) + 20);
+	CHECK(p != NULL);
+	pid = getpid();
+	CHECK(sprintf(p, "integck_test_dir_%u", pid) > 0);
+	fsinfo.test_dir = p;
+
+	normsg("pid %u, testing \"%s\" at \"%s\"",
+	       pid, fsinfo.fstype, fsinfo.mount_point);
 }
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
