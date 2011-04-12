@@ -1951,7 +1951,7 @@ static void update_test_data(void)
 		do_an_operation();
 }
 
-void integck(void)
+static int integck(void)
 {
 	pid_t pid;
 	int64_t rpt;
@@ -1978,7 +1978,7 @@ void integck(void)
 	top_dir = dir_new(NULL, dir_name);
 
 	if (!top_dir)
-		return;
+		return -1;
 
 	srand(pid);
 
@@ -2012,6 +2012,8 @@ void integck(void)
 	close_open_files();
 	tests_clear_dir(dir_name);
 	CHECK(rmdir(dir_name) != -1);
+
+	return 0;
 }
 
 /*
@@ -2151,6 +2153,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* Do the actual test */
-	integck();
-	return 0;
+	ret = integck();
+	if (ret)
+		return EXIT_FAILURE;
+
+	return EXIT_SUCCESS;
 }
