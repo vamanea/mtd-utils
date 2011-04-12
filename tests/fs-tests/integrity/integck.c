@@ -1970,14 +1970,14 @@ static void update_test_data(void)
 
 static int integck(void)
 {
-	pid_t pid;
+	unsigned int pid;
 	int64_t rpt;
 	char dir_name[256];
 
 	/* Make our top directory */
 	pid = getpid();
-	normsg("pid is %u", (unsigned) pid);
-	tests_cat_pid(dir_name, "integck_test_dir_", pid);
+	normsg("pid is %u", pid);
+	CHECK(sprintf(dir_name, "integck_test_dir_%u", pid) > 0);
 	if (chdir(dir_name) != -1) {
 		/* Remove it if it is already there */
 		tests_clear_dir(".");
