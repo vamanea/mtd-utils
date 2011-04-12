@@ -56,13 +56,21 @@ static struct {
  *
  * max_name_len: maximum file name length
  * page_size: memory page size to use with 'mmap()'
+ * nospc_size_ok: file size is updated even if the write operation failed with
+ *                ENOSPC error
+ * can_mmap: file-system supports share writable 'mmap()' operation
  * fstype: file-system type (e.g., "ubifs")
  */
 static struct {
 	int max_name_len;
 	int page_size;
+	unsigned int nospc_size_ok:1;
+	unsigned int can_mmap:1;
 	const char *fstype;
-} fsinfo;
+} fsinfo = {
+	.nospc_size_ok = 1,
+	.can_mmap = 1,
+};
 
 /* Structures to store data written to the test file system,
    so that we can check whether the file system is correct. */
@@ -159,11 +167,6 @@ static uint64_t operation_count = 0; /* Number of operations used to fill
 static uint64_t initial_free_space = 0; /* Free space on file system when
 					   test starts */
 static unsigned log10_initial_free_space = 0; /* log10 of initial_free_space */
-
-static int check_nospc_files = 1; /* Also check data in files that incurred a
-				     "no space" error */
-
-static int can_mmap = 1; /* Can write via mmap */
 
 static unsigned int check_run_no;
 
@@ -810,7 +813,7 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 		CHECK(errno = ENOSPC);
 		file->no_space_error = 1;
 		/* Delete errored files */
-		if (!check_nospc_files)
+		if (!fsinfo.nospc_size_ok)
 			file_delete(file);
 		return 0;
 	}
@@ -891,7 +894,8 @@ static void file_write(struct file_info *file, int fd)
 	unsigned seed;
 	int truncate = 0;
 
-	if (can_mmap && !full && !file->deleted && tests_random_no(100) == 1) {
+	if (fsinfo.can_mmap && !full && !file->deleted &&
+	    tests_random_no(100) == 1) {
 		file_mmap_write(file);
 		return;
 	}
@@ -910,7 +914,7 @@ static void file_write(struct file_info *file, int fd)
 		file_write_info(file, offset, actual, seed);
 
 	/* Delete errored files */
-	if (!check_nospc_files && file->no_space_error) {
+	if (!fsinfo.nospc_size_ok && file->no_space_error) {
 		file_delete(file);
 		return;
 	}
@@ -1173,7 +1177,7 @@ static void file_check(struct file_info *file, int fd)
 	struct stat st;
 
 	/* Do not check files that have errored */
-	if (!check_nospc_files && file->no_space_error)
+	if (!fsinfo.nospc_size_ok && file->no_space_error)
 		return;
 	/* Do not check the same file twice */
 	if (file->check_run_no == check_run_no)
@@ -1856,7 +1860,7 @@ static void operate_on_an_open_file(void)
 		}
 	}
 	/* Close any open files that have errored */
-	if (!check_nospc_files) {
+	if (!fsinfo.nospc_size_ok) {
 		ofi = open_files;
 		while (ofi) {
 			if (ofi->fdi->file->no_space_error) {
@@ -2052,6 +2056,16 @@ static void get_tested_fs_info(void)
 	/* Get memory page size for 'mmap()' */
 	fsinfo.page_size = sysconf(_SC_PAGE_SIZE);
 	CHECK(fsinfo.page_size > 0);
+
+	/*
+	 * JFFS2 does not support shared writable mmap and it may report
+	 * incorrect file size after "no space" errors.
+	 */
+	if (strcmp(fsinfo.fstype, "jffs2") == 0) {
+		fsinfo.nospc_size_ok = 0;
+		fsinfo.can_mmap = 0;
+	}
+
 }
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -2143,15 +2157,6 @@ int main(int argc, char *argv[])
 	/* Temporary hack - will be fixed a bit later */
 	tests_file_system_mount_dir = (void *)args.mount_point;
 	tests_file_system_type = (void *)fsinfo.fstype;
-
-	/*
-	 * JFFS2 does not support shared writable mmap and it may report
-	 * incorrect file size after "no space" errors.
-	 */
-	if (strcmp(tests_file_system_type, "jffs2") == 0) {
-		check_nospc_files = 0;
-		can_mmap = 0;
-	}
 
 	/* Do the actual test */
 	ret = integck();
