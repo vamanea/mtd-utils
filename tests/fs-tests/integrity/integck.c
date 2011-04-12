@@ -55,10 +55,12 @@ static struct {
  * The below data structure describes the tested file-system.
  *
  * max_name_len: maximum file name length
+ * page_size: memory page size to use with 'mmap()'
  * fstype: file-system type (e.g., "ubifs")
  */
 static struct {
 	int max_name_len;
+	int page_size;
 	const char *fstype;
 } fsinfo;
 
@@ -162,8 +164,6 @@ static int check_nospc_files = 1; /* Also check data in files that incurred a
 				     "no space" error */
 
 static int can_mmap = 1; /* Can write via mmap */
-
-static long mem_page_size; /* Page size for mmap */
 
 static unsigned int check_run_no;
 
@@ -846,7 +846,7 @@ static void file_mmap_write(struct file_info *file)
 	for (i = 0; w && w->next && i < r; i++)
 		w = w->next;
 
-	offs = (w->offset / mem_page_size) * mem_page_size;
+	offs = (w->offset / fsinfo.page_size) * fsinfo.page_size;
 	len = w->size + (w->offset - offs);
 	if (len > 1 << 24)
 		len = 1 << 24;
@@ -1958,9 +1958,6 @@ static int integck(void)
 	uint64_t z;
 	char dir_name[256];
 
-	/* Get memory page size for mmap */
-	mem_page_size = sysconf(_SC_PAGE_SIZE);
-	CHECK(mem_page_size > 0);
 	/* Make our top directory */
 	pid = getpid();
 	normsg("pid is %u", (unsigned) pid);
@@ -2051,6 +2048,10 @@ static void get_tested_fs_info(void)
         fclose(f);
 
 	fsinfo.fstype = dup_string(mntent->mnt_type);
+
+	/* Get memory page size for 'mmap()' */
+	fsinfo.page_size = sysconf(_SC_PAGE_SIZE);
+	CHECK(fsinfo.page_size > 0);
 }
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
