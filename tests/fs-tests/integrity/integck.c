@@ -35,6 +35,7 @@
 #include <sys/mman.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
+#include <sys/statvfs.h>
 #include "tests.h"
 
 #define PROGRAM_VERSION "1.1"
@@ -256,6 +257,17 @@ static char *cat_paths(const char *a, const char *b)
 	strcat(str, "/");
 	strcat(str, b);
 	return str;
+}
+
+/*
+ * Get the free space for the tested file system.
+ */
+static uint64_t get_free_space(void)
+{
+	struct statvfs st;
+
+	CHECK(statvfs(args.mount_point, &st) != -1);
+	return (uint64_t)st.f_bavail * (uint64_t)st.f_frsize;
 }
 
 static char *dir_path(struct dir_info *parent, const char *name)
@@ -834,7 +846,7 @@ static void file_mmap_write(struct file_info *file)
 
 	if (!file->links)
 		return;
-	free_space = tests_get_free_space();
+	free_space = get_free_space();
 	if (!free_space)
 		return;
 	/* Randomly pick a written area of the file */
@@ -1911,7 +1923,7 @@ static void create_test_data(void)
 		uint64_t total;
 		for (i = 0; i < 10; ++i)
 			do_an_operation();
-		free = tests_get_free_space();
+		free = get_free_space();
 		total = tests_get_total_space();
 		if ((free * 100) / total >= 10)
 			break;
@@ -1942,7 +1954,7 @@ static void update_test_data(void)
 		uint64_t total;
 		for (i = 0; i < 10; ++i)
 			do_an_operation();
-		free = tests_get_free_space();
+		free = get_free_space();
 		total = tests_get_total_space();
 		if ((free * 100) / total >= 50)
 			break;
@@ -1972,7 +1984,7 @@ static int integck(void)
 		CHECK(chdir("..") != -1);
 		CHECK(rmdir(dir_name) != -1);
 	}
-	initial_free_space = tests_get_free_space();
+	initial_free_space = get_free_space();
 	log10_initial_free_space = 0;
 	for (z = initial_free_space; z >= 10; z /= 10)
 		++log10_initial_free_space;
