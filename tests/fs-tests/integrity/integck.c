@@ -63,6 +63,7 @@ static struct {
  *                ENOSPC error
  * can_mmap: file-system supports share writable 'mmap()' operation
  * fstype: file-system type (e.g., "ubifs")
+ * mount_point: tested file-system mount point path
  */
 static struct {
 	int max_name_len;
@@ -71,6 +72,7 @@ static struct {
 	unsigned int nospc_size_ok:1;
 	unsigned int can_mmap:1;
 	const char *fstype;
+	const char *mount_point;
 } fsinfo = {
 	.nospc_size_ok = 1,
 	.can_mmap = 1,
@@ -265,7 +267,7 @@ static uint64_t get_free_space(void)
 {
 	struct statvfs st;
 
-	CHECK(statvfs(args.mount_point, &st) != -1);
+	CHECK(statvfs(fsinfo.mount_point, &st) != -1);
 	return (uint64_t)st.f_bavail * (uint64_t)st.f_frsize;
 }
 
@@ -275,7 +277,7 @@ static char *dir_path(struct dir_info *parent, const char *name)
 	char *path;
 
 	if (!parent)
-		return cat_paths(args.mount_point, name);
+		return cat_paths(fsinfo.mount_point, name);
 	parent_path = dir_path(parent->parent, parent->name);
 	path = cat_paths(parent_path, name);
 	free(parent_path);
@@ -2033,9 +2035,16 @@ static void get_tested_fs_info(void)
 	const char *mp;
         FILE *f;
 	uint64_t z;
+	char *p;
 
-	CHECK(statfs(args.mount_point, &fs_info) == 0);
+	/* Remove trailing '/' symbols from the mount point */
+	p = dup_string(args.mount_point);
+	fsinfo.mount_point = p;
+	p += strlen(p);
+	while (*--p == '/');
+	*(p + 1) = '\0';
 
+	CHECK(statfs(fsinfo.mount_point, &fs_info) == 0);
 	fsinfo.max_name_len = fs_info.f_namelen;
 
 	mp = "/proc/mounts";
@@ -2053,7 +2062,7 @@ static void get_tested_fs_info(void)
 			CHECK(0);
 		}
 
-		if (!strcmp(mntent->mnt_dir, args.mount_point))
+		if (!strcmp(mntent->mnt_dir, fsinfo.mount_point))
 			break;
         }
         fclose(f);
@@ -2164,7 +2173,7 @@ int main(int argc, char *argv[])
 	get_tested_fs_info();
 
 	/* Temporary hack - will be fixed a bit later */
-	tests_file_system_mount_dir = (void *)args.mount_point;
+	tests_file_system_mount_dir = (void *)fsinfo.mount_point;
 	tests_file_system_type = (void *)fsinfo.fstype;
 
 	/* Do the actual test */
