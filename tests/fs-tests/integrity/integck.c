@@ -203,6 +203,11 @@ static uint64_t operation_count = 0; /* Number of operations used to fill
 static unsigned int check_run_no;
 
 /*
+ * A buffer which is used by 'make_name()' to return the generated random name.
+ */
+static char *random_name_buf;
+
+/*
  * Is this 'struct write_info' actually holds information about a truncation?
  */
 static int is_truncation(struct write_info *w)
@@ -1451,7 +1456,6 @@ static void close_open_files(void)
 
 static char *make_name(struct dir_info *dir)
 {
-	static char name[256];
 	struct dir_entry_info *entry;
 	int found;
 
@@ -1460,20 +1464,20 @@ static char *make_name(struct dir_info *dir)
 		if (random_no(5) == 1) {
 			int i, n = random_no(fsinfo.max_name_len) + 1;
 
-			CHECK(n > 0 && n < 256);
 			for (i = 0; i < n; i++)
-				name[i] = 'a' + random_no(26);
-			name[i] = '\0';
+				random_name_buf[i] = 'a' + random_no(26);
+			random_name_buf[i] = '\0';
 		} else
-			sprintf(name, "%u", random_no(1000000));
+			sprintf(random_name_buf, "%u", random_no(1000000));
 		for (entry = dir->first; entry; entry = entry->next) {
-			if (strcmp(entry->name, name) == 0) {
+			if (strcmp(entry->name, random_name_buf) == 0) {
 				found = 1;
 				break;
 			}
 		}
 	} while (found);
-	return name;
+
+	return random_name_buf;
 }
 
 static struct file_info *pick_file(void)
@@ -2416,6 +2420,9 @@ int main(int argc, char *argv[])
 
 	/* Seed the random generator with out PID */
 	srand(getpid());
+
+	random_name_buf = malloc(fsinfo.max_name_len + 1);
+	CHECK(random_name_buf != NULL);
 
 	/* Do the actual test */
 	ret = integck();
