@@ -36,7 +36,7 @@
 
 static void check_file(int fd, char *data, size_t length)
 {
-	size_t n, i;
+	ssize_t n, i;
 	char buf[BUFFER_SIZE];
 
 	CHECK(lseek(fd, 0, SEEK_SET) != -1);
