@@ -2388,10 +2388,6 @@ int main(int argc, char *argv[])
 
 	get_tested_fs_info();
 
-	/* Temporary hack - will be fixed a bit later */
-	tests_file_system_mount_dir = (void *)fsinfo.mount_point;
-	tests_file_system_type = (void *)fsinfo.fstype;
-
 	/* Seed the random generator with out PID */
 	srand(getpid());
 
