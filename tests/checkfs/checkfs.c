@@ -414,7 +414,7 @@ void make_new_file(char *filename){
 
     fprintf(stderr, "Creating File:%s. ", filename);
 
-    if((dfd = open(filename, O_RDWR | O_CREAT | O_SYNC)) <= 0)
+    if((dfd = open(filename, O_RDWR | O_CREAT | O_SYNC, S_IRWXU)) <= 0)
     {
         printf("Error! Cannot open file: %s\n",filename);
         perror("Error");
