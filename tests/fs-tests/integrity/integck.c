@@ -278,12 +278,15 @@ static char *cat_paths(const char *a, const char *b)
 /*
  * Get the free space for the tested file system.
  */
-static uint64_t get_free_space(void)
+static void get_fs_space(uint64_t *total, uint64_t *free)
 {
 	struct statvfs st;
 
 	CHECK(statvfs(fsinfo.mount_point, &st) == 0);
-	return (uint64_t)st.f_bavail * (uint64_t)st.f_frsize;
+	if (total)
+		*total = (uint64_t)st.f_blocks * (uint64_t)st.f_frsize;
+	if (free)
+		*free =  (uint64_t)st.f_bavail * (uint64_t)st.f_frsize;
 }
 
 static char *dir_path(struct dir_info *parent, const char *name)
@@ -862,7 +865,7 @@ static void file_mmap_write(struct file_info *file)
 
 	if (!file->links)
 		return;
-	free_space = get_free_space();
+	get_fs_space(NULL, &free_space);
 	if (!free_space)
 		return;
 	/* Randomly pick a written area of the file */
@@ -1939,8 +1942,7 @@ static void create_test_data(void)
 		uint64_t total;
 		for (i = 0; i < 10; ++i)
 			do_an_operation();
-		free = get_free_space();
-		total = tests_get_total_space();
+		get_fs_space(&total, &free);
 		if ((free * 100) / total >= 10)
 			break;
 	}
@@ -2006,8 +2008,7 @@ static void update_test_data(void)
 		uint64_t total;
 		for (i = 0; i < 10; ++i)
 			do_an_operation();
-		free = get_free_space();
-		total = tests_get_total_space();
+		get_fs_space(&total, &free);
 		if ((free * 100) / total >= 50)
 			break;
 	}
@@ -2281,7 +2282,8 @@ static void get_tested_fs_info(void)
 		fsinfo.can_mmap = 0;
 	}
 
-	for (z = get_free_space(); z >= 10; z /= 10)
+	get_fs_space(NULL, &z);
+	for (; z >= 10; z /= 10)
 		fsinfo.log10_initial_free += 1;
 
 	/* Pick the test directory name */
