@@ -65,6 +65,7 @@ static struct {
  * nospc_size_ok: file size is updated even if the write operation failed with
  *                ENOSPC error
  * can_mmap: file-system supports share writable 'mmap()' operation
+ * is_rootfs: the tested file-system the root file-system
  * fstype: file-system type (e.g., "ubifs")
  * mount_point: tested file-system mount point path
  * test_dir: the directory on the tested file-system where we test
@@ -75,6 +76,7 @@ static struct {
 	unsigned int log10_initial_free;
 	unsigned int nospc_size_ok:1;
 	unsigned int can_mmap:1;
+	unsigned int is_rootfs:1;
 	const char *fstype;
 	const char *mount_point;
 	const char *test_dir;
@@ -2026,7 +2028,7 @@ static int integck(void)
 
 	create_test_data();
 
-	if (!tests_fs_is_rootfs()) {
+	if (fsinfo.is_rootfs) {
 		close_open_files();
 		tests_remount(); /* Requires root access */
 	}
@@ -2039,7 +2041,7 @@ static int integck(void)
 	for (rpt = 0; args.repeat_cnt == 0 || rpt < args.repeat_cnt; ++rpt) {
 		update_test_data();
 
-		if (!tests_fs_is_rootfs()) {
+		if (!fsinfo.is_rootfs) {
 			close_open_files();
 			tests_remount(); /* Requires root access */
 		}
@@ -2069,6 +2071,7 @@ static void get_tested_fs_info(void)
 	uint64_t z;
 	char *p;
 	unsigned int pid;
+	struct stat st1, st2;
 
 	/* Remove trailing '/' symbols from the mount point */
 	p = dup_string(args.mount_point);
@@ -2127,6 +2130,11 @@ static void get_tested_fs_info(void)
 
 	normsg("pid %u, testing \"%s\" at \"%s\"",
 	       pid, fsinfo.fstype, fsinfo.mount_point);
+
+	CHECK(stat(fsinfo.mount_point, &st1) == 0);
+	CHECK(stat("/", &st2) != -1);
+	if (st1.st_dev == st2.st_dev)
+		fsinfo.is_rootfs = 1;
 }
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
