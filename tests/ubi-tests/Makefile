@@ -22,4 +22,4 @@ libubi.a: $(LIBUBI_SRC_PATH)/libubi.c  $(LIBUBI_HEADER_PATH)/libubi.h  $(LIBUBI_
 $(TARGETS): $(addprefix $(BUILDDIR)/, common.o) libubi.a
 
 clean::
-	rm -f $(TARGETS) $(addsuffix .o, $(TESTS)) libubi.*
+	rm -f libubi.a
