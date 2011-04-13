@@ -1233,7 +1233,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 			case S_IFDIR:
 				if (verbose) {
 					printf("\td %04o %9lu             %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
+							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
 							(int) (e->sb.st_uid), (int) (e->sb.st_gid),
 							e->name);
 				}
@@ -1243,7 +1243,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 			case S_IFSOCK:
 				if (verbose) {
 					printf("\ts %04o %9lu             %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
+							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_pipe(e);
@@ -1252,7 +1252,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 			case S_IFIFO:
 				if (verbose) {
 					printf("\tp %04o %9lu             %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
+							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_pipe(e);
@@ -1281,7 +1281,7 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 			case S_IFLNK:
 				if (verbose) {
 					printf("\tl %04o %9lu             %5d:%-3d %s -> %s\n",
-							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
+							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name,
 							e->link);
 				}
@@ -1293,8 +1293,8 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				write_xattr_entry(e);
 				if (verbose) {
 					printf("\tf %04o %9lu (%9u) %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, e->sb.st_size, wrote,
-							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
+							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
+							wrote, (int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				break;
 			default:
