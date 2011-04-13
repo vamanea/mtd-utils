@@ -36,7 +36,6 @@
 #include <sys/vfs.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
-#include "tests.h"
 
 #define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME "integck"
@@ -46,6 +45,22 @@
 
 /* The pattern for the top directory where we run the test */
 #define TEST_DIR_PATTERN "integck_test_dir_%u"
+
+/*
+ * Check if a condition is true and die if not.
+ */
+#define stringify1(x) #x
+#define stringify(x) stringify1(x)
+#define CHECK(cond) do {                                         \
+	if (!(cond)) {                                           \
+		int _err = errno;                                \
+		fflush(stdout);                                  \
+		errmsg("condition '%s' failed at %s:%d\n",       \
+		       stringify(cond), __FILE__, __LINE__);     \
+		errmsg("error %d (%s)\n", _err, strerror(_err)); \
+		exit(EXIT_FAILURE);                              \
+	}                                                        \
+} while(0)
 
 /* The variables below are set by command line arguments */
 static struct {
