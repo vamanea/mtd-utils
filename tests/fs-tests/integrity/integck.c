@@ -1776,80 +1776,7 @@ static void symlink_remove(struct symlink_info *symlink)
 	free(path);
 }
 
-static void operate_on_dir(struct dir_info *dir);
-static void operate_on_file(struct file_info *file);
-
-/* Randomly select something to do with a directory entry */
-static void operate_on_entry(struct dir_entry_info *entry)
-{
-	/* 1 time in 1000 rename */
-	if (random_no(1000) == 0) {
-		rename_entry(entry);
-		return;
-	}
-	if (entry->type == 's') {
-		symlink_check(entry->symlink);
-		/* If shrinking, 1 time in 50, remove a symlink */
-		if (shrink && random_no(50) == 0)
-			symlink_remove(entry->symlink);
-		return;
-	}
-	if (entry->type == 'd') {
-		/* If shrinking, 1 time in 50, remove a directory */
-		if (shrink && random_no(50) == 0) {
-			dir_remove(entry->dir);
-			return;
-		}
-		operate_on_dir(entry->dir);
-	}
-	if (entry->type == 'f') {
-		/* If shrinking, 1 time in 10, remove a file */
-		if (shrink && random_no(10) == 0) {
-			file_delete(entry->file);
-			return;
-		}
-		/* If not growing, 1 time in 10, unlink a file with links > 1 */
-		if (!grow && entry->file->link_count > 1 &&
-		    random_no(10) == 0) {
-			file_unlink_file(entry->file);
-			return;
-		}
-		operate_on_file(entry->file);
-	}
-}
-
-/* Randomly select something to do with a directory */
-static void operate_on_dir(struct dir_info *dir)
-{
-	struct dir_entry_info *entry;
-	struct file_info *file;
-	unsigned int r;
-
-	r = random_no(14);
-	if (r == 0 && grow)
-		/* When growing, 1 time in 14 create a file */
-		file_new(dir, make_name(dir));
-	else if (r == 1 && grow)
-		/* When growing, 1 time in 14 create a directory */
-		dir_new(dir, make_name(dir));
-	else if (r == 2 && grow && (file = pick_file()) != NULL)
-		/* When growing, 1 time in 14 create a hard link */
-		link_new(dir, make_name(dir), file);
-	else if (r == 3 && grow && random_no(5) == 0)
-		/* When growing, 1 time in 70 create a symbolic link */
-		symlink_new(dir, make_name(dir));
-	else {
-		/* Otherwise randomly select an entry to operate on */
-		r = random_no(dir->number_of_entries);
-		entry = dir->first;
-		while (entry && r) {
-			entry = entry->next;
-			--r;
-		}
-		if (entry)
-			operate_on_entry(entry);
-	}
-}
+static int operate_on_dir(struct dir_info *dir);
 
 /* Randomly select something to do with a file */
 static void operate_on_file(struct file_info *file)
@@ -1891,12 +1818,89 @@ static void operate_on_file(struct file_info *file)
 	}
 }
 
-/* Randomly select something to do with an open file */
-static void operate_on_open_file(struct fd_info *fdi)
+/* Randomly select something to do with a directory entry */
+static void operate_on_entry(struct dir_entry_info *entry)
 {
+	/* 1 time in 1000 rename */
+	if (random_no(1000) == 0) {
+		rename_entry(entry);
+		return;
+	}
+	if (entry->type == 's') {
+		symlink_check(entry->symlink);
+		/* If shrinking, 1 time in 50, remove a symlink */
+		if (shrink && random_no(50) == 0)
+			symlink_remove(entry->symlink);
+		return;
+	}
+	if (entry->type == 'd') {
+		/* If shrinking, 1 time in 50, remove a directory */
+		if (shrink && random_no(50) == 0) {
+			dir_remove(entry->dir);
+			return;
+		}
+		operate_on_dir(entry->dir);
+	}
+	if (entry->type == 'f') {
+		/* If shrinking, 1 time in 10, remove a file */
+		if (shrink && random_no(10) == 0) {
+			file_delete(entry->file);
+			return;
+		}
+		/* If not growing, 1 time in 10, unlink a file with links > 1 */
+		if (!grow && entry->file->link_count > 1 &&
+		    random_no(10) == 0) {
+			file_unlink_file(entry->file);
+			return;
+		}
+		operate_on_file(entry->file);
+	}
+}
+
+/*
+ * Randomly select something to do with a directory.
+ */
+static int operate_on_dir(struct dir_info *dir)
+{
+	struct dir_entry_info *entry;
+	struct file_info *file;
 	unsigned int r;
 
-	r = random_no(1000);
+	r = random_no(14);
+	if (r == 0 && grow)
+		/* When growing, 1 time in 14 create a file */
+		file_new(dir, make_name(dir));
+	else if (r == 1 && grow)
+		/* When growing, 1 time in 14 create a directory */
+		dir_new(dir, make_name(dir));
+	else if (r == 2 && grow && (file = pick_file()) != NULL)
+		/* When growing, 1 time in 14 create a hard link */
+		link_new(dir, make_name(dir), file);
+	else if (r == 3 && grow && random_no(5) == 0)
+		/* When growing, 1 time in 70 create a symbolic link */
+		symlink_new(dir, make_name(dir));
+	else {
+		/* Otherwise randomly select an entry to operate on */
+		r = random_no(dir->number_of_entries);
+		entry = dir->first;
+		while (entry && r) {
+			entry = entry->next;
+			--r;
+		}
+		if (entry)
+			operate_on_entry(entry);
+	}
+
+	return 0;
+}
+
+/*
+ * Randomly select something to do with an open file.
+ */
+static int operate_on_open_file(struct fd_info *fdi)
+{
+	unsigned int r = random_no(1000);
+
 	if (shrink && r < 5)
 		file_truncate(fdi->file, fdi->fd);
 	else if (r < 21)
@@ -1912,10 +1916,14 @@ static void operate_on_open_file(struct fd_info *fdi)
 				CHECK(fdatasync(fdi->fd) == 0);
 		}
 	}
+
+	return 0;
 }
 
-/* Select an open file at random */
-static void operate_on_an_open_file(void)
+/*
+ * Randomly select an open file and do a random operation on it.
+ */
+static int operate_on_an_open_file(void)
 {
 	unsigned int r;
 	struct open_file_info *ofi;
@@ -1928,9 +1936,10 @@ static void operate_on_an_open_file(void)
 		x &= 127;
 		if (x == 0) {
 			close_open_files();
-			return;
+			return 0;
 		}
 	}
+
 	/* Close any open files that have errored */
 	if (!fsinfo.nospc_size_ok) {
 		ofi = open_files;
@@ -1945,23 +1954,26 @@ static void operate_on_an_open_file(void)
 				ofi = ofi->next;
 		}
 	}
+
 	r = random_no(open_files_count);
-	for (ofi = open_files; ofi; ofi = ofi->next, --r)
+	for (ofi = open_files; ofi; ofi = ofi->next, r--)
 		if (!r) {
-			operate_on_open_file(ofi->fdi);
-			return;
+			return operate_on_open_file(ofi->fdi);
 		}
+
+	return 0;
 }
 
+/*
+ * Do a random file-system operation.
+ */
 static int do_an_operation(void)
 {
 	/* Half the time operate on already open files */
 	if (random_no(100) < 50)
-		operate_on_dir(top_dir);
+		return operate_on_dir(top_dir);
 	else
-		operate_on_an_open_file();
-
-	return 0;
+		return operate_on_an_open_file();
 }
 
 /*
