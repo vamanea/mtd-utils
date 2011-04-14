@@ -2076,7 +2076,7 @@ static void update_test_data(void)
  * Re-mount the test file-system. This function randomly select how to
  * re-mount.
  */
-void remount_tested_fs(void)
+static int remount_tested_fs(void)
 {
 	char *wd_save;
 	int ret;
@@ -2105,13 +2105,15 @@ void remount_tested_fs(void)
 		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		CHECK(ret == 0);
+		if (ret)
+			return -1;
 
 		flags = fsinfo.mount_flags | MS_REMOUNT;
 		flags &= ~((unsigned long)MS_RDONLY);
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		CHECK(ret == 0);
+		if (ret)
+			return -1;
 	}
 
 	if (um) {
@@ -2119,7 +2121,8 @@ void remount_tested_fs(void)
 			flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, flags, fsinfo.mount_opts);
-			CHECK(ret == 0);
+			if (ret)
+				return -1;
 		}
 
 		CHECK(umount(fsinfo.mount_point) != -1);
@@ -2128,18 +2131,21 @@ void remount_tested_fs(void)
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, fsinfo.mount_flags,
 				    fsinfo.mount_opts);
-			CHECK(ret == 0);
+			if (ret)
+				return -1;
 		} else {
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, fsinfo.mount_flags | MS_RDONLY,
 				    fsinfo.mount_opts);
-			CHECK(ret == 0);
+			if (ret)
+				return -1;
 
 			flags = fsinfo.mount_flags | MS_REMOUNT;
 			flags &= ~((unsigned long)MS_RDONLY);
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, flags, fsinfo.mount_opts);
-			CHECK(ret == 0);
+			if (ret)
+				return -1;
 		}
 	}
 
@@ -2147,18 +2153,21 @@ void remount_tested_fs(void)
 		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		CHECK(ret == 0);
+		if (ret)
+			return -1;
 
 		flags = fsinfo.mount_flags | MS_REMOUNT;
 		flags &= ~((unsigned long)MS_RDONLY);
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		CHECK(ret == 0);
+		if (ret)
+			return -1;
 	}
 
 	/* Restore the previous working directory */
 	CHECK(chdir(wd_save) == 0);
 	free(wd_save);
+	return 0;
 }
 
 /*
@@ -2188,7 +2197,9 @@ static int integck(void)
 
 	if (fsinfo.is_rootfs) {
 		close_open_files();
-		remount_tested_fs();
+		ret = remount_tested_fs();
+		if (ret)
+			return -1;
 	}
 
 	/* Check everything */
@@ -2201,7 +2212,9 @@ static int integck(void)
 
 		if (!fsinfo.is_rootfs) {
 			close_open_files();
-			remount_tested_fs();
+			ret = remount_tested_fs();
+			if (ret)
+				return -1;
 		}
 
 		/* Check everything */
