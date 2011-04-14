@@ -62,6 +62,15 @@
 	}                                                        \
 } while(0)
 
+#define pcv(fmt, ...) do {                                        \
+	if (args.power_cut_mode) {                                \
+		int _err = errno;                                 \
+		errmsg(fmt, ##__VA_ARGS__);                       \
+		errmsg("error %d (%s) at %s:%d\n",                \
+		       _err, strerror(_err), __FILE__, __LINE__); \
+	}                                                         \
+} while(0)
+
 /* The variables below are set by command line arguments */
 static struct {
 	long repeat_cnt;
@@ -1989,10 +1998,11 @@ static void create_test_data(void)
 /*
  * Recursively remove a directory, just like "rm -rf" shell command.
  */
-void rm_minus_rf_dir(const char *dir_name)
+static int rm_minus_rf_dir(const char *dir_name)
 {
+	int ret;
 	DIR *dir;
-	struct dirent *entry;
+	struct dirent *dent;
 	char buf[PATH_MAX];
 
 	dir = opendir(dir_name);
@@ -2002,24 +2012,34 @@ void rm_minus_rf_dir(const char *dir_name)
 
 	for (;;) {
 		errno = 0;
-		entry = readdir(dir);
-		if (!entry) {
+		dent = readdir(dir);
+		if (!dent) {
 			CHECK(errno == 0);
 			break;
 		}
 
-		if (strcmp(entry->d_name, ".") &&
-		    strcmp(entry->d_name, "..")) {
-			if (entry->d_type == DT_DIR)
-				rm_minus_rf_dir(entry->d_name);
-			else
-				CHECK(unlink(entry->d_name) == 0);
+		if (strcmp(dent->d_name, ".") &&
+		    strcmp(dent->d_name, "..")) {
+			if (dent->d_type == DT_DIR)
+				rm_minus_rf_dir(dent->d_name);
+			else {
+				ret = unlink(dent->d_name);
+				if (ret) {
+					pcv("cannot unlink %s", dent->d_name);
+					return -1;
+				}
+			}
 		}
 	}
 
 	CHECK(chdir(buf) == 0);
 	CHECK(closedir(dir) == 0);
-	CHECK(rmdir(dir_name) == 0);
+	ret = rmdir(dir_name);
+	if (ret) {
+		pcv("cannot remove directory %s", dir_name);
+		return -1;
+	}
+	return 0;
 }
 
 static void update_test_data(void)
@@ -2146,13 +2166,18 @@ void remount_tested_fs(void)
  */
 static int integck(void)
 {
+	int ret;
 	int64_t rpt;
+
+	CHECK(chdir(fsinfo.mount_point) == 0);
 
 	/* Create our top directory */
 	if (chdir(fsinfo.test_dir) == 0) {
 		/* Remove it if it is already there */
 		CHECK(chdir("..") == 0);
-		rm_minus_rf_dir(fsinfo.test_dir);
+		ret = rm_minus_rf_dir(fsinfo.test_dir);
+		if (ret)
+			return -1;
 	}
 
 	top_dir = dir_new(NULL, fsinfo.test_dir);
@@ -2187,7 +2212,9 @@ static int integck(void)
 
 	/* Tidy up by removing everything */
 	close_open_files();
-	rm_minus_rf_dir(fsinfo.test_dir);
+	ret = rm_minus_rf_dir(fsinfo.test_dir);
+	if (ret)
+		return -1;
 
 	return 0;
 }
@@ -2403,7 +2430,6 @@ static int parse_opts(int argc, char * const argv[])
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
-
 		case ':':
 			return errmsg("parameter is missing");
 
