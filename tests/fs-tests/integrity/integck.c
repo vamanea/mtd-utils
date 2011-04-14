@@ -880,17 +880,27 @@ static void get_offset_and_size(struct file_info *file,
 
 static void file_truncate_info(struct file_info *file, size_t new_length);
 
+/*
+ * Truncate a file to length 'new_length'. If there is no enough space to
+ * peform the operation, this function returns 1. Returns 0 on success and -1
+ * on failure.
+ */
 static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 {
 	if (ftruncate(fd, new_length) != 0) {
-		CHECK(errno = ENOSPC);
-		file->no_space_error = 1;
-		/* Delete errored files */
-		if (!fsinfo.nospc_size_ok)
-			file_delete(file);
-		return 0;
+		if (errno == ENOSPC) {
+			file->no_space_error = 1;
+			/* Delete errored files */
+			if (!fsinfo.nospc_size_ok)
+				file_delete(file);
+			return 1;
+		} else
+			pcv("cannot truncate file %s to %llu",
+			    file->name, (unsigned long long)new_length);
+		return -1;
 	}
-	return 1;
+
+	return 0;
 }
 
 static void file_mmap_write(struct file_info *file)
@@ -994,7 +1004,8 @@ static void file_write(struct file_info *file, int fd)
 
 	if (truncate) {
 		size_t new_length = offset + actual;
-		if (file_ftruncate(file, fd, new_length))
+
+		if (!file_ftruncate(file, fd, new_length))
 			file_truncate_info(file, new_length);
 	}
 }
@@ -1044,14 +1055,21 @@ static void file_truncate_info(struct file_info *file, size_t new_length)
 	file->length = new_length;
 }
 
-static void file_truncate(struct file_info *file, int fd)
+/*
+ * Truncate an open file randomly.
+ */
+static int file_truncate(struct file_info *file, int fd)
 {
-	size_t new_length;
+	int ret;
+	size_t new_length = random_no(file->length);
 
-	new_length = random_no(file->length);
 
-	if (file_ftruncate(file, fd, new_length))
+	ret = file_ftruncate(file, fd, new_length);
+	if (ret == -1)
+		return -1;
+	if (!ret)
 		file_truncate_info(file, new_length);
+	return 0;
 }
 
 static void file_truncate_file(struct file_info *file)
@@ -1902,7 +1920,7 @@ static int operate_on_open_file(struct fd_info *fdi)
 	unsigned int r = random_no(1000);
 
 	if (shrink && r < 5)
-		file_truncate(fdi->file, fdi->fd);
+		return file_truncate(fdi->file, fdi->fd);
 	else if (r < 21)
 		file_close(fdi);
 	else if (shrink && r < 121 && !fdi->file->deleted)
