@@ -284,19 +284,12 @@ static char *cat_strings(const char *a, const char *b)
 static char *cat_paths(const char *a, const char *b)
 {
 	char *str;
-	size_t sz;
-	int as, bs;
-	size_t na, nb;
+	size_t sz, na, nb;
+	int as = 0, bs = 0;
 
-	if (a && !b)
-		return dup_string(a);
-	if (b && !a)
-		return dup_string(b);
-	if (!a && !b)
-		return NULL;
+	assert(a != NULL);
+	assert(b != NULL);
 
-	as = 0;
-	bs = 0;
 	na = strlen(a);
 	nb = strlen(b);
 	if (na && a[na - 1] == '/')
@@ -333,8 +326,7 @@ static void get_fs_space(uint64_t *total, uint64_t *free)
 
 static char *dir_path(struct dir_info *parent, const char *name)
 {
-	char *parent_path;
-	char *path;
+	char *parent_path, *path;
 
 	if (!parent)
 		return cat_paths(fsinfo.mount_point, name);
@@ -454,6 +446,12 @@ static void remove_dir_entry(struct dir_entry_info *entry)
 	free(entry);
 }
 
+/*
+ * Create a new directory "name" in the parent directory described by "parent"
+ * and add it to the in-memory list of directories. In case of success, returns
+ * a pointer to the new 'struct dir_info' object. Returns 'NULL' in case of
+ * failure.
+ */
 static struct dir_info *dir_new(struct dir_info *parent, const char *name)
 {
 	struct dir_info *dir;
@@ -461,8 +459,10 @@ static struct dir_info *dir_new(struct dir_info *parent, const char *name)
 
 	path = dir_path(parent, name);
 	if (mkdir(path, 0777) != 0) {
-		CHECK(errno == ENOSPC);
-		full = 1;
+		if (errno == ENOSPC)
+			full = 1;
+		else
+			pcv("cannot create directory %s", path);
 		free(path);
 		return NULL;
 	}
@@ -2167,7 +2167,7 @@ void remount_tested_fs(void)
 static int integck(void)
 {
 	int ret;
-	int64_t rpt;
+	long rpt;
 
 	CHECK(chdir(fsinfo.mount_point) == 0);
 
