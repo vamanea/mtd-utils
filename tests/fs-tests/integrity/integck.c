@@ -1953,16 +1953,21 @@ static void operate_on_an_open_file(void)
 		}
 }
 
-static void do_an_operation(void)
+static int do_an_operation(void)
 {
 	/* Half the time operate on already open files */
 	if (random_no(100) < 50)
 		operate_on_dir(top_dir);
 	else
 		operate_on_an_open_file();
+
+	return 0;
 }
 
-static void create_test_data(void)
+/*
+ * Fill the tested file-system with random stuff.
+ */
+static int create_test_data(void)
 {
 	uint64_t i, n;
 
@@ -1971,28 +1976,77 @@ static void create_test_data(void)
 	full = 0;
 	operation_count = 0;
 	while (!full) {
-		do_an_operation();
-		++operation_count;
+		if (do_an_operation())
+			return -1;
+		operation_count += 1;
 	}
+
+	/* Drop to less than 90% full */
 	grow = 0;
 	shrink = 1;
-	/* Drop to less than 90% full */
 	n = operation_count / 40;
 	while (n--) {
-		uint64_t free;
-		uint64_t total;
-		for (i = 0; i < 10; ++i)
-			do_an_operation();
+		uint64_t free, total;
+
+		for (i = 0; i < 10; i++)
+			if (do_an_operation())
+				return -1;
+
 		get_fs_space(&total, &free);
 		if ((free * 100) / total >= 10)
 			break;
 	}
+
 	grow = 0;
 	shrink = 0;
 	full = 0;
 	n = operation_count * 2;
-	for (i = 0; i < n; ++i)
-		do_an_operation();
+	for (i = 0; i < n; i++)
+		if (do_an_operation())
+			return -1;
+
+	return 0;
+}
+
+/*
+ * Do more random operation on the tested file-system.
+ */
+static int update_test_data(void)
+{
+	uint64_t i, n;
+
+	grow = 1;
+	shrink = 0;
+	full = 0;
+	while (!full)
+		if (do_an_operation())
+			return -1;
+
+	/* Drop to less than 50% full */
+	grow = 0;
+	shrink = 1;
+	n = operation_count / 10;
+	while (n--) {
+		uint64_t free, total;
+
+		for (i = 0; i < 10; i++)
+			if (do_an_operation())
+				return -1;
+
+		get_fs_space(&total, &free);
+		if ((free * 100) / total >= 50)
+			break;
+	}
+
+	grow = 0;
+	shrink = 0;
+	full = 0;
+	n = operation_count * 2;
+	for (i = 0; i < n; i++)
+		if (do_an_operation())
+			return -1;
+
+	return 0;
 }
 
 /*
@@ -2040,36 +2094,6 @@ static int rm_minus_rf_dir(const char *dir_name)
 		return -1;
 	}
 	return 0;
-}
-
-static void update_test_data(void)
-{
-	uint64_t i, n;
-
-	grow = 1;
-	shrink = 0;
-	full = 0;
-	while (!full)
-		do_an_operation();
-	grow = 0;
-	shrink = 1;
-	/* Drop to less than 50% full */
-	n = operation_count / 10;
-	while (n--) {
-		uint64_t free;
-		uint64_t total;
-		for (i = 0; i < 10; ++i)
-			do_an_operation();
-		get_fs_space(&total, &free);
-		if ((free * 100) / total >= 50)
-			break;
-	}
-	grow = 0;
-	shrink = 0;
-	full = 0;
-	n = operation_count * 2;
-	for (i = 0; i < n; ++i)
-		do_an_operation();
 }
 
 /**
@@ -2193,7 +2217,9 @@ static int integck(void)
 	if (!top_dir)
 		return -1;
 
-	create_test_data();
+	ret = create_test_data();
+	if (ret)
+		return -1;
 
 	if (fsinfo.is_rootfs) {
 		close_open_files();
@@ -2208,7 +2234,9 @@ static int integck(void)
 	check_deleted_files();
 
 	for (rpt = 0; args.repeat_cnt == 0 || rpt < args.repeat_cnt; ++rpt) {
-		update_test_data();
+		ret = update_test_data();
+		if (ret)
+			return -1;
 
 		if (!fsinfo.is_rootfs) {
 			close_open_files();
