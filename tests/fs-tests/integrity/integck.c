@@ -473,7 +473,6 @@ static int dir_new(struct dir_info *parent, const char *name)
 	free(path);
 
 	dir = zalloc(sizeof(struct dir_info));
-	dir->name = dup_string(name);
 	dir->parent = parent;
 	if (parent)
 		add_dir_entry(parent, 'd', name, dir);
