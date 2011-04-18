@@ -1881,27 +1881,27 @@ static int symlink_remove(struct symlink_info *symlink)
 static int operate_on_dir(struct dir_info *dir);
 
 /* Randomly select something to do with a file */
-static void operate_on_file(struct file_info *file)
+static int operate_on_file(struct file_info *file)
 {
 	/* Try to keep at least 10 files open */
 	if (open_files_count < 10) {
 		file_open(file);
-		return;
+		return 0;
 	}
 	/* Try to keep about 20 files open */
 	if (open_files_count < 20 && random_no(2) == 0) {
 		file_open(file);
-		return;
+		return 0;
 	}
 	/* Try to keep up to 40 files open */
 	if (open_files_count < 40 && random_no(20) == 0) {
 		file_open(file);
-		return;
+		return 0;
 	}
 	/* Occasionly truncate */
 	if (shrink && random_no(100) == 0) {
 		file_truncate_file(file);
-		return;
+		return 0;
 	}
 	/* Mostly just write */
 	file_write_file(file);
@@ -1918,38 +1918,40 @@ static void operate_on_file(struct file_info *file)
 			file_check(file, fd);
 		}
 	}
+	return 0;
 }
 
 /* Randomly select something to do with a directory entry */
 static int operate_on_entry(struct dir_entry_info *entry)
 {
+	int ret = 0;
+
 	/* 1 time in 1000 rename */
 	if (random_no(1000) == 0)
-		return rename_entry(entry);
-	if (entry->type == 's') {
+		ret = rename_entry(entry);
+	else if (entry->type == 's') {
 		symlink_check(entry->symlink);
 		/* If shrinking, 1 time in 50, remove a symlink */
 		if (shrink && random_no(50) == 0)
-			return symlink_remove(entry->symlink);
-		return 0;
-	}
-	if (entry->type == 'd') {
+			ret = symlink_remove(entry->symlink);
+	} else if (entry->type == 'd') {
 		/* If shrinking, 1 time in 50, remove a directory */
 		if (shrink && random_no(50) == 0)
-			return dir_remove(entry->dir);
-		return operate_on_dir(entry->dir);
-	}
-	if (entry->type == 'f') {
+			ret = dir_remove(entry->dir);
+		else
+			ret = operate_on_dir(entry->dir);
+	} else if (entry->type == 'f') {
 		/* If shrinking, 1 time in 10, remove a file */
 		if (shrink && random_no(10) == 0)
-			return file_delete(entry->file);
+			ret = file_delete(entry->file);
 		/* If not growing, 1 time in 10, unlink a file with links > 1 */
-		if (!grow && entry->file->link_count > 1 &&
-		    random_no(10) == 0)
-			return file_unlink_file(entry->file);
-		operate_on_file(entry->file);
+		else if (!grow && entry->file->link_count > 1 &&
+			 random_no(10) == 0)
+			ret = file_unlink_file(entry->file);
+		else
+			ret = operate_on_file(entry->file);
 	}
-	return 0;
+	return ret;
 }
 
 /*
