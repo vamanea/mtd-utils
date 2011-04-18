@@ -542,8 +542,8 @@ static int file_new(struct dir_info *parent, const char *name)
 	return 0;
 }
 
-static void link_new(struct dir_info *parent, const char *name,
-		     struct file_info *file)
+static int link_new(struct dir_info *parent, const char *name,
+		    struct file_info *file)
 {
 	struct dir_entry_info *entry;
 	char *path, *target;
@@ -551,21 +551,26 @@ static void link_new(struct dir_info *parent, const char *name,
 
 	entry = file->links;
 	if (!entry)
-		return;
+		return 0;
+
 	path = dir_path(parent, name);
 	target = dir_path(entry->parent, entry->name);
 	ret = link(target, path);
 	if (ret != 0) {
-		CHECK(errno == ENOSPC);
+		if (errno == ENOSPC) {
+			ret = 0;
+			full = 1;
+		} else
+			pcv("cannot create hardlink %s in directory %s to file %s",
+			    path, parent->name, target);
 		free(target);
 		free(path);
-		full = 1;
-		return;
+		return ret;
 	}
 	free(target);
 	free(path);
-
 	add_dir_entry(parent, 'f', name, file);
+	return 0;
 }
 
 static void file_close(struct fd_info *fdi);
@@ -1952,7 +1957,7 @@ static int operate_on_dir(struct dir_info *dir)
 		return dir_new(dir, make_name(dir));
 	else if (r == 2 && grow && (file = pick_file()) != NULL)
 		/* When growing, 1 time in 14 create a hard link */
-		link_new(dir, make_name(dir), file);
+		return link_new(dir, make_name(dir), file);
 	else if (r == 3 && grow && random_no(5) == 0)
 		/* When growing, 1 time in 70 create a symbolic link */
 		return symlink_new(dir, make_name(dir));
