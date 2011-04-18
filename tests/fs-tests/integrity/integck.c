@@ -1901,25 +1901,25 @@ static void operate_on_file(struct file_info *file)
 }
 
 /* Randomly select something to do with a directory entry */
-static void operate_on_entry(struct dir_entry_info *entry)
+static int operate_on_entry(struct dir_entry_info *entry)
 {
 	/* 1 time in 1000 rename */
 	if (random_no(1000) == 0) {
 		rename_entry(entry);
-		return;
+		return 0;
 	}
 	if (entry->type == 's') {
 		symlink_check(entry->symlink);
 		/* If shrinking, 1 time in 50, remove a symlink */
 		if (shrink && random_no(50) == 0)
 			symlink_remove(entry->symlink);
-		return;
+		return 0;
 	}
 	if (entry->type == 'd') {
 		/* If shrinking, 1 time in 50, remove a directory */
 		if (shrink && random_no(50) == 0) {
 			dir_remove(entry->dir);
-			return;
+			return 0;
 		}
 		operate_on_dir(entry->dir);
 	}
@@ -1927,16 +1927,17 @@ static void operate_on_entry(struct dir_entry_info *entry)
 		/* If shrinking, 1 time in 10, remove a file */
 		if (shrink && random_no(10) == 0) {
 			file_delete(entry->file);
-			return;
+			return 0;
 		}
 		/* If not growing, 1 time in 10, unlink a file with links > 1 */
 		if (!grow && entry->file->link_count > 1 &&
 		    random_no(10) == 0) {
 			file_unlink_file(entry->file);
-			return;
+			return 0;
 		}
 		operate_on_file(entry->file);
 	}
+	return 0;
 }
 
 /*
@@ -1947,20 +1948,21 @@ static int operate_on_dir(struct dir_info *dir)
 	struct dir_entry_info *entry;
 	struct file_info *file;
 	unsigned int r;
+	int ret = 0;
 
 	r = random_no(14);
 	if (r == 0 && grow)
 		/* When growing, 1 time in 14 create a file */
-		return file_new(dir, make_name(dir));
+		ret = file_new(dir, make_name(dir));
 	else if (r == 1 && grow)
 		/* When growing, 1 time in 14 create a directory */
-		return dir_new(dir, make_name(dir));
+		ret = dir_new(dir, make_name(dir));
 	else if (r == 2 && grow && (file = pick_file()) != NULL)
 		/* When growing, 1 time in 14 create a hard link */
-		return link_new(dir, make_name(dir), file);
+		ret = link_new(dir, make_name(dir), file);
 	else if (r == 3 && grow && random_no(5) == 0)
 		/* When growing, 1 time in 70 create a symbolic link */
-		return symlink_new(dir, make_name(dir));
+		ret = symlink_new(dir, make_name(dir));
 	else {
 		/* Otherwise randomly select an entry to operate on */
 		r = random_no(dir->number_of_entries);
@@ -1970,10 +1972,10 @@ static int operate_on_dir(struct dir_info *dir)
 			--r;
 		}
 		if (entry)
-			operate_on_entry(entry);
+			ret = operate_on_entry(entry);
 	}
 
-	return 0;
+	return ret;
 }
 
 /*
