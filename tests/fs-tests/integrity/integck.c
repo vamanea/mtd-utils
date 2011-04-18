@@ -152,7 +152,6 @@ struct file_info /* Each file has one of these */
 	off_t length;
 	int link_count;
 	unsigned int check_run_no; /* Run number used when checking */
-	unsigned int deleted:1; /* File has been deleted but is still open */
 	unsigned int no_space_error:1; /* File has incurred a ENOSPC error */
 };
 
@@ -442,7 +441,7 @@ static void remove_dir_entry(struct dir_entry_info *entry)
 			file->links = entry->next_link;
 		file->link_count -= 1;
 		if (file->link_count == 0)
-			file->deleted = 1;
+			assert(file->links == NULL);
 	}
 
 	free(entry->name);
@@ -599,6 +598,21 @@ static void file_close_all(struct file_info *file)
 }
 
 /*
+ * Free all the information about writes to a file.
+ */
+static void free_writes_info(struct file_info *file)
+{
+	struct write_info *w, *next;
+
+	w = file->writes;
+	while (w) {
+		next = w->next;
+		free(w);
+		w = next;
+	}
+}
+
+/*
  * Unlink a directory entry for a file.
  */
 static int file_unlink(struct dir_entry_info *entry)
@@ -622,18 +636,10 @@ static int file_unlink(struct dir_entry_info *entry)
 
 	/* Free struct file_info if file is not open and not linked */
 	if (!file->fds && !file->links) {
-		struct write_info *w, *next;
-
+		free_writes_info(file);
 		free(file->name);
-		w = file->writes;
-		while (w) {
-			next = w->next;
-			free(w);
-			w = next;
-		}
 		free(file);
-	} else if (!file->links)
-		file->deleted = 1;
+	}
 
 	return 0;
 }
@@ -702,7 +708,7 @@ static void file_info_display(struct file_info *file)
 	normsg("    File was open: %s",
 	       (file->fds == NULL) ? "false" : "true");
 	normsg("    File was deleted: %s",
-	       (file->deleted == 0) ? "false" : "true");
+	       (file->link_count == 0) ? "true" : "false");
 	normsg("    File was out of space: %s",
 	       (file->no_space_error == 0) ? "false" : "true");
 	normsg("    File Data:");
@@ -1048,7 +1054,7 @@ static int file_write(struct file_info *file, int fd)
 	unsigned int seed;
 	int ret, truncate = 0;
 
-	if (fsinfo.can_mmap && !full && !file->deleted &&
+	if (fsinfo.can_mmap && !full && file->link_count &&
 	    random_no(100) == 1)
 		return file_mmap_write(file);
 
@@ -1189,16 +1195,8 @@ static void file_close(struct fd_info *fdi)
 		if (fdp == fdi) {
 			*prev = fdi->next;
 			free(fdi);
-			if (file->deleted && !file->fds) {
-				/* Closing deleted file */
-				struct write_info *w, *next;
-
-				w = file->writes;
-				while (w) {
-					next = w->next;
-					free(w);
-					w = next;
-				}
+			if (!file->link_count && !file->fds) {
+				free_writes_info(file);
 				free(file->name);
 				free(file);
 			}
@@ -1554,7 +1552,7 @@ static void check_deleted_files(void)
 	struct open_file_info *ofi;
 
 	for (ofi = open_files; ofi; ofi = ofi->next)
-		if (ofi->fdi->file->deleted)
+		if (!ofi->fdi->file->link_count)
 			file_check(ofi->fdi->file, ofi->fdi->fd);
 }
 
@@ -2017,7 +2015,7 @@ static int operate_on_open_file(struct fd_info *fdi)
 		ret = file_truncate(fdi->file, fdi->fd);
 	else if (r < 21)
 		file_close(fdi);
-	else if (shrink && r < 121 && !fdi->file->deleted)
+	else if (shrink && r < 121 && fdi->file->link_count)
 		ret = file_delete(fdi->file);
 	else {
 		ret = file_write(fdi->file, fdi->fd);
