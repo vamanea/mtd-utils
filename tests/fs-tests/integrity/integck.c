@@ -738,7 +738,7 @@ static void file_info_display(struct file_info *file)
 	normsg("    ============================================");
 }
 
-static struct fd_info *file_open(struct file_info *file)
+static int file_open(struct file_info *file)
 {
 	int fd, flags = O_RDWR;
 	char *path;
@@ -747,9 +747,14 @@ static struct fd_info *file_open(struct file_info *file)
 	if (random_no(100) == 1)
 		flags |= O_SYNC;
 	fd = open(path, flags);
-	CHECK(fd != -1);
+	if (fd == -1) {
+		pcv("cannot open file %s", path);
+		free(path);
+		return -1;
+	}
 	free(path);
-	return add_fd(file, fd);
+	add_fd(file, fd);
+	return 0;
 }
 
 /*
@@ -1884,20 +1889,15 @@ static int operate_on_dir(struct dir_info *dir);
 static int operate_on_file(struct file_info *file)
 {
 	/* Try to keep at least 10 files open */
-	if (open_files_count < 10) {
-		file_open(file);
-		return 0;
-	}
+	if (open_files_count < 10)
+		return file_open(file);
 	/* Try to keep about 20 files open */
-	if (open_files_count < 20 && random_no(2) == 0) {
-		file_open(file);
-		return 0;
-	}
+	if (open_files_count < 20 && random_no(2) == 0)
+		return file_open(file);
 	/* Try to keep up to 40 files open */
-	if (open_files_count < 40 && random_no(20) == 0) {
-		file_open(file);
-		return 0;
-	}
+	if (open_files_count < 40 && random_no(20) == 0)
+		return file_open(file);
+
 	/* Occasionly truncate */
 	if (shrink && random_no(100) == 0) {
 		file_truncate_file(file);
