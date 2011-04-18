@@ -921,26 +921,28 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 	return 0;
 }
 
-static void file_mmap_write(struct file_info *file)
+/*
+ * 'mmap()' a file and randomly select where to write data.
+ */
+static int file_mmap_write(struct file_info *file)
 {
 	size_t write_cnt = 0, r, i, len, size;
 	struct write_info *w = file->writes;
 	void *addr;
-	char *waddr;
+	char *waddr, *path;
 	off_t offs, offset;
-	unsigned seed;
+	unsigned int seed;
 	uint64_t free_space;
 	int fd;
-	char *path;
 
 	if (!file->links)
-		return;
+		return 0;
 	get_fs_space(NULL, &free_space);
 	if (!free_space)
-		return;
+		return 0;
 	/* Randomly pick a written area of the file */
 	if (!w)
-		return;
+		return 0;
 	while (w) {
 		write_cnt += 1;
 		w = w->next;
@@ -959,12 +961,15 @@ static void file_mmap_write(struct file_info *file)
 	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_RDWR);
 	CHECK(fd != -1);
-	free(path);
 
 	/* mmap it */
 	addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offs);
 	CHECK(close(fd) == 0);
-	CHECK(addr != MAP_FAILED);
+	if (addr == MAP_FAILED) {
+		pcv("cannot mmap file %s", path);
+		free(path);
+		return -1;
+	}
 
 	/* Randomly select a part of the mmapped area to write */
 	size = random_no(w->size);
@@ -982,10 +987,16 @@ static void file_mmap_write(struct file_info *file)
 		waddr[i] = rand();
 
 	/* Unmap it */
-	CHECK(munmap(addr, len) == 0);
+	if (munmap(addr, len)) {
+		pcv("cannot unmap file %s", path);
+		free(path);
+		return -1;
+	}
 
 	/* Record what was written */
 	file_write_info(file, offset, size, seed);
+	free(path);
+	return 0;
 }
 
 /*
@@ -1000,10 +1011,8 @@ static int file_write(struct file_info *file, int fd)
 	int ret, truncate = 0;
 
 	if (fsinfo.can_mmap && !full && !file->deleted &&
-	    random_no(100) == 1) {
-		file_mmap_write(file);
-		return 0;
-	}
+	    random_no(100) == 1)
+		return file_mmap_write(file);
 
 	get_offset_and_size(file, &offset, &size);
 	seed = random_no(MAX_RANDOM_SEED);
