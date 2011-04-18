@@ -652,14 +652,14 @@ static struct dir_entry_info *pick_entry(struct file_info *file)
 	return entry;
 }
 
-static void file_unlink_file(struct file_info *file)
+static int file_unlink_file(struct file_info *file)
 {
 	struct dir_entry_info *entry;
 
 	entry = pick_entry(file);
 	if (!entry)
-		return;
-	file_unlink(entry);
+		return 0;
+	return file_unlink(entry);
 }
 
 /*
@@ -1941,16 +1941,12 @@ static int operate_on_entry(struct dir_entry_info *entry)
 	}
 	if (entry->type == 'f') {
 		/* If shrinking, 1 time in 10, remove a file */
-		if (shrink && random_no(10) == 0) {
-			file_delete(entry->file);
-			return 0;
-		}
+		if (shrink && random_no(10) == 0)
+			return file_delete(entry->file);
 		/* If not growing, 1 time in 10, unlink a file with links > 1 */
 		if (!grow && entry->file->link_count > 1 &&
-		    random_no(10) == 0) {
-			file_unlink_file(entry->file);
-			return 0;
-		}
+		    random_no(10) == 0)
+			return file_unlink_file(entry->file);
 		operate_on_file(entry->file);
 	}
 	return 0;
