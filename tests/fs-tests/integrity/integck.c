@@ -517,6 +517,7 @@ static int dir_remove(struct dir_info *dir)
 	/* Remove entry from parent directory */
 	remove_dir_entry(dir->entry);
 	free(path);
+	free(dir->name);
 	free(dir);
 	return 0;
 }
