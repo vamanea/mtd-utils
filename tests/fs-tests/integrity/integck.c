@@ -451,23 +451,24 @@ static void remove_dir_entry(struct dir_entry_info *entry)
 
 /*
  * Create a new directory "name" in the parent directory described by "parent"
- * and add it to the in-memory list of directories. In case of success, returns
- * a pointer to the new 'struct dir_info' object. Returns 'NULL' in case of
- * failure.
+ * and add it to the in-memory list of directories. Returns zero in case of
+ * success and -1 in case of failure.
  */
-static struct dir_info *dir_new(struct dir_info *parent, const char *name)
+static int dir_new(struct dir_info *parent, const char *name)
 {
 	struct dir_info *dir;
 	char *path;
 
 	path = dir_path(parent, name);
 	if (mkdir(path, 0777) != 0) {
-		if (errno == ENOSPC)
+		if (errno == ENOSPC) {
 			full = 1;
-		else
-			pcv("cannot create directory %s", path);
+			free(path);
+			return 0;
+		}
+		pcv("cannot create directory %s", path);
 		free(path);
-		return NULL;
+		return -1;
 	}
 	free(path);
 
@@ -476,7 +477,7 @@ static struct dir_info *dir_new(struct dir_info *parent, const char *name)
 	dir->parent = parent;
 	if (parent)
 		add_dir_entry(parent, 'd', name, dir);
-	return dir;
+	return 0;
 }
 
 static int file_delete(struct file_info *file);
@@ -1937,7 +1938,7 @@ static int operate_on_dir(struct dir_info *dir)
 		return file_new(dir, make_name(dir));
 	else if (r == 1 && grow)
 		/* When growing, 1 time in 14 create a directory */
-		dir_new(dir, make_name(dir));
+		return dir_new(dir, make_name(dir));
 	else if (r == 2 && grow && (file = pick_file()) != NULL)
 		/* When growing, 1 time in 14 create a hard link */
 		link_new(dir, make_name(dir), file);
@@ -2298,9 +2299,14 @@ static int integck(void)
 			return -1;
 	}
 
-	top_dir = dir_new(NULL, fsinfo.test_dir);
-	if (!top_dir)
+	ret = mkdir(fsinfo.test_dir, 0777);
+	if (ret) {
+		pcv("cannot create top test directory %s", fsinfo.test_dir);
 		return -1;
+	}
+
+	top_dir = zalloc(sizeof(struct dir_info));
+	top_dir->name = dup_string(fsinfo.test_dir);
 
 	ret = create_test_data();
 	if (ret)
