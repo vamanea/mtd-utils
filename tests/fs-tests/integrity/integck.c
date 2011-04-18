@@ -484,30 +484,41 @@ static int file_delete(struct file_info *file);
 static int file_unlink(struct dir_entry_info *entry);
 static int symlink_remove(struct symlink_info *symlink);
 
-static void dir_remove(struct dir_info *dir)
+static int dir_remove(struct dir_info *dir)
 {
 	char *path;
 
 	/* Remove directory contents */
 	while (dir->first) {
 		struct dir_entry_info *entry;
+		int ret = 0;
 
 		entry = dir->first;
 		if (entry->type == 'd')
-			dir_remove(entry->dir);
+			ret = dir_remove(entry->dir);
 		else if (entry->type == 'f')
-			file_unlink(entry);
+			ret = file_unlink(entry);
 		else if (entry->type == 's')
-			symlink_remove(entry->symlink);
+			ret = symlink_remove(entry->symlink);
 		else
 			CHECK(0); /* Invalid struct dir_entry_info */
+		if (ret)
+			return -1;
 	}
+
+	/* Remove directory form the file-system */
+	path = dir_path(dir->parent, dir->name);
+	if (rmdir(path) != 0) {
+		pcv("cannot remove directory entry %s", path);
+		free(path);
+		return -1;
+	}
+
 	/* Remove entry from parent directory */
 	remove_dir_entry(dir->entry);
-	/* Remove directory itself */
-	path = dir_path(dir->parent, dir->name);
-	CHECK(rmdir(path) == 0);
+	free(path);
 	free(dir);
+	return 0;
 }
 
 static int file_new(struct dir_info *parent, const char *name)
@@ -1924,11 +1935,9 @@ static int operate_on_entry(struct dir_entry_info *entry)
 	}
 	if (entry->type == 'd') {
 		/* If shrinking, 1 time in 50, remove a directory */
-		if (shrink && random_no(50) == 0) {
-			dir_remove(entry->dir);
-			return 0;
-		}
-		operate_on_dir(entry->dir);
+		if (shrink && random_no(50) == 0)
+			return dir_remove(entry->dir);
+		return operate_on_dir(entry->dir);
 	}
 	if (entry->type == 'f') {
 		/* If shrinking, 1 time in 10, remove a file */
