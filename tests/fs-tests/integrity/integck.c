@@ -509,23 +509,27 @@ static void dir_remove(struct dir_info *dir)
 	free(dir);
 }
 
-static struct file_info *file_new(struct dir_info *parent, const char *name)
+static int file_new(struct dir_info *parent, const char *name)
 {
-	struct file_info *file = NULL;
+	struct file_info *file;
 	char *path;
 	mode_t mode;
 	int fd;
 
-	CHECK(parent != NULL);
+	assert(parent != NULL);
 
 	path = dir_path(parent, name);
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
 	fd = open(path, O_CREAT | O_EXCL | O_RDWR, mode);
 	if (fd == -1) {
-		CHECK(errno == ENOSPC);
+		if (errno == ENOSPC) {
+			full = 1;
+			free(path);
+			return 0;
+		}
+		pcv("cannot create file %s", path);
 		free(path);
-		full = 1;
-		return NULL;
+		return -1;
 	}
 	free(path);
 
@@ -533,10 +537,8 @@ static struct file_info *file_new(struct dir_info *parent, const char *name)
 	file->name = dup_string(name);
 
 	add_dir_entry(parent, 'f', name, file);
-
 	add_fd(file, fd);
-
-	return file;
+	return 0;
 }
 
 static void link_new(struct dir_info *parent, const char *name,
@@ -1932,7 +1934,7 @@ static int operate_on_dir(struct dir_info *dir)
 	r = random_no(14);
 	if (r == 0 && grow)
 		/* When growing, 1 time in 14 create a file */
-		file_new(dir, make_name(dir));
+		return file_new(dir, make_name(dir));
 	else if (r == 1 && grow)
 		/* When growing, 1 time in 14 create a directory */
 		dir_new(dir, make_name(dir));
