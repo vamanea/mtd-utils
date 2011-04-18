@@ -610,6 +610,13 @@ static void free_writes_info(struct file_info *file)
 		free(w);
 		w = next;
 	}
+
+	w = file->raw_writes;
+	while (w) {
+		next = w->next;
+		free(w);
+		w = next;
+	}
 }
 
 /*
