@@ -729,11 +729,13 @@ static struct fd_info *file_open(struct file_info *file)
 
 #define BUFFER_SIZE 32768
 
-static size_t file_write_data(	struct file_info *file,
-				int fd,
-				off_t offset,
-				size_t size,
-				unsigned seed)
+/*
+ * Write random 'size' bytes of random data to offset 'offset'. Seed the random
+ * gererator with 'seed'. Return amount of written data on success and -1 on
+ * failure.
+ */
+static ssize_t file_write_data(struct file_info *file, int fd,
+			       off_t offset, size_t size, unsigned seed)
 {
 	size_t remains, actual, block;
 	ssize_t written;
@@ -760,10 +762,15 @@ static size_t file_write_data(	struct file_info *file,
 			block = remains;
 		written = write(fd, buf, block);
 		if (written < 0) {
-			CHECK(errno == ENOSPC); /* File system full */
-			full = 1;
-			file->no_space_error = 1;
-			break;
+			if (errno == ENOSPC) {
+				full = 1;
+				file->no_space_error = 1;
+				break;
+			}
+			pcv("failed to write %zu bytes to offset %llu of file %s",
+			    block, (unsigned long long)(offset + actual),
+			    file->name);
+			return -1;
 		}
 		remains -= written;
 		actual += written;
@@ -1006,7 +1013,8 @@ static int file_mmap_write(struct file_info *file)
 static int file_write(struct file_info *file, int fd)
 {
 	off_t offset;
-	size_t size, actual;
+	size_t size;
+	ssize_t actual;
 	unsigned seed;
 	int ret, truncate = 0;
 
@@ -1017,10 +1025,11 @@ static int file_write(struct file_info *file, int fd)
 	get_offset_and_size(file, &offset, &size);
 	seed = random_no(MAX_RANDOM_SEED);
 	actual = file_write_data(file, fd, offset, size, seed);
+	if (actual < 0)
+		return -1;
 
 	if (offset + actual <= file->length && shrink)
-		/* 1 time in 100, when shrinking
-		   truncate after the write */
+		/* 1 time in 100, when shrinking truncate after the write */
 		if (random_no(100) == 0)
 			truncate = 1;
 
