@@ -399,6 +399,7 @@ static void add_dir_entry(struct dir_info *parent, char type, const char *name,
 	if (entry->type == 'f') {
 		struct file_info *file = target;
 
+		file->name = dup_string(name);
 		entry->file = file;
 		entry->next_link = file->links;
 		if (file->links)
@@ -472,7 +473,6 @@ static int dir_new(struct dir_info *parent, const char *name)
 	free(path);
 
 	dir = zalloc(sizeof(struct dir_info));
-	dir->parent = parent;
 	if (parent)
 		add_dir_entry(parent, 'd', name, dir);
 	return 0;
@@ -545,8 +545,6 @@ static int file_new(struct dir_info *parent, const char *name)
 	free(path);
 
 	file = zalloc(sizeof(struct file_info));
-	file->name = dup_string(name);
-
 	add_dir_entry(parent, 'f', name, file);
 	add_fd(file, fd);
 	return 0;
