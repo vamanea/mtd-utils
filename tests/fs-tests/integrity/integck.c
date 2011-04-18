@@ -1806,21 +1806,31 @@ static char *pick_symlink_target(const char *symlink_path)
 	return rel_path;
 }
 
-static void symlink_new(struct dir_info *dir, const char *name_)
+static int symlink_new(struct dir_info *dir, const char *nm)
 {
 	struct symlink_info *s;
-	char *path, *target, *name = dup_string(name_);
+	char *path, *target, *name = dup_string(nm);
 
+	/*
+	 * Note, we need to duplicate the input 'name' string because of the
+	 * shared random_name_buf.
+	 */
 	path = dir_path(dir, name);
 	target = pick_symlink_target(path);
 	if (symlink(target, path) != 0) {
-		CHECK(errno == ENOSPC || errno == ENAMETOOLONG);
+		int ret = 0;
+
 		if (errno == ENOSPC)
 			full = 1;
+		else if (errno != ENAMETOOLONG) {
+			pcv("cannot create symlink %s in directory %s to file %s",
+			    path, dir->name, target);
+			ret = -1;
+		}
 		free(target);
-		free(path);
 		free(name);
-		return;
+		free(path);
+		return ret;
 	}
 	free(path);
 
@@ -1828,6 +1838,7 @@ static void symlink_new(struct dir_info *dir, const char *name_)
 	add_dir_entry(dir, 's', name, s);
 	s->target_pathname = target;
 	free(name);
+	return 0;
 }
 
 static void symlink_remove(struct symlink_info *symlink)
@@ -1944,7 +1955,7 @@ static int operate_on_dir(struct dir_info *dir)
 		link_new(dir, make_name(dir), file);
 	else if (r == 3 && grow && random_no(5) == 0)
 		/* When growing, 1 time in 70 create a symbolic link */
-		symlink_new(dir, make_name(dir));
+		return symlink_new(dir, make_name(dir));
 	else {
 		/* Otherwise randomly select an entry to operate on */
 		r = random_no(dir->number_of_entries);
