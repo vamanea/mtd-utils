@@ -482,7 +482,7 @@ static int dir_new(struct dir_info *parent, const char *name)
 
 static int file_delete(struct file_info *file);
 static int file_unlink(struct dir_entry_info *entry);
-static void symlink_remove(struct symlink_info *symlink);
+static int symlink_remove(struct symlink_info *symlink);
 
 static void dir_remove(struct dir_info *dir)
 {
@@ -1851,16 +1851,20 @@ static int symlink_new(struct dir_info *dir, const char *nm)
 	return 0;
 }
 
-static void symlink_remove(struct symlink_info *symlink)
+static int symlink_remove(struct symlink_info *symlink)
 {
 	char *path;
 
 	path = dir_path(symlink->entry->parent, symlink->entry->name);
+	if (unlink(path) != 0) {
+		pcv("cannot unlink symlink %s", path);
+		free(path);
+		return -1;
+	}
 
 	remove_dir_entry(symlink->entry);
-
-	CHECK(unlink(path) == 0);
 	free(path);
+	return 0;
 }
 
 static int operate_on_dir(struct dir_info *dir);
@@ -1915,7 +1919,7 @@ static int operate_on_entry(struct dir_entry_info *entry)
 		symlink_check(entry->symlink);
 		/* If shrinking, 1 time in 50, remove a symlink */
 		if (shrink && random_no(50) == 0)
-			symlink_remove(entry->symlink);
+			return symlink_remove(entry->symlink);
 		return 0;
 	}
 	if (entry->type == 'd') {
