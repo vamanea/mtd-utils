@@ -1898,6 +1898,8 @@ static int symlink_remove(struct symlink_info *symlink)
 	}
 
 	remove_dir_entry(symlink->entry);
+	free(symlink->target_pathname);
+	free(symlink);
 	free(path);
 	return 0;
 }
