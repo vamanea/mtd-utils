@@ -1947,26 +1947,33 @@ static int operate_on_dir(struct dir_info *dir)
  */
 static int operate_on_open_file(struct fd_info *fdi)
 {
+	int ret = 0;
 	unsigned int r = random_no(1000);
 
 	if (shrink && r < 5)
-		return file_truncate(fdi->file, fdi->fd);
+		ret = file_truncate(fdi->file, fdi->fd);
 	else if (r < 21)
 		file_close(fdi);
 	else if (shrink && r < 121 && !fdi->file->deleted)
-		return file_delete(fdi->file);
+		ret = file_delete(fdi->file);
 	else {
-		if (file_write(fdi->file, fdi->fd))
-			return -1;
-		if (r >= 999) {
-			if (random_no(100) >= 50)
-				CHECK(fsync(fdi->fd) == 0);
-			else
-				CHECK(fdatasync(fdi->fd) == 0);
+		ret = file_write(fdi->file, fdi->fd);
+		if (!ret && r >= 999) {
+			if (random_no(100) >= 50) {
+				ret = fsync(fdi->fd);
+				if (ret)
+					pcv("fsync failed for %s",
+					    fdi->file->name);
+			} else {
+				ret = fdatasync(fdi->fd);
+				if (ret)
+					pcv("fdatasync failed for %s",
+					    fdi->file->name);
+			}
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 /*
