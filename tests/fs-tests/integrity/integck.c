@@ -993,7 +993,11 @@ static int file_mmap_write(struct file_info *file)
 	/* Open it */
 	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_RDWR);
-	CHECK(fd != -1);
+	if (fd == -1) {
+		pcv("cannot open file %s to do mmap", path);
+		free(path);
+		return -1;
+	}
 
 	/* mmap it */
 	addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offs);
@@ -1090,7 +1094,11 @@ static int file_write_file(struct file_info *file)
 
 	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_WRONLY);
-	CHECK(fd != -1);
+	if (fd == -1) {
+		pcv("cannot open file %s for writing", path);
+		free(path);
+		return -1;
+	}
 	ret = file_write(file, fd);
 	CHECK(close(fd) == 0);
 	free(path);
@@ -1146,17 +1154,23 @@ static int file_truncate(struct file_info *file, int fd)
 	return 0;
 }
 
-static void file_truncate_file(struct file_info *file)
+static int file_truncate_file(struct file_info *file)
 {
 	int fd;
 	char *path;
+	int ret;
 
 	path = dir_path(file->links->parent, file->links->name);
 	fd = open(path, O_WRONLY);
-	CHECK(fd != -1);
-	file_truncate(file, fd);
-	CHECK(close(fd) == 0);
+	if (fd == -1) {
+		pcv("cannot open file %s to truncate", path);
+		free(path);
+		return -1;
+	}
 	free(path);
+	ret = file_truncate(file, fd);
+	CHECK(close(fd) == 0);
+	return ret;
 }
 
 static void file_close(struct fd_info *fdi)
@@ -1899,12 +1913,11 @@ static int operate_on_file(struct file_info *file)
 		return file_open(file);
 
 	/* Occasionly truncate */
-	if (shrink && random_no(100) == 0) {
-		file_truncate_file(file);
-		return 0;
-	}
+	if (shrink && random_no(100) == 0)
+		return file_truncate_file(file);
 	/* Mostly just write */
-	file_write_file(file);
+	if (file_write_file(file) != 0)
+		return -1;
 	/* Once in a while check it too */
 	if (random_no(100) == 1) {
 		int fd = -2;
