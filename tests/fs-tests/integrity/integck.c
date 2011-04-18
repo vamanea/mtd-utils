@@ -1664,7 +1664,7 @@ static char *pick_rename_name(struct dir_info **parent,
 	return dup_string(entry->name);
 }
 
-static void rename_entry(struct dir_entry_info *entry)
+static int rename_entry(struct dir_entry_info *entry)
 {
 	struct dir_entry_info *rename_entry = NULL;
 	struct dir_info *parent;
@@ -1672,7 +1672,7 @@ static void rename_entry(struct dir_entry_info *entry)
 	int ret, isdir, retry;
 
 	if (!entry->parent)
-		return;
+		return 0;
 
 	for (retry = 0; retry < 3; retry++) {
 		path = dir_path(entry->parent, entry->name);
@@ -1701,17 +1701,21 @@ static void rename_entry(struct dir_entry_info *entry)
 	}
 
 	if (!path)
-		return;
+		return 0;
 
 	ret = rename(path, to);
 	if (ret != 0) {
+		ret = 0;
 		if (errno == ENOSPC)
 			full = 1;
-		CHECK(errno == ENOSPC || errno == EBUSY);
+		else if (errno !=  EBUSY) {
+			pcv("failed to rename %s to %s", path, to);
+			ret = -1;
+		}
 		free(path);
 		free(name);
 		free(to);
-		return;
+		return ret;
 	}
 
 	free(path);
@@ -1720,7 +1724,7 @@ static void rename_entry(struct dir_entry_info *entry)
 	if (rename_entry && rename_entry->type == entry->type &&
 	    rename_entry->target == entry->target) {
 		free(name);
-		return;
+		return 0;
 	}
 
 	add_dir_entry(parent, entry->type, name, entry->target);
@@ -1728,6 +1732,7 @@ static void rename_entry(struct dir_entry_info *entry)
 		remove_dir_entry(rename_entry);
 	remove_dir_entry(entry);
 	free(name);
+	return 0;
 }
 
 static size_t str_count(const char *s, char c)
@@ -1904,10 +1909,8 @@ static void operate_on_file(struct file_info *file)
 static int operate_on_entry(struct dir_entry_info *entry)
 {
 	/* 1 time in 1000 rename */
-	if (random_no(1000) == 0) {
-		rename_entry(entry);
-		return 0;
-	}
+	if (random_no(1000) == 0)
+		return rename_entry(entry);
 	if (entry->type == 's') {
 		symlink_check(entry->symlink);
 		/* If shrinking, 1 time in 50, remove a symlink */
