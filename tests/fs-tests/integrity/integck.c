@@ -111,12 +111,12 @@ static struct {
 	unsigned int nospc_size_ok:1;
 	unsigned int can_mmap:1;
 	unsigned int is_rootfs:1;
-	const char *fstype;
-	const char *fsdev;
-	const char *mount_opts;
+	char *fstype;
+	char *fsdev;
+	char *mount_opts;
 	unsigned long mount_flags;
-	const char *mount_point;
-	const char *test_dir;
+	char *mount_point;
+	char *test_dir;
 } fsinfo = {
 	.nospc_size_ok = 1,
 	.can_mmap = 1,
@@ -2501,7 +2501,7 @@ static void get_tested_fs_info(void)
         fclose(f);
 
 	fsinfo.fstype = dup_string(mntent->mnt_type);
-	fsinfo.fsdev = strdup(mntent->mnt_fsname);
+	fsinfo.fsdev = dup_string(mntent->mnt_fsname);
 	parse_mount_options(mntent->mnt_opts);
 
 	/* Get memory page size for 'mmap()' */
@@ -2629,6 +2629,42 @@ static int parse_opts(int argc, char * const argv[])
 	return 0;
 }
 
+/*
+ * Free all the in-memory information about the tested file-system contents
+ * starting from sub-directory 'dir'.
+ */
+static void free_fs_info(struct dir_info *dir)
+{
+	struct dir_entry_info *entry;
+
+	/* Now check each entry */
+	while (dir->first) {
+		entry = dir->first;
+		if (entry->type == 'd') {
+			struct dir_info *d = entry->dir;
+
+			remove_dir_entry(entry);
+			free_fs_info(d);
+			free(d);
+		} else if (entry->type == 'f') {
+			struct file_info *file = entry->file;
+
+			remove_dir_entry(entry);
+			if (!file->links) {
+				free_writes_info(file);
+				free(file);
+			}
+		} else if (entry->type == 's') {
+			struct symlink_info *symlink = entry->symlink;
+
+			remove_dir_entry(entry);
+			free(symlink->target_pathname);
+			free(symlink);
+		} else
+			assert(0);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int ret;
@@ -2650,5 +2686,16 @@ int main(int argc, char *argv[])
 	if (ret)
 		return EXIT_FAILURE;
 
+	close_open_files();
+	free_fs_info(top_dir);
+	free(top_dir->entry->name);
+	free(top_dir->entry);
+	free(top_dir);
+
+	free(random_name_buf);
+	free(fsinfo.mount_point);
+	free(fsinfo.fstype);
+	free(fsinfo.fsdev);
+	free(fsinfo.test_dir);
 	return EXIT_SUCCESS;
 }
