@@ -455,6 +455,8 @@ static int dir_new(struct dir_info *parent, const char *name)
 	struct dir_info *dir;
 	char *path;
 
+	assert(parent);
+
 	path = dir_path(parent, name);
 	if (mkdir(path, 0777) != 0) {
 		if (errno == ENOSPC) {
@@ -469,8 +471,7 @@ static int dir_new(struct dir_info *parent, const char *name)
 	free(path);
 
 	dir = zalloc(sizeof(struct dir_info));
-	if (parent)
-		add_dir_entry(parent, 'd', name, dir);
+	add_dir_entry(parent, 'd', name, dir);
 	return 0;
 }
 
