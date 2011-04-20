@@ -72,8 +72,9 @@
 #endif
 #include <byteswap.h>
 #include <crc32.h>
-#include "rbtree.h"
+#include <inttypes.h>
 
+#include "rbtree.h"
 #include "common.h"
 
 /* Do not use the weird XPG version of basename */
@@ -1232,8 +1233,8 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 		} else switch (e->sb.st_mode & S_IFMT) {
 			case S_IFDIR:
 				if (verbose) {
-					printf("\td %04o %9lu             %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
+					printf("\td %04o %9" PRIu64 "             %5d:%-3d %s\n",
+							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) (e->sb.st_uid), (int) (e->sb.st_gid),
 							e->name);
 				}
@@ -1242,8 +1243,8 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFSOCK:
 				if (verbose) {
-					printf("\ts %04o %9lu             %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
+					printf("\ts %04o %9" PRIu64 "             %5d:%-3d %s\n",
+							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_pipe(e);
@@ -1251,8 +1252,8 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFIFO:
 				if (verbose) {
-					printf("\tp %04o %9lu             %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
+					printf("\tp %04o %9" PRIu64 "             %5d:%-3d %s\n",
+							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				write_pipe(e);
@@ -1280,8 +1281,8 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				break;
 			case S_IFLNK:
 				if (verbose) {
-					printf("\tl %04o %9lu             %5d:%-3d %s -> %s\n",
-							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
+					printf("\tl %04o %9" PRIu64 "             %5d:%-3d %s -> %s\n",
+							e->sb.st_mode & ~S_IFMT, e->sb.st_size,
 							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name,
 							e->link);
 				}
@@ -1292,9 +1293,9 @@ static void recursive_populate_directory(struct filesystem_entry *dir)
 				wrote = write_regular_file(e);
 				write_xattr_entry(e);
 				if (verbose) {
-					printf("\tf %04o %9lu (%9u) %5d:%-3d %s\n",
-							e->sb.st_mode & ~S_IFMT, (unsigned long) e->sb.st_size,
-							wrote, (int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
+					printf("\tf %04o %9" PRIu64 " (%9u) %5d:%-3d %s\n",
+							e->sb.st_mode & ~S_IFMT, e->sb.st_size, wrote,
+							(int) e->sb.st_uid, (int) e->sb.st_gid, e->name);
 				}
 				break;
 			default:
