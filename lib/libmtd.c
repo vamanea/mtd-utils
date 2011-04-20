@@ -31,9 +31,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <mtd/mtd-user.h>
+#include <inttypes.h>
 
+#include <mtd/mtd-user.h>
 #include <libmtd.h>
+
 #include "libmtd_int.h"
 #include "common.h"
 
@@ -1096,19 +1098,16 @@ int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
 
 	max_offs = (unsigned long long)mtd->eb_cnt * mtd->eb_size;
 	if (start >= max_offs) {
-		errmsg("bad page address %llu, mtd%d has %d eraseblocks "
-		       "(%llu bytes)", (unsigned long long) start, mtd->mtd_num,
-		       mtd->eb_cnt, max_offs);
+		errmsg("bad page address %" PRIu64 ", mtd%d has %d eraseblocks (%llu bytes)",
+		       start, mtd->mtd_num, mtd->eb_cnt, max_offs);
 		errno = EINVAL;
 		return -1;
 	}
 
 	oob_offs = start & (mtd->min_io_size - 1);
 	if (oob_offs + length > mtd->oob_size || length == 0) {
-		errmsg("Cannot write %llu OOB bytes to address %llu "
-		       "(OOB offset %u) - mtd%d OOB size is only %d bytes",
-		       (unsigned long long)length, (unsigned long long)start,
-		       oob_offs, mtd->mtd_num,  mtd->oob_size);
+		errmsg("Cannot write %" PRIu64 " OOB bytes to address %" PRIu64 " (OOB offset %u) - mtd%d OOB size is only %d bytes",
+		       length, start, oob_offs, mtd->mtd_num,  mtd->oob_size);
 		errno = EINVAL;
 		return -1;
 	}
@@ -1125,10 +1124,8 @@ int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
 
 		if (errno != ENOTTY ||
 		    lib->offs64_ioctls != OFFS64_IOCTLS_UNKNOWN) {
-			sys_errmsg("%s ioctl failed for mtd%d, offset %llu "
-				   "(eraseblock %llu)", cmd64_str, mtd->mtd_num,
-				   (unsigned long long)start,
-				   (unsigned long long)start / mtd->eb_size);
+			sys_errmsg("%s ioctl failed for mtd%d, offset %" PRIu64 " (eraseblock %" PRIu64 ")",
+				   cmd64_str, mtd->mtd_num, start, start / mtd->eb_size);
 		}
 
 		/*
@@ -1152,10 +1149,8 @@ int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
 
 	ret = ioctl(fd, cmd, &oob);
 	if (ret < 0)
-		sys_errmsg("%s ioctl failed for mtd%d, offset %llu "
-			   "(eraseblock %llu)", cmd_str, mtd->mtd_num,
-			   (unsigned long long)start,
-			   (unsigned long long)start / mtd->eb_size);
+		sys_errmsg("%s ioctl failed for mtd%d, offset %" PRIu64 " (eraseblock %" PRIu64 ")",
+			   cmd_str, mtd->mtd_num, start, start / mtd->eb_size);
 	return ret;
 }
 
