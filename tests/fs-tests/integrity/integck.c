@@ -2416,8 +2416,7 @@ static void parse_mount_options(const char *mount_opts)
 	 * so duplicate it.
 	 */
 	tmp = dup_string(mount_opts);
-	p = opts = calloc(1, strlen(mount_opts) + 1);
-	CHECK(opts != NULL);
+	p = opts = zalloc(strlen(mount_opts) + 1);
 
 	opt = strtok(tmp, ",");
 	while (opt) {
@@ -2719,6 +2718,7 @@ int main(int argc, char *argv[])
 
 out_free:
 	free(random_name_buf);
+	free(fsinfo.mount_opts);
 	free(fsinfo.mount_point);
 	free(fsinfo.fstype);
 	free(fsinfo.fsdev);
