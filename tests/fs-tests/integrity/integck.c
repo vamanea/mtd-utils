@@ -2689,7 +2689,27 @@ int main(int argc, char *argv[])
 	}
 
 	/* Do the actual test */
-	ret = integck();
+	while (1) {
+		ret = integck();
+		/*
+		 * Iterate forever only in case of power-cut emulation testing.
+		 */
+		if (!args.power_cut_mode)
+			break;
+		if (ret && errno != EROFS)
+			break;
+
+		/*
+		 * The file-system became read-only and we are in power cut
+		 * testing mode. Re-mount the file-system and re-start the
+		 * test.
+		 */
+		close_open_files();
+		free_fs_info(top_dir);
+		ret = remount_tested_fs();
+		if (ret)
+			break;
+	}
 
 	close_open_files();
 	free_fs_info(top_dir);
