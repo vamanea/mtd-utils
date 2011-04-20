@@ -2268,15 +2268,21 @@ static int remount_tested_fs(void)
 		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		if (ret)
+		if (ret) {
+			pcv("cannot remount %s R/O (1)",
+			    fsinfo.mount_point);
 			return -1;
+		}
 
 		flags = fsinfo.mount_flags | MS_REMOUNT;
 		flags &= ~((unsigned long)MS_RDONLY);
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		if (ret)
+		if (ret) {
+			pcv("remounted %s R/O (1), but cannot re-mount it R/W",
+			    fsinfo.mount_point);
 			return -1;
+		}
 	}
 
 	if (um) {
@@ -2284,31 +2290,47 @@ static int remount_tested_fs(void)
 			flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, flags, fsinfo.mount_opts);
-			if (ret)
+			if (ret) {
+				pcv("cannot remount %s R/O (2)",
+				    fsinfo.mount_point);
 				return -1;
+			}
 		}
 
-		CHECK(umount(fsinfo.mount_point) != -1);
+		ret = umount(fsinfo.mount_point);
+		if (ret) {
+			pcv("cannot unmount %s", fsinfo.mount_point);
+			return -1;
+		}
 
 		if (!um_rorw) {
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, fsinfo.mount_flags,
 				    fsinfo.mount_opts);
-			if (ret)
+			if (ret) {
+				pcv("unmounted %s, but cannot mount it back R/W",
+				    fsinfo.mount_point);
 				return -1;
+			}
 		} else {
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, fsinfo.mount_flags | MS_RDONLY,
 				    fsinfo.mount_opts);
-			if (ret)
+			if (ret) {
+				pcv("unmounted %s, but cannot mount it back R/O",
+				    fsinfo.mount_point);
 				return -1;
+			}
 
 			flags = fsinfo.mount_flags | MS_REMOUNT;
 			flags &= ~((unsigned long)MS_RDONLY);
 			ret = mount(fsinfo.fsdev, fsinfo.mount_point,
 				    fsinfo.fstype, flags, fsinfo.mount_opts);
-			if (ret)
+			if (ret) {
+				pcv("unmounted %s, mounted R/O, but cannot re-mount it R/W",
+				     fsinfo.mount_point);
 				return -1;
+			}
 		}
 	}
 
@@ -2316,15 +2338,20 @@ static int remount_tested_fs(void)
 		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		if (ret)
+		if (ret) {
+			pcv("cannot re-mount %s R/O (3)", fsinfo.mount_point);
 			return -1;
+		}
 
 		flags = fsinfo.mount_flags | MS_REMOUNT;
 		flags &= ~((unsigned long)MS_RDONLY);
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
 			    flags, fsinfo.mount_opts);
-		if (ret)
+		if (ret) {
+			pcv("remounted %s R/O (3), but cannot re-mount it back R/W",
+			     fsinfo.mount_point);
 			return -1;
+		}
 	}
 
 	/* Restore the previous working directory */
@@ -2664,9 +2691,91 @@ static void free_fs_info(struct dir_info *dir)
 	}
 }
 
+/**
+ * Recover the tested file-system from an emulated power cut failure by
+ * unmounting it and mounting it again.
+ */
+static int recover_tested_fs(void)
+{
+	char *wd_save;
+	int ret;
+	unsigned long flags;
+	unsigned int  um_rorw, rorw2;
+
+	/* Save current working directory */
+	wd_save = malloc(PATH_MAX + 1);
+	CHECK(wd_save != NULL);
+	CHECK(getcwd(wd_save, PATH_MAX + 1) != NULL);
+
+	/* Temporarily change working directory to '/' */
+	CHECK(chdir("/") == 0);
+
+	/* Choose what to do */
+	um_rorw = rand() & 1;
+	rorw2 = rand() & 1;
+
+	CHECK(umount(fsinfo.mount_point) != -1);
+
+	if (!um_rorw) {
+		ret = mount(fsinfo.fsdev, fsinfo.mount_point,
+			    fsinfo.fstype, fsinfo.mount_flags,
+			    fsinfo.mount_opts);
+		if (ret) {
+			pcv("unmounted %s, but cannot mount it back R/W",
+			    fsinfo.mount_point);
+			return -1;
+		}
+	} else {
+		ret = mount(fsinfo.fsdev, fsinfo.mount_point,
+			    fsinfo.fstype, fsinfo.mount_flags | MS_RDONLY,
+			    fsinfo.mount_opts);
+		if (ret) {
+			pcv("unmounted %s, but cannot mount it back R/O",
+			    fsinfo.mount_point);
+			return -1;
+		}
+
+		flags = fsinfo.mount_flags | MS_REMOUNT;
+		flags &= ~((unsigned long)MS_RDONLY);
+		ret = mount(fsinfo.fsdev, fsinfo.mount_point,
+			    fsinfo.fstype, flags, fsinfo.mount_opts);
+		if (ret) {
+			pcv("unmounted %s, mounted R/O, but cannot re-mount it R/W",
+			     fsinfo.mount_point);
+			return -1;
+		}
+	}
+
+	if (rorw2) {
+		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
+		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
+			    flags, fsinfo.mount_opts);
+		if (ret) {
+			pcv("cannot re-mount %s R/O", fsinfo.mount_point);
+			return -1;
+		}
+
+		flags = fsinfo.mount_flags | MS_REMOUNT;
+		flags &= ~((unsigned long)MS_RDONLY);
+		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
+			    flags, fsinfo.mount_opts);
+		if (ret) {
+			pcv("remounted %s R/O, but cannot re-mount it back R/W",
+			     fsinfo.mount_point);
+			return -1;
+		}
+	}
+
+	/* Restore the previous working directory */
+	CHECK(chdir(wd_save) == 0);
+	free(wd_save);
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int ret;
+	unsigned long long restart_count = 0;
 
 	ret = parse_opts(argc, argv);
 	if (ret)
@@ -2703,11 +2812,27 @@ int main(int argc, char *argv[])
 		 * testing mode. Re-mount the file-system and re-start the
 		 * test.
 		 */
+		if (args.verbose)
+			normsg("re-mount the FS and re-start - count %llu",
+			       ++restart_count);
+
 		close_open_files();
 		free_fs_info(top_dir);
-		ret = remount_tested_fs();
-		if (ret)
-			break;
+
+		do {
+			ret = recover_tested_fs();
+			if (ret) {
+				if (errno != EROFS)
+					goto out_free;
+				/*
+				 * Mount may also fail due to an emulated power
+				 * cut while mounting - keep re-starting.
+				 */
+				if (args.verbose)
+					normsg("could not mount, restart - count %llu",
+					       ++restart_count);
+			}
+		} while (ret);
 	}
 
 	close_open_files();
