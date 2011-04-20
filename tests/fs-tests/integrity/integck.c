@@ -2681,10 +2681,15 @@ int main(int argc, char *argv[])
 	random_name_buf = malloc(fsinfo.max_name_len + 1);
 	CHECK(random_name_buf != NULL);
 
+	/* Refuse the file-system if it is mounted R/O */
+	if (fsinfo.mount_flags & MS_RDONLY) {
+		ret = -1;
+		errmsg("the file-system is mounted read-only");
+		goto out_free;
+	}
+
 	/* Do the actual test */
 	ret = integck();
-	if (ret)
-		return EXIT_FAILURE;
 
 	close_open_files();
 	free_fs_info(top_dir);
@@ -2692,10 +2697,11 @@ int main(int argc, char *argv[])
 	free(top_dir->entry);
 	free(top_dir);
 
+out_free:
 	free(random_name_buf);
 	free(fsinfo.mount_point);
 	free(fsinfo.fstype);
 	free(fsinfo.fsdev);
 	free(fsinfo.test_dir);
-	return EXIT_SUCCESS;
+	return ret ? EXIT_FAILURE : EXIT_SUCCESS;
 }
