@@ -143,7 +143,6 @@ struct dir_entry_info;
 
 struct file_info /* Each file has one of these */
 {
-	char *name; /* Original name */
 	struct write_info *writes; /* Record accumulated writes to the file */
 	struct write_info *raw_writes;
 				/* Record in order all writes to the file */
@@ -398,7 +397,6 @@ static void add_dir_entry(struct dir_info *parent, char type, const char *name,
 	if (entry->type == 'f') {
 		struct file_info *file = target;
 
-		file->name = dup_string(name);
 		entry->file = file;
 		entry->next_link = file->links;
 		if (file->links)
@@ -639,7 +637,6 @@ static int file_unlink(struct dir_entry_info *entry)
 	/* Free struct file_info if file is not open and not linked */
 	if (!file->fds && !file->links) {
 		free_writes_info(file);
-		free(file->name);
 		free(file);
 	}
 
@@ -697,7 +694,6 @@ static void file_info_display(struct file_info *file)
 	unsigned int wcnt;
 
 	normsg("File Info:");
-	normsg("    Original name: %s", file->name);
 	normsg("    Link count: %d", file->link_count);
 	normsg("    Links:");
 	entry = file->links;
@@ -805,7 +801,7 @@ static ssize_t file_write_data(struct file_info *file, int fd, off_t offset,
 			}
 			pcv("failed to write %zu bytes to offset %llu of file %s",
 			    block, (unsigned long long)(offset + actual),
-			    file->name);
+			    file->links->name);
 			return -1;
 		}
 		remains -= written;
@@ -955,7 +951,7 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 			return 1;
 		} else
 			pcv("cannot truncate file %s to %llu",
-			    file->name, (unsigned long long)new_length);
+			    file->links->name, (unsigned long long)new_length);
 		return -1;
 	}
 
@@ -1199,7 +1195,6 @@ static void file_close(struct fd_info *fdi)
 			free(fdi);
 			if (!file->link_count && !file->fds) {
 				free_writes_info(file);
-				free(file->name);
 				free(file);
 			}
 			return;
@@ -1249,7 +1244,7 @@ static void save_file(int fd, struct file_info *file)
 
 	/* Open file to save contents to */
 	strcpy(name, "/tmp/");
-	strcat(name, file->name);
+	strcat(name, file->links->name);
 	strcat(name, ".integ.sav.read");
 	normsg("Saving %sn", name);
 	w_fd = open(name, O_CREAT | O_WRONLY, 0777);
@@ -1269,7 +1264,7 @@ static void save_file(int fd, struct file_info *file)
 
 	/* Open file to save contents to */
 	strcpy(name, "/tmp/");
-	strcat(name, file->name);
+	strcat(name, file->links->name);
 	strcat(name, ".integ.sav.written");
 	normsg("Saving %s", name);
 	w_fd = open(name, O_CREAT | O_WRONLY, 0777);
@@ -2028,12 +2023,12 @@ static int operate_on_open_file(struct fd_info *fdi)
 				ret = fsync(fdi->fd);
 				if (ret)
 					pcv("fsync failed for %s",
-					    fdi->file->name);
+					    fdi->file->links->name);
 			} else {
 				ret = fdatasync(fdi->fd);
 				if (ret)
 					pcv("fdatasync failed for %s",
-					    fdi->file->name);
+					    fdi->file->links->name);
 			}
 		}
 	}
