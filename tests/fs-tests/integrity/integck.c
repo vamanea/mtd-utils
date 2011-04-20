@@ -378,8 +378,30 @@ static struct fd_info *add_fd(struct file_info *file, int fd)
 	return fdi;
 }
 
-static void add_dir_entry(struct dir_info *parent, char type, const char *name,
-			  void *target)
+/*
+ * Free all the information about writes to a file.
+ */
+static void free_writes_info(struct file_info *file)
+{
+	struct write_info *w, *next;
+
+	w = file->writes;
+	while (w) {
+		next = w->next;
+		free(w);
+		w = next;
+	}
+
+	w = file->raw_writes;
+	while (w) {
+		next = w->next;
+		free(w);
+		w = next;
+	}
+}
+
+static void *add_dir_entry(struct dir_info *parent, char type, const char *name,
+			   void *target)
 {
 	struct dir_entry_info *entry;
 
@@ -397,27 +419,37 @@ static void add_dir_entry(struct dir_info *parent, char type, const char *name,
 	if (entry->type == 'f') {
 		struct file_info *file = target;
 
+		if (!file)
+			file = zalloc(sizeof(struct file_info));
 		entry->file = file;
 		entry->next_link = file->links;
 		if (file->links)
 			file->links->prev_link = entry;
 		file->links = entry;
 		file->link_count += 1;
+		return file;
 	} else if (entry->type == 'd') {
 		struct dir_info *dir = target;
 
+		if (!dir)
+			dir = zalloc(sizeof(struct dir_info));
 		entry->dir = dir;
 		dir->entry = entry;
 		dir->parent = parent;
+		return dir;
 	} else if (entry->type == 's') {
 		struct symlink_info *symlink = target;
 
+		if (!symlink)
+			symlink = zalloc(sizeof(struct symlink_info));
 		entry->symlink = symlink;
 		symlink->entry = entry;
-	}
+		return symlink;
+	} else
+		assert(0);
 }
 
-static void remove_dir_entry(struct dir_entry_info *entry)
+static void remove_dir_entry(struct dir_entry_info *entry, int free_target)
 {
 	entry->parent->number_of_entries -= 1;
 	if (entry->parent->first == entry)
@@ -439,6 +471,21 @@ static void remove_dir_entry(struct dir_entry_info *entry)
 		file->link_count -= 1;
 		if (file->link_count == 0)
 			assert(file->links == NULL);
+
+		/* Free struct file_info if file is not open and not linked */
+		if (free_target && !file->fds && !file->links) {
+			free_writes_info(file);
+			free(file);
+		}
+	}
+
+	if (free_target) {
+		if (entry->type == 'd') {
+			free(entry->dir);
+		} else if (entry->type == 's') {
+			free(entry->symlink->target_pathname);
+			free(entry->symlink);
+		}
 	}
 
 	free(entry->name);
@@ -452,7 +499,6 @@ static void remove_dir_entry(struct dir_entry_info *entry)
  */
 static int dir_new(struct dir_info *parent, const char *name)
 {
-	struct dir_info *dir;
 	char *path;
 
 	assert(parent);
@@ -470,8 +516,7 @@ static int dir_new(struct dir_info *parent, const char *name)
 	}
 	free(path);
 
-	dir = zalloc(sizeof(struct dir_info));
-	add_dir_entry(parent, 'd', name, dir);
+	add_dir_entry(parent, 'd', name, NULL);
 	return 0;
 }
 
@@ -510,9 +555,8 @@ static int dir_remove(struct dir_info *dir)
 	}
 
 	/* Remove entry from parent directory */
-	remove_dir_entry(dir->entry);
+	remove_dir_entry(dir->entry, 1);
 	free(path);
-	free(dir);
 	return 0;
 }
 
@@ -540,8 +584,7 @@ static int file_new(struct dir_info *parent, const char *name)
 	}
 	free(path);
 
-	file = zalloc(sizeof(struct file_info));
-	add_dir_entry(parent, 'f', name, file);
+	file = add_dir_entry(parent, 'f', name, NULL);
 	add_fd(file, fd);
 	return 0;
 }
@@ -592,33 +635,10 @@ static void file_close_all(struct file_info *file)
 }
 
 /*
- * Free all the information about writes to a file.
- */
-static void free_writes_info(struct file_info *file)
-{
-	struct write_info *w, *next;
-
-	w = file->writes;
-	while (w) {
-		next = w->next;
-		free(w);
-		w = next;
-	}
-
-	w = file->raw_writes;
-	while (w) {
-		next = w->next;
-		free(w);
-		w = next;
-	}
-}
-
-/*
  * Unlink a directory entry for a file.
  */
 static int file_unlink(struct dir_entry_info *entry)
 {
-	struct file_info *file = entry->file;
 	char *path;
 	int ret;
 
@@ -633,14 +653,7 @@ static int file_unlink(struct dir_entry_info *entry)
 	free(path);
 
 	/* Remove file entry from parent directory */
-	remove_dir_entry(entry);
-
-	/* Free struct file_info if file is not open and not linked */
-	if (!file->fds && !file->links) {
-		free_writes_info(file);
-		free(file);
-	}
-
+	remove_dir_entry(entry, 1);
 	return 0;
 }
 
@@ -1755,8 +1768,8 @@ static int rename_entry(struct dir_entry_info *entry)
 
 	add_dir_entry(parent, entry->type, name, entry->target);
 	if (rename_entry)
-		remove_dir_entry(rename_entry);
-	remove_dir_entry(entry);
+		remove_dir_entry(rename_entry, 1);
+	remove_dir_entry(entry, 0);
 	free(name);
 	return 0;
 }
@@ -1870,8 +1883,7 @@ static int symlink_new(struct dir_info *dir, const char *nm)
 	}
 	free(path);
 
-	s = zalloc(sizeof(struct symlink_info));
-	add_dir_entry(dir, 's', name, s);
+	s = add_dir_entry(dir, 's', name, NULL);
 	s->target_pathname = target;
 	free(name);
 	return 0;
@@ -1888,9 +1900,7 @@ static int symlink_remove(struct symlink_info *symlink)
 		return -1;
 	}
 
-	remove_dir_entry(symlink->entry);
-	free(symlink->target_pathname);
-	free(symlink);
+	remove_dir_entry(symlink->entry, 1);
 	free(path);
 	return 0;
 }
@@ -2642,23 +2652,13 @@ static void free_fs_info(struct dir_info *dir)
 		if (entry->type == 'd') {
 			struct dir_info *d = entry->dir;
 
-			remove_dir_entry(entry);
+			remove_dir_entry(entry, 0);
 			free_fs_info(d);
 			free(d);
 		} else if (entry->type == 'f') {
-			struct file_info *file = entry->file;
-
-			remove_dir_entry(entry);
-			if (!file->links) {
-				free_writes_info(file);
-				free(file);
-			}
+			remove_dir_entry(entry, 1);
 		} else if (entry->type == 's') {
-			struct symlink_info *symlink = entry->symlink;
-
-			remove_dir_entry(entry);
-			free(symlink->target_pathname);
-			free(symlink);
+			remove_dir_entry(entry, 1);
 		} else
 			assert(0);
 	}
