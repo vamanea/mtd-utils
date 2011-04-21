@@ -2493,14 +2493,37 @@ static void parse_mount_options(const char *mount_opts)
 }
 
 /*
+ * This is a helper function which searches for the tested file-system mount
+ * description.
+ */
+static struct mntent *get_tested_fs_mntent(void)
+{
+	const char *mp;
+	struct mntent *mntent;
+        FILE *f;
+
+	mp = "/proc/mounts";
+        f = fopen(mp, "rb");
+        if (!f) {
+		mp = "/etc/mtab";
+                f = fopen(mp, "rb");
+	}
+	CHECK(f != NULL);
+
+        while ((mntent = getmntent(f)) != NULL)
+		if (!strcmp(mntent->mnt_dir, fsinfo.mount_point))
+			break;
+        fclose(f);
+	return mntent;
+}
+
+/*
  * Fill 'fsinfo' with information about the tested file-system.
  */
 static void get_tested_fs_info(void)
 {
 	struct statfs fs_info;
 	struct mntent *mntent;
-	const char *mp;
-        FILE *f;
 	uint64_t z;
 	char *p;
 	unsigned int pid;
@@ -2516,25 +2539,11 @@ static void get_tested_fs_info(void)
 	CHECK(statfs(fsinfo.mount_point, &fs_info) == 0);
 	fsinfo.max_name_len = fs_info.f_namelen;
 
-	mp = "/proc/mounts";
-        f = fopen(mp, "rb");
-        if (!f) {
-		mp = "/etc/mtab";
-                f = fopen(mp, "rb");
+	mntent = get_tested_fs_mntent();
+	if (!mntent) {
+		errmsg("cannot find file-system info");
+		CHECK(0);
 	}
-	CHECK(f != NULL);
-
-        while (1) {
-		mntent = getmntent(f);
-                if (!mntent) {
-			errmsg("cannot find file-system info");
-			CHECK(0);
-		}
-
-		if (!strcmp(mntent->mnt_dir, fsinfo.mount_point))
-			break;
-        }
-        fclose(f);
 
 	fsinfo.fstype = dup_string(mntent->mnt_type);
 	fsinfo.fsdev = dup_string(mntent->mnt_fsname);
@@ -2701,6 +2710,7 @@ static int recover_tested_fs(void)
 	int ret;
 	unsigned long flags;
 	unsigned int  um_rorw, rorw2;
+	struct mntent *mntent;
 
 	/* Save current working directory */
 	wd_save = malloc(PATH_MAX + 1);
@@ -2714,7 +2724,14 @@ static int recover_tested_fs(void)
 	um_rorw = rand() & 1;
 	rorw2 = rand() & 1;
 
-	CHECK(umount(fsinfo.mount_point) != -1);
+	/*
+	 * At this point we do not know for sure whether the tested FS is
+	 * mounted, because the emulated power cut error could have happened
+	 * while mounting in 'remount_tested_fs()'.
+	 */
+	mntent = get_tested_fs_mntent();
+	if (mntent)
+		CHECK(umount(fsinfo.mount_point) != -1);
 
 	if (!um_rorw) {
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point,
