@@ -58,9 +58,9 @@
 	if (!(cond)) {                                           \
 		int _err = errno;                                \
 		fflush(stdout);                                  \
-		errmsg("condition '%s' failed at %s:%d\n",       \
+		errmsg("condition '%s' failed at %s:%d",         \
 		       stringify(cond), __FILE__, __LINE__);     \
-		errmsg("error %d (%s)\n", _err, strerror(_err)); \
+		errmsg("error %d (%s)", _err, strerror(_err));   \
 		exit(EXIT_FAILURE);                              \
 	}                                                        \
 } while(0)
@@ -69,7 +69,7 @@
 	if (args.power_cut_mode) {                                \
 		int _err = errno;                                 \
 		errmsg(fmt, ##__VA_ARGS__);                       \
-		errmsg("error %d (%s) at %s:%d\n",                \
+		errmsg("error %d (%s) at %s:%d",                  \
 		       _err, strerror(_err), __FILE__, __LINE__); \
 	}                                                         \
 } while(0)
