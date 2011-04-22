@@ -95,7 +95,7 @@ static struct {
  * nospc_size_ok: file size is updated even if the write operation failed with
  *                ENOSPC error
  * can_mmap: file-system supports share writable 'mmap()' operation
- * is_rootfs: the tested file-system the root file-system
+ * can_remount: is it possible to re-mount the tested file-system?
  * fstype: file-system type (e.g., "ubifs")
  * fsdev: the underlying device mounted by the tested file-system
  * mount_opts: non-standard mount options of the tested file-system (non-standard
@@ -111,7 +111,7 @@ static struct {
 	unsigned int log10_initial_free;
 	unsigned int nospc_size_ok:1;
 	unsigned int can_mmap:1;
-	unsigned int is_rootfs:1;
+	unsigned int can_remount:1;
 	char *fstype;
 	char *fsdev;
 	char *mount_opts;
@@ -2534,12 +2534,13 @@ static int integck(void)
 	if (ret)
 		return -1;
 
-	if (!fsinfo.is_rootfs) {
+	if (fsinfo.can_remount) {
 		close_open_files();
 		ret = remount_tested_fs();
 		if (ret)
 			return -1;
-	}
+	} else
+		assert(!args.power_cut_mode);
 
 	/* Check everything */
 	check_run_no += 1;
@@ -2551,7 +2552,7 @@ static int integck(void)
 		if (ret)
 			return -1;
 
-		if (!fsinfo.is_rootfs) {
+		if (fsinfo.can_remount) {
 			close_open_files();
 			ret = remount_tested_fs();
 			if (ret)
@@ -2668,7 +2669,6 @@ static void get_tested_fs_info(void)
 	uint64_t z;
 	char *p;
 	unsigned int pid;
-	struct stat st1, st2;
 
 	/* Remove trailing '/' symbols from the mount point */
 	p = dup_string(args.mount_point);
@@ -2716,11 +2716,6 @@ static void get_tested_fs_info(void)
 
 	normsg("pid %u, testing \"%s\" at \"%s\"",
 	       pid, fsinfo.fstype, fsinfo.mount_point);
-
-	CHECK(stat(fsinfo.mount_point, &st1) == 0);
-	CHECK(stat("/", &st2) != -1);
-	if (st1.st_dev == st2.st_dev)
-		fsinfo.is_rootfs = 1;
 }
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
@@ -2970,6 +2965,35 @@ int main(int argc, char *argv[])
 		ret = -1;
 		errmsg("the file-system is mounted read-only");
 		goto out_free;
+	}
+
+	/* Check whether we can re-mount the tested FS  */
+	do {
+		ret = recover_tested_fs();
+	} while (ret && args.power_cut_mode && errno == EROFS);
+
+	if (!ret) {
+		fsinfo.can_remount = 1;
+	} else {
+		warnmsg("file-system %s cannot be unmounted (%s)",
+			fsinfo.mount_point, strerror(errno));
+		if (args.power_cut_mode) {
+			/*
+			 * When testing emulated power cuts we have to be able
+			 * to re-mount the file-system to clean the EROFS
+			 * state.
+			 *
+			 * But there is also another reason. Imaging the test
+			 * writes many files successfully, and decides to check
+			 * them. But the test has done many modifications, so
+			 * there will be write-back. And when write-back fails,
+			 * Linux discards the dirty pages. So, if meanwhile FS
+			 * write-back encounters emulated power cut error, the
+			 * file checking will fail as well.
+			 */
+			errmsg("power cut mode requers unmountable FS");
+			goto out_free;
+		}
 	}
 
 	/* Do the actual test */
