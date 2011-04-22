@@ -5,7 +5,7 @@ endif
 
 COMMON_HEADERS_DIR := ../../../include
 
-CFLAGS := $(CFLAGS) -Wall -g -O2 -I../lib -I$(COMMON_HEADERS_DIR)
+CFLAGS := $(CFLAGS) -Wall -g -O2 -I$(COMMON_HEADERS_DIR)
 
 LDFLAGS := $(LDFLAGS)
 
