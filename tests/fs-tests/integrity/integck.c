@@ -70,7 +70,7 @@
 } while(0)
 
 #define pcv(fmt, ...) do {                                         \
-	if (args.power_cut_mode)                                   \
+	if (args.power_cut_mode && args.verbose)                   \
 		normsg(fmt " (line %d)", ##__VA_ARGS__, __LINE__); \
 } while(0)
 
