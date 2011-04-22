@@ -885,8 +885,15 @@ static ssize_t file_write_data(struct file_info *file, int fd, off_t offset,
 	return actual;
 }
 
-static void file_write_info(struct file_info *file, off_t offset, size_t size,
-			    unsigned int seed)
+static void file_check_data(struct file_info *file, int fd,
+			    struct write_info *w);
+
+/*
+ * Save the information about a file write operation and verify the write if
+ * necessary.
+ */
+static void file_write_info(struct file_info *file, int fd, off_t offset,
+			    size_t size, unsigned int seed)
 {
 	struct write_info *new_write, *w, **prev, *tmp;
 	int inserted;
@@ -904,6 +911,9 @@ static void file_write_info(struct file_info *file, off_t offset, size_t size,
 	w->size = size;
 	w->random_seed = seed;
 	file->raw_writes = w;
+
+	if (args.verify_ops)
+		file_check_data(file, fd, new_write);
 
 	/* Insert it into file->writes */
 	inserted = 0;
@@ -1077,17 +1087,14 @@ static int file_mmap_write(struct file_info *file)
 	fd = open(path, O_RDWR);
 	if (fd == -1) {
 		pcv("cannot open file %s to do mmap", path);
-		free(path);
-		return -1;
+		goto out_error;
 	}
 
 	/* mmap it */
 	addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offs);
-	CHECK(close(fd) == 0);
 	if (addr == MAP_FAILED) {
 		pcv("cannot mmap file %s", path);
-		free(path);
-		return -1;
+		goto out_error;
 	}
 
 	/* Randomly select a part of the mmapped area to write */
@@ -1108,14 +1115,19 @@ static int file_mmap_write(struct file_info *file)
 	/* Unmap it */
 	if (munmap(addr, len)) {
 		pcv("cannot unmap file %s", path);
-		free(path);
-		return -1;
+		goto out_error;
 	}
 
 	/* Record what was written */
-	file_write_info(file, offset, size, seed);
+	file_write_info(file, fd, offset, size, seed);
 	free(path);
+	CHECK(close(fd) == 0);
 	return 0;
+
+out_error:
+	free(path);
+	CHECK(close(fd) == 0);
+	return -1;
 }
 
 /*
@@ -1146,7 +1158,7 @@ static int file_write(struct file_info *file, int fd)
 			truncate = 1;
 
 	if (actual != 0)
-		file_write_info(file, offset, actual, seed);
+		file_write_info(file, fd, offset, actual, seed);
 
 	/* Delete errored files */
 	if (!fsinfo.nospc_size_ok && file->no_space_error)
@@ -1175,7 +1187,7 @@ static int file_write_file(struct file_info *file)
 	char *path;
 
 	path = dir_path(file->links->parent, file->links->name);
-	fd = open(path, O_WRONLY);
+	fd = open(path, O_RDWR);
 	if (fd == -1) {
 		pcv("cannot open file %s for writing", path);
 		free(path);
