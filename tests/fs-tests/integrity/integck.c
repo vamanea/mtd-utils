@@ -2534,7 +2534,7 @@ static int integck(void)
 	if (ret)
 		return -1;
 
-	if (fsinfo.is_rootfs) {
+	if (!fsinfo.is_rootfs) {
 		close_open_files();
 		ret = remount_tested_fs();
 		if (ret)
