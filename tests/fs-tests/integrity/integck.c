@@ -214,6 +214,8 @@ static uint64_t operation_count = 0; /* Number of operations used to fill
                                         up the file system */
 static unsigned int check_run_no;
 
+static unsigned int random_seed;
+
 /*
  * A buffer which is used by 'make_name()' to return the generated random name.
  */
@@ -260,7 +262,7 @@ static unsigned int random_no(unsigned int max)
 	assert(max < RAND_MAX);
 	if (max == 0)
 		return 0;
-	return rand() % max;
+	return rand_r(&random_seed) % max;
 }
 
 /*
@@ -2952,6 +2954,7 @@ int main(int argc, char *argv[])
 {
 	int ret;
 	long rpt;
+	unsigned int pid = getpid();
 
 	ret = parse_opts(argc, argv);
 	if (ret)
@@ -2960,7 +2963,8 @@ int main(int argc, char *argv[])
 	get_tested_fs_info();
 
 	/* Seed the random generator with out PID */
-	srand(getpid());
+	srand(pid);
+	random_seed = pid;
 
 	random_name_buf = malloc(fsinfo.max_name_len + 1);
 	CHECK(random_name_buf != NULL);
