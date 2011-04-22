@@ -17,7 +17,6 @@
  *
  * Author: Adrian Hunter
  */
-
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,6 +31,7 @@
 #include <getopt.h>
 #include <assert.h>
 #include <mntent.h>
+#include <execinfo.h>
 #include <sys/mman.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
@@ -54,15 +54,9 @@
  */
 #define stringify1(x) #x
 #define stringify(x) stringify1(x)
-#define CHECK(cond) do {                                       \
-	if (!(cond)) {                                         \
-		int _err = errno;                              \
-		fflush(stdout);                                \
-		errmsg("condition '%s' failed at %s:%d",       \
-		       stringify(cond), __FILE__, __LINE__);   \
-		errmsg("error %d (%s)", _err, strerror(_err)); \
-		exit(EXIT_FAILURE);                            \
-	}                                                      \
+#define CHECK(cond) do {                                                     \
+	if (!(cond))                                                         \
+		check_failed(stringify(cond), __func__, __FILE__, __LINE__); \
 } while(0)
 
 #define pcv(fmt, ...) do {                                         \
@@ -213,6 +207,31 @@ static unsigned int check_run_no;
  * A buffer which is used by 'make_name()' to return the generated random name.
  */
 static char *random_name_buf;
+
+/*
+ * This is a helper for the 'CHECK()' macro - prints a scary error message and
+ * terminates the program.
+ */
+static void check_failed(const char *cond, const char *func, const char *file,
+			 int line)
+{
+	int error = errno, count;
+	void *addresses[128];
+
+	fflush(stdout);
+	errmsg("condition '%s' failed in %s() at %s:%d",
+	       cond, func, __FILE__, __LINE__);
+	normsg("error %d (%s)", error, strerror(error));
+	/*
+	 * Note, to make this work well you need:
+	 * 1. Make all functions non-static - add "#define static'
+	 * 2. Compile with -rdynamic and -g gcc options
+	 * 3. Preferrably compile with -O0 to avoid inlining
+	 */
+	count = backtrace(addresses, 128);
+	backtrace_symbols_fd(addresses, count, fileno(stdout));
+	exit(EXIT_FAILURE);
+}
 
 /*
  * Is this 'struct write_info' actually holds information about a truncation?
