@@ -41,6 +41,16 @@
 #define PROGRAM_NAME "integck"
 #include "common.h"
 
+/*
+ * WARNING! This is a dirty hack! The symbols for static functions are not
+ * printed in the stack backtrace. So we remove ths 'static' keyword using the
+ * pre-processor. This is really error-prone because this won't work if, e.g.,
+ * local static variables were used.
+ */
+#ifdef INTEGCK_DEBUG
+#define static
+#endif
+
 #define MAX_RANDOM_SEED 10000000
 
 /* The pattern for the top directory where we run the test */

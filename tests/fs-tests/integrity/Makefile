@@ -13,5 +13,10 @@ TARGETS = integck
 
 all: $(TARGETS)
 
+# Disable optimizations to make it possible to use gdb comfortably
+# Use -rdynamic to have stack backtraces
+debug:
+	gcc $(CFLAGS) -O0 -D INTEGCK_DEBUG -rdynamic integck.c -o integck
+
 clean:
 	rm -f *.o $(TARGETS)
