@@ -3014,6 +3014,18 @@ int main(int argc, char *argv[])
 
 		free_test_data();
 
+		do {
+			ret = recover_tested_fs();
+			if (ret) {
+				CHECK(errno == EROFS);
+				rpt += 1;
+			}
+			/*
+			 * Mount may also fail due to an emulated power cut
+			 * while mounting - keep re-starting.
+			 */
+		} while (ret);
+
 		/*
 		 * The file-system became read-only and we are in power cut
 		 * testing mode. Re-mount the file-system and re-start the
@@ -3022,19 +3034,6 @@ int main(int argc, char *argv[])
 		if (args.verbose)
 			normsg("re-mount the FS and re-start - count %ld", rpt);
 
-		do {
-			ret = recover_tested_fs();
-			if (ret) {
-				CHECK(errno == EROFS);
-				/*
-				 * Mount may also fail due to an emulated power
-				 * cut while mounting - keep re-starting.
-				 */
-				if (args.verbose)
-					normsg("could not mount, try again - count %ld",
-					       ++rpt);
-			}
-		} while (ret);
 	}
 
 	free_test_data();
