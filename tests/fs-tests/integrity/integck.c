@@ -1017,7 +1017,46 @@ static void get_offset_and_size(struct file_info *file,
 		*size = 1;
 }
 
-static void file_truncate_info(struct file_info *file, size_t new_length);
+static void file_check_hole(struct file_info *file, int fd, off_t offset,
+			    size_t size);
+
+static void file_truncate_info(struct file_info *file, int fd,
+			       size_t new_length)
+{
+	struct write_info *w, **prev, *tmp;
+
+	/* Remove / truncate file->writes */
+	w = file->writes;
+	prev = &file->writes;
+	while (w) {
+		if (w->offset >= new_length) {
+			/* w comes after eof, so remove it */
+			*prev = w->next;
+			tmp = w;
+			w = w->next;
+			free(tmp);
+			continue;
+		}
+		if (w->offset + w->size > new_length)
+			w->size = new_length - w->offset;
+		prev = &w->next;
+		w = w->next;
+	}
+	/* Add an entry in raw_writes for the truncation */
+	w = zalloc(sizeof(struct write_info));
+	w->next = file->raw_writes;
+	w->offset = file->length;
+	w->new_length = new_length;
+	w->random_seed = MAX_RANDOM_SEED + 1;
+	file->raw_writes = w;
+
+	if (new_length > file->length)
+		file_check_hole(file, fd, file->length,
+				new_length - file->length);
+
+	/* Update file length */
+	file->length = new_length;
+}
 
 /*
  * Truncate a file to length 'new_length'. If there is no enough space to
@@ -1171,7 +1210,7 @@ static int file_write(struct file_info *file, int fd)
 		if (ret == -1)
 			return -1;
 		if (!ret)
-			file_truncate_info(file, new_length);
+			file_truncate_info(file, fd, new_length);
 	}
 
 	return 0;
@@ -1199,38 +1238,6 @@ static int file_write_file(struct file_info *file)
 	return ret;
 }
 
-static void file_truncate_info(struct file_info *file, size_t new_length)
-{
-	struct write_info *w, **prev, *tmp;
-
-	/* Remove / truncate file->writes */
-	w = file->writes;
-	prev = &file->writes;
-	while (w) {
-		if (w->offset >= new_length) {
-			/* w comes after eof, so remove it */
-			*prev = w->next;
-			tmp = w;
-			w = w->next;
-			free(tmp);
-			continue;
-		}
-		if (w->offset + w->size > new_length)
-			w->size = new_length - w->offset;
-		prev = &w->next;
-		w = w->next;
-	}
-	/* Add an entry in raw_writes for the truncation */
-	w = zalloc(sizeof(struct write_info));
-	w->next = file->raw_writes;
-	w->offset = file->length;
-	w->new_length = new_length;
-	w->random_seed = MAX_RANDOM_SEED + 1;
-	file->raw_writes = w;
-	/* Update file length */
-	file->length = new_length;
-}
-
 /*
  * Truncate an open file randomly.
  */
@@ -1244,7 +1251,7 @@ static int file_truncate(struct file_info *file, int fd)
 	if (ret == -1)
 		return -1;
 	if (!ret)
-		file_truncate_info(file, new_length);
+		file_truncate_info(file, fd, new_length);
 	return 0;
 }
 
