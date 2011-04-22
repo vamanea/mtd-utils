@@ -54,24 +54,20 @@
  */
 #define stringify1(x) #x
 #define stringify(x) stringify1(x)
-#define CHECK(cond) do {                                         \
-	if (!(cond)) {                                           \
-		int _err = errno;                                \
-		fflush(stdout);                                  \
-		errmsg("condition '%s' failed at %s:%d",         \
-		       stringify(cond), __FILE__, __LINE__);     \
-		errmsg("error %d (%s)", _err, strerror(_err));   \
-		exit(EXIT_FAILURE);                              \
-	}                                                        \
+#define CHECK(cond) do {                                       \
+	if (!(cond)) {                                         \
+		int _err = errno;                              \
+		fflush(stdout);                                \
+		errmsg("condition '%s' failed at %s:%d",       \
+		       stringify(cond), __FILE__, __LINE__);   \
+		errmsg("error %d (%s)", _err, strerror(_err)); \
+		exit(EXIT_FAILURE);                            \
+	}                                                      \
 } while(0)
 
-#define pcv(fmt, ...) do {                                        \
-	if (args.power_cut_mode) {                                \
-		int _err = errno;                                 \
-		errmsg(fmt, ##__VA_ARGS__);                       \
-		errmsg("error %d (%s) at %s:%d",                  \
-		       _err, strerror(_err), __FILE__, __LINE__); \
-	}                                                         \
+#define pcv(fmt, ...) do {                                         \
+	if (args.power_cut_mode)                                   \
+		normsg(fmt " (line %d)", ##__VA_ARGS__, __LINE__); \
 } while(0)
 
 /* The variables below are set by command line arguments */
@@ -2213,12 +2209,17 @@ static int rm_minus_rf_dir(const char *dir_name)
 
 		if (strcmp(dent->d_name, ".") &&
 		    strcmp(dent->d_name, "..")) {
-			if (dent->d_type == DT_DIR)
-				rm_minus_rf_dir(dent->d_name);
-			else {
+			if (dent->d_type == DT_DIR) {
+				ret = rm_minus_rf_dir(dent->d_name);
+				if (ret) {
+					CHECK(closedir(dir) == 0);
+					return -1;
+				}
+			} else {
 				ret = unlink(dent->d_name);
 				if (ret) {
 					pcv("cannot unlink %s", dent->d_name);
+					CHECK(closedir(dir) == 0);
 					return -1;
 				}
 			}
@@ -2241,17 +2242,10 @@ static int rm_minus_rf_dir(const char *dir_name)
  */
 static int remount_tested_fs(void)
 {
-	char *wd_save;
 	int ret;
 	unsigned long flags;
 	unsigned int rorw1, um, um_ro, um_rorw, rorw2;
 
-	/* Save current working directory */
-	wd_save = malloc(PATH_MAX + 1);
-	CHECK(wd_save != NULL);
-	CHECK(getcwd(wd_save, PATH_MAX + 1) != NULL);
-
-	/* Temporarily change working directory to '/' */
 	CHECK(chdir("/") == 0);
 
 	/* Choose what to do */
@@ -2354,9 +2348,7 @@ static int remount_tested_fs(void)
 		}
 	}
 
-	/* Restore the previous working directory */
-	CHECK(chdir(wd_save) == 0);
-	free(wd_save);
+	CHECK(chdir(fsinfo.mount_point) == 0);
 	return 0;
 }
 
@@ -2384,10 +2376,6 @@ static int integck(void)
 		pcv("cannot create top test directory %s", fsinfo.test_dir);
 		return -1;
 	}
-
-	top_dir = zalloc(sizeof(struct dir_info));
-	top_dir->entry = zalloc(sizeof(struct dir_entry_info));
-	top_dir->entry->name = dup_string(fsinfo.test_dir);
 
 	ret = create_test_data();
 	if (ret)
@@ -2513,7 +2501,7 @@ static struct mntent *get_tested_fs_mntent(void)
         while ((mntent = getmntent(f)) != NULL)
 		if (!strcmp(mntent->mnt_dir, fsinfo.mount_point))
 			break;
-        fclose(f);
+        CHECK(fclose(f) == 0);
 	return mntent;
 }
 
@@ -2665,6 +2653,10 @@ static int parse_opts(int argc, char * const argv[])
 	else if (optind != argc - 1)
 		return errmsg("more then one test file-system specified (use -h for help)");
 
+	if (args.power_cut_mode)
+		/* Repeat forever if we are in power cut testing mode */
+		args.repeat_cnt = 0;
+
 	args.mount_point = argv[optind];
 
 	if (chdir(args.mount_point) != 0 || lstat(args.mount_point, &st) != 0)
@@ -2706,18 +2698,11 @@ static void free_fs_info(struct dir_info *dir)
  */
 static int recover_tested_fs(void)
 {
-	char *wd_save;
 	int ret;
 	unsigned long flags;
 	unsigned int  um_rorw, rorw2;
 	struct mntent *mntent;
 
-	/* Save current working directory */
-	wd_save = malloc(PATH_MAX + 1);
-	CHECK(wd_save != NULL);
-	CHECK(getcwd(wd_save, PATH_MAX + 1) != NULL);
-
-	/* Temporarily change working directory to '/' */
 	CHECK(chdir("/") == 0);
 
 	/* Choose what to do */
@@ -2783,16 +2768,22 @@ static int recover_tested_fs(void)
 		}
 	}
 
-	/* Restore the previous working directory */
-	CHECK(chdir(wd_save) == 0);
-	free(wd_save);
 	return 0;
+}
+
+static void free_test_data(void)
+{
+	close_open_files();
+	free_fs_info(top_dir);
+	free(top_dir->entry->name);
+	free(top_dir->entry);
+		free(top_dir);
 }
 
 int main(int argc, char *argv[])
 {
 	int ret;
-	unsigned long long restart_count = 0;
+	long rpt;
 
 	ret = parse_opts(argc, argv);
 	if (ret)
@@ -2814,15 +2805,22 @@ int main(int argc, char *argv[])
 	}
 
 	/* Do the actual test */
-	while (1) {
+	for (rpt = 0; ; rpt++) {
+		top_dir = zalloc(sizeof(struct dir_info));
+		top_dir->entry = zalloc(sizeof(struct dir_entry_info));
+		top_dir->entry->name = dup_string(fsinfo.test_dir);
+
 		ret = integck();
 		/*
 		 * Iterate forever only in case of power-cut emulation testing.
 		 */
 		if (!args.power_cut_mode)
 			break;
-		if (ret && errno != EROFS)
-			break;
+
+		CHECK(ret);
+		CHECK(errno == EROFS);
+
+		free_test_data();
 
 		/*
 		 * The file-system became read-only and we are in power cut
@@ -2830,33 +2828,25 @@ int main(int argc, char *argv[])
 		 * test.
 		 */
 		if (args.verbose)
-			normsg("re-mount the FS and re-start - count %llu",
-			       ++restart_count);
-
-		close_open_files();
-		free_fs_info(top_dir);
+			normsg("re-mount the FS and re-start - count %ld", rpt);
 
 		do {
 			ret = recover_tested_fs();
 			if (ret) {
-				if (errno != EROFS)
-					goto out_free;
+				CHECK(errno == EROFS);
 				/*
 				 * Mount may also fail due to an emulated power
 				 * cut while mounting - keep re-starting.
 				 */
 				if (args.verbose)
-					normsg("could not mount, restart - count %llu",
-					       ++restart_count);
+					normsg("could not mount, try again - count %ld",
+					       ++rpt);
 			}
 		} while (ret);
 	}
 
-	close_open_files();
-	free_fs_info(top_dir);
-	free(top_dir->entry->name);
-	free(top_dir->entry);
-	free(top_dir);
+
+	free_test_data();
 
 out_free:
 	free(random_name_buf);
