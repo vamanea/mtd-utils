@@ -2572,25 +2572,28 @@ static void get_tested_fs_info(void)
 
 static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 " - a stress test which checks the file-system integrity.\n"
-"It creates a directory named \"integck_test_dir_pid\", where where pid is the\n"
-"process id. Then it randomly creates and deletes files, directories, symlinks\n"
-"and hardlinks, randomly writes and truncate files, sometimes makes holes in\n"
-"files, sometimes fsync()'s them. Then it un-mounts and re-mounts the test file\n"
-"system and checks the contents - everything (files, dirs, etc) should be there\n"
-"and the contents of the files should be correct. This is repeated a number of\n"
-"times (set with -n, default 1).\n\n"
-"This test is also able to perform powe cut testing. The underlying file-system\n"
-"or the device driver should be able to emulate power-cuts, e.g., but switching\n"
-"to R/O mode at random points of time. And the file-system should return EROFS\n"
-"(read-only file-system error) for all operations which modify it. In this case\n"
-"this test program re-mounts the file-system and checks that all files and\n"
-"directories which have been successfully synchronized before the power cut are\n"
-"there and contains correct data. Then the test continues.\n";
+"\n"
+"The test creates a directory named \"integck_test_dir_<pid>\", where where\n"
+"<pid> is the process id. Then it randomly creates and deletes files,\n"
+"directories, symlinks, and hardlinks, randomly writes and truncate files,\n"
+"sometimes makes holes in files, sometimes fsync()'s them. Then it un-mounts and\n"
+"re-mounts the tested file-system and checks the contents - everything (files,\n"
+"directories, etc) should be there and the contents of the files should be\n"
+"correct. This is repeated a number of times (set with -n, default 1).\n"
+"\n"
+"This test is also able to perform power cut testing. The underlying file-system\n"
+"or the device driver should be able to emulate power-cuts, by switching to R/O\n"
+"mode at random moments. And the file-system should return EROFS (read-only\n"
+"file-system error) for all operations which modify it. In this case this test\n"
+"program re-mounts the file-system and checks that all files and directories\n"
+"which have been successfully synchronized before the power cut. And the test\n"
+"continues forever.\n";
 
 static const char optionsstr[] =
 "-n, --repeat=<count> repeat count, default is 1; zero value - repeat forever\n"
-"-p, --power-cut      power cut testing mode\n"
-"-v, --verbose        be verbose about failure during power cut testing\n"
+"-p, --power-cut      power cut testing mode (-n parameter is ignored and the\n"
+"                     test continues forever)\n"
+"-v, --verbose        be verbose about failures during power cut testing\n"
 "-h, -?, --help       print help message\n"
 "-V, --version        print program version\n";
 
