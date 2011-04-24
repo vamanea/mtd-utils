@@ -543,7 +543,7 @@ static int dir_new(struct dir_info *parent, const char *name)
 		return -1;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == 0);
@@ -589,7 +589,7 @@ static int dir_remove(struct dir_info *dir)
 		return -1;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == -1);
@@ -626,7 +626,7 @@ static int file_new(struct dir_info *parent, const char *name)
 		return -1;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == 0);
@@ -654,7 +654,7 @@ static int link_new(struct dir_info *parent, const char *name,
 	path = dir_path(parent, name);
 	target = dir_path(entry->parent, entry->name);
 
-	if (args.verify_ops)
+	if (args.verify_ops && !args.power_cut_mode)
 		CHECK(lstat(target, &st1) == 0);
 
 	ret = link(target, path);
@@ -670,7 +670,7 @@ static int link_new(struct dir_info *parent, const char *name,
 		return ret;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		CHECK(lstat(path, &st2) == 0);
 		CHECK(S_ISREG(st2.st_mode));
 		CHECK(st1.st_ino == st2.st_ino);
@@ -716,7 +716,7 @@ static int file_unlink(struct dir_entry_info *entry)
 		return -1;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == -1);
@@ -923,7 +923,7 @@ static void file_write_info(struct file_info *file, int fd, off_t offset,
 	w->random_seed = seed;
 	file->raw_writes = w;
 
-	if (args.verify_ops)
+	if (args.verify_ops && !args.power_cut_mode)
 		file_check_data(file, fd, new_write);
 
 	/* Insert it into file->writes */
@@ -1090,7 +1090,7 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 		return -1;
 	}
 
-	if (args.verify_ops)
+	if (args.verify_ops && !args.power_cut_mode)
 		CHECK(lseek(fd, 0, SEEK_END) == new_length);
 
 	return 0;
@@ -1419,6 +1419,8 @@ static void file_check_data(struct file_info *file, int fd,
 	char buf[IO_BUFFER_SIZE];
 	unsigned int seed = w->random_seed;
 
+	assert(!args.power_cut_mode);
+
 	for (r = 0; r < w->random_offset; ++r)
 		rand_r(&seed);
 	CHECK(lseek(fd, w->offset, SEEK_SET) != (off_t)-1);
@@ -1452,6 +1454,9 @@ static void file_check(struct file_info *file, int fd)
 	struct write_info *w;
 	struct dir_entry_info *entry;
 	struct stat st;
+
+	if (args.power_cut_mode)
+		return;
 
 	/* Do not check files that have errored */
 	if (!fsinfo.nospc_size_ok && file->no_space_error)
@@ -1528,6 +1533,9 @@ void symlink_check(const struct symlink_info *symlink)
 	ssize_t len;
 	int ret1, ret2;
 
+	if (args.power_cut_mode)
+		return;
+
 	path = dir_path(symlink->entry->parent, symlink->entry->name);
 	CHECK(lstat(path, &st1) == 0);
 	CHECK(S_ISLNK(st1.st_mode));
@@ -1590,6 +1598,8 @@ static void dir_check(struct dir_info *dir)
 	char *path;
 	int link_count = 2; /* Parent and dot */
 	struct stat st;
+
+	assert(!args.power_cut_mode);
 
 	/* Create an array of entries */
 	sz = sizeof(struct dir_entry_info *);
@@ -1836,7 +1846,7 @@ static int rename_entry(struct dir_entry_info *entry)
 	if (!path)
 		return 0;
 
-	if (args.verify_ops)
+	if (args.verify_ops && !args.power_cut_mode)
 		CHECK(lstat(path, &st1) == 0);
 
 	ret = rename(path, to);
@@ -1854,7 +1864,7 @@ static int rename_entry(struct dir_entry_info *entry)
 		return ret;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		CHECK(lstat(to, &st2) == 0);
 		CHECK(st1.st_ino == st2.st_ino);
 	}
@@ -1996,7 +2006,7 @@ static int symlink_new(struct dir_info *dir, const char *nm)
 		return ret;
 	}
 
-	if (args.verify_ops)
+	if (args.verify_ops && !args.power_cut_mode)
 		verify_symlink(target, path);
 
 	s = add_dir_entry(dir, 's', name, NULL);
@@ -2018,7 +2028,7 @@ static int symlink_remove(struct symlink_info *symlink)
 		return -1;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == -1);
@@ -2359,7 +2369,7 @@ static int rm_minus_rf_dir(const char *dir_name)
 	CHECK(chdir(buf) == 0);
 	CHECK(closedir(dir) == 0);
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		dir = opendir(dir_name);
 		CHECK(dir != NULL);
 		do {
@@ -2379,7 +2389,7 @@ static int rm_minus_rf_dir(const char *dir_name)
 		return -1;
 	}
 
-	if (args.verify_ops) {
+	if (args.verify_ops && !args.power_cut_mode) {
 		struct stat st;
 
 		CHECK(lstat(dir_name, &st) == -1);
