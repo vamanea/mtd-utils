@@ -213,7 +213,6 @@ static int full   = 0; /* Flag that the file system is full */
 static uint64_t operation_count = 0; /* Number of operations used to fill
                                         up the file system */
 static unsigned int check_run_no;
-
 static unsigned int random_seed;
 
 /*
@@ -1110,11 +1109,14 @@ static int file_mmap_write(struct file_info *file)
 	uint64_t free_space;
 	int fd;
 
+	assert(!args.power_cut_mode);
+
 	if (!file->links)
 		return 0;
 	get_fs_space(NULL, &free_space);
 	if (!free_space)
 		return 0;
+
 	/* Randomly pick a written area of the file */
 	if (!w)
 		return 0;
@@ -1191,8 +1193,20 @@ static int file_write(struct file_info *file, int fd)
 	unsigned int seed;
 	int ret, truncate = 0;
 
-	if (fsinfo.can_mmap && !full && file->link_count &&
-	    random_no(100) == 1)
+	/*
+	 * Do not do 'mmap()' operations if:
+	 * 1. we are in power cut testing mode, because an emulated power cut
+	 *    failure may cause SIGBUS when we are writing to the 'mmap()'ed
+	 *    area, and SIGBUS is not easy to ignore.
+	 * 2. When the file-system is full, because again, writing to the
+	 *    'mmap()'ed area may cause SIGBUS when the space allocation fails.
+	 *    This is not enough to guarantee we never get SIGBUS, though. For
+	 *    example, if we write a lot to a hole, this might require a lot of
+	 *    additional space, and we may fail here. But I do not know why we
+	 *    never observed this, probably this is just very unlikely.
+	 */
+	if (!args.power_cut_mode && fsinfo.can_mmap && !full &&
+	    file->link_count && random_no(100) == 1)
 		return file_mmap_write(file);
 
 	get_offset_and_size(file, &offset, &size);
