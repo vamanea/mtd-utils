@@ -2507,9 +2507,32 @@ static int remount_tested_fs(void)
 
 static void check_tested_fs(void)
 {
-	check_run_no += 1;
-	dir_check(top_dir);
-	check_deleted_files();
+	/*
+	 * when we are in power cut mode we can only test files which have not
+	 * been modified since the last successful 'fsync()'. this is not
+	 * implemented yet.
+	 *
+	 * note, even if we have not encounter any error during the test, we
+	 * cannot test the file-system. indeed, consider the situation when we
+	 * have written data to file a. a lot of the data is currently cached
+	 * and is waiting for write-back. when write-back happens, an emulated
+	 * power cut may also happen and cause write-back to drop the errored
+	 * pages. and if we start checking the file a after this, we'll fail as
+	 * well.
+	 *
+	 * and even re-mounting will not help, because re-mounting will cause
+	 * full sync which may fail and data pages will be dropped, but
+	 * 'unmount()' will nevertheless succeed, and if we check the
+	 * file-system after this - the check will fail.
+	 *
+	 * and 'sync()' will not help as well since it does not return an
+	 * error.
+	 */
+	if (!args.power_cut_mode) {
+		check_run_no += 1;
+		dir_check(top_dir);
+		check_deleted_files();
+	}
 }
 
 /*
@@ -2985,14 +3008,6 @@ int main(int argc, char *argv[])
 			 * When testing emulated power cuts we have to be able
 			 * to re-mount the file-system to clean the EROFS
 			 * state.
-			 *
-			 * But there is also another reason. Imaging the test
-			 * writes many files successfully, and decides to check
-			 * them. But the test has done many modifications, so
-			 * there will be write-back. And when write-back fails,
-			 * Linux discards the dirty pages. So, if meanwhile FS
-			 * write-back encounters emulated power cut error, the
-			 * file checking will fail as well.
 			 */
 			errmsg("power cut mode requers unmountable FS");
 			goto out_free;
