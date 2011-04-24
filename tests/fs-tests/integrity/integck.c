@@ -233,7 +233,7 @@ static void check_failed(const char *cond, const char *func, const char *file,
 
 	fflush(stdout);
 	errmsg("condition '%s' failed in %s() at %s:%d",
-	       cond, func, __FILE__, __LINE__);
+	       cond, func, file, line);
 	normsg("error %d (%s)", error, strerror(error));
 	/*
 	 * Note, to make this work well you need:
