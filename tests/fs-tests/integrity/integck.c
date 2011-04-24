@@ -2505,6 +2505,13 @@ static int remount_tested_fs(void)
 	return 0;
 }
 
+static void check_tested_fs(void)
+{
+	check_run_no += 1;
+	dir_check(top_dir);
+	check_deleted_files();
+}
+
 /*
  * Perform the test. Returns zero on success and -1 on failure.
  */
@@ -2543,9 +2550,7 @@ static int integck(void)
 		assert(!args.power_cut_mode);
 
 	/* Check everything */
-	check_run_no += 1;
-	dir_check(top_dir);
-	check_deleted_files();
+	check_tested_fs();
 
 	for (rpt = 0; args.repeat_cnt == 0 || rpt < args.repeat_cnt; ++rpt) {
 		ret = update_test_data();
@@ -2560,9 +2565,7 @@ static int integck(void)
 		}
 
 		/* Check everything */
-		check_run_no += 1;
-		dir_check(top_dir);
-		check_deleted_files();
+		check_tested_fs();
 	}
 
 	/* Tidy up by removing everything */
