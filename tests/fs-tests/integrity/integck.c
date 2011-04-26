@@ -1189,54 +1189,76 @@ out_error:
  */
 static int file_write(struct file_info *file, int fd)
 {
-	off_t offset;
-	size_t size;
-	ssize_t actual;
-	unsigned int seed;
-	int ret, truncate = 0;
+	int ret;
 
-	/*
-	 * Do not do 'mmap()' operations if:
-	 * 1. we are in power cut testing mode, because an emulated power cut
-	 *    failure may cause SIGBUS when we are writing to the 'mmap()'ed
-	 *    area, and SIGBUS is not easy to ignore.
-	 * 2. When the file-system is full, because again, writing to the
-	 *    'mmap()'ed area may cause SIGBUS when the space allocation fails.
-	 *    This is not enough to guarantee we never get SIGBUS, though. For
-	 *    example, if we write a lot to a hole, this might require a lot of
-	 *    additional space, and we may fail here. But I do not know why we
-	 *    never observed this, probably this is just very unlikely.
-	 */
 	if (!args.power_cut_mode && fsinfo.can_mmap && !full &&
-	    file->link_count && random_no(100) == 1)
-		return file_mmap_write(file);
+	    file->link_count && random_no(100) == 1) {
+		/*
+		 * Do not do 'mmap()' operations if:
+		 * 1. we are in power cut testing mode, because an emulated
+		 *    power cut failure may cause SIGBUS when we are writing to
+		 *    the 'mmap()'ed area, and SIGBUS is not easy to ignore.
+		 * 2. When the file-system is full, because again, writing to the
+		 *    'mmap()'ed area may cause SIGBUS when the space allocation
+		 *    fails. This is not enough to guarantee we never get
+		 *    SIGBUS, though. For example, if we write a lot to a hole,
+		 *    this might require a lot of additional space, and we may
+		 *    fail here. But I do not know why we never observed this,
+		 *    probably this is just very unlikely.
+		 */
+		ret = file_mmap_write(file);
+	} else {
+		int truncate = 0;
+		off_t offset;
+		size_t size;
+		ssize_t actual;
+		unsigned int seed;
 
-	get_offset_and_size(file, &offset, &size);
-	seed = random_no(MAX_RANDOM_SEED);
-	actual = file_write_data(file, fd, offset, size, seed);
-	if (actual < 0)
-		return -1;
-
-	if (offset + actual <= file->length && shrink)
-		/* 1 time in 100, when shrinking truncate after the write */
-		if (random_no(100) == 0)
-			truncate = 1;
-
-	if (actual != 0)
-		file_write_info(file, fd, offset, actual, seed);
-
-	/* Delete errored files */
-	if (!fsinfo.nospc_size_ok && file->no_space_error)
-		return file_delete(file);
-
-	if (truncate) {
-		size_t new_length = offset + actual;
-
-		ret = file_ftruncate(file, fd, new_length);
-		if (ret == -1)
+		get_offset_and_size(file, &offset, &size);
+		seed = random_no(MAX_RANDOM_SEED);
+		actual = file_write_data(file, fd, offset, size, seed);
+		if (actual < 0)
 			return -1;
-		if (!ret)
-			file_truncate_info(file, fd, new_length);
+
+		if (actual != 0)
+			file_write_info(file, fd, offset, actual, seed);
+
+		if (offset + actual <= file->length && shrink) {
+			/*
+			 * 1 time in 100, when shrinking truncate after the
+			 * write.
+			 */
+			if (random_no(100) == 0)
+				truncate = 1;
+		}
+
+		if (truncate) {
+			size_t new_length = offset + actual;
+
+			ret = file_ftruncate(file, fd, new_length);
+			if (ret == -1)
+				return -1;
+			if (!ret)
+				file_truncate_info(file, fd, new_length);
+		}
+
+		/* Delete errored files */
+		if (!fsinfo.nospc_size_ok && file->no_space_error)
+			return file_delete(file);
+	}
+
+	/* Sync sometimes */
+	if (random_no(1000) >= 999) {
+		if (random_no(100) >= 50) {
+			ret = fsync(fd);
+			if (ret)
+				pcv("fsync failed for %s", file->links->name);
+		} else {
+			ret = fdatasync(fd);
+			if (ret)
+				pcv("fdatasync failed for %s",
+				    file->links->name);
+		}
 	}
 
 	return 0;
@@ -2190,22 +2212,8 @@ static int operate_on_open_file(struct fd_info *fdi)
 		file_close(fdi);
 	else if (shrink && r < 121 && fdi->file->link_count)
 		ret = file_delete(fdi->file);
-	else {
+	else
 		ret = file_write(fdi->file, fdi->fd);
-		if (!ret && r >= 999) {
-			if (random_no(100) >= 50) {
-				ret = fsync(fdi->fd);
-				if (ret)
-					pcv("fsync failed for %s",
-					    fdi->file->links->name);
-			} else {
-				ret = fdatasync(fdi->fd);
-				if (ret)
-					pcv("fdatasync failed for %s",
-					    fdi->file->links->name);
-			}
-		}
-	}
 
 	return ret;
 }
