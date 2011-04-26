@@ -2094,10 +2094,19 @@ static int operate_on_file(struct file_info *file)
 	return 0;
 }
 
+/*
+ * The operate on entry function is recursive because it calls
+ * 'operate_on_dir()' which calls 'operate_on_entry()' again. This variable is
+ * used to limit the recursion depth.
+ */
+static int recursion_depth;
+
 /* Randomly select something to do with a directory entry */
 static int operate_on_entry(struct dir_entry_info *entry)
 {
 	int ret = 0;
+
+	recursion_depth += 1;
 
 	/* 1 time in 1000 rename */
 	if (random_no(1000) == 0)
@@ -2111,7 +2120,7 @@ static int operate_on_entry(struct dir_entry_info *entry)
 		/* If shrinking, 1 time in 50, remove a directory */
 		if (shrink && random_no(50) == 0)
 			ret = dir_remove(entry->dir);
-		else
+		else if (recursion_depth < 20)
 			ret = operate_on_dir(entry->dir);
 	} else if (entry->type == 'f') {
 		/* If shrinking, 1 time in 10, remove a file */
@@ -2124,6 +2133,8 @@ static int operate_on_entry(struct dir_entry_info *entry)
 		else
 			ret = operate_on_file(entry->file);
 	}
+
+	recursion_depth -= 1;
 	return ret;
 }
 
