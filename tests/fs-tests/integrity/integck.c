@@ -156,6 +156,7 @@ struct file_info /* Each file has one of these */
 	int link_count;
 	unsigned int check_run_no; /* Run number used when checking */
 	unsigned int no_space_error:1; /* File has incurred a ENOSPC error */
+	unsigned int clean:1; /* Non-zero if the file is synchronized */
 };
 
 struct symlink_info /* Each symlink has one of these */
@@ -1192,6 +1193,8 @@ static int file_write(struct file_info *file, int fd)
 {
 	int ret;
 
+	file->clean = 0;
+
 	if (!args.power_cut_mode && fsinfo.can_mmap && !full &&
 	    file->link_count && random_no(100) == 1) {
 		/*
@@ -1260,6 +1263,7 @@ static int file_write(struct file_info *file, int fd)
 				pcv("fdatasync failed for %s",
 				    file->links->name);
 		}
+		file->clean = 1;
 	}
 
 	return 0;
@@ -1295,7 +1299,7 @@ static int file_truncate(struct file_info *file, int fd)
 	int ret;
 	size_t new_length = random_no(file->length);
 
-
+	file->clean = 0;
 	ret = file_ftruncate(file, fd, new_length);
 	if (ret == -1)
 		return -1;
