@@ -69,9 +69,11 @@
 		check_failed(stringify(cond), __func__, __FILE__, __LINE__); \
 } while(0)
 
-#define pcv(fmt, ...) do {                                         \
-	if (args.power_cut_mode && args.verbose)                   \
-		normsg(fmt " (line %d)", ##__VA_ARGS__, __LINE__); \
+#define pcv(fmt, ...) do {                                                   \
+	if (!args.power_cut_mode || (args.power_cut_mode && args.verbose))   \
+		normsg(fmt " (line %d)", ##__VA_ARGS__, __LINE__);           \
+	if (!args.power_cut_mode)                                            \
+		CHECK(0);                                                    \
 } while(0)
 
 /* The variables below are set by command line arguments */
@@ -3048,8 +3050,10 @@ int main(int argc, char *argv[])
 		/*
 		 * Iterate forever only in case of power-cut emulation testing.
 		 */
-		if (!args.power_cut_mode)
+		if (!args.power_cut_mode) {
+			CHECK(!ret);
 			break;
+		}
 
 		CHECK(ret);
 		CHECK(errno == EROFS);
