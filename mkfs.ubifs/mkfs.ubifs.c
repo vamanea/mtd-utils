@@ -132,7 +132,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:p:k:x:X:j:R:l:j:UQq";
+static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQq";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -150,6 +150,7 @@ static const struct option longopts[] = {
 	{"compr",              1, NULL, 'x'},
 	{"favor-percent",      1, NULL, 'X'},
 	{"fanout",             1, NULL, 'f'},
+	{"space-fixup",        0, NULL, 'F'},
 	{"keyhash",            1, NULL, 'k'},
 	{"log-lebs",           1, NULL, 'l'},
 	{"orph-lebs",          1, NULL, 'p'},
@@ -183,6 +184,8 @@ static const char *helptext =
 "                         how many percent better zlib should compress to make\n"
 "                         mkfs.ubifs use zlib instead of LZO (default 20%)\n"
 "-f, --fanout=NUM         fanout NUM (default: 8)\n"
+"-F, --space-fixup        file-system free space has to be fixed up on first mount\n"
+"                         (requires kernel version 2.6.40 or greater)\n"
 "-k, --keyhash=TYPE       key hash type - \"r5\" or \"test\" (default: \"r5\")\n"
 "-p, --orph-lebs=COUNT    count of erase blocks for orphans (default: 1)\n"
 "-D, --devtable=FILE      use device table FILE\n"
@@ -221,7 +224,16 @@ static const char *helptext =
 "options were introduced: --squash-rino-perm which preserves the old behavior and\n"
 "--nosquash-rino-perm which makes mkfs.ubifs use the right permissions for the root\n"
 "inode. Now these options are considered depricated and they will be removed later, so\n"
-"do not use them.\n";
+"do not use them.\n\n"
+"The -F parameter is used to set the \"fix up free space\" flag in the superblock,\n"
+"which forces UBIFS to \"fixup\" all the free space which it is going to use. This\n"
+"option is useful to work-around the problem of double free space programming: if the\n"
+"flasher program which flashes the UBI image is unable to skip NAND pages containing\n"
+"only 0xFF bytes, the effect is that some NAND pages are written to twice - first time\n"
+"when flashing the image and the second time when UBIFS is mounted and writes useful\n"
+"data there. A proper UBI-aware flasher should skip such NAND pages, though. Note, this\n"
+"flag may make the first mount very slow, because the \"free space fixup\" procedure\n"
+"takes time. This feature is supported by the Linux kernel starting from version 2.6.40.\n";
 
 /**
  * make_path - make a path name from a directory and a name.
@@ -610,6 +622,9 @@ static int get_options(int argc, char**argv)
 			if (*endp != '\0' || endp == optarg || c->fanout <= 0)
 				return err_msg("bad fanout %s", optarg);
 			break;
+		case 'F':
+			c->space_fixup = 1;
+			break;
 		case 'l':
 			c->log_lebs = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || c->log_lebs <= 0)
@@ -758,6 +773,7 @@ static int get_options(int argc, char**argv)
 						"r5" : "test");
 		printf("\tfanout:       %d\n", c->fanout);
 		printf("\torph_lebs:    %d\n", c->orph_lebs);
+		printf("\tspace_fixup:  %d\n", c->space_fixup);
 	}
 
 	if (validate_options())
@@ -1997,6 +2013,8 @@ static int write_super(void)
 	}
 	if (c->big_lpt)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_BIGLPT);
+	if (c->space_fixup)
+		sup.flags |= cpu_to_le32(UBIFS_FLG_SPACE_FIXUP);
 
 	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM, UBI_LONGTERM);
 }
