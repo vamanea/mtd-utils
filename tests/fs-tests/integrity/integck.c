@@ -1662,8 +1662,6 @@ static void dir_check(struct dir_info *dir)
 	int link_count = 2; /* Parent and dot */
 	struct stat st;
 
-	assert(!args.power_cut_mode);
-
 	/* Create an array of entries */
 	sz = sizeof(struct dir_entry_info *);
 	n = dir->number_of_entries;
@@ -1700,7 +1698,14 @@ static void dir_check(struct dir_info *dir)
 		}
 	}
 	CHECK(closedir(d) == 0);
-	CHECK(checked == dir->number_of_entries);
+
+	/*
+	 * In power cut mode the file-system may miss some directory entries
+	 * because it is possible that they have not reached the media by the
+	 * time of the emulated power cut.
+	 */
+	if (!args.power_cut_mode)
+		CHECK(checked == dir->number_of_entries);
 
 	/* Now check each entry */
 	entry = dir->first;
@@ -2577,32 +2582,9 @@ static int remount_tested_fs(void)
 
 static void check_tested_fs(void)
 {
-	/*
-	 * when we are in power cut mode we can only test files which have not
-	 * been modified since the last successful 'fsync()'. this is not
-	 * implemented yet.
-	 *
-	 * note, even if we have not encounter any error during the test, we
-	 * cannot test the file-system. indeed, consider the situation when we
-	 * have written data to file a. a lot of the data is currently cached
-	 * and is waiting for write-back. when write-back happens, an emulated
-	 * power cut may also happen and cause write-back to drop the errored
-	 * pages. and if we start checking the file a after this, we'll fail as
-	 * well.
-	 *
-	 * and even re-mounting will not help, because re-mounting will cause
-	 * full sync which may fail and data pages will be dropped, but
-	 * 'unmount()' will nevertheless succeed, and if we check the
-	 * file-system after this - the check will fail.
-	 *
-	 * and 'sync()' will not help as well since it does not return an
-	 * error.
-	 */
-	if (!args.power_cut_mode) {
-		check_run_no += 1;
-		dir_check(top_dir);
-		check_deleted_files();
-	}
+	check_run_no += 1;
+	dir_check(top_dir);
+	check_deleted_files();
 }
 
 /*
