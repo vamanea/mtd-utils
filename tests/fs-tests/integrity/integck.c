@@ -552,7 +552,7 @@ static int dir_new(struct dir_info *parent, const char *name)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == 0);
@@ -598,7 +598,7 @@ static int dir_remove(struct dir_info *dir)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == -1);
@@ -635,7 +635,7 @@ static int file_new(struct dir_info *parent, const char *name)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == 0);
@@ -663,7 +663,7 @@ static int link_new(struct dir_info *parent, const char *name,
 	path = dir_path(parent, name);
 	target = dir_path(entry->parent, entry->name);
 
-	if (args.verify_ops && !args.power_cut_mode)
+	if (args.verify_ops)
 		CHECK(lstat(target, &st1) == 0);
 
 	ret = link(target, path);
@@ -679,7 +679,7 @@ static int link_new(struct dir_info *parent, const char *name,
 		return ret;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		CHECK(lstat(path, &st2) == 0);
 		CHECK(S_ISREG(st2.st_mode));
 		CHECK(st1.st_ino == st2.st_ino);
@@ -725,7 +725,7 @@ static int file_unlink(struct dir_entry_info *entry)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == -1);
@@ -1109,7 +1109,7 @@ static int file_ftruncate(struct file_info *file, int fd, off_t new_length)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode)
+	if (args.verify_ops)
 		CHECK(lseek(fd, 0, SEEK_END) == new_length);
 
 	return 0;
@@ -1914,7 +1914,7 @@ static int rename_entry(struct dir_entry_info *entry)
 	if (!path)
 		return 0;
 
-	if (args.verify_ops && !args.power_cut_mode)
+	if (args.verify_ops)
 		CHECK(lstat(path, &st1) == 0);
 
 	ret = rename(path, to);
@@ -1932,7 +1932,7 @@ static int rename_entry(struct dir_entry_info *entry)
 		return ret;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		CHECK(lstat(to, &st2) == 0);
 		CHECK(st1.st_ino == st2.st_ino);
 	}
@@ -2074,7 +2074,7 @@ static int symlink_new(struct dir_info *dir, const char *nm)
 		return ret;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode)
+	if (args.verify_ops)
 		verify_symlink(target, path);
 
 	s = add_dir_entry(dir, 's', name, NULL);
@@ -2096,7 +2096,7 @@ static int symlink_remove(struct symlink_info *symlink)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		struct stat st;
 
 		CHECK(lstat(path, &st) == -1);
@@ -2434,7 +2434,7 @@ static int rm_minus_rf_dir(const char *dir_name)
 	CHECK(chdir(buf) == 0);
 	CHECK(closedir(dir) == 0);
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		dir = opendir(dir_name);
 		CHECK(dir != NULL);
 		do {
@@ -2454,7 +2454,7 @@ static int rm_minus_rf_dir(const char *dir_name)
 		return -1;
 	}
 
-	if (args.verify_ops && !args.power_cut_mode) {
+	if (args.verify_ops) {
 		struct stat st;
 
 		CHECK(lstat(dir_name, &st) == -1);
