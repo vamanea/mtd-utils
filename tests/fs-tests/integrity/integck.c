@@ -178,6 +178,7 @@ struct dir_info /* Each directory has one of these */
 	unsigned int number_of_entries;
 	struct dir_entry_info *first;
 	struct dir_entry_info *entry; /* Dir entry of this dir */
+	unsigned int clean:1; /* Non-zero if the directory is synchronized */
 };
 
 struct dir_entry_info /* Each entry in a directory has one of these */
@@ -452,6 +453,7 @@ static void *add_dir_entry(struct dir_info *parent, char type, const char *name,
 		parent->first->prev = entry;
 	parent->first = entry;
 	parent->number_of_entries += 1;
+	parent->clean = 0;
 
 	if (entry->type == 'f') {
 		struct file_info *file = target;
@@ -488,6 +490,7 @@ static void *add_dir_entry(struct dir_info *parent, char type, const char *name,
 
 static void remove_dir_entry(struct dir_entry_info *entry, int free_target)
 {
+	entry->parent->clean = 0;
 	entry->parent->number_of_entries -= 1;
 	if (entry->parent->first == entry)
 		entry->parent->first = entry->next;
@@ -1711,7 +1714,7 @@ static void dir_check(struct dir_info *dir)
 	 * because it is possible that they have not reached the media by the
 	 * time of the emulated power cut.
 	 */
-	if (!args.power_cut_mode)
+	if (!args.power_cut_mode || dir->clean)
 		CHECK(checked == dir->number_of_entries);
 
 	/* Now check each entry */
@@ -2230,6 +2233,37 @@ static int operate_on_dir(struct dir_info *dir)
 		}
 		if (entry)
 			ret = operate_on_entry(entry);
+	}
+
+	if (ret)
+		return ret;
+
+	/* Synchronize the directory sometimes */
+	if (random_no(100) >= 99) {
+		char *path;
+		int fd;
+
+		path = dir_path(dir->parent, dir->entry->name);
+		fd = open(path, O_RDONLY);
+		if (fd == -1) {
+			pcv("cannot open directory %s", path);
+			free(path);
+			return -1;
+		}
+
+		if (random_no(100) >= 50) {
+			ret = fsync(fd);
+			if (ret)
+				pcv("directory fsync failed for %s", path);
+		} else {
+			ret = fdatasync(fd);
+			if (ret)
+				pcv("directory fdatasync failed for %s", path);
+		}
+		close(fd);
+		free(path);
+		if (!ret)
+			dir->clean = 1;
 	}
 
 	return ret;
