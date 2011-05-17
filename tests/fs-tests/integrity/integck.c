@@ -1280,6 +1280,8 @@ static int file_write(struct file_info *file, int fd)
 				pcv("fdatasync failed for %s",
 				    get_file_name(file));
 		}
+		if (ret)
+			return -1;
 		file->clean = 1;
 	}
 
