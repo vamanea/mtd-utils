@@ -1269,7 +1269,7 @@ static int file_write(struct file_info *file, int fd)
 	}
 
 	/* Sync sometimes */
-	if (random_no(1000) >= 999) {
+	if (random_no(100) >= 99) {
 		if (random_no(100) >= 50) {
 			ret = fsync(fd);
 			if (ret)
