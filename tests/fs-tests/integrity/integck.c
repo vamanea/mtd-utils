@@ -1481,7 +1481,8 @@ static void file_check_data(struct file_info *file, int fd,
 	char buf[IO_BUFFER_SIZE];
 	unsigned int seed = w->random_seed;
 
-	assert(!args.power_cut_mode);
+	if (args.power_cut_mode && !file->clean)
+		return;
 
 	for (r = 0; r < w->random_offset; ++r)
 		rand_r(&seed);
@@ -1517,7 +1518,11 @@ static void file_check(struct file_info *file, int fd)
 	struct dir_entry_info *entry;
 	struct stat st;
 
-	if (args.power_cut_mode)
+	/*
+	 * In case of power cut emulation testing check only clean files, i.e.
+	 * the files which have not been modified since last 'fsync()'.
+	 */
+	if (args.power_cut_mode && !file->clean)
 		return;
 
 	/* Do not check files that have errored */
