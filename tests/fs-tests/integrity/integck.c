@@ -1082,7 +1082,8 @@ static void file_truncate_info(struct file_info *file, int fd,
 	w->random_seed = MAX_RANDOM_SEED + 1;
 	file->raw_writes = w;
 
-	if (new_length > file->length)
+	if (args.verify_ops && !args.power_cut_mode &&
+	    new_length > file->length)
 		file_check_hole(file, fd, file->length,
 				new_length - file->length);
 
