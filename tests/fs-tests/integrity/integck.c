@@ -40,6 +40,7 @@
 #define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME "integck"
 #include "common.h"
+#include "libubi.h"
 
 /*
  * WARNING! This is a dirty hack! The symbols for static functions are not
@@ -88,6 +89,8 @@ static struct {
 	long repeat_cnt;
 	int power_cut_mode;
 	int verify_ops;
+	int reattach;
+	int mtdn;
 	int verbose;
 	const char *mount_point;
 } args = {
@@ -2937,6 +2940,8 @@ static const char optionsstr[] =
 "                     to, read the data back and verify it, every time a\n"
 "                     directory is created, check that it exists, etc\n"
 "-v, --verbose        be verbose about failures during power cut testing\n"
+"-m, --reattach=<mtd> re-attach mtd device number <mtd> (only if doing UBIFS power\n"
+"                     cut emulation testing)\n"
 "-h, -?, --help       print help message\n"
 "-V, --version        print program version\n";
 
@@ -2944,6 +2949,7 @@ static const struct option long_options[] = {
 	{ .name = "repeat",     .has_arg = 1, .flag = NULL, .val = 'n' },
 	{ .name = "power-cut",  .has_arg = 0, .flag = NULL, .val = 'p' },
 	{ .name = "verify-ops", .has_arg = 0, .flag = NULL, .val = 'e' },
+	{ .name = "reattach",   .has_arg = 1, .flag = NULL, .val = 'm' },
 	{ .name = "verbose",    .has_arg = 0, .flag = NULL, .val = 'v' },
 	{ .name = "help",       .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",    .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -2961,7 +2967,7 @@ static int parse_opts(int argc, char * const argv[])
 	while (1) {
 		int key, error = 0;
 
-		key = getopt_long(argc, argv, "n:pevVh?", long_options, NULL);
+		key = getopt_long(argc, argv, "n:pm:evVh?", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -2973,6 +2979,12 @@ static int parse_opts(int argc, char * const argv[])
 			break;
 		case 'p':
 			args.power_cut_mode = 1;
+			break;
+		case 'm':
+			args.mtdn = simple_strtoul(optarg, &error);
+			if (error || args.mtdn < 0)
+				return errmsg("bad mtd device number: \"%s\"", optarg);
+			args.reattach = 1;
 			break;
 		case 'e':
 			args.verify_ops = 1;
@@ -3002,6 +3014,9 @@ static int parse_opts(int argc, char * const argv[])
 		return errmsg("test file-system was not specified (use -h for help)");
 	else if (optind != argc - 1)
 		return errmsg("more then one test file-system specified (use -h for help)");
+
+	if (args.reattach && !args.power_cut_mode)
+		return errmsg("-m makes sense only together with -e");
 
 	if (args.power_cut_mode)
 		/* Repeat forever if we are in power cut testing mode */
@@ -3041,7 +3056,47 @@ static void free_fs_info(struct dir_info *dir)
 			assert(0);
 	}
 }
-/**
+
+/*
+ * Detach the MTD device from UBI and attach it back. This function is used
+ * whed performing emulated power cut testing andthe power cuts are amulated by
+ * UBI, not by UBIFS. In this case, to recover from the emulated power cut we
+ * have to unmount UBIFS and re-attach the MTD device.
+ */
+static int reattach(void)
+{
+	int err = 0;
+	libubi_t libubi;
+	struct ubi_attach_request req;
+
+	libubi = libubi_open();
+	if (!libubi) {
+		if (errno == 0)
+			return errmsg("UBI is not present in the system");
+		return sys_errmsg("cannot open libubi");
+	}
+
+	err = ubi_detach_mtd(libubi, "/dev/ubi_ctrl", args.mtdn);
+	if (err) {
+		sys_errmsg("cannot detach mtd%d", args.mtdn);
+		goto out;
+	}
+
+	req.dev_num = UBI_DEV_NUM_AUTO;
+	req.mtd_num = args.mtdn;
+	req.vid_hdr_offset = 0;
+	req.mtd_dev_node = NULL;
+
+	err = ubi_attach(libubi, "/dev/ubi_ctrl", &req);
+	if (err)
+		sys_errmsg("cannot attach mtd%d", args.mtdn);
+
+out:
+	libubi_close(libubi);
+	return err;
+}
+
+/*
  * Recover the tested file-system from an emulated power cut failure by
  * unmounting it and mounting it again.
  */
@@ -3066,6 +3121,9 @@ static int recover_tested_fs(void)
 	mntent = get_tested_fs_mntent();
 	if (mntent)
 		CHECK(umount(fsinfo.mount_point) != -1);
+
+	if (args.reattach)
+		CHECK(reattach() == 0);
 
 	if (!um_rorw) {
 		ret = mount(fsinfo.fsdev, fsinfo.mount_point,
