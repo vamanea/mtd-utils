@@ -72,7 +72,13 @@
 
 #define CHECK_ERRNO() do {                                                   \
 	if (args.power_cut_mode)                                             \
-		CHECK(errno == EROFS);                                       \
+		/*                                                           \
+		 * In case of emulated power cut failures the FS has to      \
+		 * return EROFS. But unfortunately, the Linux kernel         \
+		 * sometimes returns EIO to user-space anyway (when write-   \
+		 * back fails the return code is awayse EIO).                \
+		 */                                                          \
+		CHECK(errno == EROFS || errno == EIO);                       \
 	else                                                                 \
 		CHECK(0);                                                    \
 } while(0)
@@ -3248,7 +3254,7 @@ int main(int argc, char *argv[])
 		}
 
 		CHECK(ret);
-		CHECK(errno == EROFS);
+		CHECK(errno == EROFS || errno == EIO);
 
 		free_test_data();
 
