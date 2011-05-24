@@ -1701,7 +1701,10 @@ static void dir_check(struct dir_info *dir)
 	/* Go through directory on file system checking entries match */
 	path = dir_path(dir->parent, dir->entry->name);
 	d = opendir(path);
-	CHECK(d != NULL);
+	if (!d) {
+		errmsg("cannot open directory %s", path);
+		CHECK(0);
+	}
 	for (;;) {
 		errno = 0;
 		ent = readdir(d);
