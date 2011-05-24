@@ -2212,6 +2212,30 @@ static int operate_on_entry(struct dir_entry_info *entry)
 	return ret;
 }
 
+/* Synchronize a directory */
+static int sync_directory(const char *path)
+{
+	int fd, ret;
+
+	fd = open(path, O_RDONLY);
+	if (fd == -1) {
+		pcv("cannot open directory %s", path);
+		return -1;
+	}
+
+	if (random_no(100) >= 50) {
+		ret = fsync(fd);
+		if (ret)
+			pcv("directory fsync failed for %s", path);
+	} else {
+		ret = fdatasync(fd);
+		if (ret)
+			pcv("directory fdatasync failed for %s", path);
+	}
+	close(fd);
+	return ret;
+}
+
 /*
  * Randomly select something to do with a directory.
  */
@@ -2253,26 +2277,9 @@ static int operate_on_dir(struct dir_info *dir)
 	/* Synchronize the directory sometimes */
 	if (random_no(100) >= 99) {
 		char *path;
-		int fd;
 
 		path = dir_path(dir->parent, dir->entry->name);
-		fd = open(path, O_RDONLY);
-		if (fd == -1) {
-			pcv("cannot open directory %s", path);
-			free(path);
-			return -1;
-		}
-
-		if (random_no(100) >= 50) {
-			ret = fsync(fd);
-			if (ret)
-				pcv("directory fsync failed for %s", path);
-		} else {
-			ret = fdatasync(fd);
-			if (ret)
-				pcv("directory fdatasync failed for %s", path);
-		}
-		close(fd);
+		ret = sync_directory(path);
 		free(path);
 		if (!ret)
 			dir->clean = 1;
