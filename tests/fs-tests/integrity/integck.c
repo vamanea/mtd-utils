@@ -2683,7 +2683,10 @@ static void read_all(const char *dir_name)
 	assert(args.power_cut_mode);
 
 	dir = opendir(dir_name);
-	CHECK(dir != NULL);
+	if (!dir) {
+		errmsg("cannot open %s", dir_name);
+		CHECK(0);
+	}
 	CHECK(getcwd(buf, PATH_MAX) != NULL);
 	CHECK(chdir(dir_name) == 0);
 
@@ -2723,12 +2726,11 @@ static int integck(void)
 	long rpt;
 
 	CHECK(chdir(fsinfo.mount_point) == 0);
+	assert(!top_dir);
 
 	/* Create our top directory */
 	if (chdir(fsinfo.test_dir) == 0) {
 		CHECK(chdir("..") == 0);
-		if (args.power_cut_mode)
-			read_all(fsinfo.test_dir);
 		ret = rm_minus_rf_dir(fsinfo.test_dir);
 		if (ret)
 			return -1;
@@ -2739,6 +2741,14 @@ static int integck(void)
 		pcv("cannot create top test directory %s", fsinfo.test_dir);
 		return -1;
 	}
+
+	ret = sync_directory(fsinfo.test_dir);
+	if (ret)
+		return -1;
+
+	top_dir = zalloc(sizeof(struct dir_info));
+	top_dir->entry = zalloc(sizeof(struct dir_entry_info));
+	top_dir->entry->name = dup_string(fsinfo.test_dir);
 
 	ret = create_test_data();
 	if (ret)
@@ -3196,11 +3206,13 @@ static int recover_tested_fs(void)
 
 static void free_test_data(void)
 {
-	close_open_files();
-	free_fs_info(top_dir);
-	free(top_dir->entry->name);
-	free(top_dir->entry);
+	if (top_dir) {
+		free_fs_info(top_dir);
+		free(top_dir->entry->name);
+		free(top_dir->entry);
 		free(top_dir);
+		top_dir = NULL;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -3250,11 +3262,8 @@ int main(int argc, char *argv[])
 
 	/* Do the actual test */
 	for (rpt = 0; ; rpt++) {
-		top_dir = zalloc(sizeof(struct dir_info));
-		top_dir->entry = zalloc(sizeof(struct dir_entry_info));
-		top_dir->entry->name = dup_string(fsinfo.test_dir);
-
 		ret = integck();
+
 		/*
 		 * Iterate forever only in case of power-cut emulation testing.
 		 */
@@ -3266,7 +3275,7 @@ int main(int argc, char *argv[])
 		CHECK(ret);
 		CHECK(errno == EROFS || errno == EIO);
 
-		free_test_data();
+		close_open_files();
 
 		do {
 			ret = recover_tested_fs();
@@ -3280,6 +3289,17 @@ int main(int argc, char *argv[])
 			 */
 		} while (ret);
 
+		CHECK(chdir(fsinfo.mount_point) == 0);
+
+		/* Make sure everything is readable after an emulated power cut */
+		if (top_dir) {
+			/* Check the clean data */
+			check_tested_fs();
+			read_all(fsinfo.test_dir);
+		}
+
+		free_test_data();
+
 		/*
 		 * The file-system became read-only and we are in power cut
 		 * testing mode. Re-mount the file-system and re-start the
@@ -3290,6 +3310,7 @@ int main(int argc, char *argv[])
 
 	}
 
+	close_open_files();
 	free_test_data();
 
 out_free:
