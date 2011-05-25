@@ -84,10 +84,15 @@
 } while(0)
 
 #define pcv(fmt, ...) do {                                                   \
-	if (!args.power_cut_mode || (args.power_cut_mode && args.verbose))   \
+	if (!args.power_cut_mode || args.verbose)                            \
 		normsg(fmt " (line %d, error %d (%s))",                      \
 		       ##__VA_ARGS__, __LINE__, errno, strerror(errno));     \
 	CHECK_ERRNO();                                                       \
+} while(0)
+
+#define v(fmt, ...) do {                                               \
+	if (args.verbose)                                                    \
+		normsg(fmt " (line %d)", ##__VA_ARGS__, __LINE__);           \
 } while(0)
 
 /* The variables below are set by command line arguments */
@@ -251,6 +256,7 @@ static void check_failed(const char *cond, const char *func, const char *file,
 	void *addresses[128];
 
 	fflush(stdout);
+	fflush(stderr);
 	errmsg("condition '%s' failed in %s() at %s:%d",
 	       cond, func, file, line);
 	normsg("error %d (%s)", error, strerror(error));
@@ -553,6 +559,7 @@ static int dir_new(struct dir_info *parent, const char *name)
 	assert(parent);
 
 	path = dir_path(parent, name);
+	v("creating dir %s", path);
 	if (mkdir(path, 0777) != 0) {
 		if (errno == ENOSPC) {
 			full = 1;
@@ -635,6 +642,7 @@ static int file_new(struct dir_info *parent, const char *name)
 
 	path = dir_path(parent, name);
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+	v("creating file %s", path);
 	fd = open(path, O_CREAT | O_EXCL | O_RDWR, mode);
 	if (fd == -1) {
 		if (errno == ENOSPC) {
@@ -678,6 +686,7 @@ static int link_new(struct dir_info *parent, const char *name,
 	if (args.verify_ops)
 		CHECK(lstat(target, &st1) == 0);
 
+	v("creating hardlink %s ---> %s", path, target);
 	ret = link(target, path);
 	if (ret != 0) {
 		if (errno == ENOSPC) {
@@ -894,6 +903,8 @@ static ssize_t file_write_data(struct file_info *file, int fd, off_t offset,
 	remains = size;
 	actual = 0;
 	written = IO_BUFFER_SIZE;
+	v("write %zd bytes, offset %llu, file %s",
+	  size, (unsigned long long)offset, get_file_name(file));
 	while (remains) {
 		/* Fill up buffer with random data */
 		if (written < IO_BUFFER_SIZE) {
@@ -1284,10 +1295,12 @@ static int file_write(struct file_info *file, int fd)
 	/* Sync sometimes */
 	if (random_no(100) >= 99) {
 		if (random_no(100) >= 50) {
+			v("fsyncing file %s", get_file_name(file));
 			ret = fsync(fd);
 			if (ret)
 				pcv("fsync failed for %s", get_file_name(file));
 		} else {
+			v("fdatasyncing file %s", get_file_name(file));
 			ret = fdatasync(fd);
 			if (ret)
 				pcv("fdatasync failed for %s",
@@ -1552,9 +1565,12 @@ static void file_check(struct file_info *file, int fd)
 		open_and_close = 1;
 		assert(file->links);
 		path = dir_path(file->links->parent, get_file_name(file));
+		v("checking file %s", path);
 		fd = open(path, O_RDONLY);
 		CHECK(fd != -1);
-	}
+	} else
+		v("checking file %s", get_file_name(file));
+
 	/* Check length */
 	pos = lseek(fd, 0, SEEK_END);
 	if (pos != file->length) {
@@ -1619,14 +1635,19 @@ void symlink_check(const struct symlink_info *symlink)
 		return;
 
 	path = dir_path(symlink->entry->parent, symlink->entry->name);
+
+	v("checking symlink %s", path);
 	CHECK(lstat(path, &st1) == 0);
 	CHECK(S_ISLNK(st1.st_mode));
 	CHECK(st1.st_nlink == 1);
+
 	len = readlink(path, buf, 8192);
+
 	CHECK(len > 0 && len < 8192);
 	buf[len] = '\0';
 	CHECK(strlen(symlink->target_pathname) == len);
 	CHECK(strncmp(symlink->target_pathname, buf, len) == 0);
+
 	/* Check symlink points where it should */
 	ret1 = stat(path, &st1);
 	target = symlink_path(path, symlink->target_pathname);
@@ -1700,11 +1721,23 @@ static void dir_check(struct dir_info *dir)
 
 	/* Go through directory on file system checking entries match */
 	path = dir_path(dir->parent, dir->entry->name);
+
+	v("checking dir %s", path);
+
 	d = opendir(path);
 	if (!d) {
+		if (args.power_cut_mode && !dir->clean)
+			/*
+			 * We are doing power cut testing and the directory
+			 * was not synchronized, which means it might not
+			 * exist.
+			 */
+			return;
+
 		errmsg("cannot open directory %s", path);
 		CHECK(0);
 	}
+
 	for (;;) {
 		errno = 0;
 		ent = readdir(d);
@@ -1745,7 +1778,12 @@ static void dir_check(struct dir_info *dir)
 	}
 
 	CHECK(stat(path, &st) == 0);
-	CHECK(link_count == st.st_nlink);
+
+	if (link_count != st.st_nlink) {
+		errmsg("calculated link count %d, FS reports %d for dir %s",
+		       link_count, (int)st.st_nlink, path);
+		CHECK(0);
+	}
 
 	free(entry_array);
 	free(path);
@@ -1939,6 +1977,12 @@ static int rename_entry(struct dir_entry_info *entry)
 	if (args.verify_ops)
 		CHECK(lstat(path, &st1) == 0);
 
+	if (rename_entry)
+		v("moving %s (type %c) inoto %s (type %c)",
+		  path, entry->type, to, rename_entry->type);
+	else
+		v("renaming %s (type %c) to %s", path, entry->type, to);
+
 	ret = rename(path, to);
 	if (ret != 0) {
 		ret = 0;
@@ -2080,6 +2124,7 @@ static int symlink_new(struct dir_info *dir, const char *nm)
 	 */
 	path = dir_path(dir, name);
 	target = pick_symlink_target(path);
+	v("creating symlink %s ---> %s", path, target);
 	if (symlink(target, path) != 0) {
 		int ret = 0;
 
@@ -2224,10 +2269,12 @@ static int sync_directory(const char *path)
 	}
 
 	if (random_no(100) >= 50) {
+		v("fsyncing dir %s", path);
 		ret = fsync(fd);
 		if (ret)
 			pcv("directory fsync failed for %s", path);
 	} else {
+		v("fdatasyncing dir %s", path);
 		ret = fdatasync(fd);
 		if (ret)
 			pcv("directory fdatasync failed for %s", path);
@@ -2459,6 +2506,7 @@ static int rm_minus_rf_dir(const char *dir_name)
 	struct dirent *dent;
 	char buf[PATH_MAX];
 
+	v("removing all files");
 	dir = opendir(dir_name);
 	CHECK(dir != NULL);
 	CHECK(getcwd(buf, PATH_MAX) != NULL);
@@ -2535,6 +2583,7 @@ static int remount_tested_fs(void)
 	unsigned int rorw1, um, um_ro, um_rorw, rorw2;
 
 	CHECK(chdir("/") == 0);
+	v("remounting file-system");
 
 	/* Choose what to do */
 	rorw1 = random_no(2);
@@ -2642,6 +2691,7 @@ static int remount_tested_fs(void)
 
 static void check_tested_fs(void)
 {
+	v("checking the file-sytem");
 	check_run_no += 1;
 	dir_check(top_dir);
 	check_deleted_files();
@@ -2681,6 +2731,7 @@ static void read_all(const char *dir_name)
 	char buf[PATH_MAX];
 
 	assert(args.power_cut_mode);
+	v("reading all files");
 
 	dir = opendir(dir_name);
 	if (!dir) {
@@ -2736,6 +2787,7 @@ static int integck(void)
 			return -1;
 	}
 
+	v("creating top dir %s", fsinfo.test_dir);
 	ret = mkdir(fsinfo.test_dir, 0777);
 	if (ret) {
 		pcv("cannot create top test directory %s", fsinfo.test_dir);
@@ -2965,7 +3017,7 @@ static const char optionsstr[] =
 "-e, --verify-ops     verify all operations, e.g., every time a file is written\n"
 "                     to, read the data back and verify it, every time a\n"
 "                     directory is created, check that it exists, etc\n"
-"-v, --verbose        be verbose about failures during power cut testing\n"
+"-v, --verbose        be verbose\n"
 "-m, --reattach=<mtd> re-attach mtd device number <mtd> (only if doing UBIFS power\n"
 "                     cut emulation testing)\n"
 "-h, -?, --help       print help message\n"
