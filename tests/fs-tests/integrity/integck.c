@@ -1702,65 +1702,54 @@ static void dir_check(struct dir_info *dir)
 	int link_count = 2; /* Parent and dot */
 	struct stat st;
 
-	/* Create an array of entries */
-	sz = sizeof(struct dir_entry_info *);
-	n = dir->number_of_entries;
-	entry_array = malloc(sz * n);
-	CHECK(entry_array != NULL);
-
-	entry = dir->first;
-	p = entry_array;
-	while (entry) {
-		*p++ = entry;
-		entry->checked = 0;
-		entry = entry->next;
-	}
-
-	/* Sort it by name */
-	qsort(entry_array, n, sz, sort_comp);
-
-	/* Go through directory on file system checking entries match */
 	path = dir_path(dir->parent, dir->entry->name);
 
-	v("checking dir %s", path);
+	if (!args.power_cut_mode || dir->clean) {
+		v("checking dir %s", path);
 
-	d = opendir(path);
-	if (!d) {
-		if (args.power_cut_mode && !dir->clean)
-			/*
-			 * We are doing power cut testing and the directory
-			 * was not synchronized, which means it might not
-			 * exist.
-			 */
-			return;
+		/* Create an array of entries */
+		sz = sizeof(struct dir_entry_info *);
+		n = dir->number_of_entries;
+		entry_array = malloc(sz * n);
+		CHECK(entry_array != NULL);
 
-		errmsg("cannot open directory %s", path);
-		CHECK(0);
-	}
-
-	for (;;) {
-		errno = 0;
-		ent = readdir(d);
-		if (ent) {
-			if (strcmp(".",ent->d_name) != 0 &&
-					strcmp("..",ent->d_name) != 0) {
-				dir_entry_check(entry_array, n, ent);
-				checked += 1;
-			}
-		} else {
-			CHECK(errno == 0);
-			break;
+		entry = dir->first;
+		p = entry_array;
+		while (entry) {
+			*p++ = entry;
+			entry->checked = 0;
+			entry = entry->next;
 		}
-	}
-	CHECK(closedir(d) == 0);
 
-	/*
-	 * In power cut mode the file-system may miss some directory entries
-	 * because it is possible that they have not reached the media by the
-	 * time of the emulated power cut.
-	 */
-	if (!args.power_cut_mode || dir->clean)
+		/* Sort it by name */
+		qsort(entry_array, n, sz, sort_comp);
+
+		/* Go through directory on file system checking entries match */
+		d = opendir(path);
+		if (!d) {
+			errmsg("cannot open directory %s", path);
+			CHECK(0);
+		}
+
+		for (;;) {
+			errno = 0;
+			ent = readdir(d);
+			if (ent) {
+				if (strcmp(".",ent->d_name) != 0 &&
+						strcmp("..",ent->d_name) != 0) {
+					dir_entry_check(entry_array, n, ent);
+					checked += 1;
+				}
+			} else {
+				CHECK(errno == 0);
+				break;
+			}
+		}
+		free(entry_array);
+		CHECK(closedir(d) == 0);
+
 		CHECK(checked == dir->number_of_entries);
+	}
 
 	/* Now check each entry */
 	entry = dir->first;
@@ -1777,15 +1766,15 @@ static void dir_check(struct dir_info *dir)
 		entry = entry->next;
 	}
 
-	CHECK(stat(path, &st) == 0);
-
-	if (link_count != st.st_nlink) {
-		errmsg("calculated link count %d, FS reports %d for dir %s",
-		       link_count, (int)st.st_nlink, path);
-		CHECK(0);
+	if (!args.power_cut_mode || dir->clean) {
+		CHECK(stat(path, &st) == 0);
+		if (link_count != st.st_nlink) {
+			errmsg("calculated link count %d, FS reports %d for dir %s",
+			       link_count, (int)st.st_nlink, path);
+			CHECK(0);
+		}
 	}
 
-	free(entry_array);
 	free(path);
 }
 
