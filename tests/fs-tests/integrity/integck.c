@@ -70,27 +70,22 @@
 		check_failed(stringify(cond), __func__, __FILE__, __LINE__); \
 } while(0)
 
-#define CHECK_ERRNO() do {                                                   \
-	if (args.power_cut_mode)                                             \
-		/*                                                           \
-		 * In case of emulated power cut failures the FS has to      \
-		 * return EROFS. But unfortunately, the Linux kernel         \
-		 * sometimes returns EIO to user-space anyway (when write-   \
-		 * back fails the return code is awayse EIO).                \
-		 */                                                          \
-		CHECK(errno == EROFS || errno == EIO);                       \
-	else                                                                 \
-		CHECK(0);                                                    \
-} while(0)
-
+/*
+ * In case of emulated power cut failures the FS has to return EROFS. But
+ * unfortunately, the Linux kernel sometimes returns EIO to user-space anyway
+ * (when write-back fails the return code is awayse EIO).
+ */
 #define pcv(fmt, ...) do {                                                   \
-	if (!args.power_cut_mode || args.verbose)                            \
+	int __err = 1;                                                       \
+	if (args.power_cut_mode && (errno == EROFS || errno == EIO))         \
+		__err = 0;                                                   \
+	if (!args.power_cut_mode || args.verbose || __err)                   \
 		normsg(fmt " (line %d, error %d (%s))",                      \
 		       ##__VA_ARGS__, __LINE__, errno, strerror(errno));     \
-	CHECK_ERRNO();                                                       \
+	CHECK(!__err);                                                       \
 } while(0)
 
-#define v(fmt, ...) do {                                               \
+#define v(fmt, ...) do {                                                     \
 	if (args.verbose)                                                    \
 		normsg(fmt " (line %d)", ##__VA_ARGS__, __LINE__);           \
 } while(0)
