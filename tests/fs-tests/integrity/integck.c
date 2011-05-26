@@ -633,7 +633,6 @@ static int dir_remove(struct dir_info *dir)
 
 static int file_new(struct dir_info *parent, const char *name)
 {
-	struct file_info *file;
 	char *path;
 	mode_t mode;
 	int fd;
@@ -661,9 +660,10 @@ static int file_new(struct dir_info *parent, const char *name)
 		CHECK(lstat(path, &st) == 0);
 		CHECK(S_ISREG(st.st_mode));
 	}
-	file = add_dir_entry(parent, 'f', name, NULL);
-	add_fd(file, fd);
 
+	add_dir_entry(parent, 'f', name, NULL);
+
+	close(fd);
 	free(path);
 	return 0;
 }
