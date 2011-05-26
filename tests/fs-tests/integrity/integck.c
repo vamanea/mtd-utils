@@ -1562,7 +1562,10 @@ static void file_check(struct file_info *file, int fd)
 		path = dir_path(file->links->parent, get_file_name(file));
 		v("checking file %s", path);
 		fd = open(path, O_RDONLY);
-		CHECK(fd != -1);
+		if (fd == -1) {
+			sys_errmsg("cannot open file %s", path);
+			CHECK(0);
+		}
 	} else
 		v("checking file %s", get_file_name(file));
 
@@ -1722,7 +1725,7 @@ static void dir_check(struct dir_info *dir)
 		/* Go through directory on file system checking entries match */
 		d = opendir(path);
 		if (!d) {
-			errmsg("cannot open directory %s", path);
+			sys_errmsg("cannot open directory %s", path);
 			CHECK(0);
 		}
 
