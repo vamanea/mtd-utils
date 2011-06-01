@@ -185,7 +185,7 @@ static const char *helptext =
 "                         mkfs.ubifs use zlib instead of LZO (default 20%)\n"
 "-f, --fanout=NUM         fanout NUM (default: 8)\n"
 "-F, --space-fixup        file-system free space has to be fixed up on first mount\n"
-"                         (requires kernel version 2.6.40 or greater)\n"
+"                         (requires kernel version 3.0 or greater)\n"
 "-k, --keyhash=TYPE       key hash type - \"r5\" or \"test\" (default: \"r5\")\n"
 "-p, --orph-lebs=COUNT    count of erase blocks for orphans (default: 1)\n"
 "-D, --devtable=FILE      use device table FILE\n"
@@ -233,7 +233,7 @@ static const char *helptext =
 "when flashing the image and the second time when UBIFS is mounted and writes useful\n"
 "data there. A proper UBI-aware flasher should skip such NAND pages, though. Note, this\n"
 "flag may make the first mount very slow, because the \"free space fixup\" procedure\n"
-"takes time. This feature is supported by the Linux kernel starting from version 2.6.40.\n";
+"takes time. This feature is supported by the Linux kernel starting from version 3.0.\n";
 
 /**
  * make_path - make a path name from a directory and a name.
