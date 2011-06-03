@@ -50,6 +50,7 @@ static void display_help(void)
 "-a         --forcebinary        Force printing of binary data to tty\n"
 "-c         --canonicalprint     Print canonical Hex+ASCII dump\n"
 "-f file    --file=file          Dump to file\n"
+"-k         --skipbad            Skip over bad blocks (see below)\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
 "-N         --noskipbad          Read without bad block skipping\n"
@@ -57,7 +58,14 @@ static void display_help(void)
 "-b         --omitbad            Omit bad blocks from the dump\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
-"-s addr    --startaddress=addr  Start address\n",
+"-s addr    --startaddress=addr  Start address\n"
+"\n"
+"Notes on --omitbad and --skipbad:\n"
+"  With either option, we stop dumping data when we encounter a bad block\n"
+"  and resume dumping at the next good block. However, with --omitbad, we\n"
+"  count the bad block as part of the total dump length, whereas with\n"
+"  --skipbad, the bad block is 'skipped,' that is, not counted toward the\n"
+"  total dump length.\n",
 	PROGRAM_NAME);
 	exit(EXIT_SUCCESS);
 }
@@ -90,6 +98,7 @@ static bool			omitbad = false;
 static bool			quiet = false;		// suppress diagnostic output
 static bool			canonical = false;	// print nice + ascii
 static bool			forcebinary = false;	// force printing binary to tty
+static bool			skipbad = false;	// skip over bad blocks
 
 static void process_options(int argc, char * const argv[])
 {
@@ -97,7 +106,7 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "bs:f:l:opqnNca";
+		static const char *short_options = "bs:f:l:opqnNcak";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -111,6 +120,7 @@ static void process_options(int argc, char * const argv[])
 			{"length", required_argument, 0, 'l'},
 			{"noecc", no_argument, 0, 'n'},
 			{"noskipbad", no_argument, 0, 'N'},
+			{"skipbad", no_argument, 0, 'k'},
 			{"quiet", no_argument, 0, 'q'},
 			{0, 0, 0, 0},
 		};
@@ -167,6 +177,9 @@ static void process_options(int argc, char * const argv[])
 			case 'N':
 				noskipbad = true;
 				break;
+			case 'k':
+				skipbad = true;
+				break;
 			case '?':
 				error++;
 				break;
@@ -190,6 +203,19 @@ static void process_options(int argc, char * const argv[])
 		fprintf(stderr, "The forcebinary and pretty print options are\n"
 				"mutually-exclusive. Choose one or the "
 				"other.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (noskipbad && skipbad) {
+		fprintf(stderr, "The noskipbad and skipbad options are "
+				"mutually-exclusive.\n"
+				"Choose one or the other.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (omitbad && skipbad) {
+		fprintf(stderr, "The omitbad and skipbad options are mutually-"
+				"exclusive.\nChoose one or the other.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -403,6 +429,14 @@ int main(int argc, char * const argv[])
 		}
 
 		if (badblock) {
+			/* skip bad block, increase end_addr */
+			if (skipbad) {
+				end_addr += mtd.eb_size;
+				ofs += mtd.eb_size - bs;
+				if (end_addr > mtd.size)
+					end_addr = mtd.size;
+				continue;
+			}
 			if (omitbad)
 				continue;
 			memset(readbuf, 0xff, bs);
