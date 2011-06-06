@@ -14,44 +14,39 @@
 
 #include <mtd/mtd-user.h>
 
-int main(int argc,char *argv[])
+int main(int argc, char *argv[])
 {
 	int regcount;
-	int Fd;
+	int fd;
 
-	if (1 >= argc)
-	{
-		fprintf(stderr,"Usage: %s device\n", PROGRAM_NAME);
+	if (1 >= argc) {
+		fprintf(stderr, "Usage: %s device\n", PROGRAM_NAME);
 		return 16;
 	}
 
-	// Open and size the device
-	if ((Fd = open(argv[1],O_RDONLY)) < 0)
-	{
-		fprintf(stderr,"File open error\n");
+	/* Open and size the device */
+	fd = open(argv[1], O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "File open error\n");
 		return 8;
 	}
 
-	if (ioctl(Fd,MEMGETREGIONCOUNT,&regcount) == 0)
-	{
+	if (ioctl(fd, MEMGETREGIONCOUNT, &regcount) == 0) {
 		int i;
 		region_info_t reginfo;
 		printf("Device %s has %d erase regions\n", argv[1], regcount);
-		for (i = 0; i < regcount; i++)
-		{
+		for (i = 0; i < regcount; i++) {
 			reginfo.regionindex = i;
-			if(ioctl(Fd, MEMGETREGIONINFO, &reginfo) == 0)
-			{
+			if (ioctl(fd, MEMGETREGIONINFO, &reginfo) == 0) {
 				printf("Region %d is at 0x%x with size 0x%x and "
 						"has 0x%x blocks\n", i, reginfo.offset,
 						reginfo.erasesize, reginfo.numblocks);
-			}
-			else
-			{
+			} else {
 				printf("Strange can not read region %d from a %d region device\n",
 						i, regcount);
 			}
 		}
 	}
+
 	return 0;
 }
