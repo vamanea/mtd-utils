@@ -12,24 +12,31 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 
+#include "common.h"
 #include <mtd/mtd-user.h>
+
+static void usage(int status)
+{
+	fprintf(status ? stderr : stdout,
+		"Usage: %s <device>\n",
+		PROGRAM_NAME);
+	exit(status);
+}
 
 int main(int argc, char *argv[])
 {
 	int regcount;
 	int fd;
 
-	if (1 >= argc) {
-		fprintf(stderr, "Usage: %s device\n", PROGRAM_NAME);
-		return 16;
-	}
+	if (argc < 2)
+		usage(1);
+	if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
+		usage(0);
 
 	/* Open and size the device */
 	fd = open(argv[1], O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "File open error\n");
-		return 8;
-	}
+	if (fd < 0)
+		sys_errmsg_die("could not open: %s", argv[1]);
 
 	if (ioctl(fd, MEMGETREGIONCOUNT, &regcount) == 0) {
 		int i;
@@ -42,8 +49,8 @@ int main(int argc, char *argv[])
 						"has 0x%x blocks\n", i, reginfo.offset,
 						reginfo.erasesize, reginfo.numblocks);
 			} else {
-				printf("Strange can not read region %d from a %d region device\n",
-						i, regcount);
+				warnmsg("can not read region %d from a %d region device",
+					i, regcount);
 			}
 		}
 	}
