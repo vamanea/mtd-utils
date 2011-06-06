@@ -1,11 +1,17 @@
 /*
- * FILE flash_unlock.c
+ * flash_{lock,unlock}
  *
- * This utility unlock all sectors of flash device.
- *
+ * utilities for locking/unlocking sectors of flash devices
  */
 
+#ifndef PROGRAM_NAME
 #define PROGRAM_NAME "flash_unlock"
+#define FLASH_MSG    "unlock"
+#define FLASH_UNLOCK 1
+#else
+#define FLASH_MSG    "lock"
+#define FLASH_UNLOCK 0
+#endif
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -20,7 +26,7 @@
 
 int main(int argc, char *argv[])
 {
-	int fd;
+	int fd, request;
 	struct mtd_info_user mtdInfo;
 	struct erase_info_user mtdLockInfo;
 	int count;
@@ -69,12 +75,14 @@ int main(int argc, char *argv[])
 		mtdLockInfo.length = mtdInfo.size - mtdInfo.erasesize;
 	}
 	if (mtdLockInfo.start + mtdLockInfo.length > mtdInfo.size) {
-		fprintf(stderr, "unlock range is more than device supports\n");
+		fprintf(stderr, "%s range is more than device supports\n", FLASH_MSG);
 		exit(1);
 	}
 
-	if (ioctl(fd, MEMUNLOCK, &mtdLockInfo)) {
-		fprintf(stderr, "Could not unlock MTD device: %s\n", argv[1]);
+	request = FLASH_UNLOCK ? MEMUNLOCK : MEMLOCK;
+	if (ioctl(fd, request, &mtdLockInfo)) {
+		fprintf(stderr, "Could not %s MTD device: %s\n",
+			FLASH_MSG, argv[1]);
 		close(fd);
 		exit(1);
 	}
