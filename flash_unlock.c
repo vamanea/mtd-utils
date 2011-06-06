@@ -71,11 +71,11 @@ int main(int argc, char *argv[])
 	if (argc > 3) {
 		count = strtol(argv[3], NULL, 0);
 		if (count == -1)
-			mtdLockInfo.length = mtdInfo.size - mtdInfo.erasesize;
+			mtdLockInfo.length = mtdInfo.size;
 		else
 			mtdLockInfo.length = mtdInfo.erasesize * count;
 	} else
-		mtdLockInfo.length = mtdInfo.size - mtdInfo.erasesize;
+		mtdLockInfo.length = mtdInfo.size;
 	if (mtdLockInfo.start + mtdLockInfo.length > mtdInfo.size)
 		errmsg_die("range is more than device supports: %#x + %#x > %#x",
 			mtdLockInfo.start, mtdLockInfo.length, mtdInfo.size);
