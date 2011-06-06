@@ -18,39 +18,45 @@
 static void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
-		"Usage: %s <device>\n",
+		"Usage: %s <device> [devices]\n",
 		PROGRAM_NAME);
 	exit(status);
 }
 
 int main(int argc, char *argv[])
 {
-	int regcount;
-	int fd;
+	int fd, i, regcount;
 
 	if (argc < 2)
 		usage(1);
 	if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
 		usage(0);
 
-	/* Open and size the device */
-	fd = open(argv[1], O_RDONLY);
-	if (fd < 0)
-		sys_errmsg_die("could not open: %s", argv[1]);
-
-	if (ioctl(fd, MEMGETREGIONCOUNT, &regcount) == 0) {
-		int i;
+	for (i = 1; i < argc; ++i) {
+		const char *dev = argv[i];
+		int r;
 		region_info_t reginfo;
-		printf("Device %s has %d erase regions\n", argv[1], regcount);
-		for (i = 0; i < regcount; i++) {
-			reginfo.regionindex = i;
+
+		/* Open and size the device */
+		fd = open(dev, O_RDONLY);
+		if (fd < 0) {
+			sys_errmsg("could not open: %s", dev);
+			continue;
+		}
+
+		if (ioctl(fd, MEMGETREGIONCOUNT, &regcount))
+			continue;
+
+		printf("%s: %d erase regions\n", dev, regcount);
+		for (r = 0; r < regcount; ++r) {
+			reginfo.regionindex = r;
 			if (ioctl(fd, MEMGETREGIONINFO, &reginfo) == 0) {
 				printf("Region %d is at 0x%x with size 0x%x and "
-						"has 0x%x blocks\n", i, reginfo.offset,
+						"has 0x%x blocks\n", r, reginfo.offset,
 						reginfo.erasesize, reginfo.numblocks);
 			} else {
 				warnmsg("can not read region %d from a %d region device",
-					i, regcount);
+					r, regcount);
 			}
 		}
 	}
