@@ -6,6 +6,7 @@
 # Normal rules
 #
 .*
+*.gdb
 *.o
 *.a
 *.s
