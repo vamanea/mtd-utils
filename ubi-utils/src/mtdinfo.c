@@ -56,6 +56,7 @@ static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
 
 static const char optionsstr[] =
 "-m, --mtdn=<MTD device number>  MTD device number to get information about\n"
+"                                (deprecated option, will be removed, do not use)\n"
 "-u, --ubi-info                  print what would UBI layout be if it was put\n"
 "                                on this MTD device\n"
 "-a, --all                       print information about all MTD devices\n"
@@ -106,7 +107,7 @@ static int parse_opt(int argc, char * const argv[])
 			args.mtdn = simple_strtoul(optarg, &error);
 			if (error || args.mtdn < 0)
 				return errmsg("bad MTD device number: \"%s\"", optarg);
-
+			warnmsg("-m/--mtdn is depecated, will be removed in mtd-utils-1.4.6");
 			break;
 
 		case 'h':

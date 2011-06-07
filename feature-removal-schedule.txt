@@ -20,11 +20,16 @@ neither --squash-rino-perm nor --nosquash-rino-perm were used,
 mkfs.ubifs printed a warning. This was introduced in mtd-utils-1.4.0 (13 Sep 2010).
 
 Now we have removed a warning and made --nosquash-rino-perm to be the
-default. Also, both options are declared depricated, so users should try
+default. Also, both options are declared deprecated, so users should try
 to stop using them.
 
 The further step is to remove both of them.
 
 ---------------------------
-2.
+2. Kill -m parameter of mtdinfo
+
+We cannot assume that mtd device names follow the "/dev/mtd%d" pattern,
+because it is up to udev rules to name the devices. So we are removing
+the -m option. For now, we just have a warning, but the option will be
+removed in release 1.4.6.
 ---------------------------
