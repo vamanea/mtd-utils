@@ -111,13 +111,13 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'h':
-			fprintf(stderr, "%s\n\n", doc);
-			fprintf(stderr, "%s\n\n", usage);
-			fprintf(stderr, "%s\n", optionsstr);
+			printf("%s\n\n", doc);
+			printf("%s\n\n", usage);
+			printf("%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			printf("%s\n", PROGRAM_VERSION);
 			exit(EXIT_SUCCESS);
 
 		case ':':

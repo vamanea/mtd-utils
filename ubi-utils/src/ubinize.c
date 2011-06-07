@@ -227,10 +227,10 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'h':
-			ubiutils_print_text(stderr, doc, 80);
-			fprintf(stderr, "\n%s\n\n", ini_doc);
-			fprintf(stderr, "%s\n", usage);
-			fprintf(stderr, "%s\n", optionsstr);
+			ubiutils_print_text(stdout, doc, 80);
+			printf("\n%s\n\n", ini_doc);
+			printf("%s\n\n", usage);
+			printf("%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
 
 		case 'V':
