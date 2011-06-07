@@ -883,6 +883,33 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 	return 0;
 }
 
+int mtd_regioninfo(int fd, int regidx, struct region_info_user *reginfo)
+{
+	int ret;
+
+	if (regidx < 0) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	ret = ioctl(fd, MEMGETREGIONINFO, reginfo);
+	if (ret < 0)
+		return sys_errmsg("%s ioctl failed for erase region %d",
+			"MEMGETREGIONINFO", regidx);
+
+	return 0;
+}
+
+int mtd_islocked(const struct mtd_dev_info *mtd, int fd, int eb)
+{
+	erase_info_t ei;
+
+	ei.start = eb * mtd->eb_size;
+	ei.length = mtd->eb_size;
+
+	return ioctl(fd, MEMISLOCKED, &ei);
+}
+
 /* Patterns to write to a physical eraseblock when torturing it */
 static uint8_t patterns[] = {0xa5, 0x5a, 0x0};
 

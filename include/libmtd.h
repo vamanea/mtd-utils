@@ -35,6 +35,9 @@ extern "C" {
 /* MTD library descriptor */
 typedef void * libmtd_t;
 
+/* Forward decls */
+struct region_info_user;
+
 /**
  * @mtd_dev_cnt: count of MTD devices in system
  * @lowest_mtd_num: lowest MTD device number in system
@@ -172,6 +175,31 @@ int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb);
  * %0 in case of success and %-1 in case of failure.
  */
 int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb);
+
+/**
+ * mtd_regioninfo - get information about an erase region.
+ * @fd: MTD device node file descriptor
+ * @regidx: index of region to look up
+ * @reginfo: the region information is returned here
+ *
+ * This function gets information about an erase region defined by the
+ * @regidx index and saves this information in the @reginfo object.
+ * Returns %0 in case of success and %-1 in case of failure. If the
+ * @regidx is not valid or unavailable, errno is set to @ENODEV.
+ */
+int mtd_regioninfo(int fd, int regidx, struct region_info_user *reginfo);
+
+/**
+ * mtd_islocked - see if the specified eraseblock is locked.
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @eb: eraseblock to check
+ *
+ * This function checks to see if eraseblock @eb of MTD device described
+ * by @fd is locked. Returns %0 if it is unlocked, %1 if it is locked, and
+ * %-1 in case of failure.
+ */
+int mtd_islocked(const struct mtd_dev_info *mtd, int fd, int eb);
 
 /**
  * mtd_torture - torture an eraseblock.
