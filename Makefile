@@ -6,6 +6,11 @@ CPPFLAGS += -I./include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 ifeq ($(WITHOUT_XATTR), 1)
   CPPFLAGS += -DWITHOUT_XATTR
 endif
+ifeq ($(WITHOUT_LZO), 1)
+  CPPFLAGS += -DWITHOUT_LZO
+else
+  LZOLDLIBS = -llzo2
+endif
 
 SUBDIRS = lib ubi-utils mkfs.ubifs
 TESTS = tests
@@ -48,11 +53,11 @@ $(BUILDDIR)/mkfs.jffs2: $(addprefix $(BUILDDIR)/,\
 	compr_rtime.o mkfs.jffs2.o compr_zlib.o compr_lzo.o \
 	compr.o rbtree.o)
 LDFLAGS_mkfs.jffs2 = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
-LDLIBS_mkfs.jffs2  = -lz -llzo2
+LDLIBS_mkfs.jffs2  = -lz $(LZOLDLIBS)
 
 $(BUILDDIR)/jffs2reader: $(BUILDDIR)/jffs2reader.o
 LDFLAGS_jffs2reader = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
-LDLIBS_jffs2reader  = -lz -llzo2
+LDLIBS_jffs2reader  = -lz $(LZOLDLIBS)
 
 $(BUILDDIR)/lib/libmtd.a: subdirs_lib_all ;
 
