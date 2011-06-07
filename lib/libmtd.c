@@ -77,7 +77,7 @@ static int read_data(const char *file, void *buf, int buf_len)
 {
 	int fd, rd, tmp, tmp1;
 
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
 		return -1;
 
@@ -201,7 +201,7 @@ static int read_hex_ll(const char *file, long long *value)
 	int fd, rd;
 	char buf[50];
 
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
 		return -1;
 
@@ -253,7 +253,7 @@ static int read_pos_ll(const char *file, long long *value)
 	int fd, rd;
 	char buf[50];
 
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
 		return -1;
 
@@ -538,7 +538,7 @@ static int sysfs_is_supported(struct libmtd *lib)
 		return 0;
 
 	sprintf(file, lib->mtd_name, num);
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
 		return 0;
 
@@ -1193,7 +1193,7 @@ int mtd_write_img(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		return -1;
 	}
 
-	in_fd = open(img_name, O_RDONLY);
+	in_fd = open(img_name, O_RDONLY | O_CLOEXEC);
 	if (in_fd == -1)
 		return sys_errmsg("cannot open \"%s\"", img_name);
 

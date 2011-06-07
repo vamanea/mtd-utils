@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <fcntl.h>
 #include <errno.h>
 
 #ifndef PROGRAM_NAME
@@ -41,6 +42,10 @@ extern "C" {
 #endif
 #define min(a, b) MIN(a, b) /* glue for linux kernel source */
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 
 /* Verbose messages */
 #define bareverbose(verbose, fmt, ...) do {                        \
