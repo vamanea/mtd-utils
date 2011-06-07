@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
 {
 	int fd, i, regcount;
 
+	warnmsg("this utility is deprecated in favor of `mtdinfo` and will be removed in mtd-utils-1.4.6");
+
 	if (argc < 2)
 		usage(1);
 	if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
