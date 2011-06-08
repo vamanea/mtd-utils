@@ -190,16 +190,18 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb);
 int mtd_regioninfo(int fd, int regidx, struct region_info_user *reginfo);
 
 /**
- * mtd_islocked - see if the specified eraseblock is locked.
+ * mtd_is_locked - see if the specified eraseblock is locked.
  * @mtd: MTD device description object
  * @fd: MTD device node file descriptor
  * @eb: eraseblock to check
  *
  * This function checks to see if eraseblock @eb of MTD device described
  * by @fd is locked. Returns %0 if it is unlocked, %1 if it is locked, and
- * %-1 in case of failure.
+ * %-1 in case of failure. If the ioctl is not supported (support was added in
+ * Linux kernel 2.6.36) or this particular device does not support it, errno is
+ * set to @ENOTSUPP.
  */
-int mtd_islocked(const struct mtd_dev_info *mtd, int fd, int eb);
+int mtd_is_locked(const struct mtd_dev_info *mtd, int fd, int eb);
 
 /**
  * mtd_torture - torture an eraseblock.

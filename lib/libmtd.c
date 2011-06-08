@@ -900,14 +900,23 @@ int mtd_regioninfo(int fd, int regidx, struct region_info_user *reginfo)
 	return 0;
 }
 
-int mtd_islocked(const struct mtd_dev_info *mtd, int fd, int eb)
+int mtd_is_locked(const struct mtd_dev_info *mtd, int fd, int eb)
 {
+	int ret;
 	erase_info_t ei;
 
 	ei.start = eb * mtd->eb_size;
 	ei.length = mtd->eb_size;
 
-	return ioctl(fd, MEMISLOCKED, &ei);
+	ret = ioctl(fd, MEMISLOCKED, &ei);
+	if (ret < 0) {
+		if (errno != ENOTTY && errno != EOPNOTSUPP)
+			return mtd_ioctl_error(mtd, eb, "MEMISLOCKED");
+		else
+			errno = EOPNOTSUPP;
+	}
+
+	return ret;
 }
 
 /* Patterns to write to a physical eraseblock when torturing it */
