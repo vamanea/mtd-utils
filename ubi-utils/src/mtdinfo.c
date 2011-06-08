@@ -185,7 +185,6 @@ static int print_dev_info(libmtd_t libmtd, const struct mtd_info *mtd_info, int 
 {
 	int err;
 	struct mtd_dev_info mtd;
-	struct ubigen_info ui;
 
 	err = mtd_get_dev_info1(libmtd, mtdn, &mtd);
 	if (err) {
