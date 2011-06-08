@@ -160,6 +160,27 @@ static int translate_dev(libmtd_t libmtd, const char *node)
 	return 0;
 }
 
+static void print_ubi_info(const struct mtd_info *mtd_info,
+			   const struct mtd_dev_info *mtd)
+{
+	struct ubigen_info ui;
+
+	if (!mtd_info->sysfs_supported) {
+		errmsg("cannot provide UBI info, becasue sub-page size is "
+		       "not known");
+		return;
+	}
+
+	ubigen_info_init(&ui, mtd->eb_size, mtd->min_io_size, mtd->subpage_size,
+			 0, 1, 0);
+	printf("Default UBI VID header offset:  %d\n", ui.vid_hdr_offs);
+	printf("Default UBI data offset:        %d\n", ui.data_offs);
+	printf("Default UBI LEB size:           ");
+	ubiutils_print_bytes(ui.leb_size, 0);
+	printf("\n");
+	printf("Maximum UBI volumes count:      %d\n", ui.max_volumes);
+}
+
 static int print_dev_info(libmtd_t libmtd, const struct mtd_info *mtd_info, int mtdn)
 {
 	int err;
@@ -206,25 +227,9 @@ static int print_dev_info(libmtd_t libmtd, const struct mtd_info *mtd_info, int 
 	printf("Device is writable:             %s\n",
 	      mtd.writable ? "true" : "false");
 
-	if (!args.ubinfo)
-		goto out;
+	if (args.ubinfo)
+		print_ubi_info(mtd_info, &mtd);
 
-	if (!mtd_info->sysfs_supported) {
-		errmsg("cannot provide UBI info, becasue sub-page size is "
-		       "not known");
-		goto out;
-	}
-
-	ubigen_info_init(&ui, mtd.eb_size, mtd.min_io_size, mtd.subpage_size,
-			 0, 1, 0);
-	printf("Default UBI VID header offset:  %d\n", ui.vid_hdr_offs);
-	printf("Default UBI data offset:        %d\n", ui.data_offs);
-	printf("Default UBI LEB size:           ");
-	ubiutils_print_bytes(ui.leb_size, 0);
-	printf("\n");
-	printf("Maximum UBI volumes count:      %d\n", ui.max_volumes);
-
-out:
 	printf("\n");
 	return 0;
 }
