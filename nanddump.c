@@ -54,6 +54,7 @@ static void display_help(void)
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
 "-o         --omitoob            Omit oob data\n"
+"           --oob                Dump OOB data\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
 "-s addr    --startaddress=addr  Start address\n"
@@ -127,6 +128,7 @@ static void process_options(int argc, char * const argv[])
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
 			{"bb", required_argument, 0, 0},
+			{"oob", no_argument, 0, 0},
 			{"forcebinary", no_argument, 0, 'a'},
 			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
@@ -167,6 +169,9 @@ static void process_options(int argc, char * const argv[])
 						else
 							error++;
 						bb_default = false;
+						break;
+					case 3: /* --oob */
+						omitoob = false;
 						break;
 				}
 				break;
