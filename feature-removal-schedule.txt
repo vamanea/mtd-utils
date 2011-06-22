@@ -40,3 +40,29 @@ This is duplicating behavior with the mtdinfo utility.  Now the util
 warns when people use it, but it'll be removed in release 1.4.6.
 
 ---------------------------
+
+4. Rename --noskipbad option, kill --omitbad, change default BB method for nanddump
+
+Our bad block handling methods are getting disorganized. They will be replaced
+by a series of --bb=METHOD options (see `nanddump --help').
+
+In addition, the previous default bad block behavior was to dump 0xFF in place
+of bad blocks. This was not a good "inverse operation" of nandwrite. Thus, the
+current default behavior has become the (new) option --bb=padbad, and in 1.4.6,
+the default will be --bb=skipbad.
+
+The new `--bb=METHOD' options are included in this release, but all feature
+removals and changed defaults will occur in 1.4.6. For now, there are
+appropriate deprecation warning messages and an alert telling about the
+soon-to-be-default settings.
+
+Transition summary table:
+-----------------------------------------------------------------------------------------------------------
+ Old option     New option                 Comment
+-----------------------------------------------------------------------------------------------------------
+ <default>      --bb=padbad                dump flash data, substituting 0xFF for any bad blocks
+ --noskipbad    --bb=dumpbad               dump flash data, including any bad blocks
+ --skipbad      --bb=skipbad, <default>    dump good data, completely skipping any bad blocks (new default)
+ --omitbad      N/A                        very similar to `skipbad', will be removed soon
+
+---------------------------
