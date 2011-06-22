@@ -249,6 +249,11 @@ static void process_options(int argc, char * const argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (bb_default)
+		warnmsg("you did not specify a default bad-block handling\n"
+			"  method. In future versions, the default will change to\n"
+			"  --bb=skipbad. Use \"nanddump --help\" for more information.");
+
 	if ((argc - optind) != 1 || error)
 		display_help();
 
