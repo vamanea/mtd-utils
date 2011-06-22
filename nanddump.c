@@ -47,23 +47,35 @@ static void display_help(void)
 "\n"
 "           --help               Display this help and exit\n"
 "           --version            Output version information and exit\n"
+"           --bb=METHOD          Choose bad block handling method (see below).\n"
 "-a         --forcebinary        Force printing of binary data to tty\n"
-"-b         --omitbad            Omit bad blocks from the dump\n"
 "-c         --canonicalprint     Print canonical Hex+ASCII dump\n"
 "-f file    --file=file          Dump to file\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
-"-N         --noskipbad          Read without bad block skipping\n"
 "-o         --omitoob            Omit oob data\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
 "-s addr    --startaddress=addr  Start address\n"
 "\n"
-"Notes on --omitbad and --skipbad:\n"
-"  With either option, we stop dumping data when we encounter a bad block\n"
-"  and resume dumping at the next good block. However, with --omitbad, we\n"
+"--bb=METHOD, where METHOD can be `padbad', `dumpbad', or `skipbad':\n"
+"    padbad:  dump flash data, substituting 0xFF for any bad blocks (default)\n"
+"    dumpbad: dump flash data, including any bad blocks\n"
+"    skipbad: dump good data, completely skipping any bad blocks\n"
+"\n"
+"Deprecated options:\n"
+"The following options are being replaced by --bb=METHOD flags or being\n"
+"removed entirely. Do not continue to use these options.\n"
+"-b         --omitbad            Omit bad blocks from the dump (DEPRECATED)\n"
+"-N         --noskipbad          Read without bad block skipping\n"
+"\n"
+"Notes on --omitbad and --bb=skipbad:\n"
+"* `omitbad' and `skipbad' are very similar; we are deprecating `--omitbad'\n"
+"  in favor of `--bb=skipbad'.\n"
+"* With either option, we stop dumping data when we encounter a bad block\n"
+"  and resume dumping at the next good block. However, with `omitbad', we\n"
 "  count the bad block as part of the total dump length, whereas with\n"
-"  --skipbad, the bad block is 'skipped,' that is, not counted toward the\n"
+"  `skipbad', the bad block is skipped, that is, not counted toward the\n"
 "  total dump length.\n",
 	PROGRAM_NAME);
 	exit(EXIT_SUCCESS);
@@ -120,7 +132,7 @@ static void process_options(int argc, char * const argv[])
 			{"file", required_argument, 0, 'f'},
 			{"prettyprint", no_argument, 0, 'p'},
 			{"omitoob", no_argument, 0, 'o'},
-			{"omitbad", no_argument, 0, 'b'},
+			{"omitbad", no_argument, 0, 'b'}, //DEPRECATED
 			{"startaddress", required_argument, 0, 's'},
 			{"length", required_argument, 0, 'l'},
 			{"noecc", no_argument, 0, 'n'},
@@ -163,6 +175,9 @@ static void process_options(int argc, char * const argv[])
 				if (bb_default) {
 					bb_default = false;
 					bb_method = omitbad;
+					warnmsg("--omitbad is being deprecated in favor of --bb=skipbad.\n"
+						"  --omitbad will not be available in future releases.\n"
+						"  Please update your usage accordingly.");
 				} else {
 					error++;
 				}
@@ -201,6 +216,9 @@ static void process_options(int argc, char * const argv[])
 				if (bb_default) {
 					bb_default = false;
 					bb_method = dumpbad;
+					warnmsg("--noskipbad is being deprecated in favor of --bb=dumpbad.\n"
+						"  --noskipbad will not be available in future releases.\n"
+						"  Please update your usage accordingly.");
 				} else {
 					error++;
 				}
