@@ -51,7 +51,6 @@ static void display_help(void)
 "-b         --omitbad            Omit bad blocks from the dump\n"
 "-c         --canonicalprint     Print canonical Hex+ASCII dump\n"
 "-f file    --file=file          Dump to file\n"
-"-k         --skipbad            Skip over bad blocks (see below)\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
 "-N         --noskipbad          Read without bad block skipping\n"
@@ -111,7 +110,7 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "bs:f:l:opqnNcak";
+		static const char *short_options = "bs:f:l:opqnNca";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -126,7 +125,6 @@ static void process_options(int argc, char * const argv[])
 			{"length", required_argument, 0, 'l'},
 			{"noecc", no_argument, 0, 'n'},
 			{"noskipbad", no_argument, 0, 'N'},
-			{"skipbad", no_argument, 0, 'k'},
 			{"quiet", no_argument, 0, 'q'},
 			{0, 0, 0, 0},
 		};
@@ -203,15 +201,6 @@ static void process_options(int argc, char * const argv[])
 				if (bb_default) {
 					bb_default = false;
 					bb_method = dumpbad;
-				} else {
-					error++;
-				}
-				break;
-			case 'k':
-				/* Check if bb_method was already set explicitly */
-				if (bb_default) {
-					bb_default = false;
-					bb_method = skipbad;
 				} else {
 					error++;
 				}
