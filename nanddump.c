@@ -88,21 +88,26 @@ static void display_version(void)
 
 static bool			pretty_print = false;	// print nice
 static bool			noecc = false;		// don't error correct
-static bool			noskipbad = false;	// don't skip bad blocks
 static bool			omitoob = false;	// omit oob data
 static long long		start_addr;		// start address
 static long long		length;			// dump length
 static const char		*mtddev;		// mtd device name
 static const char		*dumpfile;		// dump file name
-static bool			omitbad = false;
 static bool			quiet = false;		// suppress diagnostic output
 static bool			canonical = false;	// print nice + ascii
 static bool			forcebinary = false;	// force printing binary to tty
-static bool			skipbad = false;	// skip over bad blocks
+
+static enum {
+	padbad,   // dump flash data, substituting 0xFF for any bad blocks
+	dumpbad,  // dump flash data, including any bad blocks
+	skipbad,  // dump good data, completely skipping any bad blocks
+	omitbad   // dump flash data, substituting nothing for any bad blocks (DEPRECATED)
+} bb_method = padbad;
 
 static void process_options(int argc, char * const argv[])
 {
 	int error = 0;
+	bool bb_default = true;
 
 	for (;;) {
 		int option_index = 0;
@@ -110,6 +115,7 @@ static void process_options(int argc, char * const argv[])
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
+			{"bb", required_argument, 0, 0},
 			{"forcebinary", no_argument, 0, 'a'},
 			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
@@ -140,10 +146,28 @@ static void process_options(int argc, char * const argv[])
 					case 1:
 						display_version();
 						break;
+					case 2:
+						/* Handle --bb=METHOD */
+						if (!strcmp(optarg, "padbad"))
+							bb_method = padbad;
+						else if (!strcmp(optarg, "dumpbad"))
+							bb_method = dumpbad;
+						else if (!strcmp(optarg, "skipbad"))
+							bb_method = skipbad;
+						else
+							error++;
+						bb_default = false;
+						break;
 				}
 				break;
 			case 'b':
-				omitbad = true;
+				/* Check if bb_method was already set explicitly */
+				if (bb_default) {
+					bb_default = false;
+					bb_method = omitbad;
+				} else {
+					error++;
+				}
 				break;
 			case 's':
 				start_addr = simple_strtoll(optarg, &error);
@@ -175,10 +199,22 @@ static void process_options(int argc, char * const argv[])
 				noecc = true;
 				break;
 			case 'N':
-				noskipbad = true;
+				/* Check if bb_method was already set explicitly */
+				if (bb_default) {
+					bb_default = false;
+					bb_method = dumpbad;
+				} else {
+					error++;
+				}
 				break;
 			case 'k':
-				skipbad = true;
+				/* Check if bb_method was already set explicitly */
+				if (bb_default) {
+					bb_default = false;
+					bb_method = skipbad;
+				} else {
+					error++;
+				}
 				break;
 			case '?':
 				error++;
@@ -203,19 +239,6 @@ static void process_options(int argc, char * const argv[])
 		fprintf(stderr, "The forcebinary and pretty print options are\n"
 				"mutually-exclusive. Choose one or the "
 				"other.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (noskipbad && skipbad) {
-		fprintf(stderr, "The noskipbad and skipbad options are "
-				"mutually-exclusive.\n"
-				"Choose one or the other.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (omitbad && skipbad) {
-		fprintf(stderr, "The omitbad and skipbad options are mutually-"
-				"exclusive.\nChoose one or the other.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -416,7 +439,7 @@ int main(int argc, char * const argv[])
 	/* Dump the flash contents */
 	for (ofs = start_addr; ofs < end_addr; ofs += bs) {
 		/* Check for bad block */
-		if (noskipbad) {
+		if (bb_method == dumpbad) {
 			badblock = 0;
 		} else if (blockstart != (ofs & (~mtd.eb_size + 1)) ||
 				firstblock) {
@@ -430,14 +453,14 @@ int main(int argc, char * const argv[])
 
 		if (badblock) {
 			/* skip bad block, increase end_addr */
-			if (skipbad) {
+			if (bb_method == skipbad) {
 				end_addr += mtd.eb_size;
 				ofs += mtd.eb_size - bs;
 				if (end_addr > mtd.size)
 					end_addr = mtd.size;
 				continue;
 			}
-			if (omitbad)
+			if (bb_method == omitbad)
 				continue;
 			memset(readbuf, 0xff, bs);
 		} else {
