@@ -66,3 +66,14 @@ Transition summary table:
  --omitbad      N/A                        very similar to `skipbad', will be removed soon
 
 ---------------------------
+
+5. nanddump will not dump OOB by default
+
+In 1.4.6, nanddump will not dump OOB by default. To dump OOB, you will have to
+explicitly use the option `--oob'. For now, there is simply a warning every
+time you use nanddump without explicitly choosing `--oob' or `--omitoob'.
+
+Note that `-o' will no longer stand for `--omitoob'. To unify with nandwrite,
+it will stand for `--oob' (Dump OOB data).
+
+---------------------------

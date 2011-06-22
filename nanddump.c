@@ -53,8 +53,8 @@ static void display_help(void)
 "-f file    --file=file          Dump to file\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
-"-o         --omitoob            Omit oob data\n"
-"           --oob                Dump OOB data\n"
+"-o         --omitoob            Omit OOB data (default in next release)\n"
+"           --oob                Dump OOB data (current default)\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
 "-s addr    --startaddress=addr  Start address\n"
@@ -77,7 +77,14 @@ static void display_help(void)
 "  and resume dumping at the next good block. However, with `omitbad', we\n"
 "  count the bad block as part of the total dump length, whereas with\n"
 "  `skipbad', the bad block is skipped, that is, not counted toward the\n"
-"  total dump length.\n",
+"  total dump length.\n"
+"\n"
+"Note on --oob, --omitoob:\n"
+"  To make nanddump act more like an inverse to nandwrite, we are changing\n"
+"  the default OOB behavior. In the next release, nanddump will not dump\n"
+"  OOB data by default. We will leave both the `--omitoob' and `--oob'\n"
+"  options, but to mirror nandwrite, the short option `-o' will then stand\n"
+"  for `--oob', not `--omitoob'. Please adjust your usage accordingly.\n",
 	PROGRAM_NAME);
 	exit(EXIT_SUCCESS);
 }
@@ -119,7 +126,7 @@ static enum {
 static void process_options(int argc, char * const argv[])
 {
 	int error = 0;
-	bool bb_default = true;
+	bool bb_default = true, oob_default = true;
 
 	for (;;) {
 		int option_index = 0;
@@ -171,7 +178,12 @@ static void process_options(int argc, char * const argv[])
 						bb_default = false;
 						break;
 					case 3: /* --oob */
-						omitoob = false;
+						if (oob_default) {
+							oob_default = false;
+							omitoob = false;
+						} else {
+							errmsg_die("--oob and --oomitoob are mutually exclusive");
+						}
 						break;
 				}
 				break;
@@ -200,7 +212,12 @@ static void process_options(int argc, char * const argv[])
 				length = simple_strtoll(optarg, &error);
 				break;
 			case 'o':
-				omitoob = true;
+				if (oob_default) {
+					oob_default = false;
+					omitoob = true;
+				} else {
+					errmsg_die("--oob and --oomitoob are mutually exclusive");
+				}
 				break;
 			case 'a':
 				forcebinary = true;
@@ -258,6 +275,11 @@ static void process_options(int argc, char * const argv[])
 		warnmsg("you did not specify a default bad-block handling\n"
 			"  method. In future versions, the default will change to\n"
 			"  --bb=skipbad. Use \"nanddump --help\" for more information.");
+
+	if (oob_default)
+		warnmsg("in next release, nanddump will not dump OOB\n"
+			"  by default. Use `nanddump --oob' explicitly to ensure\n"
+			"  it is dumped.");
 
 	if ((argc - optind) != 1 || error)
 		display_help();
