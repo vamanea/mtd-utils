@@ -14,7 +14,7 @@
  */
 
 #define PROGRAM_NAME "nanddump"
-#define VERSION "1.30"
+#define VERSION "1.31"
 
 #define _GNU_SOURCE
 #include <ctype.h>

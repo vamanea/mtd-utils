@@ -21,7 +21,7 @@
  * Author: Artem Bityutskiy
  */
 
-#define PROGRAM_VERSION "1.0"
+#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "mtdinfo"
 
 #include <stdint.h>
