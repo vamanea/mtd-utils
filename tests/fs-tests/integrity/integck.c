@@ -36,6 +36,7 @@
 #include <sys/vfs.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
+#include <linux/fs.h>
 
 #define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME "integck"
