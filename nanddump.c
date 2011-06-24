@@ -53,8 +53,8 @@ static void display_help(void)
 "-f file    --file=file          Dump to file\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
-"-o         --omitoob            Omit OOB data (default in next release)\n"
-"           --oob                Dump OOB data (current default)\n"
+"           --omitoob            Omit OOB data (default in next release)\n"
+"-o         --oob                Dump OOB data (current default)\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
 "-s addr    --startaddress=addr  Start address\n"
@@ -119,12 +119,12 @@ static void process_options(int argc, char * const argv[])
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
 			{"bb", required_argument, 0, 0},
-			{"oob", no_argument, 0, 0},
+			{"omitoob", no_argument, 0, 0},
 			{"forcebinary", no_argument, 0, 'a'},
 			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
+			{"oob", no_argument, 0, 'o'},
 			{"prettyprint", no_argument, 0, 'p'},
-			{"omitoob", no_argument, 0, 'o'},
 			{"startaddress", required_argument, 0, 's'},
 			{"length", required_argument, 0, 'l'},
 			{"noecc", no_argument, 0, 'n'},
@@ -159,10 +159,10 @@ static void process_options(int argc, char * const argv[])
 							error++;
 						bb_default = false;
 						break;
-					case 3: /* --oob */
+					case 3: /* --omitoob */
 						if (oob_default) {
 							oob_default = false;
-							omitoob = false;
+							omitoob = true;
 						} else {
 							errmsg_die("--oob and --oomitoob are mutually exclusive");
 						}
@@ -184,7 +184,7 @@ static void process_options(int argc, char * const argv[])
 			case 'o':
 				if (oob_default) {
 					oob_default = false;
-					omitoob = true;
+					omitoob = false;
 				} else {
 					errmsg_die("--oob and --oomitoob are mutually exclusive");
 				}
