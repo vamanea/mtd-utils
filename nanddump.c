@@ -53,8 +53,8 @@ static void display_help(void)
 "-f file    --file=file          Dump to file\n"
 "-l length  --length=length      Length\n"
 "-n         --noecc              Read without error correction\n"
-"           --omitoob            Omit OOB data (default in next release)\n"
-"-o         --oob                Dump OOB data (current default)\n"
+"           --omitoob            Omit OOB data (default)\n"
+"-o         --oob                Dump OOB data\n"
 "-p         --prettyprint        Print nice (hexdump)\n"
 "-q         --quiet              Don't display progress and status messages\n"
 "-s addr    --startaddress=addr  Start address\n"
@@ -62,14 +62,7 @@ static void display_help(void)
 "--bb=METHOD, where METHOD can be `padbad', `dumpbad', or `skipbad':\n"
 "    padbad:  dump flash data, substituting 0xFF for any bad blocks\n"
 "    dumpbad: dump flash data, including any bad blocks\n"
-"    skipbad: dump good data, completely skipping any bad blocks (default)\n"
-"\n"
-"Note on --oob, --omitoob:\n"
-"  To make nanddump act more like an inverse to nandwrite, we are changing\n"
-"  the default OOB behavior. In the next release, nanddump will not dump\n"
-"  OOB data by default. We will leave both the `--omitoob' and `--oob'\n"
-"  options, but to mirror nandwrite, the short option `-o' will then stand\n"
-"  for `--oob', not `--omitoob'. Please adjust your usage accordingly.\n",
+"    skipbad: dump good data, completely skipping any bad blocks (default)\n",
 	PROGRAM_NAME);
 	exit(EXIT_SUCCESS);
 }
@@ -92,7 +85,7 @@ static void display_version(void)
 
 static bool			pretty_print = false;	// print nice
 static bool			noecc = false;		// don't error correct
-static bool			omitoob = false;	// omit oob data
+static bool			omitoob = true;		// omit oob data
 static long long		start_addr;		// start address
 static long long		length;			// dump length
 static const char		*mtddev;		// mtd device name
@@ -228,11 +221,6 @@ static void process_options(int argc, char * const argv[])
 				"other.\n");
 		exit(EXIT_FAILURE);
 	}
-
-	if (oob_default)
-		warnmsg("in next release, nanddump will not dump OOB\n"
-			"  by default. Use `nanddump --oob' explicitly to ensure\n"
-			"  it is dumped.");
 
 	if ((argc - optind) != 1 || error)
 		display_help();
