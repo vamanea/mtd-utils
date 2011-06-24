@@ -60,9 +60,9 @@ static void display_help(void)
 "-s addr    --startaddress=addr  Start address\n"
 "\n"
 "--bb=METHOD, where METHOD can be `padbad', `dumpbad', or `skipbad':\n"
-"    padbad:  dump flash data, substituting 0xFF for any bad blocks (default)\n"
+"    padbad:  dump flash data, substituting 0xFF for any bad blocks\n"
 "    dumpbad: dump flash data, including any bad blocks\n"
-"    skipbad: dump good data, completely skipping any bad blocks\n"
+"    skipbad: dump good data, completely skipping any bad blocks (default)\n"
 "\n"
 "Note on --oob, --omitoob:\n"
 "  To make nanddump act more like an inverse to nandwrite, we are changing\n"
@@ -105,7 +105,7 @@ static enum {
 	padbad,   // dump flash data, substituting 0xFF for any bad blocks
 	dumpbad,  // dump flash data, including any bad blocks
 	skipbad,  // dump good data, completely skipping any bad blocks
-} bb_method = padbad;
+} bb_method = skipbad;
 
 static void process_options(int argc, char * const argv[])
 {
@@ -228,11 +228,6 @@ static void process_options(int argc, char * const argv[])
 				"other.\n");
 		exit(EXIT_FAILURE);
 	}
-
-	if (bb_default)
-		warnmsg("you did not specify a default bad-block handling\n"
-			"  method. In future versions, the default will change to\n"
-			"  --bb=skipbad. Use \"nanddump --help\" for more information.");
 
 	if (oob_default)
 		warnmsg("in next release, nanddump will not dump OOB\n"
