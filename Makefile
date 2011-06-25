@@ -25,8 +25,6 @@ TARGETS = ftl_format flash_erase nanddump doc_loadbios \
 	sumtool #jffs2reader
 SCRIPTS = flash_eraseall
 
-SYMLINKS =
-
 LDLIBS = -L$(BUILDDIR)/lib -lmtd
 LDDEPS = $(BUILDDIR)/lib/libmtd.a
 
@@ -36,7 +34,6 @@ include common.mk
 subdirs_mkfs.ubifs_all: subdirs_ubi-utils_all
 
 clean::
-	-rm -f $(SYMLINKS)
 ifneq ($(BUILDDIR)/.git,)
 ifneq ($(BUILDDIR),.)
 ifneq ($(BUILDDIR),$(CURDIR))
@@ -45,9 +42,6 @@ endif
 endif
 endif
 	$(MAKE) -C $(TESTS) clean
-
-$(SYMLINKS):
-	ln -sf ../fs/jffs2/$@ $@
 
 $(BUILDDIR)/mkfs.jffs2: $(addprefix $(BUILDDIR)/,\
 	compr_rtime.o mkfs.jffs2.o compr_zlib.o compr_lzo.o \
