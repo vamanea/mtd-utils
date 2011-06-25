@@ -50,6 +50,7 @@
 #
 # Generated include files
 #
+/include/version.h
 
 # stgit generated dirs
 patches-*

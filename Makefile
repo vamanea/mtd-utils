@@ -1,6 +1,8 @@
 
 # -*- sh -*-
 
+VERSION = 1.4.5
+
 CPPFLAGS += -I./include -I./ubi-utils/include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 
 ifeq ($(WITHOUT_XATTR), 1)
@@ -36,6 +38,8 @@ TARGETS = $(BINS)
 TARGETS += lib/libmtd.a
 TARGETS += ubi-utils/libubi.a
 
+OBJDEPS = $(BUILDDIR)/include/version.h
+
 include common.mk
 
 clean::
@@ -49,6 +53,7 @@ endif
 	find $(BUILDDIR)/ -xdev \
 		'(' -name '*.[ao]' -o -name '.*.c.dep' ')' \
 		-exec rm -f {} +
+	rm -f $(BUILDDIR)/include/version.h
 	$(MAKE) -C $(TESTS) clean
 
 install:: ${BINS} ${SCRIPTS}
@@ -62,6 +67,11 @@ tests::
 
 cscope:
 	cscope -bR
+
+$(BUILDDIR)/include/version.h: $(BUILDDIR)/include/version.h.tmp
+	$(Q)cmp -s $@ $@.tmp && rm -f $@.tmp || mv $@.tmp $@
+$(BUILDDIR)/include/version.h.tmp:
+	$(Q)echo '#define VERSION "$(VERSION)"' > $@
 
 #
 # Utils in top level

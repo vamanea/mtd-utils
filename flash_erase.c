@@ -19,7 +19,6 @@
  */
 
 #define PROGRAM_NAME "flash_erase"
-#define VERSION "2.1.0"
 
 #include <inttypes.h>
 #include <stdio.h>

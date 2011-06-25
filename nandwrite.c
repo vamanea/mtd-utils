@@ -20,7 +20,6 @@
  */
 
 #define PROGRAM_NAME "nandwrite"
-#define VERSION "$Revision: 1.32 $"
 
 #define _GNU_SOURCE
 #include <ctype.h>

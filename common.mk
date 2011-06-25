@@ -75,7 +75,7 @@ $(BUILDDIR)/%.a:
 	$(Q)$(AR) cr $@ $^
 	$(Q)$(RANLIB) $@
 
-$(BUILDDIR)/%.o: %.c
+$(BUILDDIR)/%.o: %.c $(OBJDEPS)
 ifneq ($(BUILDDIR),$(CURDIR))
 	$(Q)mkdir -p $(dir $@)
 endif
