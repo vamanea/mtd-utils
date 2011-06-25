@@ -39,34 +39,48 @@ override BUILDDIR := $(patsubst %/,%,$(BUILDDIR))
 
 override TARGETS := $(addprefix $(BUILDDIR)/,$(TARGETS))
 
-SUBDIRS_ALL = $(patsubst %,subdirs_%_all,$(SUBDIRS))
-SUBDIRS_CLEAN = $(patsubst %,subdirs_%_clean,$(SUBDIRS))
-SUBDIRS_INSTALL = $(patsubst %,subdirs_%_install,$(SUBDIRS))
+ifeq ($(V),1)
+XECHO = @:
+XPRINTF = @:
+Q =
+else
+XECHO = @echo
+XPRINTF = @printf
+Q = @
+endif
+define BECHO
+$(XPRINTF) '  %-7s %s\n' "$1" "$(subst $(BUILDDIR)/,,$@)"
+endef
 
-all:: $(TARGETS) $(SUBDIRS_ALL)
+all:: $(TARGETS)
 
-clean:: $(SUBDIRS_CLEAN)
+clean::
 	rm -f $(BUILDDIR)/*.o $(TARGETS) $(BUILDDIR)/.*.c.dep
 
-install:: $(TARGETS) $(SUBDIRS_INSTALL)
+install:: $(TARGETS)
 
-%: %.o $(LDDEPS) $(LDDEPS_$(notdir $@))
-	$(CC) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_$(notdir $@)) -g -o $@ $^ $(LDLIBS) $(LDLIBS_$(notdir $@))
+define _mkdep
+$(BUILDDIR)/$1$2: $(addprefix $(BUILDDIR)/$1,$(obj-$2) $3) $(addprefix $(BUILDDIR)/,$4)
+endef
+define mkdep
+$(call _mkdep,$1,$2,$3 $2.o,$4 lib/libmtd.a)
+endef
+
+%: %.o $(LDDEPS)
+	$(call BECHO,LD)
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_$(notdir $@)) -g -o $@ $^ $(LDLIBS) $(LDLIBS_$(notdir $@))
 
 $(BUILDDIR)/%.a:
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+	$(call BECHO,AR)
+	$(Q)$(AR) cr $@ $^
+	$(Q)$(RANLIB) $@
 
 $(BUILDDIR)/%.o: %.c
 ifneq ($(BUILDDIR),$(CURDIR))
-	mkdir -p $(dir $@)
+	$(Q)mkdir -p $(dir $@)
 endif
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,$(BUILDDIR)/.$(<F).dep
-
-subdirs_%:
-	d=$(patsubst subdirs_%,%,$@); \
-	t=`echo $$d | sed s:.*_::` d=`echo $$d | sed s:_.*::`; \
-	$(MAKE) BUILDDIR=$(BUILDDIR)/$$d -C $$d $$t
+	$(call BECHO,CC)
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -Wp,-MD,$(BUILDDIR)/.$(<F).dep
 
 .SUFFIXES:
 

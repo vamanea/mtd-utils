@@ -1,7 +1,7 @@
 
 # -*- sh -*-
 
-CPPFLAGS += -I./include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
+CPPFLAGS += -I./include -I./ubi-utils/include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 
 ifeq ($(WITHOUT_XATTR), 1)
   CPPFLAGS += -DWITHOUT_XATTR
@@ -12,10 +12,10 @@ else
   LZOLDLIBS = -llzo2
 endif
 
-SUBDIRS = lib ubi-utils mkfs.ubifs
 TESTS = tests
 
-TARGETS = ftl_format flash_erase nanddump doc_loadbios \
+MTD_BINS = \
+	ftl_format flash_erase nanddump doc_loadbios \
 	ftl_check mkfs.jffs2 flash_lock flash_unlock flash_info \
 	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite nandtest \
 	jffs2dump \
@@ -23,15 +23,20 @@ TARGETS = ftl_format flash_erase nanddump doc_loadbios \
 	rfddump rfdformat \
 	serve_image recv_image \
 	sumtool #jffs2reader
+UBI_BINS = \
+	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
+	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol
+
+BINS = $(MTD_BINS)
+BINS += mkfs.ubifs/mkfs.ubifs
+BINS += $(addprefix ubi-utils/,$(UBI_BINS))
 SCRIPTS = flash_eraseall
 
-LDLIBS = -L$(BUILDDIR)/lib -lmtd
-LDDEPS = $(BUILDDIR)/lib/libmtd.a
+TARGETS = $(BINS)
+TARGETS += lib/libmtd.a
+TARGETS += ubi-utils/libubi.a
 
 include common.mk
-
-# mkfs.ubifs needs -lubi which is in ubi-utils/
-subdirs_mkfs.ubifs_all: subdirs_ubi-utils_all
 
 clean::
 ifneq ($(BUILDDIR)/.git,)
@@ -41,23 +46,14 @@ ifneq ($(BUILDDIR),$(CURDIR))
 endif
 endif
 endif
+	find $(BUILDDIR)/ -xdev \
+		'(' -name '*.[ao]' -o -name '.*.c.dep' ')' \
+		-exec rm -f {} +
 	$(MAKE) -C $(TESTS) clean
 
-$(BUILDDIR)/mkfs.jffs2: $(addprefix $(BUILDDIR)/,\
-	compr_rtime.o mkfs.jffs2.o compr_zlib.o compr_lzo.o \
-	compr.o rbtree.o)
-LDFLAGS_mkfs.jffs2 = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
-LDLIBS_mkfs.jffs2  = -lz $(LZOLDLIBS)
-
-$(BUILDDIR)/jffs2reader: $(BUILDDIR)/jffs2reader.o
-LDFLAGS_jffs2reader = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
-LDLIBS_jffs2reader  = -lz $(LZOLDLIBS)
-
-$(BUILDDIR)/lib/libmtd.a: subdirs_lib_all ;
-
-install:: ${TARGETS} ${SCRIPTS}
+install:: ${BINS} ${SCRIPTS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
-	install -m 0755 ${TARGETS} ${SCRIPTS} ${DESTDIR}/${SBINDIR}/
+	install -m 0755 ${BINS} ${SCRIPTS} ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
 	gzip -9c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
 
@@ -66,3 +62,44 @@ tests::
 
 cscope:
 	cscope -bR
+
+#
+# Utils in top level
+#
+obj-mkfs.jffs2 = compr_rtime.o compr_zlib.o compr_lzo.o compr.o rbtree.o
+LDFLAGS_mkfs.jffs2 = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
+LDLIBS_mkfs.jffs2  = -lz $(LZOLDLIBS)
+
+LDFLAGS_jffs2reader = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
+LDLIBS_jffs2reader  = -lz $(LZOLDLIBS)
+
+$(foreach v,$(MTD_BINS),$(eval $(call mkdep,,$(v))))
+
+#
+# Common libmtd
+#
+obj-libmtd.a = libmtd.o libmtd_legacy.o libcrc32.o libfec.o
+$(call _mkdep,lib/,libmtd.a)
+
+#
+# Utils in mkfs.ubifs subdir
+#
+obj-mkfs.ubifs = crc16.o lpt.o compr.o devtable.o \
+	hashtable/hashtable.o hashtable/hashtable_itr.o
+LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid
+$(call mkdep,mkfs.ubifs/,mkfs.ubifs,,ubi-utils/libubi.a)
+
+#
+# Utils in ubi-utils/ subdir
+#
+obj-libiniparser.a = libiniparser.o dictionary.o
+obj-libscan.a      = libscan.o
+obj-libubi.a       = libubi.o
+obj-libubigen.a    = libubigen.o
+
+obj-mtdinfo   = libubigen.a
+obj-ubinize   = libubigen.a libiniparser.a
+obj-ubiformat = libubigen.a libscan.a
+
+$(foreach v,libubi.a libubigen.a libiniparser.a libscan.a,$(eval $(call _mkdep,ubi-utils/,$(v))))
+$(foreach v,$(UBI_BINS),$(eval $(call mkdep,ubi-utils/,$(v),libubi.a ubiutils-common.o)))

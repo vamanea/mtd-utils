@@ -4,9 +4,8 @@ CC = gcc
 endif
 
 COMMON_HEADERS_DIR := ../../../include
-LIBUBI_PATH=../../../ubi-utils/
-LIBUBI_SRC_PATH=../../../ubi-utils/src/
-LIBUBI_HEADER_PATH=../../../ubi-utils/include
+LIBUBI_PATH = ../../../ubi-utils/
+LIBUBI_HEADER_PATH = $(LIBUBI_PATH)/include
 
 CFLAGS := $(CFLAGS) -Wall -g -O2 -I$(COMMON_HEADERS_DIR) -I$(LIBUBI_HEADER_PATH)
 
@@ -18,7 +17,7 @@ all: $(TARGETS)
 
 # Compile ubilib
 libubi.a:
-	$(CC) $(CFLAGS) -I $(LIBUBI_SRC_PATH) -c $(LIBUBI_SRC_PATH)/libubi.c -o libubi.o
+	$(CC) $(CFLAGS) -c $(LIBUBI_PATH)/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
 $(TARGETS): libubi.a
