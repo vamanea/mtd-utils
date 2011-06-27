@@ -5,10 +5,10 @@
 #   /sbin/foobar	f	2755	0	0	-	-	-	-	-
 # and (assuming the file /sbin/foobar exists) it will be made setuid
 # root (regardless of what its permissions are on the host filesystem.
-# 
+#
 # Device table entries take the form of:
 # <name>		<type>	<mode>	<uid>	<gid>	<major>	<minor>	<start>	<inc>	<count>
-# where name is the file name,  type can be one of: 
+# where name is the file name,  type can be one of:
 #	f	A regular file
 #	d	Directory
 #	c	Character special device file
@@ -19,7 +19,7 @@
 # file.
 
 # When building a target filesystem, it is desirable to not have to
-# become root and then run 'mknod' a thousand times.  Using a device 
+# become root and then run 'mknod' a thousand times.  Using a device
 # table you can create device nodes and directories "on the fly".
 # Furthermore, you can use a single table entry to create a many device
 # minors.  For example, if I wanted to create /dev/hda and /dev/hda[0-15]

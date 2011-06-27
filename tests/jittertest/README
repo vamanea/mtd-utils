@@ -11,7 +11,7 @@ a real time task under Linux with background
 JFFS file system activity.
 
 The jitter is measured in milli seconds (ms) from
-the expected time of arrival of a signal from a 
+the expected time of arrival of a signal from a
 periodic timer (set by the task) to when the
 task actually gets the signal.
 
@@ -20,7 +20,7 @@ This jitter is then stored in a file specified
 
 The data  may also be sent out to the console by
 writing to /dev/console (See help options. This is
-highly desirable specially if you have redirected 
+highly desirable specially if you have redirected
 your console to the serial port and are storing it
 as a minicom log on another computer for later analysis
 using some tools provided here).
@@ -82,7 +82,7 @@ supports it).
   In this test you would generate some background
 write/erase type activity that would generate
 chip erases. Since this program is reading from
-the same file system, you contrast the latencies 
+the same file system, you contrast the latencies
 with those obtained with writes going to the same
 fs.
 
@@ -90,7 +90,7 @@ fs.
 file system:
 
   Here you would test for latencies experienced by
-a program if it were writing (and optionally also 
+a program if it were writing (and optionally also
 reading) from a JFFS fs.
 
 
@@ -99,7 +99,7 @@ reading) from a JFFS fs.
 Grabing a kernel profile:
 
 This program can also conditionally grab a kernel profile.
-Specify --grab_kprofile on the cmd line as well as 
+Specify --grab_kprofile on the cmd line as well as
 a "threshold" parameter (see help options by -?).
 
 Any jitter greater than this "threshold" will cause the
@@ -119,10 +119,10 @@ when you boot the kernel if you want to use this functionality.
 
 Signalling the JFFS[2] GC task:
 
-You can also force this program to send a SIGSTOP/SIGCONT to the 
+You can also force this program to send a SIGSTOP/SIGCONT to the
 JFFS (or JFFS2) gc task by specifing --siggc <pid> on the cmd line.
 
-This will let you investigate the effect of forcing the gc task to 
+This will let you investigate the effect of forcing the gc task to
 wake up and do its thing when you are not writing to the fs and to
 force it to sleep when you want to write to the fs.
 
@@ -130,7 +130,7 @@ These are just various tools to investigate the possibility of
 achieving minimal read/write latency when using JFFS[2].
 
 You need to manually do a "ps aux" and look up the PID of the gc
-thread and provide it to the program. 
+thread and provide it to the program.
 
 
 
@@ -156,7 +156,7 @@ console log or printk data).
 
 You can then run this saved console log through this program and it
 will output a very nice text file with the %fill in one col and
-corrosponding jitter values in the second. gnuplot then does a 
+corrosponding jitter values in the second. gnuplot then does a
 beautifull plot of this resulting file showing you graphically the
 jitters encountered at different fill % of your JFFS[2] fs.
 

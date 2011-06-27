@@ -8,7 +8,7 @@
 while [ $(( 1 )) -gt $(( 0 )) ]
 do
    cp $1 $2
-   rm $2 
+   rm $2
    df |grep mtd > /dev/console
    echo "sleeping $3"
    sleep $3

@@ -123,11 +123,11 @@ uint32_t find_hardlink(struct filesystem_entry *e)
 		f = rb_entry(parent, struct filesystem_entry, hardlink_rb);
 
 		if ((f->sb.st_dev < e->sb.st_dev) ||
-		    (f->sb.st_dev == e->sb.st_dev && 
+		    (f->sb.st_dev == e->sb.st_dev &&
 		     f->sb.st_ino < e->sb.st_ino))
 			n = &parent->rb_left;
 		else if ((f->sb.st_dev > e->sb.st_dev) ||
-			 (f->sb.st_dev == e->sb.st_dev && 
+			 (f->sb.st_dev == e->sb.st_dev &&
 			  f->sb.st_ino > e->sb.st_ino)) {
 			n = &parent->rb_right;
 		} else
@@ -264,7 +264,7 @@ static struct filesystem_entry *add_host_filesystem_entry(const char *name,
 	tmp = xstrdup(name);
 	entry->path = xstrdup(dirname(tmp));
 	free(tmp);
-	
+
 	entry->sb.st_ino = sb.st_ino;
 	entry->sb.st_dev = sb.st_dev;
 	entry->sb.st_nlink = sb.st_nlink;

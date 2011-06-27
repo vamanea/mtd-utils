@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_ADDRCONFIG;
 	hints.ai_socktype = SOCK_DGRAM;
-	
+
 	ret = getaddrinfo(argv[1], argv[2], &hints, &ai);
 	if (ret) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));
@@ -131,18 +131,18 @@ int main(int argc, char **argv)
 			rq.imr_multiaddr = ((struct sockaddr_in *)runp->ai_addr)->sin_addr;
 			rq.imr_interface.s_addr = INADDR_ANY;
 			if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &rq, sizeof(rq))) {
-				perror("IP_ADD_MEMBERSHIP"); 
+				perror("IP_ADD_MEMBERSHIP");
 				close(sock);
 				continue;
 			}
-			
+
 		} else if (runp->ai_family == AF_INET6 &&
 			   ((struct sockaddr_in6 *)runp->ai_addr)->sin6_addr.s6_addr[0] == 0xff) {
 			struct ipv6_mreq rq;
 			rq.ipv6mr_multiaddr =  ((struct sockaddr_in6 *)runp->ai_addr)->sin6_addr;
 			rq.ipv6mr_interface = 0;
 			if (setsockopt(sock, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &rq, sizeof(rq))) {
-				perror("IPV6_ADD_MEMBERSHIP"); 
+				perror("IPV6_ADD_MEMBERSHIP");
 				close(sock);
 				continue;
 			}
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 	pkt_again:
-		eraseblocks[block_nr].pkt_indices[eraseblocks[block_nr].nr_pkts++] = 
+		eraseblocks[block_nr].pkt_indices[eraseblocks[block_nr].nr_pkts++] =
 			ntohs(thispkt.hdr.pkt_nr);
 		total_pkts++;
 		if (!(total_pkts % 50) || total_pkts == pkts_per_block * nr_blocks) {
@@ -290,7 +290,7 @@ int main(int argc, char **argv)
 			       thispkt.data, fits);
 			wrotelen = pwrite(flfd, eraseblocks[block_nr].wbuf, WBUF_SIZE,
 					  eraseblocks[block_nr].flash_offset);
-			
+
 			if (wrotelen < WBUF_SIZE || (block_nr == 5 && eraseblocks[block_nr].nr_pkts == 5 && !faked)) {
 				faked = 1;
 				if (wrotelen < 0)
@@ -308,7 +308,7 @@ int main(int argc, char **argv)
 						~(meminfo.erasesize - 1);
 					erase.length = meminfo.erasesize;
 
-					printf("Will erase at %08x len %08x (bad write was at %08x)\n", 
+					printf("Will erase at %08x len %08x (bad write was at %08x)\n",
 					       erase.start, erase.length, eraseblocks[block_nr].flash_offset);
 					if (ioctl(flfd, MEMERASE, &erase)) {
 						perror("MEMERASE");
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
 			memcpy(eraseblocks[block_nr].wbuf, &thispkt.data[fits], PKT_SIZE - fits);
 			eraseblocks[block_nr].wbuf_ofs = PKT_SIZE - fits;
 		}
-		
+
 		if (eraseblocks[block_nr].nr_pkts == pkts_per_block) {
 			eraseblocks[block_nr].crc = ntohl(thispkt.hdr.block_crc);
 
@@ -388,7 +388,7 @@ int main(int argc, char **argv)
 		gettimeofday(&now, NULL);
 		fec_time += (now.tv_usec - start.tv_usec) / 1000;
 		fec_time += (now.tv_sec - start.tv_sec) * 1000;
-		
+
 		for (i=0; i < pkts_per_block; i++)
 			memcpy(&decode_buf[i*PKT_SIZE], src_pkts[i], PKT_SIZE);
 
@@ -396,7 +396,7 @@ int main(int argc, char **argv)
 		gettimeofday(&start, NULL);
 		if (mtd_crc32(-1, decode_buf, meminfo.erasesize) != eraseblocks[block_nr].crc) {
 			printf("\nCRC mismatch for block #%d: want %08x got %08x\n",
-			       block_nr, eraseblocks[block_nr].crc, 
+			       block_nr, eraseblocks[block_nr].crc,
 			       mtd_crc32(-1, decode_buf, meminfo.erasesize));
 			exit(1);
 		}
@@ -410,7 +410,7 @@ int main(int argc, char **argv)
 
 			erase.start = eraseblocks[block_nr].flash_offset;
 			erase.length = meminfo.erasesize;
-			
+
 			printf("\rErasing block at %08x...", erase.start);
 
 			if (ioctl(flfd, MEMERASE, &erase)) {
@@ -430,7 +430,7 @@ int main(int argc, char **argv)
 		if (rwlen < meminfo.erasesize) {
 			if (rwlen < 0) {
 				perror("\ndecoded data write");
-			} else 
+			} else
 				fprintf(stderr, "\nshort write of decoded data\n");
 
 			if (!file_mode) {

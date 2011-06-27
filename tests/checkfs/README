@@ -11,11 +11,11 @@ This is the README file for the "checkfs" power fail test program.
 By: Vipin Malik
 
 NOTE: This program requires an external "power cycling box"
-connected to one of the com ports of the system under test. 
-This power cycling box should wait for a random amount of time 
-after it receives a "ok to power me down" message over the 
+connected to one of the com ports of the system under test.
+This power cycling box should wait for a random amount of time
+after it receives a "ok to power me down" message over the
 serial port, and then yank power to the system under test.
-(The box that I rigged up tested with waits anywhere from 
+(The box that I rigged up tested with waits anywhere from
 0 to ~40 seconds).
 
 
@@ -75,7 +75,7 @@ some "sister" files on the root fs even though "checkfs" would
 run fine through all its own check files.
 
 (I found this out when one of the clobbered sister file happened
-to be /bin/bash. The system refused to run rc.local thus 
+to be /bin/bash. The system refused to run rc.local thus
 preventing my "checkfs" program from being launched :)
 
 "checkfs":
@@ -98,8 +98,8 @@ Each file has a random number of bytes in it (set by using the
 first "int" in it (note: 0 length files are not allowed). Each file
 is then filled with random data and a 16 bit CRC appended at the end.
 
-When "checkfs" is run, it runs through all files (with predetermined 
-file names)- one at a time- and checks for the number of "int's" 
+When "checkfs" is run, it runs through all files (with predetermined
+file names)- one at a time- and checks for the number of "int's"
 in it as well as the ending CRC.
 
 The program exits if the numbers of files that are corrupt are greater
@@ -116,10 +116,10 @@ the data reliability of "other" files present of the fs, use -e 1.
 "other" files are defined as sister files on the fs, not being written to
 by the "checkfs" test program.
 
-As mentioned, in this case you would set -e 1, or allow at most 1 file 
-to be corrupt each time after a power fail. This would be the file 
-that was probably being written to when power failed (and CRC was not 
-updated to reflect the  new data being written). You would check file 
+As mentioned, in this case you would set -e 1, or allow at most 1 file
+to be corrupt each time after a power fail. This would be the file
+that was probably being written to when power failed (and CRC was not
+updated to reflect the  new data being written). You would check file
 systems like ext2 etc. with such a configuration.
 (As you have no hope that these file systems provide for either your
 new data or old data to be present in the file if power failed during
@@ -137,13 +137,13 @@ In other words, JFFS2 will partially update a file on FLASH even before
 the write() command has completed, thus leaving part old data part new
 data in your file if power failed in the middle of a write().
 
-This is bad functionality if you are updating a binary structure or a 
+This is bad functionality if you are updating a binary structure or a
 CRC protected file (as in our case).
 
 
 If All Files Check Out OK:
 
-On the startup scan, if there are less errors than specified by the "-e flag" 
+On the startup scan, if there are less errors than specified by the "-e flag"
 a "ok to power me down message" is sent via the specified com port.
 
 The actual format of this message will depend on the format expected

@@ -79,7 +79,7 @@ typedef unsigned short u_short ;
 	  if (t1 < t) t = 256000000 + t1 - t ; \
 	  else t = t1 - t ; \
 	  if (t == 0) t = 1 ;}
-	
+
 u_long ticks[10];	/* vars for timekeeping */
 #else
 #define DEB(x)
@@ -200,7 +200,7 @@ static inline gf
 gf_mul(x,y)
 {
     if ( (x) == 0 || (y)==0 ) return 0;
-     
+
     return gf_exp[gf_log[x] + gf_log[y] ] ;
 }
 #define init_mul_table()
@@ -315,7 +315,7 @@ generate_gf(void)
  * unrolled 16 times, a good value for 486 and pentium-class machines.
  * The case c=0 is also optimized, whereas c=1 is not. These
  * calls are unfrequent in my typical apps so I did not bother.
- * 
+ *
  * Note that gcc on
  */
 #define addmul(dst, src, c, sz) \
@@ -452,7 +452,7 @@ invert_mat(gf *src, int k)
 			}
 		    } else if (ipiv[ix] > 1) {
 			fprintf(stderr, "singular matrix\n");
-			goto fail ; 
+			goto fail ;
 		    }
 		}
 	    }
@@ -562,7 +562,7 @@ invert_vdm(gf *src, int k)
     b = NEW_GF_MATRIX(1, k);
 
     p = NEW_GF_MATRIX(1, k);
-   
+
     for ( j=1, i = 0 ; i < k ; i++, j+=k ) {
 	c[i] = 0 ;
 	p[i] = src[j] ;    /* p[i] */
@@ -807,7 +807,7 @@ build_decode_matrix(struct fec_parms *code, int index[])
 	} else
 #endif
 	if (index[i] < code->n )
-	    memcpy(p,  &(code->enc_matrix[index[i]*k]), k*sizeof(gf) ); 
+	    memcpy(p,  &(code->enc_matrix[index[i]*k]), k*sizeof(gf) );
 	else {
 	    fprintf(stderr, "decode: invalid index %d (max %d)\n",
 		index[i], code->n - 1 );
@@ -838,7 +838,7 @@ build_decode_matrix(struct fec_parms *code, int index[])
 int
 fec_decode(struct fec_parms *code, gf *pkt[], int index[], int sz)
 {
-    gf *m_dec ; 
+    gf *m_dec ;
     gf **new_pkt ;
     int row, col , k = code->k ;
 
