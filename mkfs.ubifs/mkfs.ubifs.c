@@ -20,8 +20,11 @@
  *          Zoltan Sogor
  */
 
+#define PROGRAM_NAME "mkfs.ubifs"
+
 #include "mkfs.ubifs.h"
 #include <crc32.h>
+#include "common.h"
 
 #define PROGRAM_VERSION "1.5"
 
@@ -388,11 +391,6 @@ static long long add_space_overhead(long long size)
         factor += (max_idx_node_sz * 3) / (f - 1);
         size *= factor;
         return size / divisor;
-}
-
-static inline int is_power_of_2(unsigned long long n)
-{
-                return (n != 0 && ((n & (n - 1)) == 0));
 }
 
 static int validate_options(void)
