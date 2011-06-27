@@ -520,7 +520,7 @@ void processCmdLine(int argc, char **argv)
                 FileSizeMax = (float)atoi(argv[++cnt]);
                 if(FileSizeMax > (MAX_INTS_ALLOW*sizeof(int)))
                 {
-                    printf("Max file size allowed is %lu.\n",
+                    printf("Max file size allowed is %zu.\n",
                            MAX_INTS_ALLOW*sizeof(int));
                     exit(0);
                 }
