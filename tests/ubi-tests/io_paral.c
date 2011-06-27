@@ -45,7 +45,7 @@ static int vol_size;
 
 static struct ubi_mkvol_request reqests[THREADS_NUM + 1];
 static char vol_name[THREADS_NUM + 1][100];
-static char vol_nodes[THREADS_NUM + 1][strlen(UBI_VOLUME_PATTERN) + 100];
+static char vol_nodes[THREADS_NUM + 1][sizeof(UBI_VOLUME_PATTERN) + 99];
 static unsigned char *wbufs[THREADS_NUM + 1];
 static unsigned char *rbufs[THREADS_NUM + 1];
 
