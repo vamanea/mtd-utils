@@ -34,9 +34,3 @@ the -m option. For now, we just have a warning, but the option will be
 removed in release 1.4.6.
 
 ---------------------------
-3. flash_info utility
-
-This is duplicating behavior with the mtdinfo utility.  Now the util
-warns when people use it, but it'll be removed in release 1.4.6.
-
----------------------------
