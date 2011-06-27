@@ -21,7 +21,6 @@
  * Author: Artem Bityutskiy
  */
 
-#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubinfo"
 
 #include <stdint.h>
@@ -51,7 +50,7 @@ static struct args args = {
 	.vol_name = NULL,
 };
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 			 " - a tool to print UBI information.";
 
 static const char optionsstr[] =
@@ -124,7 +123,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		case ':':

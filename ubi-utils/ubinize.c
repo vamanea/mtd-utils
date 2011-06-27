@@ -24,7 +24,6 @@
  *          Oliver Lohmann
  */
 
-#define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubinize"
 
 #include <sys/stat.h>
@@ -39,7 +38,7 @@
 #include "common.h"
 #include "ubiutils-common.h"
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 " - a tool to generate UBI images. An UBI image may contain one or more UBI "
 "volumes which have to be defined in the input configuration ini-file. The "
 "ini file defines all the UBI volumes - their characteristics and the and the "
@@ -234,7 +233,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		default:

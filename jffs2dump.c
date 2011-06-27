@@ -15,7 +15,6 @@
  */
 
 #define PROGRAM_NAME "jffs2dump"
-#define VERSION "$Revision: 1.10 $"
 
 #include <errno.h>
 #include <stdint.h>
@@ -36,6 +35,7 @@
 #include <getopt.h>
 #include <crc32.h>
 #include "summary.h"
+#include "common.h"
 
 #define PAD(x) (((x)+3)&~3)
 

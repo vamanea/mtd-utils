@@ -26,8 +26,6 @@
 #include <crc32.h>
 #include "common.h"
 
-#define PROGRAM_VERSION "1.5"
-
 /* Size (prime number) of hash table for link counting */
 #define HASH_TABLE_SIZE 10099
 
@@ -606,7 +604,7 @@ static int get_options(int argc, char**argv)
 			verbose = 1;
 			break;
 		case 'V':
-			printf("Version " PROGRAM_VERSION "\n");
+			common_print_version();
 			exit(0);
 		case 'g':
 			debug_level = strtol(optarg, &endp, 0);

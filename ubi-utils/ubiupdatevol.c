@@ -24,7 +24,6 @@
  *          Artem Bityutskiy
  */
 
-#define PROGRAM_VERSION "1.2"
 #define PROGRAM_NAME    "ubiupdatevol"
 
 #include <fcntl.h>
@@ -52,7 +51,7 @@ struct args {
 
 static struct args args;
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 			 " - a tool to write data to UBI volumes.";
 
 static const char optionsstr[] =
@@ -103,7 +102,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		case ':':

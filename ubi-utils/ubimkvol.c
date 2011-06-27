@@ -23,7 +23,6 @@
  *          Frank Haverkamp <haver@vnet.ibm.com>
  */
 
-#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubimkvol"
 
 #include <stdio.h>
@@ -56,7 +55,7 @@ static struct args args = {
 	.vol_id = UBI_VOL_NUM_AUTO,
 };
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 			 " - a tool to create UBI volumes.";
 
 static const char optionsstr[] =
@@ -173,7 +172,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		case 'm':

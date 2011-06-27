@@ -29,7 +29,6 @@
  */
 #define MAX_CONSECUTIVE_BAD_BLOCKS 4
 
-#define PROGRAM_VERSION "1.5"
 #define PROGRAM_NAME    "ubiformat"
 
 #include <sys/stat.h>
@@ -72,7 +71,7 @@ static struct args args =
 	.ubi_ver   = 1,
 };
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 		" - a tool to format MTD devices and flash UBI images";
 
 static const char optionsstr[] =
@@ -206,7 +205,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		case 'h':

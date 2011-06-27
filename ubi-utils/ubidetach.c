@@ -21,7 +21,6 @@
  * Author: Artem Bityutskiy
  */
 
-#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME    "ubidetach"
 
 #include <stdio.h>
@@ -50,7 +49,7 @@ static struct args args = {
 	.dev = NULL,
 };
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 " - tool to remove UBI devices (detach MTD devices from UBI)";
 
 static const char optionsstr[] =
@@ -113,7 +112,7 @@ static int parse_opt(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		case ':':
