@@ -102,7 +102,7 @@ static enum {
 static void process_options(int argc, char * const argv[])
 {
 	int error = 0;
-	bool bb_default = true, oob_default = true;
+	bool oob_default = true;
 
 	for (;;) {
 		int option_index = 0;
@@ -149,7 +149,6 @@ static void process_options(int argc, char * const argv[])
 							bb_method = skipbad;
 						else
 							error++;
-						bb_default = false;
 						break;
 					case 3: /* --omitoob */
 						if (oob_default) {
