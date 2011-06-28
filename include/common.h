@@ -129,6 +129,12 @@ simple_strtoX(strtoll, long long int)
 simple_strtoX(strtoul, unsigned long int)
 simple_strtoX(strtoull, unsigned long long int)
 
+/* Simple version-printing for utils */
+#define common_print_version() \
+do { \
+	printf("%s %s\n", PROGRAM_NAME, VERSION); \
+} while (0)
+
 #include "xalloc.h"
 
 #ifdef __cplusplus
