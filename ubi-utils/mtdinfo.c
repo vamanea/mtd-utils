@@ -38,7 +38,6 @@
 
 /* The variables below are set by command line arguments */
 struct args {
-	int mtdn;
 	unsigned int all:1;
 	unsigned int ubinfo:1;
 	unsigned int map:1;
@@ -46,7 +45,6 @@ struct args {
 };
 
 static struct args args = {
-	.mtdn = -1,
 	.ubinfo = 0,
 	.all = 0,
 	.node = NULL,
@@ -128,10 +126,8 @@ static int parse_opt(int argc, char * const argv[])
 	else if (optind < argc)
 		return errmsg("more then one MTD device specified (use -h for help)");
 
-	if (args.all && (args.node || args.mtdn != -1)) {
-		args.mtdn = -1;
+	if (args.all && args.node)
 		args.node = NULL;
-	}
 
 	if (args.map && !args.node)
 		return errmsg("-M requires MTD device node name");
@@ -153,8 +149,7 @@ static int translate_dev(libmtd_t libmtd, const char *node)
 				  "device \"%s\"", node);
 	}
 
-	args.mtdn = mtd.mtd_num;
-	return 0;
+	return mtd.mtd_num;
 }
 
 static void print_ubi_info(const struct mtd_info *mtd_info,
@@ -406,20 +401,19 @@ int main(int argc, char * const argv[])
 		return sys_errmsg("cannot get MTD information");
 	}
 
-	if (args.node) {
+	if (!args.all) {
+		int mtdn;
+
 		/*
 		 * A character device was specified, translate this to MTD
 		 * device number.
 		 */
-		err = translate_dev(libmtd, args.node);
-		if (err)
+		mtdn = translate_dev(libmtd, args.node);
+		if (mtdn < 0)
 			goto out_libmtd;
-	}
-
-	if (args.mtdn == -1)
+		err = print_dev_info(libmtd, &mtd_info, mtdn);
+	} else
 		err = print_general_info(libmtd, &mtd_info, args.all);
-	else
-		err = print_dev_info(libmtd, &mtd_info, args.mtdn);
 	if (err)
 		goto out_libmtd;
 
