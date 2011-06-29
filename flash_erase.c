@@ -66,7 +66,7 @@ static void display_help (void)
 			"  -j, --jffs2       format the device for jffs2\n"
 			"  -N, --noskipbad   don't skip bad blocks\n"
 			"  -u, --unlock      unlock sectors before erasing\n"
-			"  -q, --quiet       display progress messages\n"
+			"  -q, --quiet       do not display progress messages\n"
 			"      --silent      same as --quiet\n"
 			"      --help        display this help and exit\n"
 			"      --version     output version information and exit\n",
