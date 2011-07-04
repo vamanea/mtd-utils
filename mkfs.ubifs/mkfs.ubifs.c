@@ -1732,7 +1732,7 @@ static int write_index(void)
 	struct idx_entry **idx_ptr, **p;
 	struct ubifs_idx_node *idx;
 	struct ubifs_branch *br;
-	int child_cnt, j, level, blnum, boffs, blen, blast_len, err;
+	int child_cnt = 0, j, level, blnum, boffs, blen, blast_len, err;
 
 	dbg_msg(1, "leaf node count: %zd", idx_cnt);
 
