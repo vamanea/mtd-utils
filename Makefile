@@ -3,7 +3,7 @@
 
 VERSION = 1.4.5
 
-CPPFLAGS += -I./include -I./ubi-utils/include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
+CPPFLAGS += -I./include -I$(BUILDDIR)/include -I./ubi-utils/include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 
 ifeq ($(WITHOUT_XATTR), 1)
   CPPFLAGS += -DWITHOUT_XATTR
@@ -71,6 +71,7 @@ cscope:
 $(BUILDDIR)/include/version.h: $(BUILDDIR)/include/version.h.tmp
 	$(Q)cmp -s $@ $@.tmp && rm -f $@.tmp || mv $@.tmp $@
 $(BUILDDIR)/include/version.h.tmp:
+	${Q}mkdir -p $(dir $@)
 	$(Q)echo '#define VERSION "$(VERSION)"' > $@
 
 #
