@@ -71,6 +71,7 @@ cscope:
 	cscope -bR
 
 $(BUILDDIR)/include/version.h: $(BUILDDIR)/include/version.h.tmp
+	$(call BECHO,CHK)
 	$(Q)cmp -s $@ $@.tmp && rm -f $@.tmp || mv $@.tmp $@
 $(BUILDDIR)/include/version.h.tmp:
 	${Q}mkdir -p $(dir $@)
