@@ -50,9 +50,11 @@ ifneq ($(BUILDDIR),$(CURDIR))
 endif
 endif
 endif
-	find $(BUILDDIR)/ -xdev \
-		'(' -name '*.[ao]' -o -name '.*.c.dep' ')' \
-		-exec rm -f {} +
+	@if test -d "$(BUILDDIR)/"; then \
+		find $(BUILDDIR)/ -xdev \
+			'(' -name '*.[ao]' -o -name '.*.c.dep' ')' \
+			-exec rm -f {} + ; \
+	fi
 	rm -f $(BUILDDIR)/include/version.h
 	$(MAKE) -C $(TESTS) clean
 
