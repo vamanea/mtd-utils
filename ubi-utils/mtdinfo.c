@@ -58,6 +58,8 @@ static const char optionsstr[] =
 "                                on this MTD device\n"
 "-M, --map                       print eraseblock map\n"
 "-a, --all                       print information about all MTD devices\n"
+"                                Note: `--all' may give less info per device\n"
+"                                than, e.g., `mtdinfo /dev/mtdX'\n"
 "-h, --help                      print help message\n"
 "-V, --version                   print program version";
 
@@ -239,8 +241,14 @@ static void print_region_info(const struct mtd_dev_info *mtd)
 	region_info_t reginfo;
 	int r, fd;
 
-	/* If we don't have any region info, just return */
-	if (!args.map && mtd->region_cnt == 0)
+	/*
+	 * If we don't have any region info, just return
+	 *
+	 * FIXME: We can't get region_info (via ioctl) without having the MTD
+	 *        node path. This is a problem for `mtdinfo -a', for example,
+	 *        since it doesn't provide any filepath information.
+	 */
+	if (!args.node || (!args.map && mtd->region_cnt == 0))
 		return;
 
 	/* First open the device so we can query it */
