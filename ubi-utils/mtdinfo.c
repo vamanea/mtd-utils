@@ -64,8 +64,10 @@ static const char optionsstr[] =
 "-V, --version                   print program version";
 
 static const char usage[] =
-"Usage: " PROGRAM_NAME " <MTD device node file name> [-u] [-M] [-h] [-V] [--ubi-info] [--help]\n"
-"\t\t[--version]\n"
+"Usage: " PROGRAM_NAME " <MTD node file path> [--map | -M] [--ubi-info | -u]\n"
+"       " PROGRAM_NAME " --all [--ubi-info | -u]\n"
+"       " PROGRAM_NAME " [--help | --version]\n"
+"\n"
 "Example 1: " PROGRAM_NAME " - (no arguments) print general MTD information\n"
 "Example 2: " PROGRAM_NAME " /dev/mtd0 - print information MTD device /dev/mtd0\n"
 "Example 3: " PROGRAM_NAME " /dev/mtd0 -u - print information MTD device /dev/mtd0\n"
