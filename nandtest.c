@@ -98,7 +98,9 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 	}
 
 	if (newstats.corrected > oldstats.corrected) {
-		printf("\nECC corrected at %08x\n", (unsigned) ofs);
+		printf("\n %d bit(s) ECC corrected at %08x\n",
+				newstats.corrected - oldstats.corrected,
+				(unsigned) ofs);
 		oldstats.corrected = newstats.corrected;
 	}
 	if (newstats.failed > oldstats.failed) {
