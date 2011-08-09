@@ -68,12 +68,10 @@ static const char usage[] =
 "       " PROGRAM_NAME " --all [--ubi-info | -u]\n"
 "       " PROGRAM_NAME " [--help | --version]\n"
 "\n"
-"Example 1: " PROGRAM_NAME " - (no arguments) print general MTD information\n"
-"Example 2: " PROGRAM_NAME " /dev/mtd0 - print information MTD device /dev/mtd0\n"
-"Example 3: " PROGRAM_NAME " /dev/mtd0 -u - print information MTD device /dev/mtd0\n"
-"\t\t\t\tand include UBI layout information\n"
-"Example 4: " PROGRAM_NAME " -a - print information about all MTD devices\n"
-"\t\t\tand include UBI layout information\n";
+"Example 1: " PROGRAM_NAME " /dev/mtd0       print information MTD device /dev/mtd0\n"
+"Example 2: " PROGRAM_NAME " /dev/mtd0 -u    print information MTD device /dev/mtd0\n"
+"\t\t\t\t   and include UBI layout information\n"
+"Example 3: " PROGRAM_NAME " -a              print information about all MTD devices\n";
 
 static const struct option long_options[] = {
 	{ .name = "ubi-info",  .has_arg = 0, .flag = NULL, .val = 'u' },
