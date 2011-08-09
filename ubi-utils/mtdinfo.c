@@ -338,8 +338,7 @@ static int print_dev_info(libmtd_t libmtd, const struct mtd_info *mtd_info, int 
 	return 0;
 }
 
-static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
-			      int all)
+static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info)
 {
 	int i, err, first = 1;
 	struct mtd_dev_info mtd;
@@ -366,14 +365,8 @@ static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
 		}
 	}
 	printf("\n");
-	printf("Sysfs interface supported:      %s\n",
+	printf("Sysfs interface supported:      %s\n\n",
 	       mtd_info->sysfs_supported ? "yes" : "no");
-
-	if (!all)
-		return 0;
-
-	first = 1;
-	printf("\n");
 
 	for (i = mtd_info->lowest_mtd_num;
 	     i <= mtd_info->highest_mtd_num; i++) {
@@ -421,7 +414,7 @@ int main(int argc, char * const argv[])
 			goto out_libmtd;
 		err = print_dev_info(libmtd, &mtd_info, mtdn);
 	} else
-		err = print_general_info(libmtd, &mtd_info, args.all);
+		err = print_general_info(libmtd, &mtd_info);
 	if (err)
 		goto out_libmtd;
 
