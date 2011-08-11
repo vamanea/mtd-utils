@@ -659,7 +659,7 @@ int main(int argc, char * const argv[])
 			fprintf(stderr, "Erasing failed write from %#08llx to %#08llx\n",
 				blockstart, blockstart + ebsize_aligned - 1);
 			for (i = blockstart; i < blockstart + ebsize_aligned; i += mtd.eb_size) {
-				if (mtd_erase(mtd_desc, &mtd, fd, mtd.eb_size)) {
+				if (mtd_erase(mtd_desc, &mtd, fd, i / mtd.eb_size)) {
 					int errno_tmp = errno;
 					sys_errmsg("%s: MTD Erase failure", mtd_device);
 					if (errno_tmp != EIO) {
