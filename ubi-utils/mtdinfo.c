@@ -50,28 +50,32 @@ static struct args args = {
 	.node = NULL,
 };
 
-static const char doc[] = PROGRAM_NAME " version " VERSION
-			 " - a tool to print MTD information.";
-
-static const char optionsstr[] =
-"-u, --ubi-info                  print what would UBI layout be if it was put\n"
-"                                on this MTD device\n"
-"-M, --map                       print eraseblock map\n"
-"-a, --all                       print information about all MTD devices\n"
-"                                Note: `--all' may give less info per device\n"
-"                                than, e.g., `mtdinfo /dev/mtdX'\n"
-"-h, --help                      print help message\n"
-"-V, --version                   print program version";
-
-static const char usage[] =
-"Usage: " PROGRAM_NAME " <MTD node file path> [--map | -M] [--ubi-info | -u]\n"
-"       " PROGRAM_NAME " --all [--ubi-info | -u]\n"
-"       " PROGRAM_NAME " [--help | --version]\n"
-"\n"
-"Example 1: " PROGRAM_NAME " /dev/mtd0       print information MTD device /dev/mtd0\n"
-"Example 2: " PROGRAM_NAME " /dev/mtd0 -u    print information MTD device /dev/mtd0\n"
-"\t\t\t\t   and include UBI layout information\n"
-"Example 3: " PROGRAM_NAME " -a              print information about all MTD devices\n";
+static void display_help(void)
+{
+	printf(
+		"%1$s version %2$s - a tool to print MTD information.\n"
+		"\n"
+		"Usage: %1$s <MTD node file path> [--map | -M] [--ubi-info | -u]\n"
+		"       %1$s --all [--ubi-info | -u]\n"
+		"       %1$s [--help | --version]\n"
+		"\n"
+		"Options:\n"
+		"-u, --ubi-info                  print what would UBI layout be if it was put\n"
+		"                                on this MTD device\n"
+		"-M, --map                       print eraseblock map\n"
+		"-a, --all                       print information about all MTD devices\n"
+		"                                Note: `--all' may give less info per device\n"
+		"                                than, e.g., `mtdinfo /dev/mtdX'\n"
+		"-h, --help                      print help message\n"
+		"-V, --version                   print program version\n"
+		"\n"
+		"Examples:\n"
+		"  %1$s /dev/mtd0             print information MTD device /dev/mtd0\n"
+		"  %1$s /dev/mtd0 -u          print information MTD device /dev/mtd0\n"
+		"  %4$*3$s                    and include UBI layout information\n"
+		"  %1$s -a                    print information about all MTD devices\n",
+		PROGRAM_NAME, VERSION, (int)strlen(PROGRAM_NAME) + 3, "");
+}
 
 static const struct option long_options[] = {
 	{ .name = "ubi-info",  .has_arg = 0, .flag = NULL, .val = 'u' },
@@ -105,9 +109,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'h':
-			printf("%s\n\n", doc);
-			printf("%s\n\n", usage);
-			printf("%s\n", optionsstr);
+			display_help();
 			exit(EXIT_SUCCESS);
 
 		case 'V':
