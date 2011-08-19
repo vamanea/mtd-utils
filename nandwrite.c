@@ -44,10 +44,6 @@
 #include <libmtd.h>
 
 // oob layouts to pass into the kernel as default
-static struct nand_oobinfo none_oobinfo = {
-	.useecc = MTD_NANDECC_OFF,
-};
-
 static struct nand_oobinfo jffs2_oobinfo = {
 	.useecc = MTD_NANDECC_PLACE,
 	.eccbytes = 6,
@@ -318,18 +314,7 @@ int main(int argc, char * const argv[])
 		} else {
 			switch (errno) {
 			case ENOTTY:
-				if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-					perror("MEMGETOOBSEL");
-					close(fd);
-					exit(EXIT_FAILURE);
-				}
-				if (ioctl(fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-					perror("MEMSETOOBSEL");
-					close(fd);
-					exit(EXIT_FAILURE);
-				}
-				oobinfochanged = 1;
-				break;
+				errmsg_die("ioctl MTDFILEMODE is missing");
 			default:
 				perror("MTDFILEMODE");
 				close(fd);
@@ -670,15 +655,6 @@ restoreoob:
 	libmtd_close(mtd_desc);
 	free(filebuf);
 	free(oobbuf);
-
-	if (oobinfochanged == 1) {
-		if (ioctl(fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
-			perror("MEMSETOOBSEL");
-			close(fd);
-			exit(EXIT_FAILURE);
-		}
-	}
-
 	close(fd);
 
 	if (failed
