@@ -60,17 +60,12 @@ static struct nand_oobinfo yaffs_oobinfo = {
 	.eccpos = { 8, 9, 10, 13, 14, 15}
 };
 
-static struct nand_oobinfo autoplace_oobinfo = {
-	.useecc = MTD_NANDECC_AUTOPLACE
-};
-
 static void display_help(void)
 {
 	printf(
 "Usage: nandwrite [OPTION] MTD_DEVICE [INPUTFILE|-]\n"
 "Writes to the specified MTD device.\n"
 "\n"
-"  -a, --autoplace         Use auto oob layout\n"
 "  -j, --jffs2             Force jffs2 oob layout (legacy support)\n"
 "  -y, --yaffs             Force yaffs oob layout (legacy support)\n"
 "  -f, --forcelegacy       Force legacy support on autoplacement-enabled mtd\n"
@@ -114,7 +109,6 @@ static bool		quiet = false;
 static bool		writeoob = false;
 static bool		rawoob = false;
 static bool		onlyoob = false;
-static bool		autoplace = false;
 static bool		markbad = false;
 static bool		forcejffs2 = false;
 static bool		forceyaffs = false;
@@ -130,11 +124,10 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "ab:fjmnNoOpqrs:y";
+		static const char *short_options = "b:fjmnNoOpqrs:y";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
-			{"autoplace", no_argument, 0, 'a'},
 			{"blockalign", required_argument, 0, 'b'},
 			{"forcelegacy", no_argument, 0, 'f'},
 			{"jffs2", no_argument, 0, 'j'},
@@ -170,9 +163,6 @@ static void process_options(int argc, char * const argv[])
 				break;
 			case 'q':
 				quiet = true;
-				break;
-			case 'a':
-				autoplace = true;
 				break;
 			case 'j':
 				forcejffs2 = true;
@@ -321,25 +311,6 @@ int main(int argc, char * const argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (autoplace) {
-		/* Read the current oob info */
-		if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-			perror("MEMGETOOBSEL");
-			close(fd);
-			exit(EXIT_FAILURE);
-		}
-
-		// autoplace ECC ?
-		if (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE) {
-			if (ioctl(fd, MEMSETOOBSEL, &autoplace_oobinfo) != 0) {
-				perror("MEMSETOOBSEL");
-				close(fd);
-				exit(EXIT_FAILURE);
-			}
-			oobinfochanged = 1;
-		}
-	}
-
 	if (noecc)  {
 		ret = ioctl(fd, MTDFILEMODE, MTD_MODE_RAW);
 		if (ret == 0) {
@@ -374,10 +345,6 @@ int main(int argc, char * const argv[])
 	if (forcejffs2 || forceyaffs) {
 		struct nand_oobinfo *oobsel = forcejffs2 ? &jffs2_oobinfo : &yaffs_oobinfo;
 
-		if (autoplace) {
-			fprintf(stderr, "Autoplacement is not possible for legacy -j/-y options\n");
-			goto restoreoob;
-		}
 		if ((old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) && !forcelegacy) {
 			fprintf(stderr, "Use -f option to enforce legacy placement on autoplacement enabled mtd device\n");
 			goto restoreoob;
@@ -608,6 +575,14 @@ int main(int argc, char * const argv[])
 			if (!noecc) {
 				int i, start, len;
 				int tags_pos = 0;
+
+				/* Read the current oob info */
+				if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
+					perror("MEMGETOOBSEL");
+					close(fd);
+					exit(EXIT_FAILURE);
+				}
+
 				/*
 				 * We use autoplacement and have the oobinfo with the autoplacement
 				 * information from the kernel available
