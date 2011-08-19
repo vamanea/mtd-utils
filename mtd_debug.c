@@ -123,10 +123,10 @@ int flash_to_file(int fd, u_int32_t offset, size_t len, const char *filename)
 retry:
 	if ((buf = (u_int8_t *) malloc(size)) == NULL) {
 #define BUF_SIZE	(64 * 1024 * sizeof(u_int8_t))
-		fprintf(stderr, "%s: malloc(%#x)\n", __FUNCTION__, size);
+		fprintf(stderr, "%s: malloc(%#x)\n", __func__, size);
 		if (size != BUF_SIZE) {
 			size = BUF_SIZE;
-			fprintf(stderr, "%s: trying buffer size %#x\n", __FUNCTION__, size);
+			fprintf(stderr, "%s: trying buffer size %#x\n", __func__, size);
 			goto retry;
 		}
 		perror("malloc()");
@@ -137,13 +137,13 @@ retry:
 			size = n;
 		err = read(fd, buf, size);
 		if (err < 0) {
-			fprintf(stderr, "%s: read, size %#x, n %#x\n", __FUNCTION__, size, n);
+			fprintf(stderr, "%s: read, size %#x, n %#x\n", __func__, size, n);
 			perror("read()");
 			goto err2;
 		}
 		err = write(outfd, buf, size);
 		if (err < 0) {
-			fprintf(stderr, "%s: write, size %#x, n %#x\n", __FUNCTION__, size, n);
+			fprintf(stderr, "%s: write, size %#x, n %#x\n", __func__, size, n);
 			perror("write()");
 			goto err2;
 		}
@@ -187,10 +187,10 @@ int file_to_flash(int fd, u_int32_t offset, u_int32_t len, const char *filename)
 	}
 retry:
 	if ((buf = (u_int8_t *) malloc(size)) == NULL) {
-		fprintf(stderr, "%s: malloc(%#x) failed\n", __FUNCTION__, size);
+		fprintf(stderr, "%s: malloc(%#x) failed\n", __func__, size);
 		if (size != BUF_SIZE) {
 			size = BUF_SIZE;
-			fprintf(stderr, "%s: trying buffer size %#x\n", __FUNCTION__, size);
+			fprintf(stderr, "%s: trying buffer size %#x\n", __func__, size);
 			goto retry;
 		}
 		perror("malloc()");
@@ -201,7 +201,7 @@ retry:
 		if (n <= size)
 			size = n;
 		if (fread(buf, size, 1, fp) != 1 || ferror(fp)) {
-			fprintf(stderr, "%s: fread, size %#x, n %#x\n", __FUNCTION__, size, n);
+			fprintf(stderr, "%s: fread, size %#x, n %#x\n", __func__, size, n);
 			perror("fread()");
 			free(buf);
 			fclose(fp);
@@ -209,7 +209,7 @@ retry:
 		}
 		err = write(fd, buf, size);
 		if (err < 0) {
-			fprintf(stderr, "%s: write, size %#x, n %#x\n", __FUNCTION__, size, n);
+			fprintf(stderr, "%s: write, size %#x, n %#x\n", __func__, size, n);
 			perror("write()");
 			free(buf);
 			fclose(fp);

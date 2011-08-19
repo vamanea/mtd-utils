@@ -54,24 +54,24 @@ int __initial_check(const char *test, int argc, char * const argv[])
 	 * check this.
 	 */
 	if (argc < 2) {
-		__errmsg(test, __FUNCTION__, __LINE__,
+		__errmsg(test, __func__, __LINE__,
 			 "UBI character device node is not specified");
 		return -1;
 	}
 
 	libubi = libubi_open();
 	if (libubi == NULL) {
-		__failed(test, __FUNCTION__, __LINE__, "libubi_open");
+		__failed(test, __func__, __LINE__, "libubi_open");
 		return -1;
 	}
 
 	if (ubi_get_dev_info(libubi, argv[1], &dev_info)) {
-		__failed(test, __FUNCTION__, __LINE__, "ubi_get_dev_info");
+		__failed(test, __func__, __LINE__, "ubi_get_dev_info");
 		goto close;
 	}
 
 	if (dev_info.avail_lebs < MIN_AVAIL_EBS) {
-		__errmsg(test, __FUNCTION__, __LINE__,
+		__errmsg(test, __func__, __LINE__,
 			 "insufficient available eraseblocks %d on UBI "
 			 "device, required %d",
 			 dev_info.avail_lebs, MIN_AVAIL_EBS);
@@ -79,7 +79,7 @@ int __initial_check(const char *test, int argc, char * const argv[])
 	}
 
 	if (dev_info.vol_count != 0) {
-		__errmsg(test, __FUNCTION__, __LINE__,
+		__errmsg(test, __func__, __LINE__,
 			 "device %s is not empty", argv[1]);
 		goto close;
 	}
