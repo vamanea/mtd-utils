@@ -342,15 +342,17 @@ void showusage(void)
 	exit(EXIT_FAILURE);
 }
 
-#define OPT_INFO	1
-#define OPT_READ	2
-#define OPT_WRITE	3
-#define OPT_ERASE	4
-
 int main(int argc, char *argv[])
 {
-	int err = 0, fd, option = OPT_INFO;
+	int err = 0, fd;
 	int open_flag;
+
+	enum {
+		OPT_INFO,
+		OPT_READ,
+		OPT_WRITE,
+		OPT_ERASE
+	} option = OPT_INFO;
 
 	/* parse command-line options */
 	if (argc == 3 && !strcmp(argv[1], "info"))
