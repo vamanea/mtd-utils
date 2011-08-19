@@ -225,8 +225,6 @@ int main(int argc, char * const argv[])
 	struct mtd_dev_info mtd;
 	long long offs;
 	int ret;
-	int oobinfochanged = 0;
-	struct nand_oobinfo old_oobinfo;
 	bool failed = true;
 	/* contains all the data read from the file so far for the current eraseblock */
 	unsigned char *filebuf = NULL;
@@ -277,9 +275,7 @@ int main(int argc, char * const argv[])
 
 	if (noecc)  {
 		ret = ioctl(fd, MTDFILEMODE, MTD_MODE_RAW);
-		if (ret == 0) {
-			oobinfochanged = 2;
-		} else {
+		if (ret) {
 			switch (errno) {
 			case ENOTTY:
 				errmsg_die("ioctl MTDFILEMODE is missing");
@@ -300,7 +296,7 @@ int main(int argc, char * const argv[])
 
 	if (ifd == -1) {
 		perror(img);
-		goto restoreoob;
+		goto closeall;
 	}
 
 	pagelen = mtd.min_io_size + ((writeoob) ? mtd.oob_size : 0);
@@ -502,6 +498,7 @@ int main(int argc, char * const argv[])
 			if (!noecc) {
 				int i, start, len;
 				int tags_pos = 0;
+				struct nand_oobinfo old_oobinfo;
 
 				/* Read the current oob info */
 				if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
@@ -517,7 +514,7 @@ int main(int argc, char * const argv[])
 				 * Modified to support out of order oobfree segments,
 				 * such as the layout used by diskonchip.c
 				 */
-				if (!oobinfochanged && (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE)) {
+				if (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) {
 					for (i = 0; old_oobinfo.oobfree[i][1]; i++) {
 						/* Set the reserved bytes to 0xff */
 						start = old_oobinfo.oobfree[i][0];
@@ -592,8 +589,6 @@ int main(int argc, char * const argv[])
 
 closeall:
 	close(ifd);
-
-restoreoob:
 	libmtd_close(mtd_desc);
 	free(filebuf);
 	free(oobbuf);
