@@ -34,10 +34,6 @@
 #include "common.h"
 #include <libmtd.h>
 
-static struct nand_oobinfo none_oobinfo = {
-	.useecc = MTD_NANDECC_OFF,
-};
-
 static void display_help(void)
 {
 	printf(
@@ -309,11 +305,10 @@ int main(int argc, char * const argv[])
 {
 	long long ofs, end_addr = 0;
 	long long blockstart = 1;
-	int ret, i, fd, ofd = 0, bs, badblock = 0;
+	int i, fd, ofd = 0, bs, badblock = 0;
 	struct mtd_dev_info mtd;
 	char pretty_buf[PRETTY_BUF_LEN];
-	int oobinfochanged = 0, firstblock = 1;
-	struct nand_oobinfo old_oobinfo;
+	int firstblock = 1;
 	struct mtd_ecc_stats stat1, stat2;
 	bool eccstats = false;
 	unsigned char *readbuf = NULL, *oobbuf = NULL;
@@ -341,26 +336,9 @@ int main(int argc, char * const argv[])
 	readbuf = xmalloc(sizeof(readbuf) * mtd.min_io_size);
 
 	if (noecc)  {
-		ret = ioctl(fd, MTDFILEMODE, MTD_MODE_RAW);
-		if (ret == 0) {
-			oobinfochanged = 2;
-		} else {
-			switch (errno) {
-			case ENOTTY:
-				if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-					perror("MEMGETOOBSEL");
-					goto closeall;
-				}
-				if (ioctl(fd, MEMSETOOBSEL, &none_oobinfo) != 0) {
-					perror("MEMSETOOBSEL");
-					goto closeall;
-				}
-				oobinfochanged = 1;
-				break;
-			default:
+		if (ioctl(fd, MTDFILEMODE, MTD_MODE_RAW) != 0) {
 				perror("MTDFILEMODE");
 				goto closeall;
-			}
 		}
 	} else {
 		/* check if we can read ecc stats */
@@ -498,15 +476,6 @@ int main(int argc, char * const argv[])
 			write(ofd, oobbuf, mtd.oob_size);
 	}
 
-	/* reset oobinfo */
-	if (oobinfochanged == 1) {
-		if (ioctl(fd, MEMSETOOBSEL, &old_oobinfo) != 0) {
-			perror("MEMSETOOBSEL");
-			close(fd);
-			close(ofd);
-			return EXIT_FAILURE;
-		}
-	}
 	/* Close the output file and MTD device, free memory */
 	close(fd);
 	close(ofd);
@@ -517,12 +486,6 @@ int main(int argc, char * const argv[])
 	return EXIT_SUCCESS;
 
 closeall:
-	/* The new mode change is per file descriptor ! */
-	if (oobinfochanged == 1) {
-		if (ioctl(fd, MEMSETOOBSEL, &old_oobinfo) != 0)  {
-			perror("MEMSETOOBSEL");
-		}
-	}
 	close(fd);
 	close(ofd);
 	free(oobbuf);
