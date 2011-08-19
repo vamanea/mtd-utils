@@ -497,7 +497,6 @@ int main(int argc, char * const argv[])
 
 			if (!noecc) {
 				int i, start, len;
-				int tags_pos = 0;
 				struct nand_oobinfo old_oobinfo;
 
 				/* Read the current oob info */
@@ -515,16 +514,13 @@ int main(int argc, char * const argv[])
 				 * such as the layout used by diskonchip.c
 				 */
 				if (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) {
+					int tags_pos = 0, tmp_ofs;
 					for (i = 0; old_oobinfo.oobfree[i][1]; i++) {
 						/* Set the reserved bytes to 0xff */
 						start = old_oobinfo.oobfree[i][0];
 						len = old_oobinfo.oobfree[i][1];
-						if (rawoob)
-							memcpy(oobbuf + start,
-									oobreadbuf + start, len);
-						else
-							memcpy(oobbuf + start,
-									oobreadbuf + tags_pos, len);
+						tmp_ofs = rawoob ? start : tags_pos;
+						memcpy(oobbuf + start, oobreadbuf + tmp_ofs, len);
 						tags_pos += len;
 					}
 				} else {
