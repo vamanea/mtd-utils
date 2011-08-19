@@ -43,29 +43,12 @@
 #include "common.h"
 #include <libmtd.h>
 
-// oob layouts to pass into the kernel as default
-static struct nand_oobinfo jffs2_oobinfo = {
-	.useecc = MTD_NANDECC_PLACE,
-	.eccbytes = 6,
-	.eccpos = { 0, 1, 2, 3, 6, 7 }
-};
-
-static struct nand_oobinfo yaffs_oobinfo = {
-	.useecc = MTD_NANDECC_PLACE,
-	.eccbytes = 6,
-	.eccpos = { 8, 9, 10, 13, 14, 15}
-};
-
 static void display_help(void)
 {
 	printf(
 "Usage: nandwrite [OPTION] MTD_DEVICE [INPUTFILE|-]\n"
 "Writes to the specified MTD device.\n"
 "\n"
-"  -j, --jffs2             Force jffs2 oob layout (legacy support)\n"
-"  -y, --yaffs             Force yaffs oob layout (legacy support)\n"
-"  -f, --forcelegacy       Force legacy support on autoplacement-enabled mtd\n"
-"                          device\n"
 "  -m, --markbad           Mark blocks bad if write fails\n"
 "  -n, --noecc             Write without ecc\n"
 "  -N, --noskipbad         Write without bad block skipping\n"
@@ -106,9 +89,6 @@ static bool		writeoob = false;
 static bool		rawoob = false;
 static bool		onlyoob = false;
 static bool		markbad = false;
-static bool		forcejffs2 = false;
-static bool		forceyaffs = false;
-static bool		forcelegacy = false;
 static bool		noecc = false;
 static bool		noskipbad = false;
 static bool		pad = false;
@@ -120,13 +100,11 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "b:fjmnNoOpqrs:y";
+		static const char *short_options = "b:mnNoOpqrs:";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
 			{"blockalign", required_argument, 0, 'b'},
-			{"forcelegacy", no_argument, 0, 'f'},
-			{"jffs2", no_argument, 0, 'j'},
 			{"markbad", no_argument, 0, 'm'},
 			{"noecc", no_argument, 0, 'n'},
 			{"noskipbad", no_argument, 0, 'N'},
@@ -136,7 +114,6 @@ static void process_options(int argc, char * const argv[])
 			{"quiet", no_argument, 0, 'q'},
 			{"raw", no_argument, 0, 'r'},
 			{"start", required_argument, 0, 's'},
-			{"yaffs", no_argument, 0, 'y'},
 			{0, 0, 0, 0},
 		};
 
@@ -159,15 +136,6 @@ static void process_options(int argc, char * const argv[])
 				break;
 			case 'q':
 				quiet = true;
-				break;
-			case 'j':
-				forcejffs2 = true;
-				break;
-			case 'y':
-				forceyaffs = true;
-				break;
-			case 'f':
-				forcelegacy = true;
 				break;
 			case 'n':
 				noecc = true;
@@ -320,32 +288,6 @@ int main(int argc, char * const argv[])
 				close(fd);
 				exit(EXIT_FAILURE);
 			}
-		}
-	}
-
-	/*
-	 * force oob layout for jffs2 or yaffs ?
-	 * Legacy support
-	 */
-	if (forcejffs2 || forceyaffs) {
-		struct nand_oobinfo *oobsel = forcejffs2 ? &jffs2_oobinfo : &yaffs_oobinfo;
-
-		if ((old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) && !forcelegacy) {
-			fprintf(stderr, "Use -f option to enforce legacy placement on autoplacement enabled mtd device\n");
-			goto restoreoob;
-		}
-		if (mtd.oob_size == 8) {
-			if (forceyaffs) {
-				fprintf(stderr, "YAFSS cannot operate on 256 Byte page size");
-				goto restoreoob;
-			}
-			/* Adjust number of ecc bytes */
-			jffs2_oobinfo.eccbytes = 3;
-		}
-
-		if (ioctl(fd, MEMSETOOBSEL, oobsel) != 0) {
-			perror("MEMSETOOBSEL");
-			goto restoreoob;
 		}
 	}
 
