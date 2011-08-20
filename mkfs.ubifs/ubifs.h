@@ -25,6 +25,9 @@
 #ifndef __UBIFS_H__
 #define __UBIFS_H__
 
+/* Maximum logical eraseblock size in bytes */
+#define UBIFS_MAX_LEB_SZ (2*1024*1024)
+
 /* Minimum amount of data UBIFS writes to the flash */
 #define MIN_WRITE_SZ (UBIFS_DATA_NODE_SZ + 8)
 

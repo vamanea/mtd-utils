@@ -35,6 +35,7 @@
 #include <mtd/ubi-media.h>
 #include <libubigen.h>
 #include <libiniparser.h>
+#include <libubi.h>
 #include "common.h"
 #include "ubiutils-common.h"
 
@@ -253,7 +254,7 @@ static int parse_opt(int argc, char * const argv[])
 	if (args.peb_size < 0)
 		return errmsg("physical eraseblock size was not specified (use -h for help)");
 
-	if (args.peb_size > 1024*1024)
+	if (args.peb_size > UBI_MAX_PEB_SZ)
 		return errmsg("too high physical eraseblock size %d", args.peb_size);
 
 	if (args.min_io_size < 0)
