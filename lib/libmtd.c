@@ -1077,6 +1077,7 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 {
 	int ret;
 	off_t seek;
+	struct mtd_write_req ops;
 
 	ret = mtd_valid_erase_block(mtd, eb);
 	if (ret)
@@ -1101,16 +1102,38 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 		return -1;
 	}
 
-	/* Seek to the beginning of the eraseblock */
+	/* Calculate seek address */
 	seek = (off_t)eb * mtd->eb_size + offs;
-	if (lseek(fd, seek, SEEK_SET) != seek)
-		return sys_errmsg("cannot seek mtd%d to offset %llu",
-				  mtd->mtd_num, (unsigned long long)seek);
 
-	ret = write(fd, data, len);
-	if (ret != len)
-		return sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
-				  len, mtd->mtd_num, eb, offs);
+	ops.start = seek;
+	ops.len = len;
+	ops.ooblen = ooblen;
+	ops.usr_data = (uint64_t)(unsigned long)data;
+	ops.usr_oob = (uint64_t)(unsigned long)oob;
+	ops.mode = mode;
+
+	ret = ioctl(fd, MEMWRITE, &ops);
+	if (ret == 0)
+		return 0;
+	else if (errno != ENOTTY)
+		return mtd_ioctl_error(mtd, eb, "MEMWRITE");
+
+	/* Fall back to old methods if necessary */
+	if (oob) {
+		if (mtd_write_oob(desc, mtd, fd, seek, ooblen, oob) < 0)
+			return sys_errmsg("cannot write to OOB");
+	}
+	if (data) {
+		/* Seek to the beginning of the eraseblock */
+		if (lseek(fd, seek, SEEK_SET) != seek)
+			return sys_errmsg("cannot seek mtd%d to offset %llu",
+					mtd->mtd_num, (unsigned long long)seek);
+		ret = write(fd, data, len);
+		if (ret != len)
+			return sys_errmsg("cannot write %d bytes to mtd%d "
+					  "(eraseblock %d, offset %d)",
+					  len, mtd->mtd_num, eb, offs);
+	}
 
 	return 0;
 }
