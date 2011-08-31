@@ -49,6 +49,7 @@ static void display_help(void)
 "Usage: nandwrite [OPTION] MTD_DEVICE [INPUTFILE|-]\n"
 "Writes to the specified MTD device.\n"
 "\n"
+"  -a, --autoplace         Use auto OOB layout\n"
 "  -m, --markbad           Mark blocks bad if write fails\n"
 "  -n, --noecc             Write without ecc\n"
 "  -N, --noskipbad         Write without bad block skipping\n"
@@ -88,6 +89,7 @@ static bool		writeoob = false;
 static bool		onlyoob = false;
 static bool		markbad = false;
 static bool		noecc = false;
+static bool		autoplace = false;
 static bool		noskipbad = false;
 static bool		pad = false;
 static int		blockalign = 1; /* default to using actual block size */
@@ -98,7 +100,7 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "b:mnNoOpqs:";
+		static const char *short_options = "b:mnNoOpqs:a";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -111,6 +113,7 @@ static void process_options(int argc, char * const argv[])
 			{"pad", no_argument, 0, 'p'},
 			{"quiet", no_argument, 0, 'q'},
 			{"start", required_argument, 0, 's'},
+			{"autoplace", no_argument, 0, 'a'},
 			{0, 0, 0, 0},
 		};
 
@@ -159,6 +162,9 @@ static void process_options(int argc, char * const argv[])
 			case 'b':
 				blockalign = atoi(optarg);
 				break;
+			case 'a':
+				autoplace = true;
+				break;
 			case '?':
 				error++;
 				break;
@@ -172,6 +178,9 @@ static void process_options(int argc, char * const argv[])
 	if (blockalign < 0)
 		errmsg_die("Can't specify negative blockalign with option -b:"
 				" %d", blockalign);
+
+	if (autoplace && noecc)
+		errmsg_die("Autoplacement and no-ECC are mutually exclusive");
 
 	argc -= optind;
 	argv += optind;
@@ -229,6 +238,7 @@ int main(int argc, char * const argv[])
 	unsigned char *oobbuf = NULL;
 	libmtd_t mtd_desc;
 	int ebsize_aligned;
+	uint8_t write_mode;
 
 	process_options(argc, argv);
 
@@ -264,6 +274,14 @@ int main(int argc, char * const argv[])
 		close(fd);
 		exit(EXIT_FAILURE);
 	}
+
+	/* Select OOB write mode */
+	if (noecc)
+		write_mode = MTD_OPS_RAW;
+	else if (autoplace)
+		write_mode = MTD_OPS_AUTO_OOB;
+	else
+		write_mode = MTD_OPS_PLACE_OOB;
 
 	if (noecc)  {
 		ret = ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_RAW);
@@ -492,7 +510,7 @@ int main(int argc, char * const argv[])
 				onlyoob ? 0 : mtd.min_io_size,
 				writeoob ? oobbuf : NULL,
 				writeoob ? mtd.oob_size : 0,
-				noecc ? MTD_OPS_RAW : MTD_OPS_PLACE_OOB);
+				write_mode);
 		if (ret) {
 			int i;
 			if (errno != EIO) {
