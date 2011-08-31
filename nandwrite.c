@@ -54,7 +54,6 @@ static void display_help(void)
 "  -N, --noskipbad         Write without bad block skipping\n"
 "  -o, --oob               Image contains oob data\n"
 "  -O, --onlyoob           Image contains oob data and only write the oob part\n"
-"  -r, --raw               Image contains the raw oob data dumped by nanddump\n"
 "  -s addr, --start=addr   Set start address (default is 0)\n"
 "  -p, --pad               Pad to page size\n"
 "  -b, --blockalign=1|2|4  Set multiple of eraseblocks to align to\n"
@@ -86,7 +85,6 @@ static const char	*mtd_device, *img;
 static long long	mtdoffset = 0;
 static bool		quiet = false;
 static bool		writeoob = false;
-static bool		rawoob = false;
 static bool		onlyoob = false;
 static bool		markbad = false;
 static bool		noecc = false;
@@ -100,7 +98,7 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "b:mnNoOpqrs:";
+		static const char *short_options = "b:mnNoOpqs:";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
@@ -112,7 +110,6 @@ static void process_options(int argc, char * const argv[])
 			{"onlyoob", no_argument, 0, 'O'},
 			{"pad", no_argument, 0, 'p'},
 			{"quiet", no_argument, 0, 'q'},
-			{"raw", no_argument, 0, 'r'},
 			{"start", required_argument, 0, 's'},
 			{0, 0, 0, 0},
 		};
@@ -155,10 +152,6 @@ static void process_options(int argc, char * const argv[])
 				break;
 			case 'p':
 				pad = true;
-				break;
-			case 'r':
-				rawoob = true;
-				writeoob = true;
 				break;
 			case 's':
 				mtdoffset = simple_strtoll(optarg, &error);
