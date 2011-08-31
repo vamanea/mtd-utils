@@ -1071,6 +1071,42 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	return 0;
 }
 
+static int legacy_auto_oob_layout(const struct mtd_dev_info *mtd, int fd,
+				  int ooblen, void *oob) {
+	struct nand_oobinfo old_oobinfo;
+	int start, len;
+	uint8_t *tmp_buf;
+
+	/* Read the current oob info */
+	if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo))
+		return sys_errmsg("MEMGETOOBSEL failed");
+
+	tmp_buf = malloc(ooblen);
+	memcpy(tmp_buf, oob, ooblen);
+
+	/*
+	 * We use autoplacement and have the oobinfo with the autoplacement
+	 * information from the kernel available
+	 */
+	if (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) {
+		int i, tags_pos = 0;
+		for (i = 0; old_oobinfo.oobfree[i][1]; i++) {
+			/* Set the reserved bytes to 0xff */
+			start = old_oobinfo.oobfree[i][0];
+			len = old_oobinfo.oobfree[i][1];
+			memcpy(oob + start, tmp_buf + tags_pos, len);
+			tags_pos += len;
+		}
+	} else {
+		/* Set at least the ecc byte positions to 0xff */
+		start = old_oobinfo.eccbytes;
+		len = mtd->oob_size - start;
+		memcpy(oob + start, tmp_buf + start, len);
+	}
+
+	return 0;
+}
+
 int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 	      int offs, void *data, int len, void *oob, int ooblen,
 	      uint8_t mode)
@@ -1120,6 +1156,9 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 
 	/* Fall back to old methods if necessary */
 	if (oob) {
+		if (mode == MTD_OPS_AUTO_OOB)
+			if (legacy_auto_oob_layout(mtd, fd, ooblen, oob))
+				return -1;
 		if (mtd_write_oob(desc, mtd, fd, seek, ooblen, oob) < 0)
 			return sys_errmsg("cannot write to OOB");
 	}

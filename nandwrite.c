@@ -233,7 +233,6 @@ int main(int argc, char * const argv[])
 	/* points to the current page inside filebuf */
 	unsigned char *writebuf = NULL;
 	/* points to the OOB for the current page in filebuf */
-	unsigned char *oobreadbuf = NULL;
 	unsigned char *oobbuf = NULL;
 	libmtd_t mtd_desc;
 	int ebsize_aligned;
@@ -344,9 +343,6 @@ int main(int argc, char * const argv[])
 	filebuf_max = ebsize_aligned / mtd.min_io_size * pagelen;
 	filebuf = xmalloc(filebuf_max);
 	erase_buffer(filebuf, filebuf_max);
-
-	oobbuf = xmalloc(mtd.oob_size);
-	erase_buffer(oobbuf, mtd.oob_size);
 
 	/*
 	 * Get data from input and write to the device while there is
@@ -460,16 +456,16 @@ int main(int argc, char * const argv[])
 		}
 
 		if (writeoob) {
-			oobreadbuf = writebuf + mtd.min_io_size;
+			oobbuf = writebuf + mtd.min_io_size;
 
 			/* Read more data for the OOB from the input if there isn't enough in the buffer */
-			if ((oobreadbuf + mtd.oob_size) > (filebuf + filebuf_len)) {
+			if ((oobbuf + mtd.oob_size) > (filebuf + filebuf_len)) {
 				int readlen = mtd.oob_size;
-				int alreadyread = (filebuf + filebuf_len) - oobreadbuf;
+				int alreadyread = (filebuf + filebuf_len) - oobbuf;
 				int tinycnt = alreadyread;
 
 				while (tinycnt < readlen) {
-					cnt = read(ifd, oobreadbuf + tinycnt, readlen - tinycnt);
+					cnt = read(ifd, oobbuf + tinycnt, readlen - tinycnt);
 					if (cnt == 0) { /* EOF */
 						break;
 					} else if (cnt < 0) {
@@ -493,46 +489,6 @@ int main(int argc, char * const argv[])
 					/* No more bytes - we are done after writing the remaining bytes */
 					imglen = 0;
 				}
-			}
-
-			if (!noecc) {
-				int start, len;
-				struct nand_oobinfo old_oobinfo;
-
-				/* Read the current oob info */
-				if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo) != 0) {
-					perror("MEMGETOOBSEL");
-					close(fd);
-					exit(EXIT_FAILURE);
-				}
-
-				/*
-				 * We use autoplacement and have the oobinfo with the autoplacement
-				 * information from the kernel available
-				 *
-				 * Modified to support out of order oobfree segments,
-				 * such as the layout used by diskonchip.c
-				 */
-				if (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) {
-					int i, tags_pos = 0, tmp_ofs;
-					for (i = 0; old_oobinfo.oobfree[i][1]; i++) {
-						/* Set the reserved bytes to 0xff */
-						start = old_oobinfo.oobfree[i][0];
-						len = old_oobinfo.oobfree[i][1];
-						tmp_ofs = rawoob ? start : tags_pos;
-						memcpy(oobbuf + start, oobreadbuf + tmp_ofs, len);
-						tags_pos += len;
-					}
-				} else {
-					/* Set at least the ecc byte positions to 0xff */
-					start = old_oobinfo.eccbytes;
-					len = mtd.oob_size - start;
-					memcpy(oobbuf + start,
-							oobreadbuf + start,
-							len);
-				}
-			} else {
-				memcpy(oobbuf, oobreadbuf, mtd.oob_size);
 			}
 		}
 
@@ -588,7 +544,6 @@ closeall:
 	close(ifd);
 	libmtd_close(mtd_desc);
 	free(filebuf);
-	free(oobbuf);
 	close(fd);
 
 	if (failed
