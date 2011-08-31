@@ -255,19 +255,26 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 
 /**
  * mtd_write - write data to an MTD device.
+ * @desc: MTD library descriptor
  * @mtd: MTD device description object
  * @fd: MTD device node file descriptor
  * @eb: eraseblock to write to
  * @offs: offset withing the eraseblock to write to
- * @buf: buffer to write
- * @len: how many bytes to write
+ * @data: data buffer to write
+ * @len: how many data bytes to write
+ * @oob: OOB buffer to write
+ * @ooblen: how many OOB bytes to write
+ * @mode: write mode (e.g., %MTD_OOB_PLACE, %MTD_OOB_RAW)
  *
  * This function writes @len bytes of data to eraseblock @eb and offset @offs
  * of the MTD device defined by @mtd. Returns %0 in case of success and %-1 in
  * case of failure.
+ *
+ * Can only write to a single page at a time if writing to OOB.
  */
-int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
-	      void *buf, int len);
+int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
+	      int offs, void *data, int len, void *oob, int ooblen,
+	      uint8_t mode);
 
 /**
  * mtd_read_oob - read out-of-band area.

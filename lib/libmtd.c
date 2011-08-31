@@ -970,7 +970,8 @@ int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 
 		/* Write a pattern and check it */
 		memset(buf, patterns[i], mtd->eb_size);
-		err = mtd_write(mtd, fd, eb, 0, buf, mtd->eb_size);
+		err = mtd_write(desc, mtd, fd, eb, 0, buf, mtd->eb_size, NULL,
+				0, 0);
 		if (err)
 			goto out;
 
@@ -1070,8 +1071,9 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	return 0;
 }
 
-int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
-	      void *buf, int len)
+int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
+	      int offs, void *data, int len, void *oob, int ooblen,
+	      uint8_t mode)
 {
 	int ret;
 	off_t seek;
@@ -1105,7 +1107,7 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		return sys_errmsg("cannot seek mtd%d to offset %llu",
 				  mtd->mtd_num, (unsigned long long)seek);
 
-	ret = write(fd, buf, len);
+	ret = write(fd, data, len);
 	if (ret != len)
 		return sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
 				  len, mtd->mtd_num, eb, offs);

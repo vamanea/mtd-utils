@@ -543,8 +543,8 @@ int main(int argc, char * const argv[])
 		}
 
 		/* Write out the Page data */
-		if (!onlyoob && mtd_write(&mtd, fd, mtdoffset / mtd.eb_size, mtdoffset % mtd.eb_size,
-					writebuf, mtd.min_io_size)) {
+		if (!onlyoob && mtd_write(mtd_desc, &mtd, fd, mtdoffset / mtd.eb_size, mtdoffset % mtd.eb_size,
+					writebuf, mtd.min_io_size, NULL, 0, 0)) {
 			int i;
 			if (errno != EIO) {
 				sys_errmsg("%s: MTD write failure", mtd_device);
