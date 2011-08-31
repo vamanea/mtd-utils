@@ -534,17 +534,17 @@ int main(int argc, char * const argv[])
 			} else {
 				memcpy(oobbuf, oobreadbuf, mtd.oob_size);
 			}
-			/* Write OOB data first, as ecc will be placed in there */
-			if (mtd_write_oob(mtd_desc, &mtd, fd, mtdoffset,
-						mtd.oob_size, oobbuf)) {
-				sys_errmsg("%s: MTD writeoob failure", mtd_device);
-				goto closeall;
-			}
 		}
 
-		/* Write out the Page data */
-		if (!onlyoob && mtd_write(mtd_desc, &mtd, fd, mtdoffset / mtd.eb_size, mtdoffset % mtd.eb_size,
-					writebuf, mtd.min_io_size, NULL, 0, 0)) {
+		/* Write out data */
+		ret = mtd_write(mtd_desc, &mtd, fd, mtdoffset / mtd.eb_size,
+				mtdoffset % mtd.eb_size,
+				onlyoob ? NULL : writebuf,
+				onlyoob ? 0 : mtd.min_io_size,
+				writeoob ? oobbuf : NULL,
+				writeoob ? mtd.oob_size : 0,
+				noecc ? MTD_OPS_RAW : MTD_OPS_PLACE_OOB);
+		if (ret) {
 			int i;
 			if (errno != EIO) {
 				sys_errmsg("%s: MTD write failure", mtd_device);
