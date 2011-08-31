@@ -182,6 +182,9 @@ static void process_options(int argc, char * const argv[])
 	if (autoplace && noecc)
 		errmsg_die("Autoplacement and no-ECC are mutually exclusive");
 
+	if (!onlyoob && (pad && writeoob))
+		errmsg_die("Can't pad when oob data is present");
+
 	argc -= optind;
 	argv += optind;
 
@@ -242,23 +245,16 @@ int main(int argc, char * const argv[])
 
 	process_options(argc, argv);
 
-	if (!onlyoob && (pad && writeoob)) {
-		fprintf(stderr, "Can't pad when oob data is present.\n");
-		exit(EXIT_FAILURE);
-	}
-
 	/* Open the device */
-	if ((fd = open(mtd_device, O_RDWR)) == -1) {
-		perror(mtd_device);
-		exit(EXIT_FAILURE);
-	}
+	if ((fd = open(mtd_device, O_RDWR)) == -1)
+		sys_errmsg_die("%s", mtd_device);
 
 	mtd_desc = libmtd_open();
 	if (!mtd_desc)
-		return errmsg("can't initialize libmtd");
+		errmsg_die("can't initialize libmtd");
 	/* Fill in MTD device capability structure */
 	if (mtd_get_dev_info(mtd_desc, mtd_device, &mtd) < 0)
-		return errmsg("mtd_get_dev_info failed");
+		errmsg_die("mtd_get_dev_info failed");
 
 	/*
 	 * Pretend erasesize is specified number of blocks - to match jffs2
@@ -267,13 +263,10 @@ int main(int argc, char * const argv[])
 	 */
 	ebsize_aligned = mtd.eb_size * blockalign;
 
-	if (mtdoffset & (mtd.min_io_size - 1)) {
-		fprintf(stderr, "The start address is not page-aligned !\n"
-				"The pagesize of this NAND Flash is 0x%x.\n",
-				mtd.min_io_size);
-		close(fd);
-		exit(EXIT_FAILURE);
-	}
+	if (mtdoffset & (mtd.min_io_size - 1))
+		errmsg_die("The start address is not page-aligned !\n"
+			   "The pagesize of this NAND Flash is 0x%x.\n",
+			   mtd.min_io_size);
 
 	/* Select OOB write mode */
 	if (noecc)
@@ -290,9 +283,7 @@ int main(int argc, char * const argv[])
 			case ENOTTY:
 				errmsg_die("ioctl MTDFILEMODE is missing");
 			default:
-				perror("MTDFILEMODE");
-				close(fd);
-				exit(EXIT_FAILURE);
+				sys_errmsg_die("MTDFILEMODE");
 			}
 		}
 	}
@@ -341,7 +332,7 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Image %d bytes, NAND page %d bytes, OOB area %d"
 				" bytes, device size %lld bytes\n",
 				imglen, pagelen, mtd.oob_size, mtd.size);
-		perror("Input file does not fit into device");
+		sys_errmsg("Input file does not fit into device");
 		goto closeall;
 	}
 
@@ -557,12 +548,9 @@ closeall:
 	free(filebuf);
 	close(fd);
 
-	if (failed
-		|| ((ifd != STDIN_FILENO) && (imglen > 0))
-		|| (writebuf < (filebuf + filebuf_len))) {
-		perror("Data was only partially written due to error\n");
-		exit(EXIT_FAILURE);
-	}
+	if (failed || ((ifd != STDIN_FILENO) && (imglen > 0))
+		   || (writebuf < (filebuf + filebuf_len)))
+		sys_errmsg_die("Data was only partially written due to error");
 
 	/* Return happy */
 	return EXIT_SUCCESS;
