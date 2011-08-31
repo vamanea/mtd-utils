@@ -531,11 +531,12 @@ int main(int argc, char * const argv[])
 							oobreadbuf + start,
 							len);
 				}
+			} else {
+				memcpy(oobbuf, oobreadbuf, mtd.oob_size);
 			}
 			/* Write OOB data first, as ecc will be placed in there */
 			if (mtd_write_oob(mtd_desc, &mtd, fd, mtdoffset,
-						mtd.oob_size,
-						noecc ? oobreadbuf : oobbuf)) {
+						mtd.oob_size, oobbuf)) {
 				sys_errmsg("%s: MTD writeoob failure", mtd_device);
 				goto closeall;
 			}
