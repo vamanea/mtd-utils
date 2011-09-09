@@ -274,7 +274,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (noecc)  {
-		ret = ioctl(fd, MTDFILEMODE, MTD_MODE_RAW);
+		ret = ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_RAW);
 		if (ret) {
 			switch (errno) {
 			case ENOTTY:

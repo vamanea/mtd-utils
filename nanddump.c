@@ -336,7 +336,7 @@ int main(int argc, char * const argv[])
 	readbuf = xmalloc(sizeof(readbuf) * mtd.min_io_size);
 
 	if (noecc)  {
-		if (ioctl(fd, MTDFILEMODE, MTD_MODE_RAW) != 0) {
+		if (ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_RAW) != 0) {
 				perror("MTDFILEMODE");
 				goto closeall;
 		}
