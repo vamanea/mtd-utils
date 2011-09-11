@@ -442,7 +442,7 @@ static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, in
 static int flash_image(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 		       const struct ubigen_info *ui, struct ubi_scan_info *si)
 {
-	int fd, img_ebs, eb, written_ebs = 0, divisor;
+	int fd, img_ebs, eb, written_ebs = 0, divisor, skip_data_read = 0;
 	off_t st_size;
 
 	fd = open_file(&st_size);
@@ -501,12 +501,15 @@ static int flash_image(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 			continue;
 		}
 
-		err = read_all(fd, buf, mtd->eb_size);
-		if (err) {
-			sys_errmsg("failed to read eraseblock %d from \"%s\"",
-				   written_ebs, args.image);
-			goto out_close;
+		if (!skip_data_read) {
+			err = read_all(fd, buf, mtd->eb_size);
+			if (err) {
+				sys_errmsg("failed to read eraseblock %d from \"%s\"",
+					   written_ebs, args.image);
+				goto out_close;
+			}
 		}
+		skip_data_read = 0;
 
 		if (args.override_ec)
 			ec = args.ec;
@@ -546,6 +549,13 @@ static int flash_image(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 				if (mark_bad(mtd, si, eb))
 					goto out_close;
 			}
+
+			/*
+			 * We have to make sure that we do not read next block
+			 * of data from the input image or stdin - we have to
+			 * write buf first instead.
+			 */
+			skip_data_read = 1;
 			continue;
 		}
 		if (++written_ebs >= img_ebs)
