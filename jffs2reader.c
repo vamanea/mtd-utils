@@ -106,7 +106,7 @@ int target_endian = __BYTE_ORDER;
 
 void putblock(char *, size_t, size_t *, struct jffs2_raw_inode *);
 struct dir *putdir(struct dir *, struct jffs2_raw_dirent *);
-void printdir(char *o, size_t size, struct dir *d, char *path,
+void printdir(char *o, size_t size, struct dir *d, const char *path,
 		int recurse);
 void freedir(struct dir *);
 
@@ -116,12 +116,12 @@ struct jffs2_raw_dirent *resolvedirent(char *, size_t, uint32_t, uint32_t,
 struct jffs2_raw_dirent *resolvename(char *, size_t, uint32_t, char *, uint8_t);
 struct jffs2_raw_dirent *resolveinode(char *, size_t, uint32_t);
 
-struct jffs2_raw_dirent *resolvepath0(char *, size_t, uint32_t, char *,
+struct jffs2_raw_dirent *resolvepath0(char *, size_t, uint32_t, const char *,
 		uint32_t *, int);
-struct jffs2_raw_dirent *resolvepath(char *, size_t, uint32_t, char *,
+struct jffs2_raw_dirent *resolvepath(char *, size_t, uint32_t, const char *,
 		uint32_t *);
 
-void lsdir(char *, size_t, char *, int);
+void lsdir(char *, size_t, const char *, int);
 void catfile(char *, size_t, char *, char *, size_t, size_t *);
 
 int main(int, char **);
@@ -299,7 +299,7 @@ const char *mode_string(int mode)
    d       - dir struct
  */
 
-void printdir(char *o, size_t size, struct dir *d, char *path, int recurse)
+void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse)
 {
 	char m;
 	char *filetime;
@@ -678,7 +678,7 @@ struct jffs2_raw_dirent *resolveinode(char *o, size_t size, uint32_t ino)
  */
 
 struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
-		char *p, uint32_t * inos, int recc)
+		const char *p, uint32_t * inos, int recc)
 {
 	struct jffs2_raw_dirent *dir = NULL;
 
@@ -794,7 +794,7 @@ struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
  */
 
 struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
-		char *p, uint32_t * inos)
+		const char *p, uint32_t * inos)
 {
 	return resolvepath0(o, size, ino, p, inos, 0);
 }
@@ -807,7 +807,7 @@ struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
    p       - path to be resolved
  */
 
-void lsdir(char *o, size_t size, char *path, int recurse)
+void lsdir(char *o, size_t size, const char *path, int recurse)
 {
 	struct jffs2_raw_dirent *dd;
 	struct dir *d = NULL;
