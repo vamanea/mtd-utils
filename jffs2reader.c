@@ -64,7 +64,6 @@ BUGS:
 
 #define PROGRAM_NAME "jffs2reader"
 
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,9 +73,10 @@ BUGS:
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/param.h>
 #include <dirent.h>
-#include <linux/jffs2.h>
+#include <zlib.h>
+
+#include "mtd/jffs2-user.h"
 #include "common.h"
 
 #define SCRATCH_SIZE (5*1024*1024)
