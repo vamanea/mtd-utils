@@ -24,7 +24,7 @@ MTD_BINS = \
 	nftldump nftl_format docfdisk \
 	rfddump rfdformat \
 	serve_image recv_image \
-	sumtool #jffs2reader
+	sumtool jffs2reader
 UBI_BINS = \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
 	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol

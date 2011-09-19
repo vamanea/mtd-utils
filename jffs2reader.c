@@ -102,6 +102,8 @@ struct dir {
 	char name[256];
 };
 
+int target_endian = __BYTE_ORDER;
+
 void putblock(char *, size_t, size_t *, struct jffs2_raw_inode *);
 struct dir *putdir(struct dir *, struct jffs2_raw_dirent *);
 void printdir(char *o, size_t size, struct dir *d, char *path,
