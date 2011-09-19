@@ -107,7 +107,7 @@ int target_endian = __BYTE_ORDER;
 void putblock(char *, size_t, size_t *, struct jffs2_raw_inode *);
 struct dir *putdir(struct dir *, struct jffs2_raw_dirent *);
 void printdir(char *o, size_t size, struct dir *d, const char *path,
-		int recurse);
+		int recurse, int want_ctime);
 void freedir(struct dir *);
 
 struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino);
@@ -121,7 +121,7 @@ struct jffs2_raw_dirent *resolvepath0(char *, size_t, uint32_t, const char *,
 struct jffs2_raw_dirent *resolvepath(char *, size_t, uint32_t, const char *,
 		uint32_t *);
 
-void lsdir(char *, size_t, const char *, int);
+void lsdir(char *, size_t, const char *, int, int);
 void catfile(char *, size_t, char *, char *, size_t, size_t *);
 
 int main(int, char **);
@@ -299,7 +299,8 @@ const char *mode_string(int mode)
    d       - dir struct
  */
 
-void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse)
+void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse,
+		int want_ctime)
 {
 	char m;
 	char *filetime;
@@ -366,12 +367,14 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
 			printf("%9ld ", (long)je32_to_cpu(ri->dsize));
 		}
 		d->name[d->nsize]='\0';
-		if (age < 3600L * 24 * 365 / 2 && age > -15 * 60) {
-			/* hh:mm if less than 6 months old */
-			printf("%6.6s %5.5s %s/%s%c", filetime + 4, filetime + 11, path, d->name, m);
-		} else {
-			printf("%6.6s %4.4s %s/%s%c", filetime + 4, filetime + 20, path, d->name, m);
+		if (want_ctime) {
+			if (age < 3600L * 24 * 365 / 2 && age > -15 * 60)
+				/* hh:mm if less than 6 months old */
+				printf("%6.6s %5.5s ", filetime + 4, filetime + 11);
+			else
+				printf("%6.6s %4.4s ", filetime + 4, filetime + 20);
 		}
+		printf("%s/%s%c", path, d->name, m);
 		if (d->type == DT_LNK) {
 			char symbuf[1024];
 			size_t symsize;
@@ -385,7 +388,7 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
 			char *tmp;
 			tmp = xmalloc(BUFSIZ);
 			sprintf(tmp, "%s/%s", path, d->name);
-			lsdir(o, size, tmp, recurse);		/* Go recursive */
+			lsdir(o, size, tmp, recurse, want_ctime);	/* Go recursive */
 			free(tmp);
 		}
 
@@ -807,7 +810,7 @@ struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
    p       - path to be resolved
  */
 
-void lsdir(char *o, size_t size, const char *path, int recurse)
+void lsdir(char *o, size_t size, const char *path, int recurse, int want_ctime)
 {
 	struct jffs2_raw_dirent *dd;
 	struct dir *d = NULL;
@@ -821,7 +824,7 @@ void lsdir(char *o, size_t size, const char *path, int recurse)
 		errmsg_die("%s: No such file or directory", path);
 
 	d = collectdir(o, size, ino, d);
-	printdir(o, size, d, path, recurse);
+	printdir(o, size, d, path, recurse, want_ctime);
 	freedir(d);
 }
 
@@ -861,7 +864,7 @@ void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
 
 int main(int argc, char **argv)
 {
-	int fd, opt, recurse = 0;
+	int fd, opt, recurse = 0, want_ctime = 0;
 	struct stat st;
 
 	char *scratch, *dir = NULL, *file = NULL;
@@ -869,7 +872,7 @@ int main(int argc, char **argv)
 
 	char *buf;
 
-	while ((opt = getopt(argc, argv, "rd:f:")) > 0) {
+	while ((opt = getopt(argc, argv, "rd:f:t")) > 0) {
 		switch (opt) {
 			case 'd':
 				dir = optarg;
@@ -879,6 +882,9 @@ int main(int argc, char **argv)
 				break;
 			case 'r':
 				recurse++;
+				break;
+			case 't':
+				want_ctime++;
 				break;
 			default:
 				fprintf(stderr,
@@ -901,7 +907,7 @@ int main(int argc, char **argv)
 		sys_errmsg_die("%s", argv[optind]);
 
 	if (dir)
-		lsdir(buf, st.st_size, dir, recurse);
+		lsdir(buf, st.st_size, dir, recurse, want_ctime);
 
 	if (file) {
 		scratch = xmalloc(SCRATCH_SIZE);
@@ -911,7 +917,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!dir && !file)
-		lsdir(buf, st.st_size, "/", 1);
+		lsdir(buf, st.st_size, "/", 1, want_ctime);
 
 
 	free(buf);
