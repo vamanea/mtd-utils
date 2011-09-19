@@ -81,13 +81,6 @@ BUGS:
 
 #define SCRATCH_SIZE (5*1024*1024)
 
-#ifndef MAJOR
-/* FIXME:  I am using illicit insider knowledge of
- * kernel major/minor representation...  */
-#define MAJOR(dev) (((dev)>>8)&0xff)
-#define MINOR(dev) ((dev)&0xff)
-#endif
-
 /* macro to avoid "lvalue required as left operand of assignment" error */
 #define ADD_BYTES(p, n)		((p) = (typeof(p))((char *)(p) + (n)))
 
@@ -362,7 +355,7 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
 			dev_t rdev;
 			size_t devsize;
 			putblock((char*)&rdev, sizeof(rdev), &devsize, ri);
-			printf("%4d, %3d ", (int)MAJOR(rdev), (int)MINOR(rdev));
+			printf("%4d, %3d ", major(rdev), minor(rdev));
 		} else {
 			printf("%9ld ", (long)je32_to_cpu(ri->dsize));
 		}
