@@ -88,6 +88,9 @@ BUGS:
 #define MINOR(dev) ((dev)&0xff)
 #endif
 
+/* macro to avoid "lvalue required as left operand of assignment" error */
+#define ADD_BYTES(p, n)		((p) = (typeof(p))((char *)(p) + (n)))
+
 #define DIRENT_INO(dirent) ((dirent) !=NULL ? je32_to_cpu((dirent)->ino) : 0)
 #define DIRENT_PINO(dirent) ((dirent) !=NULL ? je32_to_cpu((dirent)->pino) : 0)
 
@@ -441,7 +444,7 @@ struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
 
 	do {
 		while (n < e && je16_to_cpu(n->u.magic) != JFFS2_MAGIC_BITMASK)
-			((char *) n) += 4;
+			ADD_BYTES(n, 4);
 
 		if (n < e && je16_to_cpu(n->u.magic) == JFFS2_MAGIC_BITMASK) {
 			if (je16_to_cpu(n->u.nodetype) == JFFS2_NODETYPE_INODE &&
@@ -459,7 +462,7 @@ struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
 					return (&(n->i));
 			}
 
-			((char *) n) += ((je32_to_cpu(n->u.totlen) + 3) & ~3);
+			ADD_BYTES(n, ((je32_to_cpu(n->u.totlen) + 3) & ~3));
 		} else
 			n = (union jffs2_node_union *) o;	/* we're at the end, rewind to the beginning */
 
@@ -509,7 +512,7 @@ struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
 
 	do {
 		while (n < e && je16_to_cpu(n->u.magic) != JFFS2_MAGIC_BITMASK)
-			((char *) n) += 4;
+			ADD_BYTES(n, 4);
 
 		if (n < e && je16_to_cpu(n->u.magic) == JFFS2_MAGIC_BITMASK) {
 			if (je16_to_cpu(n->u.nodetype) == JFFS2_NODETYPE_DIRENT &&
@@ -532,7 +535,7 @@ struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
 				}
 			}
 
-			((char *) n) += ((je32_to_cpu(n->u.totlen) + 3) & ~3);
+			ADD_BYTES(n, ((je32_to_cpu(n->u.totlen) + 3) & ~3));
 		} else
 			n = (union jffs2_node_union *) o;	/* we're at the end, rewind to the beginning */
 
@@ -596,7 +599,7 @@ struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
 
 	do {
 		while (n < e && je16_to_cpu(n->u.magic) != JFFS2_MAGIC_BITMASK)
-			((char *) n) += 4;
+			ADD_BYTES(n, 4);
 
 		if (n < e && je16_to_cpu(n->u.magic) == JFFS2_MAGIC_BITMASK) {
 			if (je16_to_cpu(n->u.nodetype) == JFFS2_NODETYPE_DIRENT &&
@@ -613,7 +616,7 @@ struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
 				}
 			}
 
-			((char *) n) += ((je32_to_cpu(n->u.totlen) + 3) & ~3);
+			ADD_BYTES(n, ((je32_to_cpu(n->u.totlen) + 3) & ~3));
 		} else
 			return dd;
 	} while (1);
