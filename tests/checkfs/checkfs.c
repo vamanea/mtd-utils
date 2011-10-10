@@ -566,21 +566,15 @@ int main(int argc, char **argv){
     char filename[30];
     short filenameCounter = 0;
     unsigned short counter;
-    unsigned short numberFiles;
-    char error = FALSE;
     short errorCnt = 0;
     time_t timep;
     char * time_string;
     unsigned int seed;
 
-
-    numberFiles = MAX_NUM_FILES;
-
     if(argc >= 1)
     {
         processCmdLine(argc, argv);
     }
-
 
     /*
       First open MAX_NUM_FILES and make sure that the checksum is ok.
@@ -629,7 +623,6 @@ int main(int argc, char **argv){
             fclose(logfp);
             (void)sync();
 
-            error = TRUE;
             errorCnt++;
 
             if(errorCnt > MaxErrAllowed){
