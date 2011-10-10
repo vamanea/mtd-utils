@@ -320,7 +320,7 @@ uint16_t jffs2_compress( unsigned char *data_in, unsigned char **cpage_out,
 			}
 			break;
 		default:
-			fprintf(stderr,"mkfs.jffs2: unknow compression mode.\n");
+			fprintf(stderr,"mkfs.jffs2: unknown compression mode.\n");
 	}
 out:
 	if (ret == JFFS2_COMPR_NONE) {
@@ -416,7 +416,7 @@ char *jffs2_stats(void)
 			act_buf += sprintf(act_buf, "favourlzo");
 			break;
 		default:
-			act_buf += sprintf(act_buf,"unkown");
+			act_buf += sprintf(act_buf, "unknown");
 			break;
 	}
 	act_buf += sprintf(act_buf,"\nCompressors:\n");
