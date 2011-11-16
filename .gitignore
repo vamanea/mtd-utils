@@ -30,6 +30,7 @@
 /ftl_check
 /ftl_format
 /jffs2dump
+/jffs2reader
 /mkfs.jffs2
 /mtd_debug
 /nanddump
