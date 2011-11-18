@@ -970,7 +970,8 @@ int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 
 		/* Write a pattern and check it */
 		memset(buf, patterns[i], mtd->eb_size);
-		err = mtd_write(mtd, fd, eb, 0, buf, mtd->eb_size);
+		err = mtd_write(desc, mtd, fd, eb, 0, buf, mtd->eb_size, NULL,
+				0, 0);
 		if (err)
 			goto out;
 
@@ -1070,11 +1071,49 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	return 0;
 }
 
-int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
-	      void *buf, int len)
+static int legacy_auto_oob_layout(const struct mtd_dev_info *mtd, int fd,
+				  int ooblen, void *oob) {
+	struct nand_oobinfo old_oobinfo;
+	int start, len;
+	uint8_t *tmp_buf;
+
+	/* Read the current oob info */
+	if (ioctl(fd, MEMGETOOBSEL, &old_oobinfo))
+		return sys_errmsg("MEMGETOOBSEL failed");
+
+	tmp_buf = malloc(ooblen);
+	memcpy(tmp_buf, oob, ooblen);
+
+	/*
+	 * We use autoplacement and have the oobinfo with the autoplacement
+	 * information from the kernel available
+	 */
+	if (old_oobinfo.useecc == MTD_NANDECC_AUTOPLACE) {
+		int i, tags_pos = 0;
+		for (i = 0; old_oobinfo.oobfree[i][1]; i++) {
+			/* Set the reserved bytes to 0xff */
+			start = old_oobinfo.oobfree[i][0];
+			len = old_oobinfo.oobfree[i][1];
+			memcpy(oob + start, tmp_buf + tags_pos, len);
+			tags_pos += len;
+		}
+	} else {
+		/* Set at least the ecc byte positions to 0xff */
+		start = old_oobinfo.eccbytes;
+		len = mtd->oob_size - start;
+		memcpy(oob + start, tmp_buf + start, len);
+	}
+
+	return 0;
+}
+
+int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
+	      int offs, void *data, int len, void *oob, int ooblen,
+	      uint8_t mode)
 {
 	int ret;
 	off_t seek;
+	struct mtd_write_req ops;
 
 	ret = mtd_valid_erase_block(mtd, eb);
 	if (ret)
@@ -1099,16 +1138,41 @@ int mtd_write(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 		return -1;
 	}
 
-	/* Seek to the beginning of the eraseblock */
+	/* Calculate seek address */
 	seek = (off_t)eb * mtd->eb_size + offs;
-	if (lseek(fd, seek, SEEK_SET) != seek)
-		return sys_errmsg("cannot seek mtd%d to offset %llu",
-				  mtd->mtd_num, (unsigned long long)seek);
 
-	ret = write(fd, buf, len);
-	if (ret != len)
-		return sys_errmsg("cannot write %d bytes to mtd%d (eraseblock %d, offset %d)",
-				  len, mtd->mtd_num, eb, offs);
+	ops.start = seek;
+	ops.len = len;
+	ops.ooblen = ooblen;
+	ops.usr_data = (uint64_t)(unsigned long)data;
+	ops.usr_oob = (uint64_t)(unsigned long)oob;
+	ops.mode = mode;
+
+	ret = ioctl(fd, MEMWRITE, &ops);
+	if (ret == 0)
+		return 0;
+	else if (errno != ENOTTY)
+		return mtd_ioctl_error(mtd, eb, "MEMWRITE");
+
+	/* Fall back to old methods if necessary */
+	if (oob) {
+		if (mode == MTD_OPS_AUTO_OOB)
+			if (legacy_auto_oob_layout(mtd, fd, ooblen, oob))
+				return -1;
+		if (mtd_write_oob(desc, mtd, fd, seek, ooblen, oob) < 0)
+			return sys_errmsg("cannot write to OOB");
+	}
+	if (data) {
+		/* Seek to the beginning of the eraseblock */
+		if (lseek(fd, seek, SEEK_SET) != seek)
+			return sys_errmsg("cannot seek mtd%d to offset %llu",
+					mtd->mtd_num, (unsigned long long)seek);
+		ret = write(fd, data, len);
+		if (ret != len)
+			return sys_errmsg("cannot write %d bytes to mtd%d "
+					  "(eraseblock %d, offset %d)",
+					  len, mtd->mtd_num, eb, offs);
+	}
 
 	return 0;
 }

@@ -537,7 +537,8 @@ static int flash_image(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 
 		new_len = drop_ffs(mtd, buf, mtd->eb_size);
 
-		err = mtd_write(mtd, args.node_fd, eb, 0, buf, new_len);
+		err = mtd_write(libmtd, mtd, args.node_fd, eb, 0, buf, new_len,
+				NULL, 0, 0);
 		if (err) {
 			sys_errmsg("cannot write eraseblock %d", eb);
 
@@ -647,7 +648,8 @@ static int format(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 			fflush(stdout);
 		}
 
-		err = mtd_write(mtd, args.node_fd, eb, 0, hdr, write_size);
+		err = mtd_write(libmtd, mtd, args.node_fd, eb, 0, hdr,
+				write_size, NULL, 0, 0);
 		if (err) {
 			if (!args.quiet && !args.verbose)
 				printf("\n");
