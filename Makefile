@@ -1,7 +1,7 @@
 
 # -*- sh -*-
 
-VERSION = 1.4.6
+VERSION = 1.4.8
 
 CPPFLAGS += -I./include -I$(BUILDDIR)/include -I./ubi-utils/include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS)
 
