@@ -62,7 +62,8 @@ install:: $(addprefix $(BUILDDIR)/,${BINS}) ${SCRIPTS}
 	mkdir -p ${DESTDIR}/${SBINDIR}
 	install -m 0755 $^ ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
-	gzip -9c mkfs.jffs2.1 > ${DESTDIR}/${MANDIR}/man1/mkfs.jffs2.1.gz
+	install -m 0644 mkfs.jffs2.1 ${DESTDIR}/${MANDIR}/man1/
+	-gzip -9f ${DESTDIR}/${MANDIR}/man1/*.1
 
 tests::
 	$(MAKE) -C $(TESTS)
