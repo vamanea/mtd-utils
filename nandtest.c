@@ -173,6 +173,7 @@ int main(int argc, char **argv)
 
 		case 's':
 			seed = atol(optarg);
+			srand(seed);
 			break;
 
 		case 'p':
