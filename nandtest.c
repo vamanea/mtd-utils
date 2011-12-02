@@ -140,6 +140,8 @@ int main(int argc, char **argv)
 	uint32_t offset = 0;
 	uint32_t length = -1;
 
+	seed = time(NULL);
+
 	for (;;) {
 		static const char *short_options="hkl:mo:p:s:";
 		static const struct option long_options[] = {
@@ -173,7 +175,6 @@ int main(int argc, char **argv)
 
 		case 's':
 			seed = atol(optarg);
-			srand(seed);
 			break;
 
 		case 'p':
@@ -243,6 +244,8 @@ int main(int argc, char **argv)
 	printf("ECC failures   : %d\n", oldstats.failed);
 	printf("Bad blocks     : %d\n", oldstats.badblocks);
 	printf("BBT blocks     : %d\n", oldstats.bbtblocks);
+
+	srand(seed);
 
 	for (pass = 0; pass < nr_passes; pass++) {
 		loff_t test_ofs;
