@@ -1151,7 +1151,7 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 	ret = ioctl(fd, MEMWRITE, &ops);
 	if (ret == 0)
 		return 0;
-	else if (errno != ENOTTY)
+	else if (errno != ENOTTY && errno != EOPNOTSUPP)
 		return mtd_ioctl_error(mtd, eb, "MEMWRITE");
 
 	/* Fall back to old methods if necessary */
