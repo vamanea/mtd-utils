@@ -61,6 +61,6 @@ cat <<EOF
 Created $outdir/$release_name.tar.bz2
 Please, verify, then push the tag and upload the tarball and the signature
 You can use these commands:
-git push origin $tag_name
+git push origin master $tag_name
 scp $outdir/$release_name.tar.bz2 $outdir/$release_name.tar.bz2.asc casper.infradead.org:/var/ftp/pub/mtd-utils
 EOF
