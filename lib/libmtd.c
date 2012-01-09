@@ -429,7 +429,7 @@ static int type_str2int(const char *str)
 static int dev_node2num(struct libmtd *lib, const char *node, int *mtd_num)
 {
 	struct stat st;
-	int i, major, minor;
+	int i, mjr, mnr;
 	struct mtd_info info;
 
 	if (stat(node, &st))
@@ -441,16 +441,16 @@ static int dev_node2num(struct libmtd *lib, const char *node, int *mtd_num)
 		return -1;
 	}
 
-	major = major(st.st_rdev);
-	minor = minor(st.st_rdev);
+	mjr = major(st.st_rdev);
+	mnr = minor(st.st_rdev);
 
 	if (mtd_get_info((libmtd_t *)lib, &info))
 		return -1;
 
 	for (i = info.lowest_mtd_num; i <= info.highest_mtd_num; i++) {
-		int major1, minor1, ret;
+		int mjr1, mnr1, ret;
 
-		ret = dev_get_major(lib, i, &major1, &minor1);
+		ret = dev_get_major(lib, i, &mjr1, &mnr1);
 		if (ret) {
 			if (errno == ENOENT)
 				continue;
@@ -459,7 +459,7 @@ static int dev_node2num(struct libmtd *lib, const char *node, int *mtd_num)
 			return -1;
 		}
 
-		if (major1 == major && minor1 == minor) {
+		if (mjr1 == mjr && mnr1 == mnr) {
 			errno = 0;
 			*mtd_num = i;
 			return 0;
@@ -1369,7 +1369,7 @@ int mtd_probe_node(libmtd_t desc, const char *node)
 {
 	struct stat st;
 	struct mtd_info info;
-	int i, major, minor;
+	int i, mjr, mnr;
 	struct libmtd *lib = (struct libmtd *)desc;
 
 	if (stat(node, &st))
@@ -1381,8 +1381,8 @@ int mtd_probe_node(libmtd_t desc, const char *node)
 		return -1;
 	}
 
-	major = major(st.st_rdev);
-	minor = minor(st.st_rdev);
+	mjr = major(st.st_rdev);
+	mnr = minor(st.st_rdev);
 
 	if (mtd_get_info((libmtd_t *)lib, &info))
 		return -1;
@@ -1391,9 +1391,9 @@ int mtd_probe_node(libmtd_t desc, const char *node)
 		return 0;
 
 	for (i = info.lowest_mtd_num; i <= info.highest_mtd_num; i++) {
-		int major1, minor1, ret;
+		int mjr1, mnr1, ret;
 
-		ret = dev_get_major(lib, i, &major1, &minor1);
+		ret = dev_get_major(lib, i, &mjr1, &mnr1);
 		if (ret) {
 			if (errno == ENOENT)
 				continue;
@@ -1402,7 +1402,7 @@ int mtd_probe_node(libmtd_t desc, const char *node)
 			return -1;
 		}
 
-		if (major1 == major && minor1 == minor)
+		if (mjr1 == mjr && mnr1 == mnr)
 			return 1;
 	}
 
