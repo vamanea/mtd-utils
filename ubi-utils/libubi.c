@@ -1121,16 +1121,10 @@ int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype)
 	return 0;
 }
 
-/**
- * dev_present - check whether an UBI device is present.
- * @lib: libubi descriptor
- * @dev_num: UBI device number to check
- *
- * This function returns %1 if UBI device is present and %0 if not.
- */
-static int dev_present(struct libubi *lib, int dev_num)
+int ubi_dev_present(libubi_t desc, int dev_num)
 {
 	struct stat st;
+	struct libubi *lib = (struct libubi *)desc;
 	char file[strlen(lib->ubi_dev) + 50];
 
 	sprintf(file, lib->ubi_dev, dev_num);
@@ -1146,7 +1140,7 @@ int ubi_get_dev_info1(libubi_t desc, int dev_num, struct ubi_dev_info *info)
 	memset(info, 0, sizeof(struct ubi_dev_info));
 	info->dev_num = dev_num;
 
-	if (!dev_present(lib, dev_num))
+	if (!ubi_dev_present(desc, dev_num))
 		return -1;
 
 	sysfs_ubi = opendir(lib->sysfs_ubi);

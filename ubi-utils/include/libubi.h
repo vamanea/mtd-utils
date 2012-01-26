@@ -346,6 +346,15 @@ int ubi_get_dev_info(libubi_t desc, const char *node,
 		     struct ubi_dev_info *info);
 
 /**
+ * ubi_dev_present - check whether an UBI device is present.
+ * @desc: UBI library descriptor
+ * @dev_num: UBI device number to check
+ *
+ * This function returns %1 if UBI device is present and %0 if not.
+ */
+int ubi_dev_present(libubi_t desc, int dev_num);
+
+/**
  * ubi_get_dev_info1 - get UBI device information.
  * @desc: UBI library descriptor
  * @dev_num: UBI device number to fetch information about
