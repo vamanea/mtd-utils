@@ -362,6 +362,8 @@ static int print_general_info(libubi_t libubi, int all)
 
 	for (i = ubi_info.lowest_dev_num;
 	     i <= ubi_info.highest_dev_num; i++) {
+		if (!ubi_dev_present(libubi, i))
+			continue;
 		if(!first)
 			printf("\n===================================\n\n");
 		first = 0;
