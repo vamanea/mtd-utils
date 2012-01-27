@@ -713,10 +713,22 @@ out_close:
 	return -1;
 }
 
+int mtd_dev_present(libmtd_t desc, int mtd_num) {
+	struct stat st;
+	struct libmtd *lib = (struct libmtd *)desc;
+	char file[strlen(lib->mtd) + 10];
+
+	if (!lib->sysfs_supported)
+		/* TODO: add legacy_dev_present() function */
+		return 1;
+
+	sprintf(file, lib->mtd, mtd_num);
+	return !stat(file, &st);
+}
+
 int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 {
 	int ret;
-	struct stat st;
 	struct libmtd *lib = (struct libmtd *)desc;
 
 	memset(mtd, 0, sizeof(struct mtd_dev_info));
@@ -724,15 +736,9 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 
 	if (!lib->sysfs_supported)
 		return legacy_get_dev_info1(mtd_num, mtd);
-	else {
-		char file[strlen(lib->mtd) + 10];
-
-		sprintf(file, lib->mtd, mtd_num);
-		if (stat(file, &st)) {
-			if (errno == ENOENT)
-				errno = ENODEV;
-			return -1;
-		}
+	else if (!mtd_dev_present(desc, mtd_num)) {
+		errno = ENODEV;
+		return -1;
 	}
 
 	if (dev_get_major(lib, mtd_num, &mtd->major, &mtd->minor))

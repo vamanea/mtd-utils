@@ -106,6 +106,15 @@ libmtd_t libmtd_open(void);
 void libmtd_close(libmtd_t desc);
 
 /**
+ * mtd_dev_present - check whether a MTD device is present.
+ * @desc: MTD library descriptor
+ * @mtd_num: MTD device number to check
+ *
+ * This function returns %1 if MTD device is present and %0 if not.
+ */
+int mtd_dev_present(libmtd_t desc, int mtd_num);
+
+/**
  * mtd_get_info - get general MTD information.
  * @desc: MTD library descriptor
  * @info: the MTD device information is returned here
