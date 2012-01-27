@@ -378,6 +378,8 @@ static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
 
 	for (i = mtd_info->lowest_mtd_num;
 	     i <= mtd_info->highest_mtd_num; i++) {
+		if (!mtd_dev_present(libmtd, i))
+			continue;
 		err = print_dev_info(libmtd, mtd_info, i);
 		if (err)
 			return err;
