@@ -240,8 +240,7 @@ int main(int argc, char **argv)
 	if (!npart)
 		return 0;
 
-	printf("\n"
-			"-------------------------------------------------------------------------\n");
+	printf("\n-------------------------------------------------------------------------\n");
 
 	unitsize = meminfo.erasesize >> le32_to_cpu(mh->BlockMultiplierBits);
 	totblocks = meminfo.size / unitsize;
