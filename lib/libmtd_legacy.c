@@ -262,7 +262,7 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 
 	mtd->mtd_num = mtd->minor / 2;
 
-	fd = open(node, O_RDWR);
+	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return sys_errmsg("cannot open \"%s\"", node);
 
