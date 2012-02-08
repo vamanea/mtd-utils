@@ -735,12 +735,11 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 	memset(mtd, 0, sizeof(struct mtd_dev_info));
 	mtd->mtd_num = mtd_num;
 
-	if (!lib->sysfs_supported)
-		return legacy_get_dev_info1(mtd_num, mtd);
-	else if (!mtd_dev_present(desc, mtd_num)) {
+	if (!mtd_dev_present(desc, mtd_num)) {
 		errno = ENODEV;
 		return -1;
-	}
+	} else if (!lib->sysfs_supported)
+		return legacy_get_dev_info1(mtd_num, mtd);
 
 	if (dev_get_major(lib, mtd_num, &mtd->major, &mtd->minor))
 		return -1;
