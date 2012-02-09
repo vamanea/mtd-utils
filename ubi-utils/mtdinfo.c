@@ -356,7 +356,7 @@ static int print_general_info(libmtd_t libmtd, const struct mtd_info *mtd_info,
 		if (err == -1) {
 			if (errno == ENODEV)
 				continue;
-			return sys_errmsg("libmtd failed get MTD device %d "
+			return sys_errmsg("libmtd failed to get MTD device %d "
 					  "information", i);
 		}
 
