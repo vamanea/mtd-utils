@@ -641,6 +641,18 @@ void libmtd_close(libmtd_t desc)
 	free(lib);
 }
 
+int mtd_dev_present(libmtd_t desc, int mtd_num) {
+	struct stat st;
+	struct libmtd *lib = (struct libmtd *)desc;
+	char file[strlen(lib->mtd) + 10];
+
+	if (!lib->sysfs_supported)
+		return legacy_dev_present(mtd_num);
+
+	sprintf(file, lib->mtd, mtd_num);
+	return !stat(file, &st);
+}
+
 int mtd_get_info(libmtd_t desc, struct mtd_info *info)
 {
 	DIR *sysfs_mtd;
@@ -711,19 +723,6 @@ int mtd_get_info(libmtd_t desc, struct mtd_info *info)
 out_close:
 	closedir(sysfs_mtd);
 	return -1;
-}
-
-int mtd_dev_present(libmtd_t desc, int mtd_num) {
-	struct stat st;
-	struct libmtd *lib = (struct libmtd *)desc;
-	char file[strlen(lib->mtd) + 10];
-
-	if (!lib->sysfs_supported)
-		/* TODO: add legacy_dev_present() function */
-		return 1;
-
-	sprintf(file, lib->mtd, mtd_num);
-	return !stat(file, &st);
 }
 
 int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
