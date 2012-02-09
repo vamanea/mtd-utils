@@ -644,13 +644,15 @@ void libmtd_close(libmtd_t desc)
 int mtd_dev_present(libmtd_t desc, int mtd_num) {
 	struct stat st;
 	struct libmtd *lib = (struct libmtd *)desc;
-	char file[strlen(lib->mtd) + 10];
 
 	if (!lib->sysfs_supported)
 		return legacy_dev_present(mtd_num);
+	else {
+		char file[strlen(lib->mtd) + 10];
 
-	sprintf(file, lib->mtd, mtd_num);
-	return !stat(file, &st);
+		sprintf(file, lib->mtd, mtd_num);
+		return !stat(file, &st);
+	}
 }
 
 int mtd_get_info(libmtd_t desc, struct mtd_info *info)
