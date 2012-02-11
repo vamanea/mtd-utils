@@ -1148,21 +1148,21 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 	/* Calculate seek address */
 	seek = (off_t)eb * mtd->eb_size + offs;
 
-	ops.start = seek;
-	ops.len = len;
-	ops.ooblen = ooblen;
-	ops.usr_data = (uint64_t)(unsigned long)data;
-	ops.usr_oob = (uint64_t)(unsigned long)oob;
-	ops.mode = mode;
-
-	ret = ioctl(fd, MEMWRITE, &ops);
-	if (ret == 0)
-		return 0;
-	else if (errno != ENOTTY && errno != EOPNOTSUPP)
-		return mtd_ioctl_error(mtd, eb, "MEMWRITE");
-
-	/* Fall back to old methods if necessary */
 	if (oob) {
+		ops.start = seek;
+		ops.len = len;
+		ops.ooblen = ooblen;
+		ops.usr_data = (uint64_t)(unsigned long)data;
+		ops.usr_oob = (uint64_t)(unsigned long)oob;
+		ops.mode = mode;
+
+		ret = ioctl(fd, MEMWRITE, &ops);
+		if (ret == 0)
+			return 0;
+		else if (errno != ENOTTY && errno != EOPNOTSUPP)
+			return mtd_ioctl_error(mtd, eb, "MEMWRITE");
+
+		/* Fall back to old OOB ioctl() if necessary */
 		if (mode == MTD_OPS_AUTO_OOB)
 			if (legacy_auto_oob_layout(mtd, fd, ooblen, oob))
 				return -1;
