@@ -667,7 +667,8 @@ static int get_options(int argc, char**argv)
 	if (out_ubi) {
 		c->min_io_size = c->di.min_io_size;
 		c->leb_size = c->vi.leb_size;
-		c->max_leb_cnt = c->vi.rsvd_lebs;
+		if (c->max_leb_cnt == -1)
+			c->max_leb_cnt = c->vi.rsvd_lebs;
 	}
 
 	if (c->min_io_size == -1)
