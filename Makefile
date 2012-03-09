@@ -42,6 +42,8 @@ OBJDEPS = $(BUILDDIR)/include/version.h
 
 include common.mk
 
+CLEAN_FIND = find "$(BUILDDIR)/" -xdev '(' -name '*.[ao]' -o -name '.*.c.dep' ')'
+
 clean::
 ifneq ($(BUILDDIR)/.git,)
 ifneq ($(BUILDDIR),.)
@@ -50,10 +52,10 @@ ifneq ($(BUILDDIR),$(CURDIR))
 endif
 endif
 endif
+	# findutils v4.1.x (RHEL 4) do not have '+' syntax
 	@if test -d "$(BUILDDIR)/"; then \
-		find $(BUILDDIR)/ -xdev \
-			'(' -name '*.[ao]' -o -name '.*.c.dep' ')' \
-			-exec rm -f {} + ; \
+		$(CLEAN_FIND) -exec rm -f {} + 2> /dev/null || \
+		$(CLEAN_FIND) -exec rm -f {} \; ; \
 	fi
 	rm -f $(BUILDDIR)/include/version.h
 	$(MAKE) -C $(TESTS) clean
