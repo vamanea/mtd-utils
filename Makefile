@@ -52,7 +52,7 @@ ifneq ($(BUILDDIR),$(CURDIR))
 endif
 endif
 endif
-	# findutils v4.1.x (RHEL 4) do not have '+' syntax
+# findutils v4.1.x (RHEL 4) do not have '+' syntax
 	@if test -d "$(BUILDDIR)/"; then \
 		$(CLEAN_FIND) -exec rm -f {} + 2> /dev/null || \
 		$(CLEAN_FIND) -exec rm -f {} \; ; \
