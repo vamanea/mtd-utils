@@ -137,7 +137,8 @@ directory.
 .TP
 .B -s, --pagesize=SIZE
 Use page size SIZE.  The default is 4 KiB.  This size is the
-maximum size of a data node.
+maximum size of a data node.  Set according to target system's memory
+management page size (NOTE: this is NOT related to NAND page size).
 .TP
 .B -e, --eraseblock=SIZE
 Use erase block size SIZE.  The default is 64 KiB.  If you use a erase
