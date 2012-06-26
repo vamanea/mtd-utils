@@ -385,7 +385,8 @@ int main(int argc, char * const argv[])
 				continue;
 
 			do {
-				if ((ret = mtd_is_bad(&mtd, fd, offs / ebsize_aligned)) < 0) {
+				ret = mtd_is_bad(&mtd, fd, offs / ebsize_aligned);
+				if (ret < 0) {
 					sys_errmsg("%s: MTD get bad block failed", mtd_device);
 					goto closeall;
 				} else if (ret == 1) {
@@ -396,8 +397,14 @@ int main(int argc, char * const argv[])
 								offs, blockalign, blockstart);
 				}
 
-				if (baderaseblock)
+				if (baderaseblock) {
 					mtdoffset = blockstart + ebsize_aligned;
+
+					if (mtdoffset > mtd.size) {
+						errmsg("too many bad blocks, cannot complete request");
+						goto closeall;
+					}
+				}
 
 				offs +=  ebsize_aligned / blockalign;
 			} while (offs < blockstart + ebsize_aligned);
