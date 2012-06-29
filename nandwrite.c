@@ -119,55 +119,54 @@ static void process_options(int argc, char * const argv[])
 
 		int c = getopt_long(argc, argv, short_options,
 				long_options, &option_index);
-		if (c == EOF) {
+		if (c == EOF)
 			break;
-		}
 
 		switch (c) {
-			case 0:
-				switch (option_index) {
-					case 0:
-						display_help();
-						break;
-					case 1:
-						display_version();
-						break;
-				}
-				break;
-			case 'q':
-				quiet = true;
-				break;
-			case 'n':
-				noecc = true;
-				break;
-			case 'N':
-				noskipbad = true;
-				break;
-			case 'm':
-				markbad = true;
-				break;
-			case 'o':
-				writeoob = true;
-				break;
-			case 'O':
-				writeoob = true;
-				onlyoob = true;
-				break;
-			case 'p':
-				pad = true;
-				break;
-			case 's':
-				mtdoffset = simple_strtoll(optarg, &error);
-				break;
-			case 'b':
-				blockalign = atoi(optarg);
-				break;
-			case 'a':
-				autoplace = true;
-				break;
-			case '?':
-				error++;
-				break;
+		case 0:
+			switch (option_index) {
+				case 0:
+					display_help();
+					break;
+				case 1:
+					display_version();
+					break;
+			}
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'n':
+			noecc = true;
+			break;
+		case 'N':
+			noskipbad = true;
+			break;
+		case 'm':
+			markbad = true;
+			break;
+		case 'o':
+			writeoob = true;
+			break;
+		case 'O':
+			writeoob = true;
+			onlyoob = true;
+			break;
+		case 'p':
+			pad = true;
+			break;
+		case 's':
+			mtdoffset = simple_strtoll(optarg, &error);
+			break;
+		case 'b':
+			blockalign = atoi(optarg);
+			break;
+		case 'a':
+			autoplace = true;
+			break;
+		case '?':
+			error++;
+			break;
 		}
 	}
 
@@ -211,9 +210,8 @@ static void erase_buffer(void *buffer, size_t size)
 {
 	const uint8_t kEraseByte = 0xff;
 
-	if (buffer != NULL && size > 0) {
+	if (buffer != NULL && size > 0)
 		memset(buffer, kEraseByte, size);
-	}
 }
 
 /*
@@ -252,6 +250,7 @@ int main(int argc, char * const argv[])
 	mtd_desc = libmtd_open();
 	if (!mtd_desc)
 		errmsg_die("can't initialize libmtd");
+
 	/* Fill in MTD device capability structure */
 	if (mtd_get_dev_info(mtd_desc, mtd_device, &mtd) < 0)
 		errmsg_die("mtd_get_dev_info failed");
@@ -289,11 +288,10 @@ int main(int argc, char * const argv[])
 	}
 
 	/* Determine if we are reading from standard input or from a file. */
-	if (strcmp(img, standard_input) == 0) {
+	if (strcmp(img, standard_input) == 0)
 		ifd = STDIN_FILENO;
-	} else {
+	else
 		ifd = open(img, O_RDONLY);
-	}
 
 	if (ifd == -1) {
 		perror(img);
@@ -321,14 +319,14 @@ int main(int argc, char * const argv[])
 	}
 
 	/* Check, if file is page-aligned */
-	if ((!pad) && ((imglen % pagelen) != 0)) {
+	if (!pad && (imglen % pagelen) != 0) {
 		fprintf(stderr, "Input file is not page-aligned. Use the padding "
 				 "option.\n");
 		goto closeall;
 	}
 
 	/* Check, if length fits into device */
-	if (((imglen / pagelen) * mtd.min_io_size) > (mtd.size - mtdoffset)) {
+	if ((imglen / pagelen) * mtd.min_io_size > mtd.size - mtdoffset) {
 		fprintf(stderr, "Image %d bytes, NAND page %d bytes, OOB area %d"
 				" bytes, device size %lld bytes\n",
 				imglen, pagelen, mtd.oob_size, mtd.size);
@@ -353,8 +351,8 @@ int main(int argc, char * const argv[])
 	 * length is simply a quasi-boolean flag whose values are page
 	 * length or zero.
 	 */
-	while (((imglen > 0) || (writebuf < (filebuf + filebuf_len)))
-		&& (mtdoffset < mtd.size)) {
+	while ((imglen > 0 || writebuf < filebuf + filebuf_len)
+		&& mtdoffset < mtd.size) {
 		/*
 		 * New eraseblock, check for bad block(s)
 		 * Stay in the loop to be sure that, if mtdoffset changes because
@@ -385,6 +383,7 @@ int main(int argc, char * const argv[])
 			/* Check all the blocks in an erase block for bad blocks */
 			if (noskipbad)
 				continue;
+
 			do {
 				if ((ret = mtd_is_bad(&mtd, fd, offs / ebsize_aligned)) < 0) {
 					sys_errmsg("%s: MTD get bad block failed", mtd_device);
@@ -397,18 +396,17 @@ int main(int argc, char * const argv[])
 								offs, blockalign, blockstart);
 				}
 
-				if (baderaseblock) {
+				if (baderaseblock)
 					mtdoffset = blockstart + ebsize_aligned;
-				}
+
 				offs +=  ebsize_aligned / blockalign;
 			} while (offs < blockstart + ebsize_aligned);
 
 		}
 
 		/* Read more data from the input if there isn't enough in the buffer */
-		if ((writebuf + mtd.min_io_size) > (filebuf + filebuf_len)) {
+		if (writebuf + mtd.min_io_size > filebuf + filebuf_len) {
 			int readlen = mtd.min_io_size;
-
 			int alreadyread = (filebuf + filebuf_len) - writebuf;
 			int tinycnt = alreadyread;
 
@@ -430,9 +428,9 @@ int main(int argc, char * const argv[])
 				 * the end of the "file". For nonstandard input,
 				 * leave it as-is to detect an early EOF.
 				 */
-				if (ifd == STDIN_FILENO) {
+				if (ifd == STDIN_FILENO)
 					imglen = 0;
-				}
+
 				break;
 			}
 
@@ -450,8 +448,7 @@ int main(int argc, char * const argv[])
 			filebuf_len += readlen - alreadyread;
 			if (ifd != STDIN_FILENO) {
 				imglen -= tinycnt - alreadyread;
-			}
-			else if (cnt == 0) {
+			} else if (cnt == 0) {
 				/* No more bytes - we are done after writing the remaining bytes */
 				imglen = 0;
 			}
@@ -461,7 +458,7 @@ int main(int argc, char * const argv[])
 			oobbuf = writebuf + mtd.min_io_size;
 
 			/* Read more data for the OOB from the input if there isn't enough in the buffer */
-			if ((oobbuf + mtd.oob_size) > (filebuf + filebuf_len)) {
+			if (oobbuf + mtd.oob_size > filebuf + filebuf_len) {
 				int readlen = mtd.oob_size;
 				int alreadyread = (filebuf + filebuf_len) - oobbuf;
 				int tinycnt = alreadyread;
@@ -486,8 +483,7 @@ int main(int argc, char * const argv[])
 				filebuf_len += readlen - alreadyread;
 				if (ifd != STDIN_FILENO) {
 					imglen -= tinycnt - alreadyread;
-				}
-				else if (cnt == 0) {
+				} else if (cnt == 0) {
 					/* No more bytes - we are done after writing the remaining bytes */
 					imglen = 0;
 				}
@@ -548,8 +544,8 @@ closeall:
 	free(filebuf);
 	close(fd);
 
-	if (failed || ((ifd != STDIN_FILENO) && (imglen > 0))
-		   || (writebuf < (filebuf + filebuf_len)))
+	if (failed || (ifd != STDIN_FILENO && imglen > 0)
+		   || (writebuf < filebuf + filebuf_len))
 		sys_errmsg_die("Data was only partially written due to error");
 
 	/* Return happy */
