@@ -1,20 +1,30 @@
 #!/bin/sh -euf
 
-ubidev="$1"
 tests="mkvol_basic mkvol_bad mkvol_paral rsvol io_basic io_read io_update io_paral volrefcnt"
 
 fatal()
 {
-	echo "Error: $1" 2>&1
+	echo "Error: $1" 1>&2
 	exit 1
 }
 
-if [ -z "$ubidev" ]; then
-	echo "Usage:" 2>&1
-	echo "$0 <UBI device>"
+usage()
+{
+	cat 1>&2 <<EOF
+Run all UBI tests for on an UBI device.
+Usage:
+  ${0##*/} <UBI device node>
+Example:
+  ${0##*/} /dev/ubi1 - test /dev/ubi1.
+EOF
+}
+
+if [ "$#" -lt 1 ]; then
+	usage
 	exit 1
 fi
 
+ubidev="$1"
 [ -c "$ubidev" ] || fatal "$ubidev is not character device"
 
 for t in $tests; do
