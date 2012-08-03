@@ -13,11 +13,8 @@ fatal()
         exit 1
 }
 
-if grep -q "NAND simulator" /proc/mtd; then
-	fatal "nandsim is already loaded"
-fi
-
-if [ "$#" -lt "1" ]; then
+usage()
+{
 	cat 1>&2 <<EOF
 Load NAND simulator to simulate flash of a specified size.
 
@@ -58,6 +55,14 @@ Only the following combinations are supported:
 | 1024       | 512           | 2048              |
 --------------------------------------------------
 EOF
+}
+
+if grep -q "NAND simulator" /proc/mtd; then
+	fatal "nandsim is already loaded"
+fi
+
+if [ "$#" -lt "1" ]; then
+	usage
 	exit 1
 fi
 
