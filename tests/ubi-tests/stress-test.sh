@@ -53,6 +53,7 @@ print_params()
 	local size="$1";      shift
 	local peb_size="$1";  shift
 	local page_size="$1"; shift
+	local vid_offs="$1";  shift
 	local fastmap="$1";   shift
 	local fm_str
 
@@ -62,8 +63,10 @@ print_params()
 		fm_str="enabled"
 	fi
 
-	printf "%s"   "${size}MiB $module with ${peb_size}KiB PEB, "
-	[ "$module" != "nandsim" ] || printf "%s" "${page_size}KiB NAND pages, "
+	printf "%s" "$module: ${size}MiB, PEB size ${peb_size}KiB, "
+	if [ "$module" = "nandsim" ]; then
+		printf "%s" "page size ${page_size}KiB, VID offset $vid_offs, "
+	fi
 	printf "%s\n" "fastmap $fm_str" 
 }
 
@@ -73,24 +76,28 @@ print_separator()
 }
 
 # Run a test on nandsim or mtdram with certain geometry.
-# Usage: run_test <nandsim|mtdram> <flash size> <PEB size> <Page size> <FM>
+# Usage: run_test <nandsim|mtdram> <flash size> <PEB size> \
+#                 <Page size> <VID hdr offs> <enable fastmap>
 #
-# Flash size is specified in MiB
-# PEB size is specified in KiB
-# Page size is specified in bytes
-# If fast-map should be enabled, pass 0 or 1
+# 1. Simulator type (nandsim or mtdram)
+# 2. Flash size is specified in MiB 
+# 3. PEB size is specified in KiB
+# 4. Page size is specified in bytes (mtdram ingores this)
+# 5. VID header offset (mtdram ingores this)
+# 6. Whether fast-map should be enabled (pass 0 or 1)
 run_test()
 {
 	local module="$1";
 	local size="$2";
 	local peb_size="$3";
 	local page_size="$4";
-	local fastmap="$5";  
+	local vid_offs="$5"
+	local fastmap="$6";  
 	local fm_supported fm_str fm_param mtdnum
 
 	print_separator
 
-	# Check if fastmap is supported
+	# Check if fastmap is supported by UBI
 	if modinfo ubi | grep -q fm_auto; then
 		fm_supported="yes"
 	else
@@ -104,9 +111,8 @@ run_test()
 		fm_str="enabled"
 		fm_param="fm_auto"
 	else
-		echo "Fastmap is not supported, will test without fastmap"
-		fm_str="disabled"
-		fm_param=
+		echo "Fastmap is not supported, skip"
+		return 0
 	fi
 
 	if [ "$module" = "nandsim" ]; then
@@ -120,7 +126,7 @@ run_test()
 		fatal "$module is not supported"
 	fi
 
-	modprobe ubi mtd="$mtdnum" $fm_param
+	modprobe ubi mtd="$mtdnum,$vid_offs" $fm_param
 	runtests.sh /dev/ubi0 ||:
 
 	sudo rmmod ubi
@@ -142,37 +148,46 @@ mtdram_patt="mtdram test device"
 
 rmmod ubi >/dev/null 2>&1 ||:
 
-print_separator
-print_separator
+for fm in 1 0; do
+	for vid_factor in 1 0; do
+		print_separator
+		print_separator
+		print_separator
 
-for fm in 1 2; do
-	run_test "nandsim" "16"  "16" "512" "$fm"
-	run_test "nandsim" "32"  "16" "512" "$fm"
-	run_test "nandsim" "64"  "16" "512" "$fm"
-	run_test "nandsim" "128" "16" "512" "$fm"
-	run_test "nandsim" "256" "16" "512" "$fm"
+		pg_size="512"
+		vid_offs="$(($pg_size * $vid_factor))"
 
-	run_test "nandsim" "64"   "64" "2048" "$fm"
-	run_test "nandsim" "128"  "64" "2048" "$fm"
-	run_test "nandsim" "256"  "64" "2048" "$fm"
-	run_test "nandsim" "512"  "64" "2048" "$fm"
-	run_test "nandsim" "1024" "64" "2048" "$fm"
+		run_test "nandsim" "16"  "16" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "32"  "16" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "64"  "16" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "128" "16" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "256" "16" "$pg_size" "$vid_offs" "$fm"
 
-	run_test "nandsim" "64"   "128" "2048" "$fm"
-	run_test "nandsim" "128"  "128" "2048" "$fm"
-	run_test "nandsim" "256"  "128" "2048" "$fm"
-	run_test "nandsim" "512"  "128" "2048" "$fm"
-	run_test "nandsim" "1024" "128" "2048" "$fm"
+		pg_size="2048"
+		vid_offs="$(($pg_size * $vid_factor))"
 
-	run_test "nandsim" "64"   "256" "2048" "$fm"
-	run_test "nandsim" "128"  "256" "2048" "$fm"
-	run_test "nandsim" "256"  "256" "2048" "$fm"
-	run_test "nandsim" "512"  "256" "2048" "$fm"
-	run_test "nandsim" "1024" "256" "2048" "$fm"
+		run_test "nandsim" "64"   "64" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "128"  "64" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "256"  "64" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "512"  "64" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "1024" "64" "$pg_size" "$vid_offs" "$fm"
 
-	run_test "nandsim" "64"   "512" "2048" "$fm"
-	run_test "nandsim" "128"  "512" "2048" "$fm"
-	run_test "nandsim" "256"  "512" "2048" "$fm"
-	run_test "nandsim" "512"  "512" "2048" "$fm"
-	run_test "nandsim" "1024" "512" "2048" "$fm"
+		run_test "nandsim" "64"   "128" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "128"  "128" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "256"  "128" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "512"  "128" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "1024" "128" "$pg_size" "$vid_offs" "$fm"
+
+		run_test "nandsim" "64"   "256" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "128"  "256" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "256"  "256" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "512"  "256" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "1024" "256" "$pg_size" "$vid_offs" "$fm"
+
+		run_test "nandsim" "64"   "512" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "128"  "512" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "256"  "512" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "512"  "512" "$pg_size" "$vid_offs" "$fm"
+		run_test "nandsim" "1024" "512" "$pg_size" "$vid_offs" "$fm"
+	done
 done
