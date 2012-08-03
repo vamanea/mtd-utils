@@ -13,44 +13,46 @@ if grep -q "NAND simulator" /proc/mtd; then
 fi
 
 if [ "$#" -lt "1" ]; then
-	echo "Load NAND simulator to simulate flash of a specified size."
-	echo ""
-	echo "Usage: ./load_nandsim.sh <size in MiB> <eraseblock size in KiB>"
-	echo "       <page size (512 or 2048)>"
-	echo ""
-	echo "Only the first parameter is mandatory. Default eraseblock size"
-	echo "is 16KiB, default NAND page size is 512 bytes."
-	echo ""
-	echo "Only the following combinations are supported:"
-	echo "--------------------------------------------------"
-	echo "| size (MiB) | EB size (KiB) | Page size (bytes) |"
-	echo "--------------------------------------------------"
-	echo "| 16         | 16            | 512               |"
-	echo "| 32         | 16            | 512               |"
-	echo "| 64         | 16            | 512               |"
-	echo "| 128        | 16            | 512               |"
-	echo "| 256        | 16            | 512               |"
-	echo "| 64         | 64            | 2048              |"
-	echo "| 64         | 128           | 2048              |"
-	echo "| 64         | 256           | 2048              |"
-	echo "| 64         | 512           | 2048              |"
-	echo "| 128        | 64            | 2048              |"
-	echo "| 128        | 128           | 2048              |"
-	echo "| 128        | 256           | 2048              |"
-	echo "| 128        | 512           | 2048              |"
-	echo "| 256        | 64            | 2048              |"
-	echo "| 256        | 128           | 2048              |"
-	echo "| 256        | 256           | 2048              |"
-	echo "| 256        | 512           | 2048              |"
-	echo "| 512        | 64            | 2048              |"
-	echo "| 512        | 128           | 2048              |"
-	echo "| 512        | 256           | 2048              |"
-	echo "| 512        | 512           | 2048              |"
-	echo "| 1024       | 64            | 2048              |"
-	echo "| 1024       | 128           | 2048              |"
-	echo "| 1024       | 256           | 2048              |"
-	echo "| 1024       | 512           | 2048              |"
-	echo "--------------------------------------------------"
+	cat 1>&2 <<EOF
+Load NAND simulator to simulate flash of a specified size.
+
+Usage: ${0##*/} <size in MiB> <eraseblock size in KiB> \\
+       <page size (512 or 2048)>
+
+Only the first parameter is mandatory. Default eraseblock size
+is 16KiB, default NAND page size is 512 bytes.
+
+Only the following combinations are supported:
+--------------------------------------------------
+| size (MiB) | EB size (KiB) | Page size (bytes) |
+--------------------------------------------------
+| 16         | 16            | 512               |
+| 32         | 16            | 512               |
+| 64         | 16            | 512               |
+| 128        | 16            | 512               |
+| 256        | 16            | 512               |
+| 64         | 64            | 2048              |
+| 64         | 128           | 2048              |
+| 64         | 256           | 2048              |
+| 64         | 512           | 2048              |
+| 128        | 64            | 2048              |
+| 128        | 128           | 2048              |
+| 128        | 256           | 2048              |
+| 128        | 512           | 2048              |
+| 256        | 64            | 2048              |
+| 256        | 128           | 2048              |
+| 256        | 256           | 2048              |
+| 256        | 512           | 2048              |
+| 512        | 64            | 2048              |
+| 512        | 128           | 2048              |
+| 512        | 256           | 2048              |
+| 512        | 512           | 2048              |
+| 1024       | 64            | 2048              |
+| 1024       | 128           | 2048              |
+| 1024       | 256           | 2048              |
+| 1024       | 512           | 2048              |
+--------------------------------------------------
+EOF
 	exit 1
 fi
 
