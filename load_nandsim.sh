@@ -12,7 +12,7 @@ if grep -q "NAND simulator" /proc/mtd; then
 	exit 1
 fi
 
-if (( $# < 1 )); then
+if [ "$#" -lt "1" ]; then
 	echo "Load NAND simulator to simulate flash of a specified size."
 	echo ""
 	echo "Usage: ./load_nandsim.sh <size in MiB> <eraseblock size in KiB>"
@@ -54,23 +54,23 @@ if (( $# < 1 )); then
 	exit 1
 fi
 
-SZ=$1
-EBSZ=$2
-PGSZ=$3
-if [[ $# == '1' ]]; then
-	EBSZ=16
-	PGSZ=512
-elif [[ $# == '2' ]]; then
-	PGSZ=512
+SZ="$1"
+EBSZ="$2"
+PGSZ="$3"
+if [ "$#" = "1" ]; then
+	EBSZ="16"
+	PGSZ="512"
+elif [ "$#" = "2" ]; then
+	PGSZ="512"
 fi
 
-if (( $PGSZ == 512 && $EBSZ != 16 )); then
+if [ "$PGSZ" -eq 512 ] && [ "$EBSZ" -ne "16" ]; then
 	echo "Error: only 16KiB eraseblocks are possible in case of 512 bytes page"
 	exit 1
 fi
 
-if (( $PGSZ == 512 )); then
-	case $SZ in
+if [ "$PGSZ" -eq "512" ]; then
+	case "$SZ" in
 	16)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x33 ;;
 	32)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x35 ;;
 	64)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x36 ;;
@@ -79,22 +79,22 @@ if (( $PGSZ == 512 )); then
 	*) echo "Flash size ${SZ}MiB is not supported, try 16, 32, 64 or 256"
 	   exit 1 ;;
 	esac
-elif (( $PGSZ == 2048 )); then
-	case $EBSZ in
-	64)  FOURTH=0x05 ;;
-	128) FOURTH=0x15 ;;
-	256) FOURTH=0x25 ;;
-	512) FOURTH=0x35 ;;
+elif [ "$PGSZ" -eq "2048" ]; then
+	case "$EBSZ" in
+	64)  FOURTH="0x05" ;;
+	128) FOURTH="0x15" ;;
+	256) FOURTH="0x25" ;;
+	512) FOURTH="0x35" ;;
 	*)   echo "Eraseblock ${EBSZ}KiB is not supported"
 	     exit 1
 	esac
 
-	case $SZ in
-	64)  modprobe nandsim first_id_byte=0x20 second_id_byte=0xa2 third_id_byte=0x00 fourth_id_byte=$FOURTH ;;
-	128) modprobe nandsim first_id_byte=0xec second_id_byte=0xa1 third_id_byte=0x00 fourth_id_byte=$FOURTH ;;
-	256) modprobe nandsim first_id_byte=0x20 second_id_byte=0xaa third_id_byte=0x00 fourth_id_byte=$FOURTH ;;
-	512) modprobe nandsim first_id_byte=0x20 second_id_byte=0xac third_id_byte=0x00 fourth_id_byte=$FOURTH ;;
-	1024) modprobe nandsim first_id_byte=0xec second_id_byte=0xd3 third_id_byte=0x51 fourth_id_byte=$FOURTH ;;
+	case "$SZ" in
+	64)  modprobe nandsim first_id_byte=0x20 second_id_byte=0xa2 third_id_byte=0x00 fourth_id_byte="$FOURTH" ;;
+	128) modprobe nandsim first_id_byte=0xec second_id_byte=0xa1 third_id_byte=0x00 fourth_id_byte="$FOURTH" ;;
+	256) modprobe nandsim first_id_byte=0x20 second_id_byte=0xaa third_id_byte=0x00 fourth_id_byte="$FOURTH" ;;
+	512) modprobe nandsim first_id_byte=0x20 second_id_byte=0xac third_id_byte=0x00 fourth_id_byte="$FOURTH" ;;
+	1024) modprobe nandsim first_id_byte=0xec second_id_byte=0xd3 third_id_byte=0x51 fourth_id_byte="$FOURTH" ;;
 	*) echo "Unable to emulate ${SZ}MiB flash with ${EBSZ}KiB eraseblock"
 	   exit 1
 	esac
@@ -103,7 +103,7 @@ else
 	exit 1
 fi
 
-if (( $? != 0 )); then
+if [ "$?" != "0" ]; then
 	echo "Error: cannot load nandsim"
 	exit 1
 fi
