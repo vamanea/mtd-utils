@@ -1,7 +1,7 @@
 #!/bin/sh -euf
 
 srcdir="$(readlink -ev -- ${0%/*})"
-PATH="$srcdir:$PATH"
+PATH="$srcdir:$srcdir/../..:$PATH"
 
 fatal()
 {
@@ -46,13 +46,86 @@ find_mtd_device()
 	printf "%s" "$(grep "$1" /proc/mtd | sed -e "s/^mtd\([0-9]\+\):.*$/\1/")"
 }
 
-exit_handler()
+# Just print parameters of the 'run_test' funcion in a user-friendly form.
+print_params()
 {
-	echo exit
-	cleanup
+	local module="$1";    shift
+	local size="$1";      shift
+	local peb_size="$1";  shift
+	local page_size="$1"; shift
+	local fastmap="$1";   shift
+	local fm_str
+
+	if [ "$fastmap" = "0" ]; then
+		fm_str="disabled"
+	else
+		fm_str="enabled"
+	fi
+
+	printf "%s"   "${size}MiB $module with ${peb_size}KiB PEB, "
+	[ "$module" != "nandsim" ] || printf "%s" "${page_size}KiB NAND pages, "
+	printf "%s\n" "fastmap $fm_str" 
 }
 
-runtests="runtests.sh"
+print_separator()
+{
+	echo "======================================================================"
+}
+
+# Run a test on nandsim or mtdram with certain geometry.
+# Usage: run_test <nandsim|mtdram> <flash size> <PEB size> <Page size> <FM>
+#
+# Flash size is specified in MiB
+# PEB size is specified in KiB
+# Page size is specified in bytes
+# If fast-map should be enabled, pass 0 or 1
+run_test()
+{
+	local module="$1";
+	local size="$2";
+	local peb_size="$3";
+	local page_size="$4";
+	local fastmap="$5";  
+	local fm_supported fm_str fm_param mtdnum
+
+	print_separator
+
+	# Check if fastmap is supported
+	if modinfo ubi | grep -q fm_auto; then
+		fm_supported="yes"
+	else
+		fm_supported="no"
+	fi
+
+	if [ "$fastmap" = "0" ]; then
+		fm_str="disabled"
+		fm_param=
+	elif [ "$fm_supported" = "yes" ]; then
+		fm_str="enabled"
+		fm_param="fm_auto"
+	else
+		echo "Fastmap is not supported, will test without fastmap"
+		fm_str="disabled"
+		fm_param=
+	fi
+
+	if [ "$module" = "nandsim" ]; then
+		print_params "$@"
+
+		load_nandsim.sh "$size" "$peb_size" "$page_size" ||
+			echo "Cannot load nandsim, test skipped"
+
+		mtdnum="$(find_mtd_device "$nandsim_patt")"
+	else
+		fatal "$module is not supported"
+	fi
+
+	modprobe ubi mtd="$mtdnum" $fm_param
+	runtests.sh /dev/ubi0 ||:
+
+	sudo rmmod ubi
+	sudo rmmod "$module"
+}
 
 if [ "$#" -lt 1 ] || [ "$1" != "run" ]; then
 	usage
@@ -69,27 +142,37 @@ mtdram_patt="mtdram test device"
 
 rmmod ubi >/dev/null 2>&1 ||:
 
-if modinfo ubi | grep -q fm_auto; then
-	fastmap_supported="yes"
-else
-	fastmap_supported="no"
-fi
+print_separator
+print_separator
 
-echo "=================================================="
-echo "512MiB nandsim, 2KiB NAND pages, no fastmap" 
-echo "=================================================="
+for fm in 1 2; do
+	run_test "nandsim" "16"  "16" "512" "$fm"
+	run_test "nandsim" "32"  "16" "512" "$fm"
+	run_test "nandsim" "64"  "16" "512" "$fm"
+	run_test "nandsim" "128" "16" "512" "$fm"
+	run_test "nandsim" "256" "16" "512" "$fm"
 
-modprobe nandsim first_id_byte=0x20 second_id_byte=0xac \
-		 third_id_byte=0x00 fourth_id_byte=0x15
-mtdnum="$(find_mtd_device "$nandsim_patt")"
-modprobe ubi mtd="$mtdnum"
-$runtests /dev/ubi0 && echo "SUCCESS" || echo "FAILURE"
+	run_test "nandsim" "64"   "64" "2048" "$fm"
+	run_test "nandsim" "128"  "64" "2048" "$fm"
+	run_test "nandsim" "256"  "64" "2048" "$fm"
+	run_test "nandsim" "512"  "64" "2048" "$fm"
+	run_test "nandsim" "1024" "64" "2048" "$fm"
 
-echo "=================================================="
-echo "256MiB nandsim, 512-byte NAND pages, no fastmap" 
-echo "=================================================="
+	run_test "nandsim" "64"   "128" "2048" "$fm"
+	run_test "nandsim" "128"  "128" "2048" "$fm"
+	run_test "nandsim" "256"  "128" "2048" "$fm"
+	run_test "nandsim" "512"  "128" "2048" "$fm"
+	run_test "nandsim" "1024" "128" "2048" "$fm"
 
-modprobe nandsim first_id_byte=0x20 second_id_byte=0x71
-mtdnum="$(find_mtd_device "$nandsim_patt")"
-modprobe ubi mtd="$mtdnum"
-$runtests /dev/ubi0 && echo "SUCCESS" || echo "FAILURE"
+	run_test "nandsim" "64"   "256" "2048" "$fm"
+	run_test "nandsim" "128"  "256" "2048" "$fm"
+	run_test "nandsim" "256"  "256" "2048" "$fm"
+	run_test "nandsim" "512"  "256" "2048" "$fm"
+	run_test "nandsim" "1024" "256" "2048" "$fm"
+
+	run_test "nandsim" "64"   "512" "2048" "$fm"
+	run_test "nandsim" "128"  "512" "2048" "$fm"
+	run_test "nandsim" "256"  "512" "2048" "$fm"
+	run_test "nandsim" "512"  "512" "2048" "$fm"
+	run_test "nandsim" "1024" "512" "2048" "$fm"
+done
