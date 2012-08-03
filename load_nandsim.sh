@@ -80,39 +80,51 @@ if [ "$page_size" -eq 512 ] && [ "$eb_size" -ne "16" ]; then
 	fatal "only 16KiB eraseblocks are possible in case of 512 bytes page"
 fi
 
+first=
+second=
+third=
+fourth=
+
 if [ "$page_size" -eq "512" ]; then
+	first="0x20"
 	case "$size" in
-	16)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x33 ;;
-	32)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x35 ;;
-	64)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x36 ;;
-	128) modprobe nandsim first_id_byte=0x20 second_id_byte=0x78 ;;
-	256) modprobe nandsim first_id_byte=0x20 second_id_byte=0x71 ;;
+	16)  second=0x33 ;;
+	32)  second=0x35 ;;
+	64)  second=0x36 ;;
+	128) second=0x78 ;;
+	256) second=0x71 ;;
 	*) fatal "flash size ${size}MiB is not supported, try 16, 32, 64 or 256"
 	esac
 elif [ "$page_size" -eq "2048" ]; then
 	case "$eb_size" in
-	64)  fourh_bite="0x05" ;;
-	128) fourh_bite="0x15" ;;
-	256) fourh_bite="0x25" ;;
-	512) fourh_bite="0x35" ;;
+	64)  fourth="0x05" ;;
+	128) fourth="0x15" ;;
+	256) fourth="0x25" ;;
+	512) fourth="0x35" ;;
 	*)   fatal "eraseblock ${eb_size}KiB is not supported"
 	esac
 
+
 	case "$size" in
-	64)   modprobe nandsim first_id_byte=0x20 second_id_byte=0xa2 third_id_byte=0x00 fourth_id_byte="$fourh_bite" ;;
-	128)  modprobe nandsim first_id_byte=0xec second_id_byte=0xa1 third_id_byte=0x00 fourth_id_byte="$fourh_bite" ;;
-	256)  modprobe nandsim first_id_byte=0x20 second_id_byte=0xaa third_id_byte=0x00 fourth_id_byte="$fourh_bite" ;;
-	512)  modprobe nandsim first_id_byte=0x20 second_id_byte=0xac third_id_byte=0x00 fourth_id_byte="$fourh_bite" ;;
-	1024) modprobe nandsim first_id_byte=0xec second_id_byte=0xd3 third_id_byte=0x51 fourth_id_byte="$fourh_bite" ;;
+	64)   first="0x20"; second="0xa2"; third="0x00 ";;
+	128)  first="0xec"; second="0xa1"; third="0x00 ";;
+	256)  first="0x20"; second="0xaa"; third="0x00 ";;
+	512)  first="0x20"; second="0xac"; third="0x00 ";;
+	1024) first="0xec"; second="0xd3"; third="0x51 ";;
 	*) fatal "unable to emulate ${size}MiB flash with ${eb_size}KiB eraseblock"
 	esac
 else
 	fatal "bad NAND page size ${page_size}KiB, it has to be either 512 or 2048"
 fi
 
+first="first_id_byte=$first"
+second="second_id_byte=$second"
+[ -z "$third" ]  || third="third_id_byte=$third"
+[ -z "$fourth" ] || fourth="fourth_id_byte=$fourth"
+
+modprobe nandsim "$first" "$second" $third $fourth
 if [ "$?" != "0" ]; then
 	fatal "Error: cannot load nandsim"
 fi
 
 echo "Loaded NAND simulator (${size}MiB, ${eb_size}KiB eraseblock, $page_size bytes NAND page)"
-exit 0
