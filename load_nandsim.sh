@@ -7,18 +7,7 @@
 # Author: Artem Bityutskiy
 #
 
-# Check if nandsim module is loaded
-function nandsim_loaded()
-{
-	local NANDSIM=`lsmod | grep nandsim`
-	if [ -n "$NANDSIM" ]; then
-		return 1
-	fi
-	return 0
-}
-
-nandsim_loaded
-if (( $? != 0 )); then
+if grep -q "NAND simulator" /proc/mtd; then
 	echo "Error: nandsim is already loaded"
 	exit 1
 fi
