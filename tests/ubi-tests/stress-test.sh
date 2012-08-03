@@ -153,10 +153,12 @@ fi
 # Make sure neither mtdram nor nandsim are used
 nandsim_patt="NAND simulator"
 mtdram_patt="mtdram test device"
-! grep -q "$nandsim_patt" /proc/mtd ||
-	fatal "the nandsim driver is already used"
-! grep -q "$mtdram_patt" /proc/mtd ||
-	fatal "the mtdram driver is already used"
+if [ -e /proc/mtd ]; then
+	! grep -q "$nandsim_patt" /proc/mtd ||
+		fatal "the nandsim driver is already used"
+	! grep -q "$mtdram_patt" /proc/mtd ||
+		fatal "the mtdram driver is already used"
+fi
 
 rmmod ubi >/dev/null 2>&1 ||:
 
