@@ -5,6 +5,7 @@ tests="mkvol_basic mkvol_bad mkvol_paral rsvol io_basic io_read io_update io_par
 fatal()
 {
 	echo "Error: $1" 1>&2
+	echo "FAILURE"
 	exit 1
 }
 
