@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh -euf
 
 #
 # This script inserts NAND simulator module to emulate NAND flash of specified
@@ -123,8 +123,5 @@ second="second_id_byte=$second"
 [ -z "$fourth" ] || fourth="fourth_id_byte=$fourth"
 
 modprobe nandsim "$first" "$second" $third $fourth
-if [ "$?" != "0" ]; then
-	fatal "Error: cannot load nandsim"
-fi
 
 echo "Loaded NAND simulator (${size}MiB, ${eb_size}KiB eraseblock, $page_size bytes NAND page)"
