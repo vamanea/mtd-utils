@@ -7,9 +7,14 @@
 # Author: Artem Bityutskiy
 #
 
+fatal()
+{
+        echo "Error: $1" 1>&2
+        exit 1
+}
+
 if grep -q "NAND simulator" /proc/mtd; then
-	echo "Error: nandsim is already loaded"
-	exit 1
+	fatal "nandsim is already loaded"
 fi
 
 if [ "$#" -lt "1" ]; then
@@ -67,8 +72,7 @@ elif [ "$#" = "2" ]; then
 fi
 
 if [ "$PGSZ" -eq 512 ] && [ "$EBSZ" -ne "16" ]; then
-	echo "Error: only 16KiB eraseblocks are possible in case of 512 bytes page"
-	exit 1
+	fatal "only 16KiB eraseblocks are possible in case of 512 bytes page"
 fi
 
 if [ "$PGSZ" -eq "512" ]; then
@@ -78,8 +82,7 @@ if [ "$PGSZ" -eq "512" ]; then
 	64)  modprobe nandsim first_id_byte=0x20 second_id_byte=0x36 ;;
 	128) modprobe nandsim first_id_byte=0x20 second_id_byte=0x78 ;;
 	256) modprobe nandsim first_id_byte=0x20 second_id_byte=0x71 ;;
-	*) echo "Flash size ${SZ}MiB is not supported, try 16, 32, 64 or 256"
-	   exit 1 ;;
+	*) fatal "flash size ${SZ}MiB is not supported, try 16, 32, 64 or 256"
 	esac
 elif [ "$PGSZ" -eq "2048" ]; then
 	case "$EBSZ" in
@@ -87,8 +90,7 @@ elif [ "$PGSZ" -eq "2048" ]; then
 	128) FOURTH="0x15" ;;
 	256) FOURTH="0x25" ;;
 	512) FOURTH="0x35" ;;
-	*)   echo "Eraseblock ${EBSZ}KiB is not supported"
-	     exit 1
+	*)   fatal "eraseblock ${EBSZ}KiB is not supported"
 	esac
 
 	case "$SZ" in
@@ -97,17 +99,14 @@ elif [ "$PGSZ" -eq "2048" ]; then
 	256) modprobe nandsim first_id_byte=0x20 second_id_byte=0xaa third_id_byte=0x00 fourth_id_byte="$FOURTH" ;;
 	512) modprobe nandsim first_id_byte=0x20 second_id_byte=0xac third_id_byte=0x00 fourth_id_byte="$FOURTH" ;;
 	1024) modprobe nandsim first_id_byte=0xec second_id_byte=0xd3 third_id_byte=0x51 fourth_id_byte="$FOURTH" ;;
-	*) echo "Unable to emulate ${SZ}MiB flash with ${EBSZ}KiB eraseblock"
-	   exit 1
+	*) fatal "unable to emulate ${SZ}MiB flash with ${EBSZ}KiB eraseblock"
 	esac
 else
-	echo "Error: bad NAND page size ${PGSZ}KiB, it has to be either 512 or 2048"
-	exit 1
+	fatal "bad NAND page size ${PGSZ}KiB, it has to be either 512 or 2048"
 fi
 
 if [ "$?" != "0" ]; then
-	echo "Error: cannot load nandsim"
-	exit 1
+	fatal "Error: cannot load nandsim"
 fi
 
 echo "Loaded NAND simulator (${SZ}MiB, ${EBSZ}KiB eraseblock, $PGSZ bytes NAND page)"
