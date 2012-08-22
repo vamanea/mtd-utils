@@ -3152,6 +3152,7 @@ static int reattach(void)
 	req.mtd_num = args.mtdn;
 	req.vid_hdr_offset = 0;
 	req.mtd_dev_node = NULL;
+	req.max_beb_per1024 = 0;
 
 	err = ubi_attach(libubi, "/dev/ubi_ctrl", &req);
 	if (err)

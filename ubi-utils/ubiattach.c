@@ -42,6 +42,7 @@ struct args {
 	int vidoffs;
 	const char *node;
 	const char *dev;
+	int max_beb_per1024;
 };
 
 static struct args args = {
@@ -50,6 +51,7 @@ static struct args args = {
 	.vidoffs = 0,
 	.node = NULL,
 	.dev = NULL,
+	.max_beb_per1024 = 0,
 };
 
 static const char doc[] = PROGRAM_NAME " version " VERSION
@@ -63,6 +65,9 @@ static const char optionsstr[] =
 "                      if the character device node does not exist)\n"
 "-O, --vid-hdr-offset  VID header offset (do not specify this unless you really\n"
 "                      know what you are doing, the default should be optimal)\n"
+"-b, --max-beb-per1024 maximum expected bad block number per 1024 eraseblock.\n"
+"                      The default value is correct for most NAND devices.\n"
+"                      Allowed range is 0-768, 0 means the default kernel value.\n"
 "-h, --help            print help message\n"
 "-V, --version         print program version";
 
@@ -71,19 +76,26 @@ static const char usage[] =
 "\t[-m <MTD device number>] [-d <UBI device number>] [-p <path to device>]\n"
 "\t[--mtdn=<MTD device number>] [--devn=<UBI device number>]\n"
 "\t[--dev-path=<path to device>]\n"
+"\t[--max-beb-per1024=<maximum bad block number per 1024 blocks>]\n"
 "UBI control device defaults to " DEFAULT_CTRL_DEV " if not supplied.\n"
 "Example 1: " PROGRAM_NAME " -p /dev/mtd0 - attach /dev/mtd0 to UBI\n"
 "Example 2: " PROGRAM_NAME " -m 0 - attach MTD device 0 (mtd0) to UBI\n"
 "Example 3: " PROGRAM_NAME " -m 0 -d 3 - attach MTD device 0 (mtd0) to UBI\n"
-"           and create UBI device number 3 (ubi3)";
+"           and create UBI device number 3 (ubi3)\n"
+"Example 4: " PROGRAM_NAME " -m 1 -b 25 - attach /dev/mtd1 to UBI and reserve\n"
+"           25*C/1024 eraseblocks for bad block handling, where C is the flash\n"
+"           is total flash chip eraseblocks count, that is flash chip size in\n"
+"           eraseblocks (including bad eraseblocks). E.g., if the flash chip\n"
+"           has 4096 PEBs, 100 will be reserved.";
 
 static const struct option long_options[] = {
-	{ .name = "devn",           .has_arg = 1, .flag = NULL, .val = 'd' },
-	{ .name = "dev-path",       .has_arg = 1, .flag = NULL, .val = 'p' },
-	{ .name = "mtdn",           .has_arg = 1, .flag = NULL, .val = 'm' },
-	{ .name = "vid-hdr-offset", .has_arg = 1, .flag = NULL, .val = 'O' },
-	{ .name = "help",           .has_arg = 0, .flag = NULL, .val = 'h' },
-	{ .name = "version",        .has_arg = 0, .flag = NULL, .val = 'V' },
+	{ .name = "devn",            .has_arg = 1, .flag = NULL, .val = 'd' },
+	{ .name = "dev-path",        .has_arg = 1, .flag = NULL, .val = 'p' },
+	{ .name = "mtdn",            .has_arg = 1, .flag = NULL, .val = 'm' },
+	{ .name = "vid-hdr-offset",  .has_arg = 1, .flag = NULL, .val = 'O' },
+	{ .name = "max-beb-per1024", .has_arg = 1, .flag = NULL, .val = 'b' },
+	{ .name = "help",            .has_arg = 0, .flag = NULL, .val = 'h' },
+	{ .name = "version",         .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0},
 };
 
@@ -92,7 +104,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key, error = 0;
 
-		key = getopt_long(argc, argv, "p:m:d:O:hV", long_options, NULL);
+		key = getopt_long(argc, argv, "p:m:d:O:b:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -118,6 +130,17 @@ static int parse_opt(int argc, char * const argv[])
 			args.vidoffs = simple_strtoul(optarg, &error);
 			if (error || args.vidoffs <= 0)
 				return errmsg("bad VID header offset: \"%s\"", optarg);
+
+			break;
+
+		case 'b':
+			args.max_beb_per1024 = simple_strtoul(optarg, &error);
+			if (error || args.max_beb_per1024 < 0 ||
+			    args.max_beb_per1024 > 768)
+				return errmsg("bad maximum of expected bad blocks (0-768): \"%s\"", optarg);
+
+			if (args.max_beb_per1024 == 0)
+				warnmsg("the default kernel value will be used for maximum expected bad blocks");
 
 			break;
 
@@ -190,6 +213,7 @@ int main(int argc, char * const argv[])
 	req.mtd_num = args.mtdn;
 	req.vid_hdr_offset = args.vidoffs;
 	req.mtd_dev_node = args.dev;
+	req.max_beb_per1024 = args.max_beb_per1024;
 
 	err = ubi_attach(libubi, args.node, &req);
 	if (err) {
