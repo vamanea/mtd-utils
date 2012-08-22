@@ -769,6 +769,35 @@ int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 	r.ubi_num = req->dev_num;
 	r.mtd_num = req->mtd_num;
 	r.vid_hdr_offset = req->vid_hdr_offset;
+
+	if (req->max_beb_per1024) {
+		/*
+		 * We first have to check if the running kernel supports the
+		 * 'max_beb_per1024' parameter. To do this, we invoke the
+		 * "attach" ioctl 2 times: first with incorrect value %-1 of
+		 * 'max_beb_per1024'.
+		 *
+		 * If the ioctl succeeds, it means that the kernel doesn't
+		 * support the feature and just ignored our 'max_beb_per1024'
+		 * value.
+		 *
+		 * If the ioctl returns -EINVAL, we assume this is because
+		 * 'max_beb_per1024' was set to -1, and we invoke the ioctl for
+		 * the second time with the 'max_beb_per1024' value.
+		 */
+		r.max_beb_per1024 = -1;
+		ret = do_attach(node, &r);
+		if (ret == 0) {
+			req->dev_num = r.ubi_num;
+			/*
+			 * The call succeeded. It means that the kernel ignored
+			 * 'max_beb_per1024' parameter. 
+			 */
+			return 1;
+		} else if (errno != EINVAL)
+			return ret;
+	}
+
 	r.max_beb_per1024 = req->max_beb_per1024;
 
 	ret = do_attach(node, &r);

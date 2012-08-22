@@ -221,12 +221,14 @@ int mtd_num2ubi_dev(libubi_t desc, int mtd_num, int *dev_num);
  * @req. If @req->mtd_dev_node is given it should contain path to the MTD
  * device node. Otherwise @req->mtd_num will be used.
  *
- * Returns %0 in case of success and %-1 in case of failure (errno is set).
- * The newly created UBI device number is returned in @req->dev_num.
- * The MTD device number is returned in @req->mtd_num (-1 if not found)
+ * Returns %0 in case of success, %-1 in case of failure (errno is set) and %1
+ * if parameter @req->max_beb_per1024 was ignored by kernel (because the kernel
+ * is old and does not support this feature, which was added in 3.7). The newly
+ * created UBI device number is returned in @req->dev_num. In the MTD device
+ * was specified by its device node path, the MTD device number is returned in
+ * @req->mtd_num.
  */
-int ubi_attach(libubi_t desc, const char *node,
-	       struct ubi_attach_request *req);
+int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req);
 
 /**
  * ubi_detach_mtd - detach an MTD device.

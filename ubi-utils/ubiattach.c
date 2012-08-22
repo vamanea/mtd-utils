@@ -216,11 +216,17 @@ int main(int argc, char * const argv[])
 	req.max_beb_per1024 = args.max_beb_per1024;
 
 	err = ubi_attach(libubi, args.node, &req);
-	if (err) {
+	if (err < 0) {
 		if (args.dev)
 			sys_errmsg("cannot attach \"%s\"", args.dev);
 		else
 			sys_errmsg("cannot attach mtd%d", args.mtdn);
+		goto out_libubi;
+	} else if (err == 1) {
+		/* The kernel did not support the 'max_beb_per1024' parameter */
+		warnmsg("the --max-beb-per1024=%d parameter was ignored", args.max_beb_per1024);
+		normsg("the UBI kernel driver does not support does not allow changing the reserved PEBs count");
+		normsg("the support was added in kernel version 3.7, probably you are running older kernel?");
 		goto out_libubi;
 	}
 
