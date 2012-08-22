@@ -770,30 +770,16 @@ static int mtd_node_to_num(const char *mtd_dev_node)
 
 int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 {
-	struct ubi_attach_req r;
-	int ret;
-
-	if (!req->mtd_dev_node)
-		/* Fallback to opening by mtd_num */
-		return ubi_attach_mtd(desc, node, req);
-
-	memset(&r, 0, sizeof(struct ubi_attach_req));
-	r.ubi_num = req->dev_num;
-	r.vid_hdr_offset = req->vid_hdr_offset;
-
-	/*
-	 * User has passed path to device node. Lets find out MTD device number
-	 * of the device and pass it to the kernel.
-	 */
-	r.mtd_num = mtd_node_to_num(req->mtd_dev_node);
-	if (r.mtd_num == -1)
-		return -1;
-
-	ret = do_attach(node, &r);
-	if (ret == 0)
-		req->dev_num = r.ubi_num;
-
-	return ret;
+	if (req->mtd_dev_node) {
+		/*
+		 * User has passed path to device node. Lets find out MTD
+		 * device number of the device and update req->mtd_num with it
+		 */
+		req->mtd_num = mtd_node_to_num(req->mtd_dev_node);
+		if (req->mtd_num == -1)
+			return -1;
+	}
+	return ubi_attach_mtd(desc, node, req);
 }
 
 int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num)

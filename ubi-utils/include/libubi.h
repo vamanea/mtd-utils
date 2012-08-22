@@ -233,8 +233,9 @@ int ubi_attach_mtd(libubi_t desc, const char *node,
  * device node. Otherwise functionality is similar than in function
  * 'ubi_attach_mtd()' where @req->mtd_num is used.
  *
- * Returns %0 in case of success and %-1 in case of failure (errno is set). The
- * newly created UBI device number is returned in @req->dev_num.
+ * Returns %0 in case of success and %-1 in case of failure (errno is set).
+ * The newly created UBI device number is returned in @req->dev_num.
+ * The MTD device number is returned in @req->mtd_num (-1 if not found)
  */
 int ubi_attach(libubi_t desc, const char *node,
 	       struct ubi_attach_request *req);
