@@ -426,18 +426,17 @@ int ubi_update_start(libubi_t desc, int fd, long long bytes);
  * @fd: volume character device file descriptor
  * @lnum: LEB number to change
  * @bytes: how many bytes of new data will be written to the LEB
- * @dtype: data type (%UBI_LONGTERM, %UBI_SHORTTERM, %UBI_UNKNOWN)
  *
  * This function initiates atomic LEB change operation and returns %0 in case
  * of success and %-1 in case of error. he caller is assumed to write @bytes
  * data to the volume @fd afterward.
  */
-int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype);
+int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes);
 
 /**
  * ubi_set_property - set volume propety.
  * @fd: volume character device file descriptor
- * @property: the property to change (%UBI_PROP_DIRECT_WRITE, etc)
+ * @property: the property to change (%UBI_VOL_PROP_DIRECT_WRITE, etc)
  * @value: new value of the changed property
  *
  * This function changes a property of a volume. Returns zero in case of

@@ -774,16 +774,15 @@ static void prepare_node(void *node, int len)
  * @lnum: LEB number
  * @len: length of data in the buffer
  * @buf: buffer (must be at least c->leb_size bytes)
- * @dtype: expected data type
  */
-int write_leb(int lnum, int len, void *buf, int dtype)
+int write_leb(int lnum, int len, void *buf)
 {
 	off64_t pos = (off64_t)lnum * c->leb_size;
 
 	dbg_msg(3, "LEB %d len %d", lnum, len);
 	memset(buf + len, 0xff, c->leb_size - len);
 	if (out_ubi)
-		if (ubi_leb_change_start(ubi, out_fd, lnum, c->leb_size, dtype))
+		if (ubi_leb_change_start(ubi, out_fd, lnum, c->leb_size))
 			return sys_err_msg("ubi_leb_change_start failed");
 
 	if (lseek64(out_fd, pos, SEEK_SET) != pos)
@@ -800,11 +799,10 @@ int write_leb(int lnum, int len, void *buf, int dtype)
 /**
  * write_empty_leb - copy the image of an empty LEB to the output target.
  * @lnum: LEB number
- * @dtype: expected data type
  */
-static int write_empty_leb(int lnum, int dtype)
+static int write_empty_leb(int lnum)
 {
-	return write_leb(lnum, 0, leb_buf, dtype);
+	return write_leb(lnum, 0, leb_buf);
 }
 
 /**
@@ -851,9 +849,8 @@ static int do_pad(void *buf, int len)
  * @node: node
  * @len: node length
  * @lnum: LEB number
- * @dtype: expected data type
  */
-static int write_node(void *node, int len, int lnum, int dtype)
+static int write_node(void *node, int len, int lnum)
 {
 	prepare_node(node, len);
 
@@ -861,7 +858,7 @@ static int write_node(void *node, int len, int lnum, int dtype)
 
 	len = do_pad(leb_buf, len);
 
-	return write_leb(lnum, len, leb_buf, dtype);
+	return write_leb(lnum, len, leb_buf);
 }
 
 /**
@@ -973,7 +970,7 @@ static int flush_nodes(void)
 	if (!head_offs)
 		return 0;
 	len = do_pad(leb_buf, head_offs);
-	err = write_leb(head_lnum, len, leb_buf, UBI_UNKNOWN);
+	err = write_leb(head_lnum, len, leb_buf);
 	if (err)
 		return err;
 	set_lprops(head_lnum, head_offs, head_flags);
@@ -1901,7 +1898,7 @@ static int set_gc_lnum(void)
 	int err;
 
 	c->gc_lnum = head_lnum++;
-	err = write_empty_leb(c->gc_lnum, UBI_LONGTERM);
+	err = write_empty_leb(c->gc_lnum);
 	if (err)
 		return err;
 	set_lprops(c->gc_lnum, 0, 0);
@@ -1977,7 +1974,7 @@ static int write_super(void)
 	if (c->space_fixup)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_SPACE_FIXUP);
 
-	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM, UBI_LONGTERM);
+	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM);
 }
 
 /**
@@ -2020,13 +2017,11 @@ static int write_master(void)
 	mst.total_dark   = cpu_to_le64(c->lst.total_dark);
 	mst.leb_cnt      = cpu_to_le32(c->leb_cnt);
 
-	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM,
-			 UBI_SHORTTERM);
+	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM);
 	if (err)
 		return err;
 
-	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM + 1,
-			 UBI_SHORTTERM);
+	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM + 1);
 	if (err)
 		return err;
 
@@ -2046,14 +2041,14 @@ static int write_log(void)
 	cs.ch.node_type = UBIFS_CS_NODE;
 	cs.cmt_no = cpu_to_le64(0);
 
-	err = write_node(&cs, UBIFS_CS_NODE_SZ, lnum, UBI_UNKNOWN);
+	err = write_node(&cs, UBIFS_CS_NODE_SZ, lnum);
 	if (err)
 		return err;
 
 	lnum += 1;
 
 	for (i = 1; i < c->log_lebs; i++, lnum++) {
-		err = write_empty_leb(lnum, UBI_UNKNOWN);
+		err = write_empty_leb(lnum);
 		if (err)
 			return err;
 	}
@@ -2074,7 +2069,7 @@ static int write_lpt(void)
 
 	lnum = c->nhead_lnum + 1;
 	while (lnum <= c->lpt_last) {
-		err = write_empty_leb(lnum++, UBI_SHORTTERM);
+		err = write_empty_leb(lnum++);
 		if (err)
 			return err;
 	}
@@ -2091,7 +2086,7 @@ static int write_orphan_area(void)
 
 	lnum = UBIFS_LOG_LNUM + c->log_lebs + c->lpt_lebs;
 	for (i = 0; i < c->orph_lebs; i++, lnum++) {
-		err = write_empty_leb(lnum, UBI_SHORTTERM);
+		err = write_empty_leb(lnum);
 		if (err)
 			return err;
 	}
@@ -2137,7 +2132,7 @@ static int open_target(void)
 		if (out_fd == -1)
 			return sys_err_msg("cannot open the UBI volume '%s'",
 					   output);
-		if (ubi_set_property(out_fd, UBI_PROP_DIRECT_WRITE, 1))
+		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1))
 			return sys_err_msg("ubi_set_property failed");
 
 		if (check_volume_empty())

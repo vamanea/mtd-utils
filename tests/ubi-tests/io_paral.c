@@ -179,7 +179,7 @@ static void *write_thread(void *ptr)
 		return NULL;
 	}
 
-	ret = ubi_set_property(fd, UBI_PROP_DIRECT_WRITE, 1);
+	ret = ubi_set_property(fd, UBI_VOL_PROP_DIRECT_WRITE, 1);
 	if (ret) {
 		failed("ubi_set_property");
 		errmsg("cannot set property for \"%s\"\n", vol_node);

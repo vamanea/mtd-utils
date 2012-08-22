@@ -1106,7 +1106,7 @@ int ubi_update_start(libubi_t desc, int fd, long long bytes)
 	return 0;
 }
 
-int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype)
+int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes)
 {
 	struct ubi_leb_change_req req;
 
@@ -1114,7 +1114,7 @@ int ubi_leb_change_start(libubi_t desc, int fd, int lnum, int bytes, int dtype)
 	memset(&req, 0, sizeof(struct ubi_leb_change_req));
 	req.lnum = lnum;
 	req.bytes = bytes;
-	req.dtype = dtype;
+	req.dtype = 3;
 
 	if (ioctl(fd, UBI_IOCEBCH, &req))
 		return -1;
@@ -1346,13 +1346,13 @@ int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
 
 int ubi_set_property(int fd, uint8_t property, uint64_t value)
 {
-	struct ubi_set_prop_req r;
+	struct ubi_set_vol_prop_req r;
 
-	memset(&r, 0, sizeof(struct ubi_set_prop_req));
+	memset(&r, 0, sizeof(struct ubi_set_vol_prop_req));
 	r.property = property;
 	r.value = value;
 
-	return ioctl(fd, UBI_IOCSETPROP, &r);
+	return ioctl(fd, UBI_IOCSETVOLPROP, &r);
 }
 
 int ubi_leb_unmap(int fd, int lnum)
