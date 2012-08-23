@@ -707,26 +707,6 @@ static int do_attach(const char *node, const struct ubi_attach_req *r)
 	return ret;
 }
 
-int ubi_attach_mtd(libubi_t desc, const char *node,
-		   struct ubi_attach_request *req)
-{
-	struct ubi_attach_req r;
-	int ret;
-
-	(void)desc;
-
-	memset(&r, 0, sizeof(struct ubi_attach_req));
-	r.ubi_num = req->dev_num;
-	r.mtd_num = req->mtd_num;
-	r.vid_hdr_offset = req->vid_hdr_offset;
-
-	ret = do_attach(node, &r);
-	if (ret == 0)
-		req->dev_num = r.ubi_num;
-
-	return ret;
-}
-
 #ifndef MTD_CHAR_MAJOR
 /*
  * This is taken from kernel <linux/mtd/mtd.h> and is unlikely to change anytime
@@ -770,6 +750,11 @@ static int mtd_node_to_num(const char *mtd_dev_node)
 
 int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 {
+	struct ubi_attach_req r;
+	int ret;
+
+	(void)desc;
+
 	if (req->mtd_dev_node) {
 		/*
 		 * User has passed path to device node. Lets find out MTD
@@ -779,7 +764,17 @@ int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 		if (req->mtd_num == -1)
 			return -1;
 	}
-	return ubi_attach_mtd(desc, node, req);
+
+	memset(&r, 0, sizeof(struct ubi_attach_req));
+	r.ubi_num = req->dev_num;
+	r.mtd_num = req->mtd_num;
+	r.vid_hdr_offset = req->vid_hdr_offset;
+
+	ret = do_attach(node, &r);
+	if (ret == 0)
+		req->dev_num = r.ubi_num;
+
+	return ret;
 }
 
 int ubi_detach_mtd(libubi_t desc, const char *node, int mtd_num)

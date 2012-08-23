@@ -210,28 +210,14 @@ int ubi_get_info(libubi_t desc, struct ubi_info *info);
 int mtd_num2ubi_dev(libubi_t desc, int mtd_num, int *dev_num);
 
 /**
- * ubi_attach_mtd - attach MTD device to UBI.
- * @desc: UBI library descriptor
- * @node: name of the UBI control character device node
- * @req: MTD attach request.
- *
- * This function creates a new UBI device by attaching an MTD device as
- * described by @req. Returns %0 in case of success and %-1 in case of failure.
- * The newly created UBI device number is returned in @req->dev_num.
- */
-int ubi_attach_mtd(libubi_t desc, const char *node,
-		   struct ubi_attach_request *req);
-
-/**
- * ubi_attach - attach an MTD device by its node path.
+ * ubi_attach - attach an MTD device by its node path or bt MTD device number
  * @desc: UBI library descriptor
  * @node: name of the UBI control character device node
  * @req: MTD attach request
  *
  * This function creates new UBI device by attaching an MTD device described by
  * @req. If @req->mtd_dev_node is given it should contain path to the MTD
- * device node. Otherwise functionality is similar than in function
- * 'ubi_attach_mtd()' where @req->mtd_num is used.
+ * device node. Otherwise @req->mtd_num will be used.
  *
  * Returns %0 in case of success and %-1 in case of failure (errno is set).
  * The newly created UBI device number is returned in @req->dev_num.
