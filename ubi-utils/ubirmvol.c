@@ -57,9 +57,9 @@ static const char optionsstr[] =
 static const char usage[] =
 "Usage: " PROGRAM_NAME " <UBI device node file name> [-n <volume id>] [--vol_id=<volume id>]\n\n"
 "         [-N <volume name>] [--name=<volume name>] [-h] [--help]\n\n"
-"Example: " PROGRAM_NAME "/dev/ubi0 -n 1 - remove UBI volume 1 from UBI device corresponding\n"
+"Example: " PROGRAM_NAME " /dev/ubi0 -n 1 - remove UBI volume 1 from UBI device corresponding\n"
 "         to /dev/ubi0\n"
-"         " PROGRAM_NAME "/dev/ubi0 -N my_vol - remove UBI named \"my_vol\" from UBI device\n"
+"         " PROGRAM_NAME " /dev/ubi0 -N my_vol - remove UBI named \"my_vol\" from UBI device\n"
 "         corresponding to /dev/ubi0";
 
 static const struct option long_options[] = {
