@@ -279,7 +279,7 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 	memset(outbuf + ui->data_offs + ui->vtbl_size, 0xFF,
 	       ui->peb_size - ui->data_offs - ui->vtbl_size);
 
-	seek = peb1 * ui->peb_size;
+	seek = (off_t) peb1 * ui->peb_size;
 	if (lseek(fd, seek, SEEK_SET) != seek) {
 		sys_errmsg("cannot seek output file");
 		goto out_free;
@@ -293,7 +293,7 @@ int ubigen_write_layout_vol(const struct ubigen_info *ui, int peb1, int peb2,
 		goto out_free;
 	}
 
-	seek = peb2 * ui->peb_size;
+	seek = (off_t) peb2 * ui->peb_size;
 	if (lseek(fd, seek, SEEK_SET) != seek) {
 		sys_errmsg("cannot seek output file");
 		goto out_free;
