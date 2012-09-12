@@ -158,7 +158,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 		}
 
 		/* Check data */
-		if ((ret = lseek(fd, SEEK_SET, 0)) != 0) {
+		if ((ret = lseek(fd, 0, SEEK_SET)) != 0) {
 			failed("lseek");
 			errmsg("cannot seek to 0");
 			goto close;
