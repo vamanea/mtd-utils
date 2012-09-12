@@ -25,6 +25,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <features.h>
+#include <inttypes.h>
 #include "version.h"
 
 #ifndef PROGRAM_NAME
@@ -46,6 +48,15 @@ extern "C" {
 
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
+#endif
+
+/* define a print format specifier for off_t */
+#ifdef __USE_FILE_OFFSET64
+#define PRIxoff_t PRIx64
+#define PRIdoff_t PRId64
+#else
+#define PRIxoff_t "l"PRIx32
+#define PRIdoff_t "l"PRId32
 #endif
 
 /* Verbose messages */
