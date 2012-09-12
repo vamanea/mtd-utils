@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <common.h>
 #include <mtd/mtd-user.h>
 
 int main(int argc,char *argv[])
@@ -47,7 +48,7 @@ int main(int argc,char *argv[])
 		return errno;
 	}
 
-	offset = strtoul(argv[3], &p, 0);
+	offset = (off_t)strtoull(argv[3], &p, 0);
 	if (argv[3][0] == 0 || *p != 0) {
 		fprintf(stderr, "%s: bad offset value\n", PROGRAM_NAME);
 		return ERANGE;
@@ -58,7 +59,7 @@ int main(int argc,char *argv[])
 		return errno;
 	}
 
-	printf("Writing OTP user data on %s at offset 0x%lx\n", argv[2], offset);
+	printf("Writing OTP user data on %s at offset 0x%"PRIxoff_t"\n", argv[2], offset);
 
 	if (mtdInfo.type == MTD_NANDFLASH)
 		len = mtdInfo.writesize;

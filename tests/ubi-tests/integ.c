@@ -25,7 +25,7 @@ struct write_info
 	struct write_info *next;
 	struct erase_block_info *erase_block;
 	int offset_within_block; /* Offset within erase block */
-	off64_t offset; /* Offset within volume */
+	off_t offset; /* Offset within volume */
 	int size;
 	int random_seed;
 };
@@ -34,8 +34,8 @@ struct erase_block_info
 {
 	struct volume_info *volume;
 	int block_number;
-	off64_t offset; /* Offset within volume */
-	off64_t top_of_data;
+	off_t offset; /* Offset within volume */
+	off_t top_of_data;
 	int touched; /* Have we done anything at all with this erase block */
 	int erased; /* This erased block is currently erased */
 	struct write_info *writes;
@@ -220,7 +220,7 @@ static void set_random_data(unsigned seed, unsigned char *buf, int size)
 static void check_erase_block(struct erase_block_info *erase_block, int fd)
 {
 	struct write_info *w;
-	off64_t gap_end;
+	off_t gap_end;
 	int leb_size = erase_block->volume->info.leb_size;
 	ssize_t bytes_read;
 
@@ -229,10 +229,10 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 	while (w) {
 		if (w->offset + w->size < gap_end) {
 			/* There is a gap. Check all 0xff */
-			off64_t gap_start = w->offset + w->size;
+			off_t gap_start = w->offset + w->size;
 			ssize_t size = gap_end - gap_start;
-			if (lseek64(fd, gap_start, SEEK_SET) != gap_start)
-				error_exit("lseek64 failed");
+			if (lseek(fd, gap_start, SEEK_SET) != gap_start)
+				error_exit("lseek failed");
 			memset(read_buffer, 0 , size);
 			errno = 0;
 			bytes_read = read(fd, read_buffer, size);
@@ -241,18 +241,18 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 			while (size)
 				if (read_buffer[--size] != 0xff) {
 					fprintf(stderr, "block no. = %d\n" , erase_block->block_number);
-					fprintf(stderr, "offset = %lld\n" , (long long) gap_start);
+					fprintf(stderr, "offset = %"PRIdoff_t"\n" , gap_start);
 					fprintf(stderr, "size = %ld\n" , (long) bytes_read);
 					error_exit("verify 0xff failed");
 				}
 		}
-		if (lseek64(fd, w->offset, SEEK_SET) != w->offset)
-			error_exit("lseek64 failed");
+		if (lseek(fd, w->offset, SEEK_SET) != w->offset)
+			error_exit("lseek failed");
 		memset(read_buffer, 0 , w->size);
 		errno = 0;
 		bytes_read = read(fd, read_buffer, w->size);
 		if (bytes_read != w->size) {
-			fprintf(stderr, "offset = %lld\n" , (long long) w->offset);
+			fprintf(stderr, "offset = %"PRIdoff_t"\n" , w->offset);
 			fprintf(stderr, "size = %ld\n" , (long) w->size);
 			fprintf(stderr, "bytes_read = %ld\n" , (long) bytes_read);
 			error_exit("read failed");
@@ -265,10 +265,10 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 	}
 	if (gap_end > erase_block->offset) {
 		/* Check all 0xff */
-		off64_t gap_start = erase_block->offset;
+		off_t gap_start = erase_block->offset;
 		ssize_t size = gap_end - gap_start;
-		if (lseek64(fd, gap_start, SEEK_SET) != gap_start)
-			error_exit("lseek64 failed");
+		if (lseek(fd, gap_start, SEEK_SET) != gap_start)
+			error_exit("lseek failed");
 		memset(read_buffer, 0 , size);
 		errno = 0;
 		bytes_read = read(fd, read_buffer, size);
@@ -277,7 +277,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 		while (size)
 			if (read_buffer[--size] != 0xff) {
 				fprintf(stderr, "block no. = %d\n" , erase_block->block_number);
-				fprintf(stderr, "offset = %lld\n" , (long long) gap_start);
+				fprintf(stderr, "offset = %"PRIdoff_t"\n" , gap_start);
 				fprintf(stderr, "size = %ld\n" , (long) bytes_read);
 				error_exit("verify 0xff failed!");
 			}
@@ -290,7 +290,7 @@ static int write_to_erase_block(struct erase_block_info *erase_block, int fd)
 	int leb_size = erase_block->volume->info.leb_size;
 	int next_offset = 0;
 	int space, size;
-	off64_t offset;
+	off_t offset;
 	unsigned seed;
 	struct write_info *w;
 
@@ -327,8 +327,8 @@ static int write_to_erase_block(struct erase_block_info *erase_block, int fd)
 	offset = erase_block->offset + next_offset;
 	if (offset < erase_block->top_of_data)
 		error_exit("internal error!");
-	if (lseek64(fd, offset, SEEK_SET) != offset)
-		error_exit("lseek64 failed");
+	if (lseek(fd, offset, SEEK_SET) != offset)
+		error_exit("lseek failed");
 	/* Do write */
 	seed = get_next_seed();
 	if (!seed)
@@ -480,7 +480,7 @@ static void operate_on_ubi_device(struct ubi_device_info *ubi_device)
 		for (i = 0; i < n; ++i) {
 			s->erase_blocks[i].volume = s;
 			s->erase_blocks[i].block_number = i;
-			s->erase_blocks[i].offset = i * (off64_t) s->info.leb_size;
+			s->erase_blocks[i].offset = i * (off_t) s->info.leb_size;
 			s->erase_blocks[i].top_of_data = s->erase_blocks[i].offset;
 		}
 		/* FIXME: Correctly get device file name */

@@ -103,7 +103,7 @@ void printsize(u_int32_t x)
 		printf("(%u%c)", x, flags[i]);
 }
 
-int flash_to_file(int fd, u_int32_t offset, size_t len, const char *filename)
+int flash_to_file(int fd, off_t offset, size_t len, const char *filename)
 {
 	u_int8_t *buf = NULL;
 	int outfd, err;
@@ -157,7 +157,7 @@ retry:
 	if (buf != NULL)
 		free(buf);
 	close(outfd);
-	printf("Copied %zu bytes from address 0x%.8x in flash to %s\n", len, offset, filename);
+	printf("Copied %zu bytes from address 0x%.8"PRIxoff_t" in flash to %s\n", len, offset, filename);
 	return 0;
 
 err2:
@@ -169,7 +169,7 @@ err0:
 	return 1;
 }
 
-int file_to_flash(int fd, u_int32_t offset, u_int32_t len, const char *filename)
+int file_to_flash(int fd, off_t offset, u_int32_t len, const char *filename)
 {
 	u_int8_t *buf = NULL;
 	FILE *fp;
@@ -221,7 +221,7 @@ retry:
 	if (buf != NULL)
 		free(buf);
 	fclose(fp);
-	printf("Copied %d bytes from %s to address 0x%.8x in flash\n", len, filename, offset);
+	printf("Copied %d bytes from %s to address 0x%.8"PRIxoff_t" in flash\n", len, filename, offset);
 	return 0;
 }
 
@@ -376,13 +376,13 @@ int main(int argc, char *argv[])
 			showinfo(fd);
 			break;
 		case OPT_READ:
-			err = flash_to_file(fd, strtol(argv[3], NULL, 0), strtol(argv[4], NULL, 0), argv[5]);
+			err = flash_to_file(fd, strtoll(argv[3], NULL, 0), strtoul(argv[4], NULL, 0), argv[5]);
 			break;
 		case OPT_WRITE:
-			err = file_to_flash(fd, strtol(argv[3], NULL, 0), strtol(argv[4], NULL, 0), argv[5]);
+			err = file_to_flash(fd, strtoll(argv[3], NULL, 0), strtoul(argv[4], NULL, 0), argv[5]);
 			break;
 		case OPT_ERASE:
-			err = erase_flash(fd, strtol(argv[3], NULL, 0), strtol(argv[4], NULL, 0));
+			err = erase_flash(fd, strtoul(argv[3], NULL, 0), strtoul(argv[4], NULL, 0));
 			break;
 	}
 

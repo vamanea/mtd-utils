@@ -777,7 +777,7 @@ static void prepare_node(void *node, int len)
  */
 int write_leb(int lnum, int len, void *buf)
 {
-	off64_t pos = (off64_t)lnum * c->leb_size;
+	off_t pos = (off_t)lnum * c->leb_size;
 
 	dbg_msg(3, "LEB %d len %d", lnum, len);
 	memset(buf + len, 0xff, c->leb_size - len);
@@ -785,13 +785,12 @@ int write_leb(int lnum, int len, void *buf)
 		if (ubi_leb_change_start(ubi, out_fd, lnum, c->leb_size))
 			return sys_err_msg("ubi_leb_change_start failed");
 
-	if (lseek64(out_fd, pos, SEEK_SET) != pos)
-		return sys_err_msg("lseek64 failed seeking %lld",
-				   (long long)pos);
+	if (lseek(out_fd, pos, SEEK_SET) != pos)
+		return sys_err_msg("lseek failed seeking %"PRIdoff_t, pos);
 
 	if (write(out_fd, buf, c->leb_size) != c->leb_size)
-		return sys_err_msg("write failed writing %d bytes at pos %lld",
-				   c->leb_size, (long long)pos);
+		return sys_err_msg("write failed writing %d bytes at pos %"PRIdoff_t,
+				   c->leb_size, pos);
 
 	return 0;
 }

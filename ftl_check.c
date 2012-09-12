@@ -53,6 +53,7 @@
 
 #include <byteswap.h>
 #include <endian.h>
+#include "common.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 # define TO_LE32(x) (x)
@@ -85,7 +86,8 @@ static void check_partition(int fd)
 {
 	mtd_info_t mtd;
 	erase_unit_header_t hdr, hdr2;
-	u_int i, j, nbam, *bam;
+	off_t i;
+	u_int j, nbam, *bam;
 	int control, data, free, deleted;
 
 	/* Get partition size, block size */
@@ -142,7 +144,7 @@ static void check_partition(int fd)
 			perror("read failed");
 			break;
 		}
-		printf("\nErase unit %d:\n", i);
+		printf("\nErase unit %"PRIdoff_t":\n", i);
 		if ((hdr2.FormattedSize != hdr.FormattedSize) ||
 				(hdr2.NumEraseUnits != hdr.NumEraseUnits) ||
 				(hdr2.SerialNumber != hdr.SerialNumber))

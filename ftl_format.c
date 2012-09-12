@@ -240,7 +240,7 @@ static int format_partition(int fd, int quiet, int interrogate,
 	/* Distribute transfer units over the entire region */
 	step = (spare) ? (FROM_LE16(hdr.NumEraseUnits)/spare) : (FROM_LE16(hdr.NumEraseUnits)+1);
 	for (i = 0; i < FROM_LE16(hdr.NumEraseUnits); i++) {
-		u_int ofs = (i + FROM_LE16(hdr.FirstPhysicalEUN)) << hdr.EraseUnitSize;
+		off_t ofs = (off_t) (i + FROM_LE16(hdr.FirstPhysicalEUN)) << hdr.EraseUnitSize;
 		if (lseek(fd, ofs, SEEK_SET) == -1) {
 			perror("seek failed");
 			break;
