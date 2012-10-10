@@ -20,6 +20,7 @@
  *          Zoltan Sogor
  */
 
+#define _XOPEN_SOURCE 500 /* For realpath() */
 #define PROGRAM_NAME "mkfs.ubifs"
 
 #include "mkfs.ubifs.h"
@@ -235,93 +236,50 @@ static char *make_path(const char *dir, const char *name)
 }
 
 /**
- * same_dir - determine if two file descriptors refer to the same directory.
- * @fd1: file descriptor 1
- * @fd2: file descriptor 2
- */
-static int same_dir(int fd1, int fd2)
-{
-	struct stat stat1, stat2;
-
-	if (fstat(fd1, &stat1) == -1)
-		return -1;
-	if (fstat(fd2, &stat2) == -1)
-		return -1;
-	return stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino;
-}
-
-/**
- * do_openat - open a file in a directory.
- * @fd: file descriptor of open directory
- * @path: path relative to directory
- * @flags: open flags
+ * is_contained - determine if a file is beneath a directory.
+ * @file: file path name
+ * @dir: directory path name
  *
- * This function is provided because the library function openat is sometimes
- * not available.
+ * This function returns %1 if @file is accessible from the @dir directory and
+ * %0 otherwise. In case of error, returns %-1.
  */
-static int do_openat(int fd, const char *path, int flags)
+static int is_contained(const char *file, const char *dir)
 {
-	int ret;
-	char *cwd;
+	char *file_base, *copy, *real_file, *real_dir, *p;
 
-	cwd = getcwd(NULL, 0);
-	if (!cwd)
+	/* Make a copy of the file path because 'dirname()' can modify it */
+	copy = strdup(file);
+	if (!copy)
 		return -1;
-	ret = fchdir(fd);
-	if (ret != -1)
-		ret = open(path, flags);
-	if (chdir(cwd) && !ret)
-		ret = -1;
-	free(cwd);
-	return ret;
-}
+	file_base = dirname(copy);
 
-/**
- * in_path - determine if a file is beneath a directory.
- * @dir_name: directory path name
- * @file_name: file path name
- */
-static int in_path(const char *dir_name, const char *file_name)
-{
-	char *fn = strdup(file_name);
-	char *dn;
-	int fd1, fd2, fd3, ret = -1, top_fd;
-
-	if (!fn)
+	/* Turn the paths into the canonical form */
+	real_file = malloc(PATH_MAX);
+	if (!real_file) {
+		free(copy);
 		return -1;
-	top_fd = open("/", O_RDONLY);
-	if (top_fd != -1) {
-		dn = dirname(fn);
-		fd1 = open(dir_name, O_RDONLY);
-		if (fd1 != -1) {
-			fd2 = open(dn, O_RDONLY);
-			if (fd2 != -1) {
-				while (1) {
-					int same;
-
-					same = same_dir(fd1, fd2);
-					if (same) {
-						ret = same;
-						break;
-					}
-					if (same_dir(fd2, top_fd)) {
-						ret = 0;
-						break;
-					}
-					fd3 = do_openat(fd2, "..", O_RDONLY);
-					if (fd3 == -1)
-						break;
-					close(fd2);
-					fd2 = fd3;
-				}
-				close(fd2);
-			}
-			close(fd1);
-		}
-		close(top_fd);
 	}
-	free(fn);
-	return ret;
+
+	real_dir = malloc(PATH_MAX);
+	if (!real_dir) {
+		free(real_file);
+		free(copy);
+		return -1;
+	}
+	if (!realpath(file_base, real_file)) {
+		perror("realpath");
+		return -1;
+	}
+	if (!realpath(dir, real_dir)) {
+		perror("realpath");
+		return -1;
+	}
+
+	p = strstr(real_file, real_dir);
+	free(real_dir);
+	free(real_file);
+	free(copy);
+	return !!p;
 }
 
 /**
@@ -376,7 +334,7 @@ static int validate_options(void)
 
 	if (!output)
 		return err_msg("no output file or UBI volume specified");
-	if (root && in_path(root, output))
+	if (root && is_contained(output, root))
 		return err_msg("output file cannot be in the UBIFS root "
 			       "directory");
 	if (!is_power_of_2(c->min_io_size))
