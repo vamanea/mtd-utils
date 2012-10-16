@@ -245,7 +245,10 @@ static char *make_path(const char *dir, const char *name)
  */
 static int is_contained(const char *file, const char *dir)
 {
-	char *file_base, *copy, *real_file, *real_dir, *p;
+	char *real_file = NULL;
+	char *real_dir = NULL;
+	char *file_base, *copy;
+	int ret = -1;
 
 	/* Make a copy of the file path because 'dirname()' can modify it */
 	copy = strdup(file);
@@ -255,31 +258,29 @@ static int is_contained(const char *file, const char *dir)
 
 	/* Turn the paths into the canonical form */
 	real_file = malloc(PATH_MAX);
-	if (!real_file) {
-		free(copy);
-		return -1;
-	}
+	if (!real_file)
+		goto out_free;
 
 	real_dir = malloc(PATH_MAX);
-	if (!real_dir) {
-		free(real_file);
-		free(copy);
-		return -1;
-	}
+	if (!real_dir)
+		goto out_free;
+
 	if (!realpath(file_base, real_file)) {
-		perror("realpath");
-		return -1;
+		perror("Could not canonicalize file path");
+		goto out_free;
 	}
 	if (!realpath(dir, real_dir)) {
-		perror("realpath");
-		return -1;
+		perror("Could not canonicalize directory");
+		goto out_free;
 	}
 
-	p = strstr(real_file, real_dir);
-	free(real_dir);
-	free(real_file);
+	ret = !!strstr(real_file, real_dir);
+
+out_free:
 	free(copy);
-	return !!p;
+	free(real_file);
+	free(real_dir);
+	return ret;
 }
 
 /**
@@ -334,9 +335,14 @@ static int validate_options(void)
 
 	if (!output)
 		return err_msg("no output file or UBI volume specified");
-	if (root && is_contained(output, root))
-		return err_msg("output file cannot be in the UBIFS root "
-			       "directory");
+	if (root) {
+		tmp = is_contained(output, root);
+		if (tmp < 0)
+			return err_msg("failed to perform output file root check");
+		else if (tmp)
+			return err_msg("output file cannot be in the UBIFS root "
+			               "directory");
+	}
 	if (!is_power_of_2(c->min_io_size))
 		return err_msg("min. I/O unit size should be power of 2");
 	if (c->leb_size < c->min_io_size)
