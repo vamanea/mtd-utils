@@ -875,11 +875,12 @@ int main(int argc, char * const argv[])
 		 * erase counters.
 		 */
 		if (percent < 50) {
-			if (!args.yes || !args.quiet)
+			if (!args.yes || !args.quiet) {
 				warnmsg("only %d of %d eraseblocks have valid erase counter",
 					si->ok_cnt, si->good_cnt);
 				normsg("erase counter 0 will be used for all eraseblocks");
 				normsg("note, arbitrary erase counter value may be specified using -e option");
+			}
 			if (!args.yes && want_exit()) {
 				if (args.yes && !args.quiet)
 					printf("yes\n");
@@ -888,11 +889,12 @@ int main(int argc, char * const argv[])
 			 args.ec = 0;
 			 args.override_ec = 1;
 		} else if (percent < 95) {
-			if (!args.yes || !args.quiet)
+			if (!args.yes || !args.quiet) {
 				warnmsg("only %d of %d eraseblocks have valid erase counter",
 					si->ok_cnt, si->good_cnt);
 				normsg("mean erase counter %lld will be used for the rest of eraseblock",
 				       si->mean_ec);
+			}
 			if (!args.yes && want_exit()) {
 				if (args.yes && !args.quiet)
 					printf("yes\n");
