@@ -102,8 +102,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 		test_len = total_len - (rand() % (total_len / 10));
 
 		if (leb_change) {
-			if (ubi_leb_change_start(libubi, fd, 0, test_len,
-						 UBI_SHORTTERM)) {
+			if (ubi_leb_change_start(libubi, fd, 0, test_len)) {
 				failed("ubi_update_start");
 				goto close;
 			}
