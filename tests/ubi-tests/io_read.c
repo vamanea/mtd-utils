@@ -29,7 +29,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "libubi.h"
-#define TESTNAME "io_basic"
+#define PROGRAM_NAME "io_basic"
+#include "common.h"
 #include "helpers.h"
 
 static libubi_t libubi;
@@ -62,7 +63,7 @@ static int fd;
 static int test_static(void)
 {
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":io_basic()";
+	const char *name = PROGRAM_NAME ":io_basic()";
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	struct ubi_vol_info vol_info;
 	int fd, ret;
@@ -84,7 +85,7 @@ static int test_static(void)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		errmsg("cannot open \"%s\"\n", node);
+		errorm("cannot open \"%s\"\n", node);
 		goto remove;
 	}
 
@@ -95,7 +96,7 @@ static int test_static(void)
 
 	/* Make sure new static volume contains no data */
 	if (vol_info.data_bytes != 0) {
-		errmsg("data_bytes = %lld, not zero", vol_info.data_bytes);
+		errorm("data_bytes = %lld, not zero", vol_info.data_bytes);
 		goto close;
 	}
 
@@ -106,7 +107,7 @@ static int test_static(void)
 		goto close;
 	}
 	if (ret != 0) {
-		errmsg("read data from free static volume");
+		errorm("read data from free static volume");
 		goto close;
 	}
 
@@ -121,7 +122,7 @@ static int test_static(void)
 		goto close;
 	}
 	if (ret != 10) {
-		errmsg("written %d bytes", ret);
+		errorm("written %d bytes", ret);
 		goto close;
 	}
 
@@ -135,7 +136,7 @@ static int test_static(void)
 		goto close;
 	}
 	if (ret != 10) {
-		errmsg("read %d bytes", ret);
+		errorm("read %d bytes", ret);
 		goto close;
 	}
 
@@ -170,12 +171,12 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 
 	if (lseek(fd, off, SEEK_SET) != off) {
 		failed("seek");
-		errmsg("len = %d", len);
+		errorm("len = %d", len);
 		return -1;
 	}
 	if (read(fd, buf, len) != len1) {
 		failed("read");
-		errmsg("len = %d", len);
+		errorm("len = %d", len);
 		return -1;
 	}
 
@@ -184,7 +185,7 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 		if (new_off == -1)
 			failed("lseek");
 		else
-			errmsg("read %d bytes from %lld, but resulting "
+			errorm("read %d bytes from %lld, but resulting "
 			       "offset is %lld", len1, (long long) off, (long long) new_off);
 		return -1;
 	}
@@ -193,9 +194,9 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 		ck_buf[i] = (unsigned char)(off + i);
 
 	if (memcmp(buf, ck_buf, len1)) {
-		errmsg("incorrect data read from offset %lld",
+		errorm("incorrect data read from offset %lld",
 		       (long long)off);
-		errmsg("len = %d", len);
+		errorm("len = %d", len);
 		return -1;
 	}
 
@@ -213,7 +214,7 @@ static int test_read2(const struct ubi_vol_info *vol_info, int len)
 
 	for (i = 0; i < sizeof(offsets)/sizeof(off_t); i++) {
 		if (test_read3(vol_info, len, offsets[i])) {
-			errmsg("offset = %d", offsets[i]);
+			errorm("offset = %d", offsets[i]);
 			return -1;
 		}
 	}
@@ -236,14 +237,14 @@ static int test_read1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		errmsg("cannot open \"%s\"\n", node);
+		errorm("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
 	/* Write some pattern to the volume */
 	if (ubi_update_start(libubi, fd, vol_info->rsvd_bytes)) {
 		failed("ubi_update_start");
-		errmsg("bytes = %lld", vol_info->rsvd_bytes);
+		errorm("bytes = %lld", vol_info->rsvd_bytes);
 		goto close;
 	}
 
@@ -257,7 +258,7 @@ static int test_read1(struct ubi_vol_info *vol_info)
 		ret = write(fd, buf, 512);
 		if (ret == -1) {
 			failed("write");
-			errmsg("written = %d, ret = %d", written, ret);
+			errorm("written = %d, ret = %d", written, ret);
 			goto close;
 		}
 		written += ret;
@@ -273,13 +274,13 @@ static int test_read1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDONLY);
 	if (fd == -1) {
 		failed("open");
-		errmsg("cannot open \"%s\"\n", node);
+		errorm("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
 	for (i = 0; i < sizeof(lengthes)/sizeof(int); i++) {
 		if (test_read2(vol_info, lengthes[i])) {
-			errmsg("length = %d", lengthes[i]);
+			errorm("length = %d", lengthes[i]);
 			goto close;
 		}
 	}
@@ -301,7 +302,7 @@ close:
  */
 static int test_read(int type)
 {
-	const char *name = TESTNAME ":test_read()";
+	const char *name = PROGRAM_NAME ":test_read()";
 	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	struct ubi_mkvol_request req;
@@ -337,7 +338,7 @@ static int test_read(int type)
 		}
 
 		if (test_read1(&vol_info)) {
-			errmsg("alignment = %d", req.alignment);
+			errorm("alignment = %d", req.alignment);
 			goto remove;
 		}
 

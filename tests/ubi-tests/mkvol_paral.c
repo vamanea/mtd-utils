@@ -25,7 +25,8 @@
 #include <string.h>
 #include <pthread.h>
 #include "libubi.h"
-#define TESTNAME "mkvol_paral"
+#define PROGRAM_NAME "mkvol_paral"
+#include "common.h"
 #include "helpers.h"
 
 #define THREADS_NUM 4
@@ -45,7 +46,7 @@ static void * the_thread(void *ptr)
 {
 	int n = (long)ptr, iter = iterations;
 	struct ubi_mkvol_request req;
-	const char *name =  TESTNAME ":the_thread()";
+	const char *name =  PROGRAM_NAME ":the_thread()";
 	char nm[strlen(name) + 50];
 
 	req.alignment = 1;

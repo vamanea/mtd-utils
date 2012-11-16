@@ -25,7 +25,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include "libubi.h"
-#define TESTNAME "mkvol_bad"
+#define PROGRAM_NAME "mkvol_bad"
+#include "common.h"
 #include "helpers.h"
 
 static libubi_t libubi;
@@ -41,7 +42,7 @@ static int test_mkvol(void)
 {
 	int ret, i;
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":test_mkvol()";
+	const char *name = PROGRAM_NAME ":test_mkvol()";
 
 	req.alignment = 1;
 	req.bytes = dev_info.avail_bytes;
@@ -201,7 +202,7 @@ static int test_mkvol(void)
 			if (errno == ENFILE)
 				break;
 			failed("ubi_mkvol");
-			errmsg("vol_id %d", i);
+			errorm("vol_id %d", i);
 			goto remove;
 		}
 	}
@@ -226,7 +227,7 @@ static int test_rmvol(void)
 {
 	int ret;
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":test_rmvol()";
+	const char *name = PROGRAM_NAME ":test_rmvol()";
 
 	/* Bad vol_id */
 	ret = ubi_rmvol(libubi, node, -1);

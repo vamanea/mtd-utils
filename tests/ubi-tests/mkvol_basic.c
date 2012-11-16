@@ -24,7 +24,8 @@
 #include <errno.h>
 #include <string.h>
 #include "libubi.h"
-#define TESTNAME "mkvol_basic"
+#define PROGRAM_NAME "mkvol_basic"
+#include "common.h"
 #include "helpers.h"
 
 static libubi_t libubi;
@@ -40,7 +41,7 @@ static int mkvol_alignment(void)
 {
 	struct ubi_mkvol_request req;
 	int i, vol_id, ebsz;
-	const char *name = TESTNAME ":mkvol_alignment()";
+	const char *name = PROGRAM_NAME ":mkvol_alignment()";
 	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 
 	for (i = 0; i < sizeof(alignments)/sizeof(int); i++) {
@@ -61,7 +62,7 @@ static int mkvol_alignment(void)
 
 		if (ubi_mkvol(libubi, node, &req)) {
 			failed("ubi_mkvol");
-			errmsg("alignment %d", req.alignment);
+			errorm("alignment %d", req.alignment);
 			return -1;
 		}
 
@@ -92,7 +93,7 @@ static int mkvol_basic(void)
 	struct ubi_mkvol_request req;
 	struct ubi_vol_info vol_info;
 	int vol_id, ret;
-	const char *name = TESTNAME ":mkvol_basic()";
+	const char *name = PROGRAM_NAME ":mkvol_basic()";
 
 	/* Create dynamic volume of maximum size */
 	req.vol_id = UBI_VOL_NUM_AUTO;
@@ -139,7 +140,7 @@ static int mkvol_basic(void)
 	/* Make sure volume does not exist */
 	ret = ubi_get_vol_info1(libubi, dev_info.dev_num, vol_id, &vol_info);
 	if (ret == 0) {
-		errmsg("removed volume %d exists", vol_id);
+		errorm("removed volume %d exists", vol_id);
 		goto remove;
 	}
 
@@ -159,7 +160,7 @@ static int mkvol_multiple(void)
 {
 	struct ubi_mkvol_request req;
 	int i, ret, max = dev_info.max_vol_count;
-	const char *name = TESTNAME ":mkvol_multiple()";
+	const char *name = PROGRAM_NAME ":mkvol_multiple()";
 
 	/* Create maximum number of volumes */
 	for (i = 0; i < max; i++) {
@@ -179,12 +180,12 @@ static int mkvol_multiple(void)
 				break;
 			}
 			failed("ubi_mkvol");
-			errmsg("vol_id %d", i);
+			errorm("vol_id %d", i);
 			goto remove;
 		}
 
 		if (check_volume(req.vol_id, &req)) {
-			errmsg("vol_id %d", i);
+			errorm("vol_id %d", i);
 			goto remove;
 		}
 	}
@@ -200,7 +201,7 @@ static int mkvol_multiple(void)
 		/* Make sure volume does not exist */
 		ret = ubi_get_vol_info1(libubi, dev_info.dev_num, i, &vol_info);
 		if (ret == 0) {
-			errmsg("removed volume %d exists", i);
+			errorm("removed volume %d exists", i);
 			goto remove;
 		}
 	}

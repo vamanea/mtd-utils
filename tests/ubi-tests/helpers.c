@@ -54,7 +54,7 @@ int __initial_check(const char *test, int argc, char * const argv[])
 	 * check this.
 	 */
 	if (argc < 2) {
-		__errmsg(test, __func__, __LINE__,
+		__errorm(test, __func__, __LINE__,
 			 "UBI character device node is not specified");
 		return -1;
 	}
@@ -71,7 +71,7 @@ int __initial_check(const char *test, int argc, char * const argv[])
 	}
 
 	if (dev_info.avail_lebs < MIN_AVAIL_EBS) {
-		__errmsg(test, __func__, __LINE__,
+		__errorm(test, __func__, __LINE__,
 			 "insufficient available eraseblocks %d on UBI "
 			 "device, required %d",
 			 dev_info.avail_lebs, MIN_AVAIL_EBS);
@@ -79,7 +79,7 @@ int __initial_check(const char *test, int argc, char * const argv[])
 	}
 
 	if (dev_info.vol_count != 0) {
-		__errmsg(test, __func__, __LINE__,
+		__errorm(test, __func__, __LINE__,
 			 "device %s is not empty", argv[1]);
 		goto close;
 	}
@@ -93,14 +93,14 @@ close:
 }
 
 /**
- * __errmsg - print a message to stderr.
+ * __errorm - print a message to stderr.
  *
  * @test  test name
  * @func  function name
  * @line  line number
  * @fmt   format string
  */
-void __errmsg(const char *test, const char *func, int line,
+void __errorm(const char *test, const char *func, int line,
 	      const char *fmt, ...)
 {
 	va_list args;
@@ -158,31 +158,31 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 	}
 
 	if (req->alignment != vol_info.alignment) {
-		__errmsg(test, func, line,
+		__errorm(test, func, line,
 			 "bad alignment: requested %d, got %d",
 			 req->alignment, vol_info.alignment);
 		return -1;
 	}
 	if (req->vol_type != vol_info.type) {
-		__errmsg(test, func, line, "bad type: requested %d, got %d",
+		__errorm(test, func, line, "bad type: requested %d, got %d",
 			 req->vol_type, vol_info.type);
 		return -1;
 	}
 	if (strlen(req->name) != strlen(vol_info.name) ||
 	    strcmp(req->name, vol_info.name) != 0) {
-		__errmsg(test, func, line,
+		__errorm(test, func, line,
 			 "bad name: requested \"%s\", got \"%s\"",
 			 req->name, vol_info.name);
 		return -1;
 	}
 	if (vol_info.corrupted) {
-		__errmsg(test, func, line, "corrupted new volume");
+		__errorm(test, func, line, "corrupted new volume");
 		return -1;
 	}
 
 	leb_size = dev_info->leb_size - (dev_info->leb_size % req->alignment);
 	if (leb_size != vol_info.leb_size) {
-		__errmsg(test, func, line,
+		__errorm(test, func, line,
 			 "bad usable LEB size %d, should be %d",
 			 vol_info.leb_size, leb_size);
 		return -1;
@@ -193,7 +193,7 @@ int __check_volume(libubi_t libubi, struct ubi_dev_info *dev_info,
 		rsvd_bytes += leb_size - (rsvd_bytes % leb_size);
 
 	if (rsvd_bytes != vol_info.rsvd_bytes) {
-		__errmsg(test, func, line,
+		__errorm(test, func, line,
 			 "bad reserved bytes %lld, should be %lld",
 			 vol_info.rsvd_bytes, rsvd_bytes);
 		return -1;
@@ -226,7 +226,7 @@ int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
 	fd = open(node, O_RDONLY);
 	if (fd == -1) {
 		__failed(test, func, line, "open");
-		__errmsg(test, func, line, "cannot open \"%s\"\n", node);
+		__errorm(test, func, line, "cannot open \"%s\"\n", node);
 		return -1;
 	}
 
@@ -243,13 +243,13 @@ int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
 		ret = read(fd, buf, 512);
 		if (ret == -1) {
 			__failed(test, func, line, "read");
-			__errmsg(test, func, line, "bytes = %lld, ret = %d",
+			__errorm(test, func, line, "bytes = %lld, ret = %d",
 				 bytes, ret);
 			goto close;
 		}
 
 		if (ret == 0 && bytes + ret < vol_info.data_bytes) {
-			__errmsg(test, func, line,
+			__errorm(test, func, line,
 				 "EOF, but read only %lld bytes of %lld",
 				 bytes + ret, vol_info.data_bytes);
 			goto close;
@@ -257,7 +257,7 @@ int __check_vol_patt(libubi_t libubi, const char *test, const char *func,
 
 		for (i = 0; i < ret; i++)
 			if (buf[i] != byte) {
-				__errmsg(test, func, line,
+				__errorm(test, func, line,
 					 "byte at %lld is not %#x but %#x",
 					 bytes + i, byte, (int)buf[i]);
 				goto close;
@@ -297,13 +297,13 @@ int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
 	fd = open(node, O_RDWR);
 	if (fd == -1) {
 		__failed(test, func, line, "open");
-		__errmsg(test, func, line, "cannot open \"%s\"\n", node);
+		__errorm(test, func, line, "cannot open \"%s\"\n", node);
 		return -1;
 	}
 
 	if (ubi_update_start(libubi, fd, bytes)) {
 		__failed(test, func, line, "ubi_update_start");
-		__errmsg(test, func, line, "bytes = %lld", bytes);
+		__errorm(test, func, line, "bytes = %lld", bytes);
 		goto close;
 	}
 
@@ -313,14 +313,14 @@ int __update_vol_patt(libubi_t libubi, const char *test, const char *func,
 		ret = write(fd, buf, 512);
 		if (ret == -1) {
 			__failed(test, func, line, "write");
-			__errmsg(test, func, line, "written = %lld, ret = %d",
+			__errorm(test, func, line, "written = %lld, ret = %d",
 				 written, ret);
 			goto close;
 		}
 		written += ret;
 
 		if (written > bytes) {
-			__errmsg(test, func, line, "update length %lld bytes, "
+			__errorm(test, func, line, "update length %lld bytes, "
 				 "but %lld bytes are already written",
 				 bytes, written);
 			goto close;

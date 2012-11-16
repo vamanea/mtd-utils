@@ -29,7 +29,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "libubi.h"
-#define TESTNAME "rsvol"
+#define PROGRAM_NAME "rsvol"
+#include "common.h"
 #include "helpers.h"
 
 static libubi_t libubi;
@@ -46,7 +47,7 @@ const char *node;
 static int test_basic(int type)
 {
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":test_basic()";
+	const char *name = PROGRAM_NAME ":test_basic()";
 
 	req.vol_id = UBI_VOL_NUM_AUTO;
 	req.alignment = 1;
@@ -123,13 +124,13 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	}
 
 	if (vol_info1.rsvd_bytes != bytes) {
-		errmsg("rsvd_bytes %lld, must be %lld",
+		errorm("rsvd_bytes %lld, must be %lld",
 		       vol_info1.rsvd_bytes, bytes);
 		return -1;
 	}
 
 	if (vol_info1.rsvd_lebs != vol_info->rsvd_lebs - 1) {
-		errmsg("rsvd_lebs %d, must be %d",
+		errorm("rsvd_lebs %d, must be %d",
 		       vol_info1.rsvd_lebs, vol_info->rsvd_lebs - 1);
 		return -1;
 	}
@@ -141,7 +142,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		errmsg("cannot open \"%s\"\n", vol_node);
+		errorm("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
@@ -176,7 +177,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		errmsg("cannot open \"%s\"\n", vol_node);
+		errorm("cannot open \"%s\"\n", vol_node);
 		return -1;
 	}
 
@@ -194,7 +195,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 
 	for (i = 0; i < bytes; i++) {
 		if (buf[i] != (unsigned char)i) {
-			errmsg("bad data");
+			errorm("bad data");
 			goto close;
 		}
 	}
@@ -216,7 +217,7 @@ close:
  */
 static int test_rsvol(int type)
 {
-	const char *name = TESTNAME "test_rsvol:()";
+	const char *name = PROGRAM_NAME "test_rsvol:()";
 	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	struct ubi_mkvol_request req;
@@ -252,7 +253,7 @@ static int test_rsvol(int type)
 		}
 
 		if (test_rsvol1(&vol_info)) {
-			errmsg("alignment = %d", req.alignment);
+			errorm("alignment = %d", req.alignment);
 			goto remove;
 		}
 

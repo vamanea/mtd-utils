@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 
 #include "libubi.h"
+#define PROGRAM_NAME "integ"
+#include "common.h"
 #include "helpers.h"
 
 struct erase_block_info;

@@ -31,7 +31,8 @@
 
 #include <libubi.h>
 #include <mtd/ubi-user.h>
-#define TESTNAME "io_update"
+#define PROGRAM_NAME "io_update"
+#include "common.h"
 #include "helpers.h"
 
 static libubi_t libubi;
@@ -84,7 +85,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 	fd = open(vol_node, O_RDWR);
 	if (fd == -1) {
 		failed("open");
-		errmsg("cannot open \"%s\"\n", node);
+		errorm("cannot open \"%s\"\n", node);
 		return -1;
 	}
 
@@ -143,13 +144,13 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 			ret = write(fd, buf + off, len);
 			if (ret < 0) {
 				failed("write");
-				errmsg("failed to write %d bytes at offset "
+				errorm("failed to write %d bytes at offset "
 				       "%lld", len, (long long)off);
 				goto close;
 			}
 			len = l;
 			if (ret != len) {
-				errmsg("failed to write %d bytes at offset "
+				errorm("failed to write %d bytes at offset "
 				       "%lld, wrote %d", len, (long long)off, ret);
 				goto close;
 			}
@@ -159,7 +160,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 		/* Check data */
 		if ((ret = lseek(fd, 0, SEEK_SET)) != 0) {
 			failed("lseek");
-			errmsg("cannot seek to 0");
+			errorm("cannot seek to 0");
 			goto close;
 		}
 
@@ -175,15 +176,15 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 			ret = read(fd, buf1, test_len);
 		if (ret < 0) {
 			failed("read");
-			errmsg("failed to read %d bytes", test_len);
+			errorm("failed to read %d bytes", test_len);
 			goto close;
 		}
 		if (ret != test_len) {
-			errmsg("failed to read %d bytes, read %d", test_len, ret);
+			errorm("failed to read %d bytes, read %d", test_len, ret);
 			goto close;
 		}
 		if (memcmp(buf, buf1, test_len)) {
-			errmsg("data corruption");
+			errorm("data corruption");
 			goto close;
 		}
 	}
@@ -206,7 +207,7 @@ close:
 static int test_update(int type)
 {
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":io_update()";
+	const char *name = PROGRAM_NAME ":io_update()";
 	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 	struct ubi_vol_info vol_info;
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
@@ -240,13 +241,13 @@ static int test_update(int type)
 		}
 
 		if (test_update1(&vol_info, 0)) {
-			errmsg("alignment = %d", req.alignment);
+			errorm("alignment = %d", req.alignment);
 			goto remove;
 		}
 
 		if (vol_info.type != UBI_STATIC_VOLUME) {
 			if (test_update1(&vol_info, 1)) {
-				errmsg("alignment = %d", req.alignment);
+				errorm("alignment = %d", req.alignment);
 				goto remove;
 			}
 		}

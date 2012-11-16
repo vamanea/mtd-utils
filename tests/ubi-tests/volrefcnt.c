@@ -29,7 +29,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "libubi.h"
-#define TESTNAME "rmvol"
+#define PROGRAM_NAME "rmvol"
+#include "common.h"
 #include "helpers.h"
 
 #define SYSFS_FILE "/sys/class/ubi/ubi%d_%d/usable_eb_size"
@@ -76,7 +77,7 @@ int main(int argc, char * const argv[])
 	sprintf(fname, SYSFS_FILE, dev_info.dev_num, req.vol_id);
 	fd = open(fname, O_RDONLY);
 	if (fd == -1) {
-		errmsg("cannot open %s", fname);
+		errorm("cannot open %s", fname);
 		failed("open");
 		goto out_rmvol;
 	}
@@ -91,7 +92,7 @@ int main(int argc, char * const argv[])
 	/* Try to read from the file, this should fail */
 	ret = read(fd, tmp, 100);
 	if (ret != -1) {
-		errmsg("read returned %d, expected -1", ret);
+		errorm("read returned %d, expected -1", ret);
 		failed("read");
 		goto out_close;
 	}
@@ -100,7 +101,7 @@ int main(int argc, char * const argv[])
 	close(fd);
 	fd = open(fname, O_RDONLY);
 	if (fd != -1) {
-		errmsg("opened %s again, open returned %d, expected -1",
+		errorm("opened %s again, open returned %d, expected -1",
 		       fname, fd);
 		failed("open");
 		goto out_libubi;

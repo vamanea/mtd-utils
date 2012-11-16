@@ -34,52 +34,44 @@ extern "C" {
 #define MIN_AVAIL_EBS 5
 #define PAGE_SIZE 4096
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
-/* Normal messages */
-#define normsg(fmt, ...) do {                                                  \
-        printf(TESTNAME ": " fmt "\n", ##__VA_ARGS__);                         \
-} while(0)
-
-#define errmsg(fmt, ...) ({                                                    \
-	__errmsg(TESTNAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);        \
+#define errorm(fmt, ...) ({                                                    \
+	__errorm(PROGRAM_NAME, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__);    \
 	-1;                                                                    \
 })
 
 #define failed(name) ({                                                        \
-	__failed(TESTNAME, __FUNCTION__, __LINE__, name);                      \
+	__failed(PROGRAM_NAME, __FUNCTION__, __LINE__, name);                  \
 	-1;                                                                    \
 })
 
 #define initial_check(argc, argv)                                              \
-	__initial_check(TESTNAME, argc, argv)
+	__initial_check(PROGRAM_NAME, argc, argv)
 
 #define check_volume(vol_id, req)                                              \
-	__check_volume(libubi, &dev_info, TESTNAME, __FUNCTION__,              \
+	__check_volume(libubi, &dev_info, PROGRAM_NAME, __FUNCTION__,          \
 		       __LINE__, vol_id, req)
 
 #define check_vol_patt(node, byte)                                             \
-	__check_vol_patt(libubi, TESTNAME, __FUNCTION__, __LINE__, node, byte)
+	__check_vol_patt(libubi, PROGRAM_NAME, __FUNCTION__, __LINE__, node, byte)
 
 #define update_vol_patt(node, bytes, byte)                                     \
-	__update_vol_patt(libubi, TESTNAME, __FUNCTION__, __LINE__,            \
+	__update_vol_patt(libubi, PROGRAM_NAME, __FUNCTION__, __LINE__,        \
 			  node, bytes, byte)
 
 #define check_failed(ret, error, func, fmt, ...) ({                            \
-	int __ret;                                                             \
+	int __ret = 0;                                                         \
 		                                                               \
 	if (!ret) {                                                            \
-		errmsg("%s() returned success but should have failed", func);  \
-		errmsg(fmt, ##__VA_ARGS__);                                    \
+		errorm("%s() returned success but should have failed", func);  \
+		errorm(fmt, ##__VA_ARGS__);                                    \
 		__ret = -1;                                                    \
-	}                                                                      \
-	if (errno != (error)) {                                                \
-		errmsg("%s failed with error %d (%s), expected %d (%s)",       \
+	} else if (errno != (error)) {                                         \
+		errorm("%s failed with error %d (%s), expected %d (%s)",       \
 		       func, errno, strerror(errno), error, strerror(error));  \
-		errmsg(fmt, ##__VA_ARGS__);                                    \
+		errorm(fmt, ##__VA_ARGS__);                                    \
 		__ret = -1;                                                    \
 	}                                                                      \
-	__ret = 0;                                                             \
+	__ret;                                                                 \
 })
 
 /* Alignments to test, @s is eraseblock size */
@@ -92,7 +84,7 @@ extern "C" {
 
 extern int seed_random_generator(void);
 
-extern void __errmsg(const char *test, const char *func, int line,
+extern void __errorm(const char *test, const char *func, int line,
 		     const char *fmt, ...);
 extern void __failed(const char *test, const char *func, int line,
 		     const char *failed);

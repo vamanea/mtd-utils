@@ -29,7 +29,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "libubi.h"
-#define TESTNAME "io_basic"
+#define PROGRAM_NAME "io_basic"
+#include "common.h"
 #include "helpers.h"
 
 static libubi_t libubi;
@@ -46,7 +47,7 @@ const char *node;
 static int test_basic(int type)
 {
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":test_basic()";
+	const char *name = PROGRAM_NAME ":test_basic()";
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 
 	req.vol_id = UBI_VOL_NUM_AUTO;
@@ -95,7 +96,7 @@ static int test_aligned(int type)
 {
 	unsigned int i, ebsz;
 	struct ubi_mkvol_request req;
-	const char *name = TESTNAME ":test_aligned()";
+	const char *name = PROGRAM_NAME ":test_aligned()";
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
 	int alignments[] = ALIGNMENTS(dev_info.leb_size);
 
