@@ -32,7 +32,7 @@
 #include <fcntl.h>
 #include "libubi.h"
 #define TESTNAME "io_paral"
-#include "common.h"
+#include "helpers.h"
 
 #define THREADS_NUM 4
 #define ITERATIONS  (1024 * 1)

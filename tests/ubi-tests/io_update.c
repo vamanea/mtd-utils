@@ -32,7 +32,7 @@
 #include <libubi.h>
 #include <mtd/ubi-user.h>
 #define TESTNAME "io_update"
-#include "common.h"
+#include "helpers.h"
 
 static libubi_t libubi;
 static struct ubi_dev_info dev_info;

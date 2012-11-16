@@ -17,7 +17,7 @@ libubi.a: $(LIBUBI_PATH)/libubi.c  $(LIBUBI_HEADER_PATH)/libubi.h  $(LIBUBI_PATH
 	$(CC) $(CFLAGS) -I $(LIBUBI_PATH) -I../../include -DUDEV_SETTLE_HACK -c $(LIBUBI_PATH)/libubi.c -o libubi.o
 	ar cr libubi.a libubi.o
 
-$(TARGETS): $(addprefix $(BUILDDIR)/, common.o) libubi.a
+$(TARGETS): $(addprefix $(BUILDDIR)/, helpers.o) libubi.a
 
 clean::
 	rm -f libubi.a

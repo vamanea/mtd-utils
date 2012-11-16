@@ -20,8 +20,8 @@
  * The stuff which is common for many tests.
  */
 
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#ifndef __HELPERS_H__
+#define __HELPERS_H__
 
 #include <string.h>
 #include <stdio.h>
@@ -110,4 +110,4 @@ extern int __update_vol_patt(libubi_t libubi, const char *test, const char *func
 }
 #endif
 
-#endif /* !__COMMON_H__ */
+#endif /* !__HELPERS_H__ */

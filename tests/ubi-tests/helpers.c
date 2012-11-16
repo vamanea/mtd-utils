@@ -32,7 +32,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include "libubi.h"
-#include "common.h"
+#include "helpers.h"
 
 /**
  * __initial_check - check that common prerequisites which are required to run

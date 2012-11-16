@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include "libubi.h"
 #define TESTNAME "rmvol"
-#include "common.h"
+#include "helpers.h"
 
 #define SYSFS_FILE "/sys/class/ubi/ubi%d_%d/usable_eb_size"
 

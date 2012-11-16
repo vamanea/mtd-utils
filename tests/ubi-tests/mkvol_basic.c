@@ -25,7 +25,7 @@
 #include <string.h>
 #include "libubi.h"
 #define TESTNAME "mkvol_basic"
-#include "common.h"
+#include "helpers.h"
 
 static libubi_t libubi;
 static struct ubi_dev_info dev_info;

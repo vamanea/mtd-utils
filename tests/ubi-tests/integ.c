@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 
 #include "libubi.h"
-#include "common.h"
+#include "helpers.h"
 
 struct erase_block_info;
 struct volume_info;
