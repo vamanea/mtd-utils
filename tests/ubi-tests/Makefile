@@ -8,7 +8,8 @@ LIBS = libubi
 TARGETS=io_update volrefcnt integ io_paral io_read io_basic \
           mkvol_basic mkvol_bad mkvol_paral rsvol
 
-CFLAGS += -I$(LIBUBI_HEADER_PATH) -I $(KERNELHDR) -lpthread
+CFLAGS += -I$(LIBUBI_HEADER_PATH) -I $(KERNELHDR)
+LDLIBS += -lpthread
 
 include ../../common.mk
 
