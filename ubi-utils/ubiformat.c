@@ -740,7 +740,7 @@ int main(int argc, char * const argv[])
 	if (!is_power_of_2(mtd.min_io_size)) {
 		errmsg("min. I/O size is %d, but should be power of 2",
 		       mtd.min_io_size);
-		goto out_close;
+		goto out_close_mtd;
 	}
 
 	if (!mtd_info.sysfs_supported) {
@@ -768,13 +768,13 @@ int main(int argc, char * const argv[])
 		/* Do some sanity check */
 		if (args.subpage_size > mtd.min_io_size) {
 			errmsg("sub-page cannot be larger than min. I/O unit");
-			goto out_close;
+			goto out_close_mtd;
 		}
 
 		if (mtd.min_io_size % args.subpage_size) {
 			errmsg("min. I/O unit size should be multiple of "
 			       "sub-page size");
-			goto out_close;
+			goto out_close_mtd;
 		}
 	}
 
