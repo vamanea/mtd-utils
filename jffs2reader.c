@@ -103,7 +103,7 @@ void printdir(char *o, size_t size, struct dir *d, const char *path,
 		int recurse, int want_ctime);
 void freedir(struct dir *);
 
-struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino);
+struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino, uint32_t vcur);
 struct jffs2_raw_dirent *resolvedirent(char *, size_t, uint32_t, uint32_t,
 		char *, uint8_t);
 struct jffs2_raw_dirent *resolvename(char *, size_t, uint32_t, char *, uint8_t);
@@ -298,7 +298,8 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
 	char m;
 	char *filetime;
 	time_t age;
-	struct jffs2_raw_inode *ri;
+	uint32_t len = 0;
+	struct jffs2_raw_inode *ri, *tmpi;
 	jint32_t mode;
 
 	if (!path)
@@ -339,13 +340,18 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
 			default:
 				m = '?';
 		}
-		ri = find_raw_inode(o, size, d->ino);
+		ri = find_raw_inode(o, size, d->ino, 0);
 		if (!ri) {
 			warnmsg("bug: raw_inode missing!");
 			d = d->next;
 			continue;
 		}
-
+		/* Search for newer versions of the inode */
+		tmpi = ri;
+		while (tmpi) {
+			len = je32_to_cpu(tmpi->dsize) + je32_to_cpu(tmpi->offset);
+			tmpi = find_raw_inode(o, size, d->ino, je32_to_cpu(tmpi->version));
+		}
 		filetime = ctime((const time_t *) &(ri->ctime));
 		age = time(NULL) - je32_to_cpu(ri->ctime);
 		mode.v32 = ri->mode.m;
@@ -357,7 +363,7 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
 			putblock((char*)&rdev, sizeof(rdev), &devsize, ri);
 			printf("%4d, %3d ", major(rdev), minor(rdev));
 		} else {
-			printf("%9ld ", (long)je32_to_cpu(ri->dsize));
+			printf("%9ld ", (long)len);
 		}
 		d->name[d->nsize]='\0';
 		if (want_ctime) {
@@ -420,7 +426,8 @@ void freedir(struct dir *d)
    inode, or NULL
  */
 
-struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
+struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino, 
+	uint32_t vcur)
 {
 	/* aligned! */
 	union jffs2_node_union *n;
@@ -428,14 +435,12 @@ struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
 	union jffs2_node_union *lr;	/* last block position */
 	union jffs2_node_union *mp = NULL;	/* minimum position */
 
-	uint32_t vmin, vmint, vmaxt, vmax, vcur, v;
+	uint32_t vmin, vmint, vmaxt, vmax, v;
 
 	vmin = 0;					/* next to read */
 	vmax = ~((uint32_t) 0);		/* last to read */
 	vmint = ~((uint32_t) 0);
 	vmaxt = 0;					/* found maximum */
-	vcur = 0;					/* XXX what is smallest version number used? */
-	/* too low version number can easily result excess log rereading */
 
 	n = (union jffs2_node_union *) o;
 	lr = n;
@@ -744,7 +749,7 @@ struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
 
 		if (dir->type == DT_LNK) {
 			struct jffs2_raw_inode *ri;
-			ri = find_raw_inode(o, size, DIRENT_INO(dir));
+			ri = find_raw_inode(o, size, DIRENT_INO(dir), 0);
 			putblock(symbuf, sizeof(symbuf), &symsize, ri);
 			symbuf[symsize] = 0;
 
@@ -847,9 +852,11 @@ void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
 	if (dd == NULL || dd->type != DT_REG)
 		errmsg_die("%s: Not a regular file", path);
 
-	ri = find_raw_inode(o, size, ino);
-	putblock(b, bsize, rsize, ri);
-
+	ri = find_raw_inode(o, size, ino, 0);
+	while(ri) {
+		putblock(b, bsize, rsize, ri);
+		ri = find_raw_inode(o, size, ino, je32_to_cpu(ri->version));
+	}
 	write(1, b, *rsize);
 }
 
