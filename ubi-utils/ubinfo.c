@@ -414,7 +414,7 @@ int main(int argc, char * const argv[])
 
 	if (args.devn != -1 && args.vol_id != -1) {
 		print_vol_info(libubi, args.devn, args.vol_id);
-		goto out;
+		goto out_libubi;
 	}
 
 	if (args.devn == -1 && args.vol_id == -1)
@@ -425,7 +425,6 @@ int main(int argc, char * const argv[])
 	if (err)
 		goto out_libubi;
 
-out:
 	libubi_close(libubi);
 	return 0;
 
